@@ -65,6 +65,7 @@
 	"scripts": {
 		"build": "tsc -b && vite build",
 		"build:ext": "cd extension && vite build && cp manifest.json ../dist/extension/ && cp -r icons ../dist/extension/ 2>/dev/null || true",
+		"generate-icons": "node scripts/generate-icons.mjs",
 		"cf-typegen": "wrangler types",
 		"check": "tsc && vite build && wrangler deploy --dry-run",
 		"deploy": "wrangler deploy",

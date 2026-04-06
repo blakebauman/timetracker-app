@@ -4,12 +4,12 @@ import { TimerBar } from "@/components/timer/TimerBar";
 import { Toaster } from "@/components/ui/sonner";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { useTimer } from "@/hooks/useTimer";
 
 export function AppShell() {
   useWebSocket();
   useOfflineSync();
-  useTimer(); // registers keyboard shortcuts globally
+  // useTimer() is called inside TimerBar (always mounted), which registers
+  // the tick loop, IDB restore, and keyboard shortcuts globally.
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
