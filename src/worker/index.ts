@@ -5,6 +5,7 @@ import { timeEntriesRouter } from "./routes/time-entries";
 import { projectsRouter } from "./routes/projects";
 import { clientsRouter } from "./routes/clients";
 import { tagsRouter } from "./routes/tags";
+import { tasksRouter } from "./routes/tasks";
 import { reportsRouter } from "./routes/reports";
 import { websocketRouter } from "./routes/websocket";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
@@ -16,6 +17,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/projects", projectsRouter)
   .route("/api/clients", clientsRouter)
   .route("/api/tags", tagsRouter)
+  .route("/api/tasks", tasksRouter)
   .route("/api/reports", reportsRouter)
   .route("/api/ws", websocketRouter);
 

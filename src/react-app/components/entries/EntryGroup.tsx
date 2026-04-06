@@ -14,9 +14,11 @@ interface EntryGroupProps {
   label: string;
   entries: TimeEntry[];
   totalSeconds: number;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function EntryGroup({ label, entries, totalSeconds }: EntryGroupProps) {
+export function EntryGroup({ label, entries, totalSeconds, selectedIds, onToggleSelect }: EntryGroupProps) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -39,7 +41,12 @@ export function EntryGroup({ label, entries, totalSeconds }: EntryGroupProps) {
 
       <CollapsibleContent>
         {entries.map((entry) => (
-          <EntryRow key={entry.id} entry={entry} />
+          <EntryRow
+            key={entry.id}
+            entry={entry}
+            isSelected={selectedIds?.has(entry.id)}
+            onToggleSelect={onToggleSelect}
+          />
         ))}
       </CollapsibleContent>
     </Collapsible>

@@ -85,6 +85,42 @@ export const reportsRouter = new Hono<{
       })),
     });
   })
+  .get("/weekly", zValidator("query", ReportQuerySchema.partial().required({ since: true, until: true })), async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const { since, until } = c.req.valid("query");
+
+    const { results } = await c.env.DB.prepare(
+      `
+      SELECT
+        date(te.start) as date,
+        strftime('%Y-W%W', te.start) as week,
+        SUM(te.duration) as total_seconds,
+        SUM(CASE WHEN te.billable = 1 THEN te.duration ELSE 0 END) as billable_seconds,
+        COUNT(*) as entry_count
+      FROM time_entries te
+      WHERE te.workspace_id = ? AND te.start >= ? AND te.start < ? AND te.stop IS NOT NULL
+      GROUP BY date(te.start)
+      ORDER BY date ASC
+      `
+    )
+      .bind(workspaceId, since, until)
+      .all<Record<string, unknown>>();
+
+    // Group by week
+    const weekMap = new Map<string, { week: string; days: unknown[] }>();
+    for (const r of results) {
+      const week = r.week as string;
+      if (!weekMap.has(week)) weekMap.set(week, { week, days: [] });
+      weekMap.get(week)!.days.push({
+        date: r.date as string,
+        totalSeconds: (r.total_seconds as number) ?? 0,
+        billableSeconds: (r.billable_seconds as number) ?? 0,
+        entryCount: (r.entry_count as number) ?? 0,
+      });
+    }
+
+    return c.json([...weekMap.values()]);
+  })
   .get("/detailed", zValidator("query", ReportQuerySchema.partial().required({since: true, until: true})), async (c) => {
     const workspaceId = c.get("workspaceId");
     const { since, until, projectId } = c.req.query();

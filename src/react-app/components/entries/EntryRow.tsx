@@ -17,9 +17,11 @@ import type { TimeEntry } from "@shared/schemas";
 
 interface EntryRowProps {
   entry: TimeEntry;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function EntryRow({ entry }: EntryRowProps) {
+export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRowProps) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [desc, setDesc] = useState(entry.description);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -44,7 +46,25 @@ export function EntryRow({ entry }: EntryRowProps) {
 
   return (
     <>
-      <div className="group flex items-center gap-3 border-b px-4 py-2.5 hover:bg-accent/40 transition-colors">
+      <div className={`group flex items-center gap-3 border-b px-4 py-2.5 hover:bg-accent/40 transition-colors ${isSelected ? "bg-accent/60" : ""}`}>
+        {/* Checkbox (visible on hover or when any selection active) */}
+        {onToggleSelect && (
+          <button
+            onClick={() => onToggleSelect(entry.id)}
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:border-primary"
+            }`}
+          >
+            {isSelected && (
+              <svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
+        )}
+
         {/* Project color dot */}
         <span
           className="h-3 w-3 shrink-0 rounded-full"

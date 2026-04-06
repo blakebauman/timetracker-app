@@ -14,12 +14,14 @@ export const ClientSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
   name: z.string(),
+  notes: z.string().nullable(),
   archived: z.boolean(),
   createdAt: z.string(),
 });
 
 export const CreateClientSchema = z.object({
   name: z.string().min(1),
+  notes: z.string().nullable().optional(),
 });
 
 export const UpdateClientSchema = CreateClientSchema.partial().extend({
@@ -38,6 +40,9 @@ export const ProjectSchema = z.object({
   billable: z.boolean(),
   rate: z.number().nullable(),
   active: z.boolean(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  estimatedHours: z.number().nullable(),
   createdAt: z.string(),
 });
 
@@ -47,10 +52,40 @@ export const CreateProjectSchema = z.object({
   clientId: z.string().nullable().optional(),
   billable: z.boolean().default(false),
   rate: z.number().nullable().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  estimatedHours: z.number().nullable().optional(),
 });
 
 export const UpdateProjectSchema = CreateProjectSchema.partial().extend({
   active: z.boolean().optional(),
+});
+
+// ─── Task ─────────────────────────────────────────────────────────────────────
+
+export const TaskSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  projectId: z.string(),
+  projectName: z.string().nullable(),
+  projectColor: z.string().nullable(),
+  name: z.string(),
+  active: z.boolean(),
+  estimatedSeconds: z.number().nullable(),
+  trackedSeconds: z.number(),
+  createdAt: z.string(),
+});
+
+export const CreateTaskSchema = z.object({
+  name: z.string().min(1),
+  projectId: z.string(),
+  estimatedSeconds: z.number().nullable().optional(),
+});
+
+export const UpdateTaskSchema = z.object({
+  name: z.string().min(1).optional(),
+  active: z.boolean().optional(),
+  estimatedSeconds: z.number().nullable().optional(),
 });
 
 // ─── Tag ─────────────────────────────────────────────────────────────────────
@@ -69,6 +104,8 @@ export const TimeEntrySchema = z.object({
   projectId: z.string().nullable(),
   projectName: z.string().nullable(),
   projectColor: z.string().nullable(),
+  taskId: z.string().nullable(),
+  taskName: z.string().nullable(),
   description: z.string(),
   start: z.string(),
   stop: z.string().nullable(),
@@ -82,6 +119,7 @@ export const TimeEntrySchema = z.object({
 export const CreateTimeEntrySchema = z.object({
   description: z.string().default(""),
   projectId: z.string().nullable().optional(),
+  taskId: z.string().nullable().optional(),
   start: z.string(),
   stop: z.string().nullable().optional(),
   billable: z.boolean().default(false),
@@ -91,10 +129,26 @@ export const CreateTimeEntrySchema = z.object({
 export const UpdateTimeEntrySchema = z.object({
   description: z.string().optional(),
   projectId: z.string().nullable().optional(),
+  taskId: z.string().nullable().optional(),
   start: z.string().optional(),
   stop: z.string().nullable().optional(),
   billable: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
+});
+
+export const BulkUpdateTimeEntriesSchema = z.object({
+  ids: z.array(z.string()).min(1),
+  patch: z.object({
+    projectId: z.string().nullable().optional(),
+    taskId: z.string().nullable().optional(),
+    billable: z.boolean().optional(),
+    tags: z.array(z.string()).optional(),
+    description: z.string().optional(),
+  }),
+});
+
+export const BulkDeleteTimeEntriesSchema = z.object({
+  ids: z.array(z.string()).min(1),
 });
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
@@ -112,9 +166,12 @@ export const ReportQuerySchema = z.object({
 export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type Client = z.infer<typeof ClientSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
+export type Task = z.infer<typeof TaskSchema>;
 export type Tag = z.infer<typeof TagSchema>;
 export type TimeEntry = z.infer<typeof TimeEntrySchema>;
 export type CreateTimeEntry = z.infer<typeof CreateTimeEntrySchema>;
 export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
 export type CreateClient = z.infer<typeof CreateClientSchema>;
+export type CreateTask = z.infer<typeof CreateTaskSchema>;
+export type UpdateTask = z.infer<typeof UpdateTaskSchema>;

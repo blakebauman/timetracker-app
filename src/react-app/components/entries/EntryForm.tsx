@@ -12,6 +12,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { ProjectPicker } from "./ProjectPicker";
+import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
 import { useUpdateEntry } from "@/hooks/useEntries";
 import type { TimeEntry } from "@shared/schemas";
@@ -23,7 +24,7 @@ interface EntryFormProps {
 }
 
 function toTimeInput(iso: string): string {
-  return iso.slice(11, 16); // "HH:MM"
+  return iso.slice(11, 16);
 }
 
 function applyTimeInput(iso: string, timeStr: string): string {
@@ -33,12 +34,11 @@ function applyTimeInput(iso: string, timeStr: string): string {
 export function EntryForm({ entry, open, onClose }: EntryFormProps) {
   const [description, setDescription] = useState(entry.description);
   const [projectId, setProjectId] = useState<string | null>(entry.projectId);
+  const [taskId, setTaskId] = useState<string | null>(entry.taskId ?? null);
   const [tags, setTags] = useState<string[]>(entry.tags);
   const [billable, setBillable] = useState(entry.billable);
   const [startTime, setStartTime] = useState(toTimeInput(entry.start));
-  const [stopTime, setStopTime] = useState(
-    entry.stop ? toTimeInput(entry.stop) : ""
-  );
+  const [stopTime, setStopTime] = useState(entry.stop ? toTimeInput(entry.stop) : "");
   const updateEntry = useUpdateEntry();
 
   const handleSave = () => {
@@ -48,12 +48,11 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
         data: {
           description,
           projectId,
+          taskId,
           tags,
           billable,
           start: applyTimeInput(entry.start, startTime),
-          stop: stopTime
-            ? applyTimeInput(entry.stop ?? entry.start, stopTime)
-            : undefined,
+          stop: stopTime ? applyTimeInput(entry.stop ?? entry.start, stopTime) : undefined,
         },
       },
       { onSuccess: onClose }
@@ -68,7 +67,6 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
         </SheetHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-          {/* Description */}
           <div className="space-y-1.5">
             <Label>Description</Label>
             <Textarea
@@ -80,56 +78,46 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
             />
           </div>
 
-          {/* Project */}
           <div className="space-y-1.5">
             <Label>Project</Label>
-            <ProjectPicker value={projectId} onChange={setProjectId} />
+            <ProjectPicker
+              value={projectId}
+              onChange={(id) => { setProjectId(id); setTaskId(null); }}
+            />
           </div>
 
-          {/* Tags */}
+          {projectId && (
+            <div className="space-y-1.5">
+              <Label>Task</Label>
+              <TaskPicker projectId={projectId} value={taskId} onChange={setTaskId} />
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Tags</Label>
             <TagPicker value={tags} onChange={setTags} />
           </div>
 
-          {/* Time range */}
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
               <Label>Start</Label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
             <div className="flex-1 space-y-1.5">
               <Label>Stop</Label>
-              <Input
-                type="time"
-                value={stopTime}
-                onChange={(e) => setStopTime(e.target.value)}
-              />
+              <Input type="time" value={stopTime} onChange={(e) => setStopTime(e.target.value)} />
             </div>
           </div>
 
-          {/* Billable */}
           <div className="flex items-center gap-3">
-            <Switch
-              id="billable"
-              checked={billable}
-              onCheckedChange={setBillable}
-            />
+            <Switch id="billable" checked={billable} onCheckedChange={setBillable} />
             <Label htmlFor="billable">Billable</Label>
           </div>
         </div>
 
         <SheetFooter className="border-t px-6 py-4">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={updateEntry.isPending}>
-            Save changes
-          </Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={updateEntry.isPending}>Save changes</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

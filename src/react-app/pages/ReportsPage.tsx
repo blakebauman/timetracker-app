@@ -3,10 +3,11 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import { SummaryCards } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
 import { ProjectBreakdown } from "@/components/reports/ProjectBreakdown";
+import { WeeklyBarChart } from "@/components/reports/WeeklyBarChart";
 import { DetailedTable, type DetailedEntry } from "@/components/reports/DetailedTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useReportSummary, useReportDetailed } from "@/hooks/useReports";
+import { useReportSummary, useReportDetailed, useReportWeekly } from "@/hooks/useReports";
 import { getDateRangePresets } from "@/lib/dateUtils";
 import { exportToCSV } from "@/lib/exportUtils";
 
@@ -21,6 +22,7 @@ export function ReportsPage() {
 
   const { data: summary, isLoading } = useReportSummary(range.since, range.until);
   const { data: detailed = [] } = useReportDetailed(range.since, range.until);
+  const { data: weekly = [] } = useReportWeekly(range.since, range.until);
 
   const handleExport = () => {
     exportToCSV(
@@ -54,6 +56,7 @@ export function ReportsPage() {
           <Tabs defaultValue="summary">
             <TabsList>
               <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="weekly">Weekly</TabsTrigger>
               <TabsTrigger value="detailed">
                 Detailed
                 {detailed.length > 0 && (
@@ -72,6 +75,10 @@ export function ReportsPage() {
                   totalSeconds={summary.totalSeconds}
                 />
               </div>
+            </TabsContent>
+
+            <TabsContent value="weekly" className="mt-4">
+              <WeeklyBarChart data={weekly} />
             </TabsContent>
 
             <TabsContent value="detailed" className="mt-4">

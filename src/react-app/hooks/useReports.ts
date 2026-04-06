@@ -39,3 +39,23 @@ export function useReportDetailed(since: string, until: string) {
     enabled: Boolean(since && until),
   });
 }
+
+export interface WeeklyDay {
+  date: string;
+  totalSeconds: number;
+  billableSeconds: number;
+  entryCount: number;
+}
+
+export interface WeeklyData {
+  week: string;
+  days: WeeklyDay[];
+}
+
+export function useReportWeekly(since: string, until: string) {
+  return useQuery({
+    queryKey: ["reports", "weekly", since, until],
+    queryFn: () => api.reports.weekly({ since, until }) as Promise<WeeklyData[]>,
+    enabled: Boolean(since && until),
+  });
+}

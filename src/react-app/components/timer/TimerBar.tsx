@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TimerDisplay } from "./TimerDisplay";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
+import { TaskPicker } from "@/components/entries/TaskPicker";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useTimerStore } from "@/stores/timerStore";
 import { useTimer } from "@/hooks/useTimer";
@@ -12,49 +13,47 @@ import { cn } from "@/lib/utils";
 
 export function TimerBar() {
   const { runningEntry, elapsed } = useTimerStore();
-  const { startTimer, stopTimer, discardTimer, isStarting, isStopping } =
-    useTimer();
+  const { startTimer, stopTimer, discardTimer, isStarting, isStopping } = useTimer();
   const updateEntry = useUpdateEntry();
 
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
   const descRef = useRef<HTMLInputElement>(null);
 
   const isRunning = Boolean(runningEntry);
 
-  // Sync description/project from running entry
+  // Sync description/project/task from running entry
   useEffect(() => {
     if (runningEntry) {
       setDescription(runningEntry.description);
       setProjectId(runningEntry.projectId);
+      setTaskId(runningEntry.taskId ?? null);
     } else {
       setDescription("");
       setProjectId(null);
+      setTaskId(null);
     }
   }, [runningEntry?.id]);
+
+  // Clear task when project changes
+  useEffect(() => {
+    setTaskId(null);
+  }, [projectId]);
 
   // Debounced description update while running
   useEffect(() => {
     if (!runningEntry || description === runningEntry.description) return;
     const t = setTimeout(() => {
-      updateEntry.mutate({
-        id: runningEntry.id,
-        data: { description },
-      });
+      updateEntry.mutate({ id: runningEntry.id, data: { description } });
     }, 800);
     return () => clearTimeout(t);
   }, [description, runningEntry?.id]);
 
-  const handleStart = () => {
-    startTimer({ description, projectId });
-  };
-
+  const handleStart = () => startTimer({ description, projectId, taskId });
   const handleStop = () => stopTimer();
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      isRunning ? handleStop() : handleStart();
-    }
+    if (e.key === "Enter") isRunning ? handleStop() : handleStart();
   };
 
   return (
@@ -65,7 +64,7 @@ export function TimerBar() {
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={isRunning ? "What are you working on?" : "What are you working on?"}
+        placeholder="What are you working on?"
         className={cn(
           "flex-1 border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60",
           isRunning && "font-medium"
@@ -77,8 +76,22 @@ export function TimerBar() {
         value={projectId}
         onChange={(id) => {
           setProjectId(id);
+          setTaskId(null);
           if (runningEntry) {
-            updateEntry.mutate({ id: runningEntry.id, data: { projectId: id } });
+            updateEntry.mutate({ id: runningEntry.id, data: { projectId: id, taskId: null } });
+          }
+        }}
+        compact
+      />
+
+      {/* Task picker — only when a project is selected */}
+      <TaskPicker
+        projectId={projectId}
+        value={taskId}
+        onChange={(id) => {
+          setTaskId(id);
+          if (runningEntry) {
+            updateEntry.mutate({ id: runningEntry.id, data: { taskId: id } });
           }
         }}
         compact
@@ -86,10 +99,7 @@ export function TimerBar() {
 
       {/* Timer display (only when running) */}
       {isRunning && (
-        <TimerDisplay
-          seconds={elapsed}
-          className="min-w-[80px] text-right text-primary"
-        />
+        <TimerDisplay seconds={elapsed} className="min-w-20 text-right text-primary" />
       )}
 
       {/* Discard button (only when running) */}
@@ -105,7 +115,7 @@ export function TimerBar() {
         </Button>
       )}
 
-      {/* Start / Stop button */}
+      {/* Start / Stop */}
       <Button
         size="sm"
         variant={isRunning ? "destructive" : "default"}
@@ -115,15 +125,9 @@ export function TimerBar() {
         title={isRunning ? "Stop timer (Alt+Shift+S)" : "Start timer (Alt+Shift+S)"}
       >
         {isRunning ? (
-          <>
-            <Square className="h-3.5 w-3.5 fill-current" />
-            Stop
-          </>
+          <><Square className="h-3.5 w-3.5 fill-current" /> Stop</>
         ) : (
-          <>
-            <Play className="h-3.5 w-3.5 fill-current" />
-            Start
-          </>
+          <><Play className="h-3.5 w-3.5 fill-current" /> Start</>
         )}
       </Button>
 

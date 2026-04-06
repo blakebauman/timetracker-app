@@ -79,3 +79,40 @@ export function useDeleteEntry() {
     },
   });
 }
+
+export function useBulkDeleteEntries() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.timeEntries.bulkDelete(ids),
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ["time-entries"] });
+      const prev = queryClient.getQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] });
+      const set = new Set(ids);
+      queryClient.setQueriesData<TimeEntry[]>(
+        { queryKey: ["time-entries"] },
+        (old) => old?.filter((e) => !set.has(e.id)) ?? []
+      );
+      return { prev };
+    },
+    onError: (_err, _ids, ctx) => {
+      ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      toast.error("Failed to delete entries");
+    },
+    onSuccess: (_data, ids) => {
+      toast.success(`${ids.length} ${ids.length === 1 ? "entry" : "entries"} deleted`);
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+    },
+  });
+}
+
+export function useBulkUpdateEntries() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, patch }: { ids: string[]; patch: Record<string, unknown> }) =>
+      api.timeEntries.bulkUpdate({ ids, patch }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+    },
+    onError: () => toast.error("Failed to update entries"),
+  });
+}
