@@ -2,4 +2,5 @@
 // Values come from .dev.vars (local) or `wrangler secret put` (production)
 interface Env {
   AUTH_SECRET: string;
+  BETTER_AUTH_URL?: string;
 }

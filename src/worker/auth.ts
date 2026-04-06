@@ -1,11 +1,12 @@
 import { betterAuth } from "better-auth";
 import { bearer } from "better-auth/plugins";
 
-export function createAuth(env: Env) {
+export function createAuth(env: Env, baseURL?: string) {
   return betterAuth({
     // D1 is auto-detected via its batch/exec/prepare interface
     database: env.DB as unknown as Parameters<typeof betterAuth>[0]["database"],
     secret: env.AUTH_SECRET,
+    baseURL,
     emailAndPassword: {
       enabled: true,
     },

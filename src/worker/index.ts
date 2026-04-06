@@ -14,7 +14,11 @@ export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
   // Auth endpoints — handle before workspace middleware, all methods
-  .use("/api/auth/*", (c) => createAuth(c.env).handler(c.req.raw))
+  // Pass request origin as baseURL so Better Auth can determine it in all environments
+  .use("/api/auth/*", (c) => {
+    const baseURL = new URL(c.req.url).origin;
+    return createAuth(c.env, baseURL).handler(c.req.raw);
+  })
   .use("/api/*", workspaceMiddleware)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)
