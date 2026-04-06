@@ -1,14 +1,30 @@
 import { createMiddleware } from "hono/factory";
+import { createAuth } from "../auth";
 
 export const workspaceMiddleware = createMiddleware<{
   Bindings: Env;
-  Variables: { workspaceId: string };
+  Variables: { workspaceId: string; userId: string };
 }>(async (c, next) => {
-  // For now, always use the default workspace (no auth)
-  const workspaceId =
-    c.req.header("X-Workspace-Id") ??
-    c.req.query("workspaceId") ??
-    "default";
-  c.set("workspaceId", workspaceId);
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  });
+
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  // Resolve this user's workspace
+  const row = await c.env.DB.prepare(
+    `SELECT id FROM workspaces WHERE userId = ? LIMIT 1`
+  )
+    .bind(session.user.id)
+    .first<{ id: string }>();
+
+  if (!row) {
+    return c.json({ error: "Workspace not found" }, 404);
+  }
+
+  c.set("workspaceId", row.id);
+  c.set("userId", session.user.id);
   await next();
 });

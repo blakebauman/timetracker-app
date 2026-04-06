@@ -1,8 +1,10 @@
-import { NavLink } from "react-router-dom";
-import { Timer, FolderOpen, Users, BarChart2, Settings, Clock } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { to: "/", icon: Timer, label: "Timer" },
@@ -14,6 +16,13 @@ const navItems = [
 
 export function Sidebar() {
   const { runningEntry, elapsed } = useTimerStore();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <aside className="flex h-full w-56 flex-col border-r bg-card">
@@ -60,10 +69,29 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t p-3 text-xs text-muted-foreground">
-        <p>Alt+Shift+S — Start/Stop</p>
-        <p>Alt+Shift+X — Discard</p>
+      {/* Footer — user info + sign out */}
+      <div className="border-t p-3">
+        {user && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-md px-1 py-1">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium">{user.name}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+              onClick={handleSignOut}
+              title="Sign out"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+        <div className="text-[10px] text-muted-foreground">
+          <p>Alt+Shift+S — Start/Stop</p>
+          <p>Alt+Shift+X — Discard</p>
+        </div>
       </div>
     </aside>
   );

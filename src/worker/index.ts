@@ -8,10 +8,15 @@ import { tagsRouter } from "./routes/tags";
 import { tasksRouter } from "./routes/tasks";
 import { reportsRouter } from "./routes/reports";
 import { websocketRouter } from "./routes/websocket";
+import { createAuth } from "./auth";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
+  // Auth endpoints — unauthenticated, must come before workspaceMiddleware
+  .on(["GET", "POST"], "/api/auth/**", (c) =>
+    createAuth(c.env).handler(c.req.raw)
+  )
   .use("/api/*", workspaceMiddleware)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)

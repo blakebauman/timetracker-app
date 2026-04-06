@@ -2,7 +2,7 @@ export class TimerRoomDO implements DurableObject {
   private sessions: Set<WebSocket> = new Set();
 
   constructor(
-    private readonly state: DurableObjectState,
+    _state: DurableObjectState,
     _env: Env
   ) {}
 
