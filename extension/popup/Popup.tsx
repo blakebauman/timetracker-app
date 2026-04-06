@@ -21,8 +21,14 @@ export function Popup() {
   const [description, setDescription] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [apiUrl, setApiUrl] = useState<string>("http://localhost:8787");
+  const [apiUrl, setApiUrl] = useState<string>("https://timetracker.blakebauman.dev");
   const [showSettings, setShowSettings] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginLoading, setLoginLoading] = useState(false);
 
   // Load state on mount
   useEffect(() => {
@@ -32,6 +38,7 @@ export function Popup() {
         setDescription(res.timerState.description);
       }
       if (res?.apiUrl) setApiUrl(res.apiUrl);
+      if (res?.authToken) setAuthToken(res.authToken);
     });
 
     // Check for page context (pre-fill from content script)
@@ -51,6 +58,38 @@ export function Popup() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [timerState?.running, timerState?.startedAt]);
+
+  const handleSignIn = () => {
+    setLoginLoading(true);
+    setLoginError(null);
+    chrome.runtime.sendMessage(
+      { type: "SIGN_IN", email: loginEmail, password: loginPassword },
+      (res) => {
+        setLoginLoading(false);
+        if (res?.ok) {
+          setAuthToken(res.user?.token ?? loginEmail); // store token indicator
+          // Re-fetch state to get the stored token
+          chrome.runtime.sendMessage({ type: "GET_STATE" }, (state) => {
+            if (state?.authToken) setAuthToken(state.authToken);
+          });
+          setUserEmail(loginEmail);
+        } else {
+          setLoginError(res?.error ?? "Sign in failed");
+        }
+      }
+    );
+  };
+
+  const handleSignOut = () => {
+    chrome.runtime.sendMessage({ type: "SIGN_OUT" }, () => {
+      setAuthToken(null);
+      setUserEmail(null);
+      setTimerState(null);
+      setDescription("");
+      setElapsed(0);
+      setShowSettings(false);
+    });
+  };
 
   const handleStart = () => {
     setLoading(true);
@@ -91,6 +130,123 @@ export function Popup() {
 
   const isRunning = timerState?.running;
 
+  // ── Login form ───────────────────────────────────────────────────────────────
+  if (!authToken) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {/* Header */}
+        <div
+          style={{
+            padding: "12px 14px",
+            borderBottom: "1px solid #e5e7eb",
+            background: "#fff",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#9ca3af",
+              letterSpacing: 1,
+            }}
+          >
+            00:00:00
+          </span>
+        </div>
+
+        {/* Sign in form */}
+        <div style={{ padding: "14px 14px" }}>
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#374151",
+              marginBottom: 10,
+              marginTop: 0,
+            }}
+          >
+            Sign in to Time Tracker
+          </p>
+          <label
+            style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 3 }}
+          >
+            Email
+          </label>
+          <input
+            type="email"
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+            placeholder="you@example.com"
+            style={{
+              width: "100%",
+              border: "1px solid #d1d5db",
+              borderRadius: 4,
+              padding: "6px 8px",
+              fontSize: 13,
+              marginBottom: 8,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          <label
+            style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 3 }}
+          >
+            Password
+          </label>
+          <input
+            type="password"
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+            placeholder="••••••••"
+            style={{
+              width: "100%",
+              border: "1px solid #d1d5db",
+              borderRadius: 4,
+              padding: "6px 8px",
+              fontSize: 13,
+              marginBottom: 10,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          {loginError && (
+            <p
+              style={{
+                fontSize: 12,
+                color: "#e5291a",
+                marginBottom: 8,
+                marginTop: 0,
+              }}
+            >
+              {loginError}
+            </p>
+          )}
+          <button
+            onClick={handleSignIn}
+            disabled={loginLoading}
+            style={{
+              width: "100%",
+              padding: "8px 0",
+              background: loginLoading ? "#fca5a5" : "#e5291a",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: loginLoading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loginLoading ? "Signing in..." : "Sign in"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Authenticated UI ─────────────────────────────────────────────────────────
   return (
     <div
       style={{
@@ -170,7 +326,7 @@ export function Popup() {
           >
             API URL
           </label>
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
             <input
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
@@ -198,6 +354,26 @@ export function Popup() {
               Save
             </button>
           </div>
+          {userEmail && (
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 6px" }}>
+              Signed in as {userEmail}
+            </p>
+          )}
+          <button
+            onClick={handleSignOut}
+            style={{
+              width: "100%",
+              padding: "5px 0",
+              background: "none",
+              color: "#e5291a",
+              border: "1px solid #e5291a",
+              borderRadius: 4,
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Sign out
+          </button>
         </div>
       )}
 

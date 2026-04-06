@@ -40,23 +40,69 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     switch (msg.type) {
       case "GET_STATE": {
-        const { timerState, apiUrl } = (await chrome.storage.local.get([
+        const { timerState, apiUrl, authToken } = (await chrome.storage.local.get([
           "timerState",
           "apiUrl",
-        ])) as { timerState?: TimerState; apiUrl?: string };
-        sendResponse({ timerState: timerState ?? null, apiUrl: apiUrl ?? null });
+          "authToken",
+        ])) as { timerState?: TimerState; apiUrl?: string; authToken?: string };
+        sendResponse({
+          timerState: timerState ?? null,
+          apiUrl: apiUrl ?? null,
+          authToken: authToken ?? null,
+        });
+        break;
+      }
+
+      case "SIGN_IN": {
+        const { apiUrl } = (await chrome.storage.local.get("apiUrl")) as {
+          apiUrl?: string;
+        };
+        const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+        try {
+          const res = await fetch(`${base}/api/auth/sign-in/email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: msg.email, password: msg.password }),
+          });
+          const data = (await res.json()) as {
+            token?: string;
+            user?: unknown;
+            error?: string;
+            message?: string;
+          };
+          if (!res.ok) {
+            sendResponse({ ok: false, error: data.message ?? data.error ?? "Sign in failed" });
+            break;
+          }
+          if (data.token) {
+            await chrome.storage.local.set({ authToken: data.token });
+          }
+          sendResponse({ ok: true, user: data.user });
+        } catch (err) {
+          sendResponse({ ok: false, error: String(err) });
+        }
+        break;
+      }
+
+      case "SIGN_OUT": {
+        await chrome.storage.local.remove(["authToken", "timerState"]);
+        chrome.action.setBadgeText({ text: "" });
+        sendResponse({ ok: true });
         break;
       }
 
       case "START_TIMER": {
-        const { apiUrl } = (await chrome.storage.local.get("apiUrl")) as {
-          apiUrl?: string;
-        };
-        const base = apiUrl ?? "http://localhost:8787";
+        const { apiUrl, authToken } = (await chrome.storage.local.get([
+          "apiUrl",
+          "authToken",
+        ])) as { apiUrl?: string; authToken?: string };
+        const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
         try {
           const res = await fetch(`${base}/api/time_entries`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({
               description: msg.description ?? "",
               projectId: msg.projectId ?? null,
@@ -88,19 +134,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
 
       case "STOP_TIMER": {
-        const { timerState, apiUrl } = (await chrome.storage.local.get([
+        const { timerState, apiUrl, authToken } = (await chrome.storage.local.get([
           "timerState",
           "apiUrl",
-        ])) as { timerState?: TimerState; apiUrl?: string };
+          "authToken",
+        ])) as { timerState?: TimerState; apiUrl?: string; authToken?: string };
         if (!timerState?.running) {
           sendResponse({ ok: false, error: "No running timer" });
           break;
         }
-        const base = apiUrl ?? "http://localhost:8787";
+        const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+        const headers: Record<string, string> = {};
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
         try {
           const res = await fetch(
             `${base}/api/time_entries/${timerState.entryId}/stop`,
-            { method: "PATCH" }
+            { method: "PATCH", headers }
           );
           const entry = await res.json();
           await chrome.storage.local.remove("timerState");

@@ -6,7 +6,8 @@
   "permissions": ["storage", "alarms", "notifications"],
   "host_permissions": [
     "http://localhost/*",
-    "https://*.workers.dev/*"
+    "https://*.workers.dev/*",
+    "https://timetracker.blakebauman.dev/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",

@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { bearer } from "better-auth/plugins";
 
 export function createAuth(env: Env) {
   return betterAuth({
@@ -23,6 +24,7 @@ export function createAuth(env: Env) {
         },
       },
     },
+    plugins: [bearer()],
     // Trust requests from these origins (needed for cookie auth in same-origin SPA)
     trustedOrigins: [
       "http://localhost:5173",
