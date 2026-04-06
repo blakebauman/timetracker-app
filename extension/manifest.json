@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Time Tracker",
+  "version": "1.0.0",
+  "description": "Track time directly from your browser. Works with your Time Tracker app.",
+  "permissions": ["storage", "alarms", "notifications"],
+  "host_permissions": [
+    "http://localhost/*",
+    "https://*.workers.dev/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.atlassian.net/*",
+        "https://github.com/*",
+        "https://linear.app/*",
+        "https://app.asana.com/*"
+      ],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,96 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import type { Project, Client, CreateProject, CreateClient } from "@shared/schemas";
+
+export function useProjects() {
+  return useQuery({
+    queryKey: ["projects"],
+    queryFn: () => api.projects.list() as Promise<Project[]>,
+    staleTime: 60_000,
+  });
+}
+
+export function useAllProjects() {
+  return useQuery({
+    queryKey: ["projects", "all"],
+    queryFn: () =>
+      api.projects.list({ includeArchived: "true" }) as Promise<Project[]>,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateProject) =>
+      api.projects.create(data as Record<string, unknown>) as Promise<Project>,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project created");
+    },
+    onError: () => toast.error("Failed to create project"),
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<CreateProject & { active: boolean }>;
+    }) =>
+      api.projects.update(
+        id,
+        data as Record<string, unknown>
+      ) as Promise<Project>,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["projects"] }),
+    onError: () => toast.error("Failed to update project"),
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.projects.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project archived");
+    },
+    onError: () => toast.error("Failed to archive project"),
+  });
+}
+
+export function useClients() {
+  return useQuery({
+    queryKey: ["clients"],
+    queryFn: () => api.clients.list() as Promise<Client[]>,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateClient) =>
+      api.clients.create(data as Record<string, unknown>) as Promise<Client>,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("Client created");
+    },
+    onError: () => toast.error("Failed to create client"),
+  });
+}
+
+export function useTags() {
+  return useQuery({
+    queryKey: ["tags"],
+    queryFn: () =>
+      api.tags.list() as Promise<{ id: string; name: string }[]>,
+    staleTime: 60_000,
+  });
+}

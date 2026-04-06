@@ -1,0 +1,133 @@
+import { useState, useRef, useEffect } from "react";
+import { Play, Square, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { TimerDisplay } from "./TimerDisplay";
+import { ProjectPicker } from "@/components/entries/ProjectPicker";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { useTimerStore } from "@/stores/timerStore";
+import { useTimer } from "@/hooks/useTimer";
+import { useUpdateEntry } from "@/hooks/useEntries";
+import { cn } from "@/lib/utils";
+
+export function TimerBar() {
+  const { runningEntry, elapsed } = useTimerStore();
+  const { startTimer, stopTimer, discardTimer, isStarting, isStopping } =
+    useTimer();
+  const updateEntry = useUpdateEntry();
+
+  const [description, setDescription] = useState("");
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const descRef = useRef<HTMLInputElement>(null);
+
+  const isRunning = Boolean(runningEntry);
+
+  // Sync description/project from running entry
+  useEffect(() => {
+    if (runningEntry) {
+      setDescription(runningEntry.description);
+      setProjectId(runningEntry.projectId);
+    } else {
+      setDescription("");
+      setProjectId(null);
+    }
+  }, [runningEntry?.id]);
+
+  // Debounced description update while running
+  useEffect(() => {
+    if (!runningEntry || description === runningEntry.description) return;
+    const t = setTimeout(() => {
+      updateEntry.mutate({
+        id: runningEntry.id,
+        data: { description },
+      });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [description, runningEntry?.id]);
+
+  const handleStart = () => {
+    startTimer({ description, projectId });
+  };
+
+  const handleStop = () => stopTimer();
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      isRunning ? handleStop() : handleStart();
+    }
+  };
+
+  return (
+    <header className="flex h-14 items-center gap-3 border-b bg-card px-4 shadow-sm">
+      {/* Description input */}
+      <Input
+        ref={descRef}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={isRunning ? "What are you working on?" : "What are you working on?"}
+        className={cn(
+          "flex-1 border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60",
+          isRunning && "font-medium"
+        )}
+      />
+
+      {/* Project picker */}
+      <ProjectPicker
+        value={projectId}
+        onChange={(id) => {
+          setProjectId(id);
+          if (runningEntry) {
+            updateEntry.mutate({ id: runningEntry.id, data: { projectId: id } });
+          }
+        }}
+        compact
+      />
+
+      {/* Timer display (only when running) */}
+      {isRunning && (
+        <TimerDisplay
+          seconds={elapsed}
+          className="min-w-[80px] text-right text-primary"
+        />
+      )}
+
+      {/* Discard button (only when running) */}
+      {isRunning && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          onClick={discardTimer}
+          title="Discard timer (Alt+Shift+X)"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
+
+      {/* Start / Stop button */}
+      <Button
+        size="sm"
+        variant={isRunning ? "destructive" : "default"}
+        onClick={isRunning ? handleStop : handleStart}
+        disabled={isStarting || isStopping}
+        className="w-20 gap-1.5"
+        title={isRunning ? "Stop timer (Alt+Shift+S)" : "Start timer (Alt+Shift+S)"}
+      >
+        {isRunning ? (
+          <>
+            <Square className="h-3.5 w-3.5 fill-current" />
+            Stop
+          </>
+        ) : (
+          <>
+            <Play className="h-3.5 w-3.5 fill-current" />
+            Start
+          </>
+        )}
+      </Button>
+
+      <ThemeToggle />
+    </header>
+  );
+}
