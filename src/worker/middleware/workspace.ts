@@ -5,6 +5,12 @@ export const workspaceMiddleware = createMiddleware<{
   Bindings: Env;
   Variables: { workspaceId: string; userId: string };
 }>(async (c, next) => {
+  // Auth routes are handled by Better Auth directly — skip workspace resolution
+  if (c.req.path.startsWith("/api/auth/")) {
+    await next();
+    return;
+  }
+
   const session = await createAuth(c.env).api.getSession({
     headers: c.req.raw.headers,
   });

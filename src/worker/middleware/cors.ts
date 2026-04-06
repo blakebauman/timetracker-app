@@ -7,6 +7,7 @@ export const corsMiddleware = cors({
       origin.startsWith("http://localhost") ||
       origin.startsWith("https://localhost") ||
       origin.endsWith(".workers.dev") ||
+      origin === "https://timetracker.blakebauman.dev" ||
       origin.startsWith("chrome-extension://")
     ) {
       return origin;
