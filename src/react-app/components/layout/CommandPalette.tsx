@@ -38,7 +38,7 @@ export function CommandPalette() {
       e.preventDefault();
       setOpen((o) => !o);
     },
-    { enableOnFormElements: false }
+    { preventDefault: true }
   );
 
   const close = () => {

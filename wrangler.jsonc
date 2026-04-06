@@ -18,7 +18,7 @@
     {
       "binding": "DB",
       "database_name": "time-tracker",
-      "database_id": "placeholder-run-wrangler-d1-create-time-tracker"
+      "database_id": "d11526a2-6d42-4716-af42-c787aea88fd2"
     }
   ],
   "durable_objects": {
@@ -33,6 +33,12 @@
     {
       "tag": "v1",
       "new_classes": ["TimerRoomDO"]
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "timetracker.blakebauman.dev",
+      "custom_domain": true
     }
   ]
 }

@@ -42,6 +42,8 @@ export function useTimer() {
             projectId: saved.projectId,
             projectColor: saved.projectColor,
             projectName: null,
+            taskId: null,
+            taskName: null,
             workspaceId: "default",
             start: new Date(saved.startedAt).toISOString(),
             stop: null,
@@ -65,11 +67,13 @@ export function useTimer() {
     mutationFn: async (partial: {
       description?: string;
       projectId?: string | null;
+      taskId?: string | null;
       billable?: boolean;
     }) => {
       return api.timeEntries.create({
         description: partial.description ?? "",
         projectId: partial.projectId ?? null,
+        taskId: partial.taskId ?? null,
         start: new Date().toISOString(),
         billable: partial.billable ?? false,
         tags: [],
@@ -84,6 +88,8 @@ export function useTimer() {
         projectId: partial.projectId ?? null,
         projectName: null,
         projectColor: null,
+        taskId: partial.taskId ?? null,
+        taskName: null,
         start: new Date(now).toISOString(),
         stop: null,
         duration: null,
@@ -132,6 +138,7 @@ export function useTimer() {
       partial: {
         description?: string;
         projectId?: string | null;
+        taskId?: string | null;
         billable?: boolean;
       } = {}
     ) => startMutation.mutate(partial),

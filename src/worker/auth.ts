@@ -23,8 +23,13 @@ export function createAuth(env: Env) {
         },
       },
     },
-    // Trust requests from the same origin (needed for cookie auth in same-origin SPA)
-    trustedOrigins: ["http://localhost:5173", "http://localhost:8787"],
+    // Trust requests from these origins (needed for cookie auth in same-origin SPA)
+    trustedOrigins: [
+      "http://localhost:5173",
+      "http://localhost:8787",
+      "https://timetracker.blakebauman.dev",
+      "https://time-tracker-app.fold-run.workers.dev",
+    ],
   });
 }
 

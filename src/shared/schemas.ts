@@ -43,6 +43,7 @@ export const ProjectSchema = z.object({
   startDate: z.string().nullable(),
   endDate: z.string().nullable(),
   estimatedHours: z.number().nullable(),
+  trackedSeconds: z.number().default(0),
   createdAt: z.string(),
 });
 
