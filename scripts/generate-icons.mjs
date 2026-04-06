@@ -1,96 +1,68 @@
 #!/usr/bin/env node
 /**
- * Generates minimal PNG icons for the Chrome extension.
- * Uses only Node.js built-ins — no extra dependencies.
- *
- * Produces a solid Toggl-red (#e5291a) square at each required size.
+ * Generates Time Tracker clock icons for the Chrome extension and web app.
+ * Uses sharp (available via pnpm deps) to render SVG → PNG.
  */
 
-import zlib from "zlib";
-import { writeFileSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
+import { createRequire } from "module";
+import { writeFileSync } from "fs";
+import path from "path";
 import { fileURLToPath } from "url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ICONS_DIR = join(__dirname, "../extension/icons");
+const require = createRequire(import.meta.url);
+const sharp = require(
+  "/Users/blake/Sites/PlayGround/time-tracker-app/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp"
+);
 
-// ─── CRC32 ───────────────────────────────────────────────────────────────────
-const crcTable = new Uint32Array(256);
-for (let n = 0; n < 256; n++) {
-  let c = n;
-  for (let k = 0; k < 8; k++) {
-    c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  }
-  crcTable[n] = c;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, "..");
+
+// ── Clock icon SVG ────────────────────────────────────────────────────────────
+// Red circle + white clock face ring + hour/minute hands + center dot
+function makeSVG(size) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const face   = size * 0.39;   // clock face radius
+  const ring   = size * 0.03;   // ring stroke width
+  const stroke = size * 0.075;  // hand stroke width
+  const hour   = face * 0.48;   // hour hand length
+  const minute = face * 0.70;   // minute hand length
+  const dot    = size * 0.045;  // center dot radius
+
+  // Minute hand → 12 o'clock (straight up)
+  const minX2 = cx;
+  const minY2 = cy - minute;
+
+  // Hour hand → ~10 o'clock (-60° from 12)
+  const hourAngle = -Math.PI / 3;
+  const hrX2 = cx + hour * Math.sin(hourAngle);
+  const hrY2 = cy - hour * Math.cos(hourAngle);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <circle cx="${cx}" cy="${cy}" r="${cx}" fill="#e5291a"/>
+  <circle cx="${cx}" cy="${cy}" r="${face}" fill="none" stroke="white" stroke-width="${ring}" opacity="0.9"/>
+  <line x1="${cx}" y1="${cy}" x2="${minX2}" y2="${minY2}" stroke="white" stroke-width="${stroke}" stroke-linecap="round"/>
+  <line x1="${cx}" y1="${cy}" x2="${hrX2.toFixed(2)}" y2="${hrY2.toFixed(2)}" stroke="white" stroke-width="${stroke}" stroke-linecap="round"/>
+  <circle cx="${cx}" cy="${cy}" r="${dot}" fill="white"/>
+</svg>`;
 }
 
-function crc32(buf) {
-  let crc = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) {
-    crc = crcTable[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-// ─── PNG chunk builder ───────────────────────────────────────────────────────
-function chunk(type, data) {
-  const typeBytes = Buffer.from(type, "ascii");
-  const lenBuf = Buffer.allocUnsafe(4);
-  lenBuf.writeUInt32BE(data.length, 0);
-  const crcBuf = Buffer.allocUnsafe(4);
-  crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBytes, data])), 0);
-  return Buffer.concat([lenBuf, typeBytes, data, crcBuf]);
-}
-
-// ─── Solid-color PNG ─────────────────────────────────────────────────────────
-function makeSolidPNG(size, r, g, b) {
-  // PNG signature
-  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-
-  // IHDR: width, height, 8-bit depth, RGB color type
-  const ihdr = Buffer.allocUnsafe(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 2; // RGB
-  ihdr[10] = 0; // deflate
-  ihdr[11] = 0; // adaptive filtering
-  ihdr[12] = 0; // no interlace
-
-  // Raw scanlines: filter byte (0 = None) + RGB pixels per row
-  const raw = Buffer.allocUnsafe(size * (1 + size * 3));
-  for (let y = 0; y < size; y++) {
-    const row = y * (1 + size * 3);
-    raw[row] = 0; // filter: None
-    for (let x = 0; x < size; x++) {
-      const px = row + 1 + x * 3;
-      raw[px] = r;
-      raw[px + 1] = g;
-      raw[px + 2] = b;
-    }
-  }
-
-  const idat = zlib.deflateSync(raw, { level: 9 });
-
-  return Buffer.concat([
-    sig,
-    chunk("IHDR", ihdr),
-    chunk("IDAT", idat),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
-}
-
-// ─── Generate icons ──────────────────────────────────────────────────────────
-mkdirSync(ICONS_DIR, { recursive: true });
-
-// Toggl-red: #e5291a
-const [r, g, b] = [0xe5, 0x29, 0x1a];
-
+// ── Extension icons ───────────────────────────────────────────────────────────
 for (const size of [16, 32, 48, 128]) {
-  const png = makeSolidPNG(size, r, g, b);
-  const dest = join(ICONS_DIR, `icon${size}.png`);
-  writeFileSync(dest, png);
-  console.log(`  ✓ icon${size}.png`);
+  const outPath = path.join(root, "extension", "icons", `icon${size}.png`);
+  await sharp(Buffer.from(makeSVG(size))).png().toFile(outPath);
+  console.log(`✓ extension/icons/icon${size}.png`);
 }
 
-console.log(`\nIcons written to extension/icons/`);
+// ── Public web logo SVG (used as favicon) ─────────────────────────────────────
+writeFileSync(path.join(root, "public", "logo.svg"), makeSVG(32));
+console.log("✓ public/logo.svg");
+
+// ── PWA / OG PNG sizes ────────────────────────────────────────────────────────
+for (const size of [192, 512]) {
+  const outPath = path.join(root, "public", `logo${size}.png`);
+  await sharp(Buffer.from(makeSVG(size))).png().toFile(outPath);
+  console.log(`✓ public/logo${size}.png`);
+}
+
+console.log("\nAll icons generated.");
