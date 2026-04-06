@@ -56,24 +56,11 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
     );
   }
 
-  // Build flat day-by-day data, one bar per week, grouped by day-of-week label
-  // Flatten all days and compute per-day totals across weeks
-  const allDays = data.flatMap((w) =>
-    w.days.map((d) => ({
-      ...d,
-      week: w.week,
-      dayName: DAY_NAMES[new Date(d.date + "T12:00:00").getDay()],
-      hours: parseFloat((d.totalSeconds / 3600).toFixed(2)),
-      billableHours: parseFloat((d.billableSeconds / 3600).toFixed(2)),
-    }))
-  );
-
   // If single week: show Mon-Sun bars with billable overlay
   const isSingleWeek = data.length === 1;
 
   if (isSingleWeek) {
     const week = data[0];
-    // Fill all 7 days (some may be missing)
     const dayMap = new Map(
       week.days.map((d) => [
         DAY_NAMES[new Date(d.date + "T12:00:00").getDay()],
@@ -112,8 +99,8 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--accent)" }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Total" fill="var(--primary)" radius={[3, 3, 0, 0]} maxBarSize={40} />
-              <Bar dataKey="Billable" fill="var(--primary)" fillOpacity={0.4} radius={[3, 3, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="Total" fill="var(--primary)" opacity={1} radius={[3, 3, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="Billable" fill="#10b981" opacity={0.5} radius={[3, 3, 0, 0]} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -131,9 +118,6 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
       (w.days.reduce((s, d) => s + d.billableSeconds, 0) / 3600).toFixed(2)
     ),
   }));
-
-  // suppress unused variable
-  void allDays;
 
   return (
     <Card>
@@ -158,8 +142,8 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--accent)" }} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="Total" fill="var(--primary)" radius={[3, 3, 0, 0]} maxBarSize={48} />
-            <Bar dataKey="Billable" fill="var(--primary)" fillOpacity={0.4} radius={[3, 3, 0, 0]} maxBarSize={48} />
+            <Bar dataKey="Total" fill="var(--primary)" opacity={1} radius={[3, 3, 0, 0]} maxBarSize={48} />
+            <Bar dataKey="Billable" fill="#10b981" opacity={0.5} radius={[3, 3, 0, 0]} maxBarSize={48} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

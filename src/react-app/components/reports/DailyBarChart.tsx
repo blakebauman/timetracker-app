@@ -6,6 +6,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDurationShort, formatShortDate } from "@/lib/dateUtils";
@@ -18,6 +19,16 @@ interface DailyData {
 
 interface DailyBarChartProps {
   data: DailyData[];
+}
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatXLabel(dateStr: string, useDayOfWeek: boolean): string {
+  const d = new Date(dateStr + "T12:00:00");
+  if (useDayOfWeek) {
+    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+  }
+  return `${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: { value: number; payload: DailyData }[] }) {
@@ -33,11 +44,20 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { valu
 }
 
 export function DailyBarChart({ data }: DailyBarChartProps) {
+  const useDayOfWeek = data.length > 14;
+
   const chartData = data.map((d) => ({
     ...d,
     hours: parseFloat((d.totalSeconds / 3600).toFixed(2)),
-    label: d.date.slice(5), // MM-DD
+    label: formatXLabel(d.date, useDayOfWeek),
   }));
+
+  const avgHours =
+    chartData.length > 0
+      ? parseFloat(
+          (chartData.reduce((s, d) => s + d.hours, 0) / chartData.length).toFixed(2)
+        )
+      : 0;
 
   return (
     <Card>
@@ -61,6 +81,14 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
               tickFormatter={(v: number) => `${v}h`}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--accent)" }} />
+            {avgHours > 0 && (
+              <ReferenceLine
+                y={avgHours}
+                stroke="var(--muted-foreground)"
+                strokeDasharray="4 3"
+                strokeOpacity={0.6}
+              />
+            )}
             <Bar
               dataKey="hours"
               fill="var(--primary)"

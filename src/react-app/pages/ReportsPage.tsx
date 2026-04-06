@@ -50,7 +50,15 @@ export function ReportsPage() {
             totalSeconds={summary.totalSeconds}
             billableSeconds={summary.billableSeconds}
             entryCount={summary.entryCount}
-            topProject={summary.byProject[0] ?? null}
+            avgSeconds={(() => {
+              const sinceMs = range.since ? new Date(range.since).getTime() : NaN;
+              const untilMs = range.until ? new Date(range.until).getTime() : NaN;
+              const daysInRange =
+                isNaN(sinceMs) || isNaN(untilMs)
+                  ? 1
+                  : Math.max(1, Math.round((untilMs - sinceMs) / 86400000) + 1);
+              return summary.totalSeconds / daysInRange;
+            })()}
           />
 
           <Tabs defaultValue="summary">

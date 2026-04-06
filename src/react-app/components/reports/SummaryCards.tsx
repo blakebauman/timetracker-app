@@ -7,23 +7,18 @@ interface SummaryCardsProps {
   totalSeconds: number;
   billableSeconds: number;
   entryCount: number;
-  topProject?: { projectName: string; totalSeconds: number } | null;
+  avgSeconds: number;
 }
 
 export function SummaryCards({
   totalSeconds,
   billableSeconds,
   entryCount,
-  topProject,
+  avgSeconds,
 }: SummaryCardsProps) {
   const billablePercent = totalSeconds
     ? Math.round((billableSeconds / totalSeconds) * 100)
     : 0;
-
-  const topProjectPercent =
-    totalSeconds && topProject
-      ? Math.round((topProject.totalSeconds / totalSeconds) * 100)
-      : 0;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -81,28 +76,15 @@ export function SummaryCards({
       </Card>
 
       <Card>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-md bg-purple-500/10 p-2">
-              <TrendingUp className="h-4 w-4 text-purple-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">Top project</p>
-              <p className="truncate text-sm font-semibold">
-                {topProject?.projectName ?? "—"}
-              </p>
-              {topProject && (
-                <div className="mt-1.5 flex items-center gap-2">
-                  <Progress
-                    value={topProjectPercent}
-                    className="h-1.5 flex-1 bg-purple-500/20 [&>div]:bg-purple-500"
-                  />
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    {topProjectPercent}%
-                  </span>
-                </div>
-              )}
-            </div>
+        <CardContent className="flex items-center gap-3 pt-4">
+          <div className="rounded-md bg-orange-500/10 p-2">
+            <TrendingUp className="h-4 w-4 text-orange-500" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Avg / day</p>
+            <p className="text-lg font-semibold">
+              {formatDurationHuman(avgSeconds)}
+            </p>
           </div>
         </CardContent>
       </Card>
