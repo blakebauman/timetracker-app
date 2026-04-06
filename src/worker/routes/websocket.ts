@@ -12,12 +12,15 @@ export const websocketRouter = new Hono<{
   }
 
   // Route to the TimerRoom Durable Object for this workspace
-  const id = c.env.TIMER_ROOM.idFromName(workspaceId);
-  const stub = c.env.TIMER_ROOM.get(id);
-
-  return stub.fetch(
-    new Request("http://do/ws", {
-      headers: c.req.raw.headers,
-    })
-  );
+  try {
+    const id = c.env.TIMER_ROOM.idFromName(workspaceId);
+    const stub = c.env.TIMER_ROOM.get(id);
+    return await stub.fetch(
+      new Request("http://do/ws", {
+        headers: c.req.raw.headers,
+      })
+    );
+  } catch {
+    return c.text("WebSocket unavailable", 503);
+  }
 });

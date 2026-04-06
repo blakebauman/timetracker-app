@@ -9,13 +9,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProjectForm } from "./ProjectForm";
-import { useAllProjects, useDeleteProject } from "@/hooks/useProjects";
+import { useAllProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Project } from "@shared/schemas";
 
 export function ProjectList() {
   const { data: projects = [], isLoading } = useAllProjects();
   const deleteProject = useDeleteProject();
+  const updateProject = useUpdateProject();
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -89,7 +90,11 @@ export function ProjectList() {
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => deleteProject.mutate(project.id)}
+                  onClick={() =>
+                    project.active
+                      ? deleteProject.mutate(project.id)
+                      : updateProject.mutate({ id: project.id, data: { active: true } })
+                  }
                 >
                   <Archive className="mr-2 h-3.5 w-3.5" />
                   {project.active ? "Archive" : "Unarchive"}

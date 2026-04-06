@@ -6,13 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useEntries } from "@/hooks/useEntries";
 import { exportToCSV } from "@/lib/exportUtils";
-import type { TimeEntry } from "@shared/schemas";
 
 export function SettingsPage() {
   const { data: entries = [] } = useEntries(365);
 
   const handleExportAll = () => {
-    exportToCSV(entries as TimeEntry[], "all-time-entries");
+    exportToCSV(entries, "all-time-entries");
   };
 
   return (

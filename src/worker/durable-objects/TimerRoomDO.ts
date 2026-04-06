@@ -1,4 +1,6 @@
 export class TimerRoomDO implements DurableObject {
+  private sessions: Set<WebSocket> = new Set();
+
   constructor(
     private readonly state: DurableObjectState,
     _env: Env
@@ -16,7 +18,19 @@ export class TimerRoomDO implements DurableObject {
         WebSocket,
         WebSocket,
       ];
-      this.state.acceptWebSocket(server);
+      server.accept();
+      this.sessions.add(server);
+      server.addEventListener("close", () => this.sessions.delete(server));
+      server.addEventListener("error", () => this.sessions.delete(server));
+      server.addEventListener("message", (event) => {
+        if (event.data === "ping") {
+          try {
+            server.send("pong");
+          } catch {
+            this.sessions.delete(server);
+          }
+        }
+      });
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -25,37 +39,21 @@ export class TimerRoomDO implements DurableObject {
         event: string;
         data: unknown;
       };
-      const sessions = this.state.getWebSockets();
       const msg = JSON.stringify({ event, data, ts: Date.now() });
-      for (const ws of sessions) {
+      let sent = 0;
+      for (const ws of [...this.sessions]) {
         try {
           ws.send(msg);
+          sent++;
         } catch {
-          // Stale socket — hibernatable API handles cleanup
+          this.sessions.delete(ws);
         }
       }
-      return new Response(JSON.stringify({ sent: sessions.length }), {
+      return new Response(JSON.stringify({ sent }), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
     return new Response("Not found", { status: 404 });
-  }
-
-  async webSocketMessage(
-    _ws: WebSocket,
-    message: string | ArrayBuffer
-  ): Promise<void> {
-    if (message === "ping") {
-      _ws.send("pong");
-    }
-  }
-
-  async webSocketClose(_ws: WebSocket): Promise<void> {
-    // Hibernatable WebSocket API handles cleanup automatically
-  }
-
-  async webSocketError(_ws: WebSocket, _error: unknown): Promise<void> {
-    // Hibernatable WebSocket API handles cleanup automatically
   }
 }

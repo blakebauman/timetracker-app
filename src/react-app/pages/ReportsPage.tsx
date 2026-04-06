@@ -3,11 +3,12 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import { SummaryCards } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
 import { ProjectBreakdown } from "@/components/reports/ProjectBreakdown";
+import { DetailedTable, type DetailedEntry } from "@/components/reports/DetailedTable";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useReportSummary, useReportDetailed } from "@/hooks/useReports";
 import { getDateRangePresets } from "@/lib/dateUtils";
 import { exportToCSV } from "@/lib/exportUtils";
-import type { TimeEntry } from "@shared/schemas";
 
 const { last7days } = getDateRangePresets();
 
@@ -22,7 +23,7 @@ export function ReportsPage() {
   const { data: detailed = [] } = useReportDetailed(range.since, range.until);
 
   const handleExport = () => {
-    exportToCSV(detailed as TimeEntry[], `time-entries-${range.label.replace(/\s/g, "-")}`);
+    exportToCSV(detailed as DetailedEntry[], `time-entries-${range.label.replace(/\s/g, "-")}`);
   };
 
   return (
@@ -54,6 +55,10 @@ export function ReportsPage() {
               totalSeconds={summary.totalSeconds}
             />
           </div>
+
+          <Separator />
+
+          <DetailedTable entries={detailed as DetailedEntry[]} />
         </>
       ) : (
         <div className="py-16 text-center text-sm text-muted-foreground">

@@ -1,7 +1,16 @@
 import { formatSeconds, formatEntryTime } from "./dateUtils";
-import type { TimeEntry } from "@shared/schemas";
 
-export function exportToCSV(entries: TimeEntry[], filename = "time-entries"): void {
+interface ExportEntry {
+  start: string;
+  stop: string | null;
+  duration: number | null;
+  description: string;
+  projectName?: string | null;
+  billable: boolean;
+  tags: string[];
+}
+
+export function exportToCSV(entries: ExportEntry[], filename = "time-entries"): void {
   const headers = [
     "Date",
     "Start",
