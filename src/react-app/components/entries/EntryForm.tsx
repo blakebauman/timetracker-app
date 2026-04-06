@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { ProjectPicker } from "./ProjectPicker";
 import { TagPicker } from "./TagPicker";
 import { useUpdateEntry } from "@/hooks/useEntries";
@@ -60,20 +61,21 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Time Entry</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="flex flex-col gap-0 p-0 sm:max-w-md">
+        <SheetHeader className="border-b px-6 py-4">
+          <SheetTitle>Edit Time Entry</SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
           {/* Description */}
           <div className="space-y-1.5">
             <Label>Description</Label>
-            <Input
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What were you working on?"
+              className="min-h-20 resize-none"
               autoFocus
             />
           </div>
@@ -121,15 +123,15 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
           </div>
         </div>
 
-        <DialogFooter>
+        <SheetFooter className="border-t px-6 py-4">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={updateEntry.isPending}>
             Save changes
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

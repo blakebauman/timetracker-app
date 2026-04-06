@@ -1,5 +1,6 @@
 import { EntryGroup } from "./EntryGroup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useGroupedEntries } from "@/hooks/useEntries";
 import { useTimerStore } from "@/stores/timerStore";
 import { Clock } from "lucide-react";
@@ -46,15 +47,17 @@ export function EntryList() {
   }
 
   return (
-    <div className="divide-y">
-      {days.map(({ dateKey, label, entries, totalSeconds }) => (
-        <EntryGroup
-          key={dateKey}
-          label={label}
-          entries={entries}
-          totalSeconds={totalSeconds}
-        />
-      ))}
-    </div>
+    <ScrollArea className="h-full">
+      <div className="divide-y">
+        {days.map(({ dateKey, label, entries, totalSeconds }) => (
+          <EntryGroup
+            key={dateKey}
+            label={label}
+            entries={entries}
+            totalSeconds={totalSeconds}
+          />
+        ))}
+      </div>
+    </ScrollArea>
   );
 }

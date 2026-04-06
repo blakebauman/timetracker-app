@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getPendingMutations,
@@ -46,17 +46,15 @@ async function drainQueue() {
 }
 
 export function useOnlineStatus(): boolean {
-  const onlineRef = useRef(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const handleOnline = () => {
-      onlineRef.current = true;
+      setIsOnline(true);
       queryClient.invalidateQueries();
     };
-    const handleOffline = () => {
-      onlineRef.current = false;
-    };
+    const handleOffline = () => setIsOnline(false);
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -66,5 +64,5 @@ export function useOnlineStatus(): boolean {
     };
   }, [queryClient]);
 
-  return onlineRef.current;
+  return isOnline;
 }

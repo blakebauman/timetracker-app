@@ -8,6 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatSeconds, formatEntryTime } from "@/lib/dateUtils";
 import { Search } from "lucide-react";
 
@@ -96,28 +104,28 @@ export function DetailedTable({ entries }: DetailedTableProps) {
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
-              <th className="px-3 py-2 text-left font-medium">Description</th>
-              <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="text-xs">Description</TableHead>
+              <TableHead className="hidden text-xs sm:table-cell">
                 Project
-              </th>
-              <th className="hidden px-3 py-2 text-left font-medium md:table-cell">
+              </TableHead>
+              <TableHead className="hidden text-xs md:table-cell">
                 Date
-              </th>
-              <th className="hidden px-3 py-2 text-left font-medium md:table-cell">
+              </TableHead>
+              <TableHead className="hidden text-xs md:table-cell">
                 Time
-              </th>
-              <th className="px-3 py-2 text-right font-medium">Duration</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
+              </TableHead>
+              <TableHead className="text-right text-xs">Duration</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filtered.map((entry) => (
-              <tr key={entry.id} className="hover:bg-accent/30 transition-colors">
-                <td className="px-3 py-2.5">
+              <TableRow key={entry.id}>
+                <TableCell className="py-2.5">
                   <div className="min-w-0">
-                    <span className="block truncate font-medium">
+                    <span className="block truncate font-medium text-sm">
                       {entry.description || (
                         <span className="italic text-muted-foreground">
                           No description
@@ -141,15 +149,14 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                       ))}
                     </div>
                   </div>
-                </td>
-                <td className="hidden px-3 py-2.5 sm:table-cell">
+                </TableCell>
+                <TableCell className="hidden py-2.5 sm:table-cell">
                   {entry.projectName ? (
                     <div className="flex items-center gap-1.5">
                       <span
                         className="h-2 w-2 shrink-0 rounded-full"
                         style={{
-                          backgroundColor:
-                            entry.projectColor ?? "#94a3b8",
+                          backgroundColor: entry.projectColor ?? "#94a3b8",
                         }}
                       />
                       <span className="truncate text-xs">
@@ -159,27 +166,27 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
-                </td>
-                <td className="hidden px-3 py-2.5 text-xs text-muted-foreground md:table-cell">
+                </TableCell>
+                <TableCell className="hidden py-2.5 text-xs text-muted-foreground md:table-cell">
                   {entry.start.slice(0, 10)}
-                </td>
-                <td className="hidden px-3 py-2.5 text-xs text-muted-foreground md:table-cell">
+                </TableCell>
+                <TableCell className="hidden py-2.5 text-xs text-muted-foreground md:table-cell">
                   {formatEntryTime(entry.start)}
                   {entry.stop && <> – {formatEntryTime(entry.stop)}</>}
-                </td>
-                <td className="px-3 py-2.5 text-right font-mono text-xs tabular-nums">
+                </TableCell>
+                <TableCell className="py-2.5 text-right font-mono text-xs tabular-nums">
                   {entry.duration ? formatSeconds(entry.duration) : "–"}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
         {filtered.length === 0 && (
           <div className="py-6 text-center text-sm text-muted-foreground">
             No entries match your filters
           </div>
         )}
-        <div className="border-t bg-muted/20 px-3 py-2 text-right text-xs text-muted-foreground">
+        <div className="border-t bg-muted/20 px-4 py-2 text-right text-xs text-muted-foreground">
           {filtered.length} entr{filtered.length !== 1 ? "ies" : "y"}
           {filtered.length !== entries.length && ` of ${entries.length}`}
         </div>
