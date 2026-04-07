@@ -59,7 +59,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         };
         const base = apiUrl ?? "https://timetracker.blakebauman.dev";
         try {
-          const res = await fetch(`${base}/api/auth/sign-in/email`, {
+          const res = await fetch(`${base}/api/ext/sign-in`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: msg.email, password: msg.password }),

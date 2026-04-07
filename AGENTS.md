@@ -13,11 +13,12 @@ For all limits and quotas, retrieve from the product's `/platform/limits/` page.
 
 | Command | Purpose |
 |---------|---------|
-| `npx wrangler dev` | Local development |
-| `npx wrangler deploy` | Deploy to Cloudflare |
-| `npx wrangler types` | Generate TypeScript types |
+| `pnpm dev` | Local development (Vite + Worker via `@cloudflare/vite-plugin`) |
+| `pnpm deploy` | Deploy to Cloudflare |
+| `pnpm cf-typegen` | Generate TypeScript types from wrangler.jsonc bindings |
+| `npx wrangler tail` | Stream live worker logs |
 
-Run `wrangler types` after changing bindings in wrangler.jsonc.
+Run `pnpm cf-typegen` after changing bindings in wrangler.jsonc.
 
 ## Node.js Compatibility
 

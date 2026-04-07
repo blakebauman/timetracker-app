@@ -33,6 +33,11 @@ export function createAuth(env: Env, baseURL?: string) {
       "https://timetracker.blakebauman.dev",
       "https://time-tracker-app.fold-run.workers.dev",
     ],
+    advanced: {
+      // Extension service workers can't set Origin headers and use bearer tokens,
+      // not cookies, so CSRF protection is not applicable for those requests.
+      disableCSRFCheck: true,
+    },
   });
 }
 

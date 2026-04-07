@@ -5,8 +5,8 @@ export const workspaceMiddleware = createMiddleware<{
   Bindings: Env;
   Variables: { workspaceId: string; userId: string };
 }>(async (c, next) => {
-  // Auth routes are handled by Better Auth directly — skip workspace resolution
-  if (c.req.path.startsWith("/api/auth/")) {
+  // Auth and extension sign-in routes don't need workspace resolution
+  if (c.req.path.startsWith("/api/auth/") || c.req.path.startsWith("/api/ext/")) {
     await next();
     return;
   }
