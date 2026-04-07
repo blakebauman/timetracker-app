@@ -11,14 +11,27 @@ export function useTimer() {
     useTimerStore();
   const queryClient = useQueryClient();
 
-  // ─── Tick loop ───────────────────────────────────────────────────────────
+  // ─── Tick loop + tab title ───────────────────────────────────────────────
   useEffect(() => {
-    if (!runningEntry || !localStartTime) return;
-    const tick = () =>
-      setElapsed(Math.floor((Date.now() - localStartTime) / 1000));
+    if (!runningEntry || !localStartTime) {
+      document.title = "Time Tracker";
+      return;
+    }
+    const tick = () => {
+      const s = Math.floor((Date.now() - localStartTime) / 1000);
+      setElapsed(s);
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+      document.title = `${hms} — Time Tracker`;
+    };
     tick();
     const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      document.title = "Time Tracker";
+    };
   }, [runningEntry?.id, localStartTime, setElapsed]);
 
   // ─── Restore from server (+ IDB fallback) on mount ──────────────────────
