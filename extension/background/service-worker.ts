@@ -15,9 +15,59 @@ chrome.alarms.create("timer-tick", { periodInMinutes: 1 / 60 }); // ~1s
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "timer-tick") return;
-  const { timerState } = (await chrome.storage.local.get("timerState")) as {
+
+  const stored = (await chrome.storage.local.get([
+    "timerState",
+    "tickCount",
+    "apiUrl",
+    "authToken",
+  ])) as {
     timerState?: TimerState;
+    tickCount?: number;
+    apiUrl?: string;
+    authToken?: string;
   };
+
+  let { timerState } = stored;
+  const { apiUrl, authToken } = stored;
+  const tickCount = (stored.tickCount ?? 0) + 1;
+  await chrome.storage.local.set({ tickCount: tickCount % 30 });
+
+  // Every 30 ticks (~30s), poll server to catch changes made from the web app
+  if (tickCount % 30 === 0 && authToken) {
+    const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+    try {
+      const res = await fetch(`${base}/api/time_entries?running=true&limit=1`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) {
+        const entries = (await res.json()) as Array<{
+          id: string;
+          start: string;
+          description: string;
+          projectId: string | null;
+          stop: string | null;
+        }>;
+        const running = entries.find((e) => !e.stop);
+        if (running) {
+          timerState = {
+            running: true,
+            entryId: running.id,
+            startedAt: new Date(running.start).getTime(),
+            description: running.description,
+            projectId: running.projectId,
+          };
+          await chrome.storage.local.set({ timerState });
+        } else {
+          timerState = undefined;
+          await chrome.storage.local.remove("timerState");
+        }
+      }
+    } catch {
+      // Offline — keep using cached timerState
+    }
+  }
+
   if (!timerState?.running) {
     chrome.action.setBadgeText({ text: "" });
     return;

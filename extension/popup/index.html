@@ -5,8 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Time Tracker</title>
     <style>
+      :root {
+        --bg: #ffffff;
+        --bg-muted: #f9fafb;
+        --fg: #1a1a1a;
+        --fg-muted: #6b7280;
+        --border: #e5e7eb;
+        --input-border: #d1d5db;
+        --accent-bg: #fef2f2;
+        --brand: #e5291a;
+        --brand-disabled: #fca5a5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1c1e;
+          --bg-muted: #2c2c2e;
+          --fg: #f2f2f7;
+          --fg-muted: #8e8e93;
+          --border: #3a3a3c;
+          --input-border: #48484a;
+          --accent-bg: #2d1a1a;
+          --brand: #ff453a;
+          --brand-disabled: #7a2020;
+        }
+      }
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { width: 320px; min-height: 200px; font-family: system-ui, sans-serif; font-size: 14px; background: #fff; color: #1a1a1a; }
+      body { width: 320px; min-height: 200px; font-family: system-ui, sans-serif; font-size: 14px; background: var(--bg); color: var(--fg); }
     </style>
   </head>
   <body>

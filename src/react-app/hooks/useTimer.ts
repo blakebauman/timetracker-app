@@ -21,42 +21,58 @@ export function useTimer() {
     return () => clearInterval(id);
   }, [runningEntry?.id, localStartTime, setElapsed]);
 
-  // ─── Restore from IDB on mount ───────────────────────────────────────────
+  // ─── Restore from server (+ IDB fallback) on mount ──────────────────────
   useEffect(() => {
     let cancelled = false;
-    loadTimerState().then(async (saved) => {
-      if (cancelled || !saved) return;
+    (async () => {
+      const saved = await loadTimerState();
+      if (cancelled) return;
       try {
         const current = (await api.timeEntries.current()) as TimeEntry | null;
-        if (current?.id === saved.entryId) {
-          setRunningEntry(current, new Date(saved.startedAt).getTime());
+        if (cancelled) return;
+        if (current) {
+          // Running entry on server — restore regardless of IDB state
+          const localStartTime = saved?.entryId === current.id
+            ? new Date(saved.startedAt).getTime()
+            : new Date(current.start).getTime();
+          setRunningEntry(current, localStartTime);
+          await saveTimerState({
+            entryId: current.id,
+            startedAt: localStartTime,
+            description: current.description,
+            projectId: current.projectId,
+            projectColor: current.projectColor,
+          });
         } else {
+          // Nothing running on server — clear any stale IDB state
           await clearTimerState();
         }
       } catch {
-        // Offline — restore from IDB state
-        setRunningEntry(
-          {
-            id: saved.entryId,
-            description: saved.description,
-            projectId: saved.projectId,
-            projectColor: saved.projectColor,
-            projectName: null,
-            taskId: null,
-            taskName: null,
-            workspaceId: "default",
-            start: new Date(saved.startedAt).toISOString(),
-            stop: null,
-            duration: null,
-            billable: false,
-            tags: [],
-            createdAt: new Date(saved.startedAt).toISOString(),
-            updatedAt: new Date(saved.startedAt).toISOString(),
-          },
-          saved.startedAt
-        );
+        // Offline — fall back to IDB if available
+        if (saved) {
+          setRunningEntry(
+            {
+              id: saved.entryId,
+              description: saved.description,
+              projectId: saved.projectId,
+              projectColor: saved.projectColor,
+              projectName: null,
+              taskId: null,
+              taskName: null,
+              workspaceId: "",
+              start: new Date(saved.startedAt).toISOString(),
+              stop: null,
+              duration: null,
+              billable: false,
+              tags: [],
+              createdAt: new Date(saved.startedAt).toISOString(),
+              updatedAt: new Date(saved.startedAt).toISOString(),
+            },
+            saved.startedAt
+          );
+        }
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
