@@ -6,19 +6,20 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { EntryRow } from "./EntryRow";
+import { EntryDescriptionGroup } from "./EntryDescriptionGroup";
 import { formatSeconds } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
-import type { TimeEntry } from "@shared/schemas";
+import type { DescriptionGroup } from "@/hooks/useEntries";
 
 interface EntryGroupProps {
   label: string;
-  entries: TimeEntry[];
+  groups: DescriptionGroup[];
   totalSeconds: number;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
 }
 
-export function EntryGroup({ label, entries, totalSeconds, selectedIds, onToggleSelect }: EntryGroupProps) {
+export function EntryGroup({ label, groups, totalSeconds, selectedIds, onToggleSelect }: EntryGroupProps) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -40,14 +41,23 @@ export function EntryGroup({ label, entries, totalSeconds, selectedIds, onToggle
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        {entries.map((entry) => (
-          <EntryRow
-            key={entry.id}
-            entry={entry}
-            isSelected={selectedIds?.has(entry.id)}
-            onToggleSelect={onToggleSelect}
-          />
-        ))}
+        {groups.map((group) =>
+          group.entries.length === 1 ? (
+            <EntryRow
+              key={group.key}
+              entry={group.entries[0]}
+              isSelected={selectedIds?.has(group.entries[0].id)}
+              onToggleSelect={onToggleSelect}
+            />
+          ) : (
+            <EntryDescriptionGroup
+              key={group.key}
+              group={group}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
+            />
+          )
+        )}
       </CollapsibleContent>
     </Collapsible>
   );

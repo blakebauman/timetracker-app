@@ -15,6 +15,17 @@ export function useEntries(days = 30) {
   });
 }
 
+export interface DescriptionGroup {
+  key: string; // `${description}__${projectId ?? ""}`
+  description: string;
+  projectId: string | null;
+  projectName: string | null;
+  projectColor: string | null;
+  entries: TimeEntry[];
+  totalSeconds: number;
+  billable: boolean;
+}
+
 export function useGroupedEntries(days = 30) {
   const { data: entries = [], ...rest } = useEntries(days);
 
@@ -30,15 +41,38 @@ export function useGroupedEntries(days = 30) {
 
   const days_list = Object.keys(grouped)
     .sort((a, b) => b.localeCompare(a))
-    .map((dateKey) => ({
-      dateKey,
-      label: formatDayHeader(dateKey + "T00:00:00"),
-      entries: grouped[dateKey].sort((a, b) => b.start.localeCompare(a.start)),
-      totalSeconds: grouped[dateKey].reduce(
-        (sum, e) => sum + (e.duration ?? 0),
-        0
-      ),
-    }));
+    .map((dateKey) => {
+      const dayEntries = grouped[dateKey];
+
+      // Sub-group by description + projectId
+      const descMap = new Map<string, TimeEntry[]>();
+      for (const e of dayEntries) {
+        const k = `${e.description}__${e.projectId ?? ""}`;
+        const existing = descMap.get(k);
+        if (existing) existing.push(e);
+        else descMap.set(k, [e]);
+      }
+
+      const groups: DescriptionGroup[] = [...descMap.values()]
+        .map((grpEntries) => ({
+          key: `${grpEntries[0].description}__${grpEntries[0].projectId ?? ""}`,
+          description: grpEntries[0].description,
+          projectId: grpEntries[0].projectId,
+          projectName: grpEntries[0].projectName,
+          projectColor: grpEntries[0].projectColor,
+          entries: [...grpEntries].sort((a, b) => b.start.localeCompare(a.start)),
+          totalSeconds: grpEntries.reduce((s, e) => s + (e.duration ?? 0), 0),
+          billable: grpEntries.some((e) => e.billable),
+        }))
+        .sort((a, b) => b.entries[0].start.localeCompare(a.entries[0].start));
+
+      return {
+        dateKey,
+        label: formatDayHeader(dateKey + "T00:00:00"),
+        groups,
+        totalSeconds: dayEntries.reduce((sum, e) => sum + (e.duration ?? 0), 0),
+      };
+    });
 
   return { days: days_list, entries, ...rest };
 }

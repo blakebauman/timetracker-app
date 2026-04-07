@@ -127,11 +127,11 @@ export function EntryList() {
 
       <ScrollArea className="flex-1">
         <div className="divide-y">
-          {days.map(({ dateKey, label, entries, totalSeconds }) => (
+          {days.map(({ dateKey, label, groups, totalSeconds }) => (
             <EntryGroup
               key={dateKey}
               label={label}
-              entries={entries}
+              groups={groups}
               totalSeconds={totalSeconds}
               selectedIds={selectedIds}
               onToggleSelect={onToggleSelect}
