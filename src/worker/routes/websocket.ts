@@ -15,11 +15,8 @@ export const websocketRouter = new Hono<{
   try {
     const id = c.env.TIMER_ROOM.idFromName(workspaceId);
     const stub = c.env.TIMER_ROOM.get(id);
-    return await stub.fetch(
-      new Request("http://do/ws", {
-        headers: c.req.raw.headers,
-      })
-    );
+    // Pass the original request object directly (preserves Upgrade header)
+    return await stub.fetch(c.req.raw);
   } catch {
     return c.text("WebSocket unavailable", 503);
   }

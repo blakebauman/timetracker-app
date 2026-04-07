@@ -9,11 +9,9 @@ export class TimerRoomDO implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/ws") {
-      const upgradeHeader = request.headers.get("Upgrade");
-      if (upgradeHeader !== "websocket") {
-        return new Response("Expected WebSocket upgrade", { status: 426 });
-      }
+    if (url.pathname === "/ws" || url.pathname.endsWith("/api/ws")) {
+      // Note: Upgrade header may be stripped by Cloudflare when forwarding to DO,
+      // but the Hono route already validates it before forwarding here.
       const [client, server] = Object.values(new WebSocketPair()) as [
         WebSocket,
         WebSocket,

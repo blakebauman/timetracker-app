@@ -21,7 +21,16 @@ export const timeEntriesRouter = new Hono<{
   // ─── List ─────────────────────────────────────────────────────────────────
   .get("/", async (c) => {
     const workspaceId = c.get("workspaceId");
-    const { since, until } = c.req.query();
+    const { since, until, running } = c.req.query();
+
+    // ?running=true — return only the currently running entry
+    if (running === "true") {
+      const { results } = await c.env.DB.prepare(
+        `${ENTRY_SELECT} WHERE te.workspace_id = ? AND te.stop IS NULL GROUP BY te.id LIMIT 1`
+      ).bind(workspaceId).all<Record<string, unknown>>();
+      return c.json(results.map(formatEntry));
+    }
+
     const now = new Date();
     const defaultSince = new Date(
       now.getFullYear(), now.getMonth(), now.getDate() - 30
