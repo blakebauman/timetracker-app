@@ -200,15 +200,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             description: string;
             projectId: string | null;
           };
+          const startedAt = new Date(entry.start).getTime();
           await chrome.storage.local.set({
             timerState: {
               running: true,
               entryId: entry.id,
-              startedAt: new Date(entry.start).getTime(),
+              startedAt,
               description: entry.description,
               projectId: entry.projectId,
             } as TimerState,
           });
+          // Update badge immediately — don't wait for the next alarm tick
+          chrome.action.setBadgeText({ text: formatBadge(Math.floor((Date.now() - startedAt) / 1000)) });
+          chrome.action.setBadgeBackgroundColor({ color: "#e5291a" });
           sendResponse({ ok: true, entry });
         } catch (err) {
           sendResponse({ ok: false, error: String(err) });
@@ -255,15 +259,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       case "TIMER_STATE_CHANGED": {
         // Relayed instantly from the web app via content script — no poll delay
         if (msg.state?.running) {
+          const startedAt = new Date(msg.state.startedAt).getTime();
           await chrome.storage.local.set({
             timerState: {
               running: true,
               entryId: msg.state.entryId,
-              startedAt: new Date(msg.state.startedAt).getTime(),
+              startedAt,
               description: msg.state.description ?? "",
               projectId: msg.state.projectId ?? null,
             } as TimerState,
           });
+          // Update badge immediately — don't wait for the next alarm tick
+          chrome.action.setBadgeText({ text: formatBadge(Math.floor((Date.now() - startedAt) / 1000)) });
+          chrome.action.setBadgeBackgroundColor({ color: "#e5291a" });
         } else {
           await chrome.storage.local.remove("timerState");
           chrome.action.setBadgeText({ text: "" });

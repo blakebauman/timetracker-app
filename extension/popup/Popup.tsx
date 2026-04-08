@@ -61,6 +61,23 @@ export function Popup() {
     });
   }, []);
 
+  // Reactively sync auth token from storage — handles the case where the MV3
+  // service worker is terminated before sendResponse fires (dropped callback),
+  // meaning the SIGN_IN callback never updates React state even though the token
+  // was successfully stored.
+  useEffect(() => {
+    const handler = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      area: string
+    ) => {
+      if (area !== "local") return;
+      if (changes.authToken?.newValue) setAuthToken(changes.authToken.newValue);
+      if ("authToken" in changes && !changes.authToken?.newValue) setAuthToken(null);
+    };
+    chrome.storage.onChanged.addListener(handler);
+    return () => chrome.storage.onChanged.removeListener(handler);
+  }, []);
+
   // Tick
   useEffect(() => {
     if (!timerState?.running) return;
