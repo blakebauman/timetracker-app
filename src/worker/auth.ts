@@ -17,7 +17,7 @@ export function createAuth(env: Env, baseURL?: string) {
             // Auto-create a workspace for every new user
             const id = crypto.randomUUID().replace(/-/g, "");
             await env.DB.prepare(
-              `INSERT INTO workspaces (id, name, userId) VALUES (?, ?, ?)`
+              `INSERT INTO workspaces (id, name, userId) VALUES (?, ?, ?)`,
             )
               .bind(id, `${user.name}'s Workspace`, user.id)
               .run();
@@ -37,6 +37,8 @@ export function createAuth(env: Env, baseURL?: string) {
       // Extension service workers can't set Origin headers and use bearer tokens,
       // not cookies, so CSRF protection is not applicable for those requests.
       disableCSRFCheck: true,
+      // Prefix for cookie names, to avoid collisions with other apps on the same domain
+      cookiePrefix: "timetracker",
     },
   });
 }
