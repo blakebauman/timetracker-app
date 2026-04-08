@@ -203,13 +203,17 @@ export const timeEntriesRouter = new Hono<{
     const id = c.req.param("id");
     const stop = new Date().toISOString();
 
-    await c.env.DB.prepare(
+    const result = await c.env.DB.prepare(
       `UPDATE time_entries
        SET stop = ?, duration = CAST((julianday(?) - julianday(start)) * 86400 AS INTEGER), updated_at = ?
        WHERE id = ? AND workspace_id = ? AND stop IS NULL`
     ).bind(stop, stop, stop, id, workspaceId).run();
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
-    await broadcast(c.env, workspaceId, "timer:stop", entry);
+    // Only broadcast if the entry was actually running — prevents false timer:stop
+    // events when the extension tries to stop an already-stopped (stale) entry
+    if (result.meta.changes > 0) {
+      await broadcast(c.env, workspaceId, "timer:stop", entry);
+    }
     return c.json(entry);
   });

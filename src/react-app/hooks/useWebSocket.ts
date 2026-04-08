@@ -58,13 +58,21 @@ export function useWebSocket() {
       switch (msg.event) {
         case "timer:start":
           setFromWS(msg.data as TimeEntry);
-          queryClient.invalidateQueries({ queryKey: ["timer-current"] });
-          break;
-        case "timer:stop":
-          setFromWS(null);
-          queryClient.invalidateQueries({ queryKey: ["timer-current"] });
+          // Also refresh entries list — starting a timer auto-stops the previous one
           queryClient.invalidateQueries({ queryKey: ["time-entries"] });
           break;
+        case "timer:stop": {
+          const stoppedEntry = msg.data as TimeEntry | null;
+          const currentRunning = useTimerStore.getState().runningEntry;
+          // Only clear if the stopped entry is actually the one we're tracking.
+          // Guards against a stale extension entryId stopping an already-stopped
+          // entry and falsely clearing a different, still-running timer.
+          if (!currentRunning || !stoppedEntry || currentRunning.id === stoppedEntry.id) {
+            setFromWS(null);
+          }
+          queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+          break;
+        }
         case "entries:changed":
           queryClient.invalidateQueries({ queryKey: ["time-entries"] });
           break;

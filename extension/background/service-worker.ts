@@ -31,10 +31,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   let { timerState } = stored;
   const { apiUrl, authToken } = stored;
   const tickCount = (stored.tickCount ?? 0) + 1;
-  await chrome.storage.local.set({ tickCount: tickCount % 30 });
+  await chrome.storage.local.set({ tickCount: tickCount % 5 });
 
-  // Every 30 ticks (~30s), poll server to catch changes made from the web app
-  if (tickCount % 30 === 0 && authToken) {
+  // Every 5 ticks (~5s), poll server to catch changes made from the web app
+  if (tickCount % 5 === 0 && authToken) {
     const base = apiUrl ?? "https://timetracker.blakebauman.dev";
     try {
       const res = await fetch(`${base}/api/time_entries?running=true&limit=1`, {
@@ -217,21 +217,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
 
       case "STOP_TIMER": {
-        const { timerState, apiUrl, authToken } = (await chrome.storage.local.get([
-          "timerState",
+        const { apiUrl, authToken } = (await chrome.storage.local.get([
           "apiUrl",
           "authToken",
-        ])) as { timerState?: TimerState; apiUrl?: string; authToken?: string };
-        if (!timerState?.running) {
-          sendResponse({ ok: false, error: "No running timer" });
-          break;
-        }
+        ])) as { apiUrl?: string; authToken?: string };
         const base = apiUrl ?? "https://timetracker.blakebauman.dev";
         const headers: Record<string, string> = {};
         if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
         try {
+          // Always fetch the current running entry from the server rather than
+          // relying on the cached entryId — the web app may have started a
+          // different timer since the extension last polled.
+          const listRes = await fetch(`${base}/api/time_entries?running=true&limit=1`, { headers });
+          if (!listRes.ok) { sendResponse({ ok: false, error: "Unauthorized" }); break; }
+          const entries = (await listRes.json()) as Array<{ id: string; stop: string | null }>;
+          const running = entries.find((e) => !e.stop);
+          if (!running) {
+            await chrome.storage.local.remove("timerState");
+            chrome.action.setBadgeText({ text: "" });
+            sendResponse({ ok: false, error: "No running timer" });
+            break;
+          }
           const res = await fetch(
-            `${base}/api/time_entries/${timerState.entryId}/stop`,
+            `${base}/api/time_entries/${running.id}/stop`,
             { method: "PATCH", headers }
           );
           const entry = await res.json();
