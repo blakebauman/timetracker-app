@@ -42,8 +42,13 @@ export function formatDurationHuman(seconds: number): string {
   );
 }
 
+export function getTimeFormat(): "24h" | "12h" {
+  return localStorage.getItem("pref_timeFormat") === "12h" ? "12h" : "24h";
+}
+
 export function formatEntryTime(isoString: string): string {
-  return format(parseISO(isoString), "HH:mm");
+  const pattern = getTimeFormat() === "12h" ? "h:mm a" : "HH:mm";
+  return format(parseISO(isoString), pattern);
 }
 
 export function formatDayHeader(isoString: string): string {

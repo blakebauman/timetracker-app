@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Download, Pencil, Check, X } from "lucide-react";
 import { useEntries } from "@/hooks/useEntries";
 import { exportToCSV } from "@/lib/exportUtils";
+import { getTimeFormat } from "@/lib/dateUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 
@@ -16,11 +17,6 @@ import { authClient } from "@/lib/auth-client";
 
 function getDefaultBillable(): boolean {
   return localStorage.getItem("pref_defaultBillable") === "true";
-}
-
-function getTimeFormat(): "24h" | "12h" {
-  const v = localStorage.getItem("pref_timeFormat");
-  return v === "12h" ? "12h" : "24h";
 }
 
 // ── Settings page ────────────────────────────────────────────────────────────
