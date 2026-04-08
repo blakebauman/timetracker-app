@@ -170,6 +170,11 @@ export const timeEntriesRouter = new Hono<{
     if (data.start !== undefined)       { fields.push("start = ?");        values.push(data.start); }
     if (data.stop !== undefined)        { fields.push("stop = ?");         values.push(data.stop ?? null); }
     if (data.billable !== undefined)    { fields.push("billable = ?");     values.push(data.billable ? 1 : 0); }
+    // Recalculate duration whenever start or stop changes
+    if (data.start !== undefined || data.stop !== undefined) {
+      fields.push("duration = CAST((julianday(COALESCE(?, stop)) - julianday(COALESCE(?, start))) * 86400 AS INTEGER)");
+      values.push(data.stop ?? null, data.start ?? null);
+    }
     fields.push("updated_at = ?");
     values.push(now);
 
