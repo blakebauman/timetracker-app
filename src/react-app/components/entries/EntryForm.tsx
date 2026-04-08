@@ -24,11 +24,15 @@ interface EntryFormProps {
 }
 
 function toTimeInput(iso: string): string {
-  return iso.slice(11, 16);
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 function applyTimeInput(iso: string, timeStr: string): string {
-  return iso.slice(0, 11) + timeStr + ":00.000Z";
+  const d = new Date(iso);
+  const [h, m] = timeStr.split(":").map(Number);
+  d.setHours(h, m, 0, 0);
+  return d.toISOString();
 }
 
 export function EntryForm({ entry, open, onClose }: EntryFormProps) {

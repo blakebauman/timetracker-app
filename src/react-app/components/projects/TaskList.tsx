@@ -21,6 +21,7 @@ export function TaskList({ projectId }: TaskListProps) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editEstimated, setEditEstimated] = useState("");
 
   const handleCreate = () => {
@@ -32,22 +33,28 @@ export function TaskList({ projectId }: TaskListProps) {
   const handleStartEdit = (task: Task) => {
     setEditingId(task.id);
     setEditName(task.name);
-    setEditEstimated(formatTimeInput(task.estimatedSeconds));
   };
 
   const handleSaveEdit = (id: string) => {
     const name = editName.trim();
-    if (!name) { setEditingId(null); return; }
+    if (name) updateTask.mutate({ id, data: { name } });
+    setEditingId(null);
+  };
+
+  const handleStartEditTime = (task: Task) => {
+    setEditingTimeId(task.id);
+    setEditEstimated(formatTimeInput(task.estimatedSeconds));
+  };
+
+  const handleSaveEstimated = (id: string) => {
     const trimmed = editEstimated.trim();
-    const data: Parameters<typeof updateTask.mutate>[0]["data"] = { name };
     if (trimmed === "") {
-      data.estimatedSeconds = null;
+      updateTask.mutate({ id, data: { estimatedSeconds: null } });
     } else {
       const parsed = parseTimeInput(trimmed);
-      if (parsed !== null) data.estimatedSeconds = parsed;
+      if (parsed !== null) updateTask.mutate({ id, data: { estimatedSeconds: parsed } });
     }
-    updateTask.mutate({ id, data });
-    setEditingId(null);
+    setEditingTimeId(null);
   };
 
   const handleToggleDone = (task: Task) => {
@@ -89,59 +96,67 @@ export function TaskList({ projectId }: TaskListProps) {
             {/* Name / edit */}
             <div className="min-w-0 flex-1">
               {editingId === task.id ? (
-                // onBlur on the container so tabbing between the two inputs doesn't save prematurely
-                <div
-                  className="flex items-center gap-1.5"
-                  onBlur={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget)) {
-                      handleSaveEdit(task.id);
-                    }
+                <Input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onBlur={() => handleSaveEdit(task.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveEdit(task.id);
+                    if (e.key === "Escape") setEditingId(null);
                   }}
+                  className="h-6 py-0 text-xs"
+                />
+              ) : (
+                <span
+                  className={`text-xs ${!task.active ? "text-muted-foreground line-through" : ""}`}
                 >
+                  {task.name}
+                </span>
+              )}
+
+              {/* Estimated / tracked time — click to edit estimate */}
+              {editingTimeId === task.id ? (
+                <div className="mt-0.5">
                   <Input
                     autoFocus
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveEdit(task.id);
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                    className="h-6 min-w-0 flex-1 py-0 text-xs"
-                  />
-                  <Input
                     value={editEstimated}
                     onChange={(e) => setEditEstimated(e.target.value)}
+                    onBlur={() => handleSaveEstimated(task.id)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveEdit(task.id);
-                      if (e.key === "Escape") setEditingId(null);
+                      if (e.key === "Enter") handleSaveEstimated(task.id);
+                      if (e.key === "Escape") setEditingTimeId(null);
                     }}
-                    placeholder="est. time"
+                    placeholder="e.g. 1h 30m"
                     title="Estimated time — e.g. 1h 30m, 1:30, 90m"
-                    className="h-6 w-20 shrink-0 py-0 text-xs"
+                    className="h-5 w-28 py-0 text-[10px]"
                   />
                 </div>
-              ) : (
-                <div>
-                  <span
-                    className={`text-xs ${!task.active ? "text-muted-foreground line-through" : ""}`}
-                  >
-                    {task.name}
+              ) : progress !== null ? (
+                <button
+                  className="mt-0.5 flex w-full items-center gap-1.5 hover:opacity-70 transition-opacity"
+                  onClick={() => handleStartEditTime(task)}
+                >
+                  <Progress value={progress} className="h-1 flex-1" />
+                  <span className="text-[10px] tabular-nums text-muted-foreground">
+                    {formatSeconds(task.trackedSeconds)} /{" "}
+                    {formatSeconds(task.estimatedSeconds!)}
                   </span>
-                  {progress !== null && (
-                    <div className="mt-0.5 flex items-center gap-1.5">
-                      <Progress value={progress} className="h-1 flex-1" />
-                      <span className="text-[10px] tabular-nums text-muted-foreground">
-                        {formatSeconds(task.trackedSeconds)} /{" "}
-                        {formatSeconds(task.estimatedSeconds!)}
-                      </span>
-                    </div>
-                  )}
-                  {!progress && task.trackedSeconds > 0 && (
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatSeconds(task.trackedSeconds)} tracked
-                    </span>
-                  )}
-                </div>
+                </button>
+              ) : task.trackedSeconds > 0 ? (
+                <button
+                  className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:opacity-70 transition-opacity"
+                  onClick={() => handleStartEditTime(task)}
+                >
+                  {formatSeconds(task.trackedSeconds)} tracked · <span className="underline decoration-dashed">add estimate</span>
+                </button>
+              ) : (
+                <button
+                  className="mt-0.5 text-[10px] text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors hover:text-muted-foreground!"
+                  onClick={() => handleStartEditTime(task)}
+                >
+                  add estimate
+                </button>
               )}
             </div>
 
