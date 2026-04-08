@@ -42,6 +42,48 @@ export function formatDurationHuman(seconds: number): string {
   );
 }
 
+// Parse a human-readable time string to seconds.
+// Supports: "1h 30m", "1h30m", "1:30", "1:30:00", "90m", "2h", "45" (minutes)
+export function parseTimeInput(str: string): number | null {
+  const s = str.trim().toLowerCase();
+  if (!s) return null;
+
+  // HH:MM or HH:MM:SS
+  const colonMatch = s.match(/^(\d+):(\d{2})(?::(\d{2}))?$/);
+  if (colonMatch) {
+    return (
+      parseInt(colonMatch[1]) * 3600 +
+      parseInt(colonMatch[2]) * 60 +
+      (colonMatch[3] ? parseInt(colonMatch[3]) : 0)
+    );
+  }
+
+  // 1h 30m, 2h, 45m, 30s (any combination)
+  const durMatch = s.match(/^(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?$/);
+  if (durMatch && (durMatch[1] || durMatch[2] || durMatch[3])) {
+    return (
+      parseInt(durMatch[1] || "0") * 3600 +
+      parseInt(durMatch[2] || "0") * 60 +
+      parseInt(durMatch[3] || "0")
+    );
+  }
+
+  // Plain number → treat as minutes
+  if (/^\d+$/.test(s)) return parseInt(s) * 60;
+
+  return null;
+}
+
+// Format seconds as a compact editable string, e.g. "1h 30m", "2h", "45m"
+export function formatTimeInput(seconds: number | null): string {
+  if (!seconds) return "";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
 export function getTimeFormat(): "24h" | "12h" {
   return localStorage.getItem("pref_timeFormat") === "12h" ? "12h" : "24h";
 }

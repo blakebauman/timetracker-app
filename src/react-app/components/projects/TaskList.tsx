@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
-import { formatSeconds } from "@/lib/dateUtils";
+import { formatSeconds, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import type { Task } from "@shared/schemas";
 
 interface TaskListProps {
@@ -21,6 +21,7 @@ export function TaskList({ projectId }: TaskListProps) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editEstimated, setEditEstimated] = useState("");
 
   const handleCreate = () => {
     const name = newName.trim();
@@ -31,11 +32,21 @@ export function TaskList({ projectId }: TaskListProps) {
   const handleStartEdit = (task: Task) => {
     setEditingId(task.id);
     setEditName(task.name);
+    setEditEstimated(formatTimeInput(task.estimatedSeconds));
   };
 
   const handleSaveEdit = (id: string) => {
     const name = editName.trim();
-    if (name) updateTask.mutate({ id, data: { name } });
+    if (!name) { setEditingId(null); return; }
+    const trimmed = editEstimated.trim();
+    const data: Parameters<typeof updateTask.mutate>[0]["data"] = { name };
+    if (trimmed === "") {
+      data.estimatedSeconds = null;
+    } else {
+      const parsed = parseTimeInput(trimmed);
+      if (parsed !== null) data.estimatedSeconds = parsed;
+    }
+    updateTask.mutate({ id, data });
     setEditingId(null);
   };
 
@@ -78,17 +89,37 @@ export function TaskList({ projectId }: TaskListProps) {
             {/* Name / edit */}
             <div className="min-w-0 flex-1">
               {editingId === task.id ? (
-                <Input
-                  autoFocus
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onBlur={() => handleSaveEdit(task.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveEdit(task.id);
-                    if (e.key === "Escape") setEditingId(null);
+                // onBlur on the container so tabbing between the two inputs doesn't save prematurely
+                <div
+                  className="flex items-center gap-1.5"
+                  onBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      handleSaveEdit(task.id);
+                    }
                   }}
-                  className="h-6 py-0 text-xs"
-                />
+                >
+                  <Input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveEdit(task.id);
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    className="h-6 min-w-0 flex-1 py-0 text-xs"
+                  />
+                  <Input
+                    value={editEstimated}
+                    onChange={(e) => setEditEstimated(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveEdit(task.id);
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    placeholder="est. time"
+                    title="Estimated time — e.g. 1h 30m, 1:30, 90m"
+                    className="h-6 w-20 shrink-0 py-0 text-xs"
+                  />
+                </div>
               ) : (
                 <div>
                   <span
