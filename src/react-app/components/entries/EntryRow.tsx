@@ -12,7 +12,7 @@ import {
 import { EntryForm } from "./EntryForm";
 import { useUpdateEntry, useDeleteEntry } from "@/hooks/useEntries";
 import { useTimer } from "@/hooks/useTimer";
-import { formatSeconds, formatEntryTime } from "@/lib/dateUtils";
+import { formatSeconds, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
 import { useUIStore } from "@/stores/uiStore";
 import type { TimeEntry } from "@shared/schemas";
 
@@ -26,6 +26,8 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const [editingDesc, setEditingDesc] = useState(false);
   const [desc, setDesc] = useState(entry.description);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingDuration, setEditingDuration] = useState(false);
+  const [durationInput, setDurationInput] = useState("");
   const updateEntry = useUpdateEntry();
   const deleteEntry = useDeleteEntry();
   const { startTimer } = useTimer();
@@ -35,6 +37,20 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     setEditingDesc(false);
     if (desc !== entry.description) {
       updateEntry.mutate({ id: entry.id, data: { description: desc } });
+    }
+  };
+
+  const handleStartEditDuration = () => {
+    setDurationInput(entry.duration ? formatSeconds(entry.duration) : "");
+    setEditingDuration(true);
+  };
+
+  const handleSaveDuration = () => {
+    setEditingDuration(false);
+    const parsed = parseTimeInput(durationInput);
+    if (parsed !== null && parsed > 0 && entry.start) {
+      const newStop = new Date(new Date(entry.start).getTime() + parsed * 1000).toISOString();
+      updateEntry.mutate({ id: entry.id, data: { stop: newStop } });
     }
   };
 
@@ -141,10 +157,27 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           <span>{entry.stop ? formatEntryTime(entry.stop, timeFormat) : "..."}</span>
         </div>
 
-        {/* Duration */}
-        <span className="min-w-16 text-right font-mono text-sm tabular-nums">
-          {entry.duration ? formatSeconds(entry.duration) : "–"}
-        </span>
+        {/* Duration — click to edit */}
+        {editingDuration ? (
+          <input
+            autoFocus
+            value={durationInput}
+            onChange={(e) => setDurationInput(e.target.value)}
+            onBlur={handleSaveDuration}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveDuration();
+              if (e.key === "Escape") setEditingDuration(false);
+            }}
+            className="w-16 bg-transparent text-right font-mono text-sm tabular-nums outline-none ring-0 border-b border-primary"
+          />
+        ) : (
+          <button
+            onClick={handleStartEditDuration}
+            className="min-w-16 text-right font-mono text-sm tabular-nums hover:text-primary transition-colors"
+          >
+            {entry.duration ? formatSeconds(entry.duration) : "–"}
+          </button>
+        )}
 
         {/* Actions (visible on hover) */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
