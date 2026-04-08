@@ -9,9 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { Download, Pencil, Check, X } from "lucide-react";
 import { useEntries } from "@/hooks/useEntries";
 import { exportToCSV } from "@/lib/exportUtils";
-import { getTimeFormat } from "@/lib/dateUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
+import { useUIStore } from "@/stores/uiStore";
 
 // ── Preferences helpers ──────────────────────────────────────────────────────
 
@@ -27,7 +27,8 @@ export function SettingsPage() {
 
   // — Preferences state
   const [defaultBillable, setDefaultBillable] = useState<boolean>(getDefaultBillable);
-  const [timeFormat, setTimeFormat] = useState<"24h" | "12h">(getTimeFormat);
+  const timeFormat = useUIStore((s) => s.timeFormat);
+  const setTimeFormatStore = useUIStore((s) => s.setTimeFormat);
 
   // — Account / edit-name state
   const [editingName, setEditingName] = useState(false);
@@ -52,8 +53,7 @@ export function SettingsPage() {
   };
 
   const handleTimeFormatChange = (value: "24h" | "12h") => {
-    setTimeFormat(value);
-    localStorage.setItem("pref_timeFormat", value);
+    setTimeFormatStore(value);
   };
 
   const handleStartEditName = () => {

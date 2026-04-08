@@ -46,8 +46,8 @@ export function getTimeFormat(): "24h" | "12h" {
   return localStorage.getItem("pref_timeFormat") === "12h" ? "12h" : "24h";
 }
 
-export function formatEntryTime(isoString: string): string {
-  const pattern = getTimeFormat() === "12h" ? "h:mm a" : "HH:mm";
+export function formatEntryTime(isoString: string, timeFormat?: "24h" | "12h"): string {
+  const pattern = (timeFormat ?? getTimeFormat()) === "12h" ? "h:mm a" : "HH:mm";
   return format(parseISO(isoString), pattern);
 }
 

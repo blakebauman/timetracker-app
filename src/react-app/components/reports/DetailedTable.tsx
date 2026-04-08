@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatSeconds, formatEntryTime } from "@/lib/dateUtils";
+import { useUIStore } from "@/stores/uiStore";
 import { Search } from "lucide-react";
 
 export interface DetailedEntry {
@@ -40,6 +41,7 @@ interface DetailedTableProps {
 export function DetailedTable({ entries }: DetailedTableProps) {
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState<string>("all");
+  const timeFormat = useUIStore((s) => s.timeFormat);
 
   const projects = useMemo(() => {
     const seen = new Map<string, string>();
@@ -171,8 +173,8 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                   {entry.start.slice(0, 10)}
                 </TableCell>
                 <TableCell className="hidden py-2.5 text-xs text-muted-foreground md:table-cell">
-                  {formatEntryTime(entry.start)}
-                  {entry.stop && <> – {formatEntryTime(entry.stop)}</>}
+                  {formatEntryTime(entry.start, timeFormat)}
+                  {entry.stop && <> – {formatEntryTime(entry.stop, timeFormat)}</>}
                 </TableCell>
                 <TableCell className="py-2.5 text-right font-mono text-xs tabular-nums">
                   {entry.duration ? formatSeconds(entry.duration) : "–"}

@@ -13,6 +13,7 @@ import { EntryForm } from "./EntryForm";
 import { useUpdateEntry, useDeleteEntry } from "@/hooks/useEntries";
 import { useTimer } from "@/hooks/useTimer";
 import { formatSeconds, formatEntryTime } from "@/lib/dateUtils";
+import { useUIStore } from "@/stores/uiStore";
 import type { TimeEntry } from "@shared/schemas";
 
 interface EntryRowProps {
@@ -28,6 +29,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const updateEntry = useUpdateEntry();
   const deleteEntry = useDeleteEntry();
   const { startTimer } = useTimer();
+  const timeFormat = useUIStore((s) => s.timeFormat);
 
   const handleDescBlur = () => {
     setEditingDesc(false);
@@ -134,9 +136,9 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
 
         {/* Time range */}
         <div className="hidden text-xs text-muted-foreground sm:flex items-center gap-1">
-          <span>{formatEntryTime(entry.start)}</span>
+          <span>{formatEntryTime(entry.start, timeFormat)}</span>
           <span>–</span>
-          <span>{entry.stop ? formatEntryTime(entry.stop) : "..."}</span>
+          <span>{entry.stop ? formatEntryTime(entry.stop, timeFormat) : "..."}</span>
         </div>
 
         {/* Duration */}
