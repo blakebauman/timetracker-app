@@ -252,6 +252,26 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         break;
       }
 
+      case "TIMER_STATE_CHANGED": {
+        // Relayed instantly from the web app via content script — no poll delay
+        if (msg.state?.running) {
+          await chrome.storage.local.set({
+            timerState: {
+              running: true,
+              entryId: msg.state.entryId,
+              startedAt: new Date(msg.state.startedAt).getTime(),
+              description: msg.state.description ?? "",
+              projectId: msg.state.projectId ?? null,
+            } as TimerState,
+          });
+        } else {
+          await chrome.storage.local.remove("timerState");
+          chrome.action.setBadgeText({ text: "" });
+        }
+        sendResponse({ ok: true });
+        break;
+      }
+
       case "SET_API_URL": {
         await chrome.storage.local.set({ apiUrl: msg.url });
         sendResponse({ ok: true });

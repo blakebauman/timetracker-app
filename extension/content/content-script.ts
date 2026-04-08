@@ -1,6 +1,15 @@
 // Content script — detects page context from supported apps
 // and sends it to the background service worker
 
+// ─── Real-time timer sync from the web app ────────────────────────────────────
+// The web app fires "timetracker:sync" CustomEvents on the window whenever the
+// timer starts or stops (received via WebSocket). We relay them instantly to the
+// service worker so the badge updates without waiting for a poll cycle.
+window.addEventListener("timetracker:sync", (e: Event) => {
+  const { detail } = e as CustomEvent;
+  chrome.runtime.sendMessage({ type: "TIMER_STATE_CHANGED", state: detail });
+});
+
 function detectContext(): string | null {
   const url = window.location.href;
 
