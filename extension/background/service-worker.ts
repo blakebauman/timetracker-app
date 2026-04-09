@@ -18,23 +18,22 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   const stored = (await chrome.storage.local.get([
     "timerState",
-    "tickCount",
     "apiUrl",
     "authToken",
   ])) as {
     timerState?: TimerState;
-    tickCount?: number;
     apiUrl?: string;
     authToken?: string;
   };
 
   let { timerState } = stored;
   const { apiUrl, authToken } = stored;
-  const tickCount = (stored.tickCount ?? 0) + 1;
-  await chrome.storage.local.set({ tickCount: tickCount % 5 });
 
-  // Every 5 ticks (~5s), poll server to catch changes made from the web app
-  if (tickCount % 5 === 0 && authToken) {
+  // Poll server on every tick to catch changes made from the web app.
+  // Chrome clamps alarms to ~1 minute in production (1/60 is treated as 1 min),
+  // so polling every tick is fine and avoids the 5-minute stale state window
+  // that the old tickCount % 5 throttle caused.
+  if (authToken) {
     const base = apiUrl ?? "https://timetracker.blakebauman.dev";
     try {
       const res = await fetch(`${base}/api/time_entries?running=true&limit=1`, {

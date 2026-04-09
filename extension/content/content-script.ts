@@ -7,7 +7,9 @@
 // service worker so the badge updates without waiting for a poll cycle.
 window.addEventListener("timetracker:sync", (e: Event) => {
   const { detail } = e as CustomEvent;
-  chrome.runtime.sendMessage({ type: "TIMER_STATE_CHANGED", state: detail });
+  // sendMessage wakes the service worker if it's sleeping; ignore errors
+  // (e.g. extension reloading mid-session) to avoid uncaught promise rejections.
+  chrome.runtime.sendMessage({ type: "TIMER_STATE_CHANGED", state: detail }).catch(() => {});
 });
 
 function detectContext(): string | null {
