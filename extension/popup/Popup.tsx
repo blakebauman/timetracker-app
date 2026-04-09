@@ -33,6 +33,7 @@ export function Popup() {
   const [timerState, setTimerState] = useState<TimerState | null>(null);
   const [description, setDescription] = useState("");
   const [elapsed, setElapsed] = useState(0);
+  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [apiUrl, setApiUrl] = useState<string>("https://timetracker.blakebauman.dev");
   const [showSettings, setShowSettings] = useState(false);
@@ -52,6 +53,7 @@ export function Popup() {
       }
       if (res?.apiUrl) setApiUrl(res.apiUrl);
       if (res?.authToken) setAuthToken(res.authToken);
+      setInitializing(false);
     });
 
     chrome.storage.session.get("pageContext", ({ pageContext }) => {
@@ -181,6 +183,20 @@ export function Popup() {
     fontSize: 14,
     cursor: disabled ? "not-allowed" : "pointer",
   });
+
+  // ── Loading skeleton ─────────────────────────────────────────────────────────
+  if (initializing) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "12px 14px", borderBottom: `1px solid ${c.border}`, background: c.bg }}>
+          <span style={{ fontFamily: "monospace", fontSize: 22, fontWeight: 700, color: c.fgMuted, letterSpacing: 1 }}>
+            00:00:00
+          </span>
+        </div>
+        <div style={{ padding: "12px 14px", height: 80 }} />
+      </div>
+    );
+  }
 
   // ── Login form ───────────────────────────────────────────────────────────────
   if (!authToken) {
