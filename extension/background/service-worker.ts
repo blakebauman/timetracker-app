@@ -89,49 +89,47 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     switch (msg.type) {
       case "GET_STATE": {
-        const { apiUrl, authToken } = (await chrome.storage.local.get([
+        // Respond immediately with cached storage so the channel closes before
+        // the service worker can be terminated mid-await. The network refresh
+        // runs in the background and updates storage for the next open.
+        const stored = (await chrome.storage.local.get([
           "apiUrl",
           "authToken",
-        ])) as { apiUrl?: string; authToken?: string };
-        const base = apiUrl ?? "https://timetracker.blakebauman.dev";
-
-        // Fetch live running timer from server so popup reflects web app changes
-        let timerState: TimerState | null = null;
-        if (authToken) {
-          try {
-            const res = await fetch(`${base}/api/time_entries?running=true&limit=1`, {
-              headers: { Authorization: `Bearer ${authToken}` },
-            });
-            if (res.ok) {
-              const entries = (await res.json()) as Array<{
-                id: string; start: string; description: string; projectId: string | null; stop: string | null;
-              }>;
-              const running = entries.find((e) => !e.stop);
-              if (running) {
-                timerState = {
-                  running: true,
-                  entryId: running.id,
-                  startedAt: new Date(running.start).getTime(),
-                  description: running.description,
-                  projectId: running.projectId,
-                };
-                await chrome.storage.local.set({ timerState });
-              } else {
-                await chrome.storage.local.remove("timerState");
-              }
-            }
-          } catch {
-            // Fall back to cached state
-            const cached = (await chrome.storage.local.get("timerState")) as { timerState?: TimerState };
-            timerState = cached.timerState ?? null;
-          }
-        }
+          "timerState",
+        ])) as { apiUrl?: string; authToken?: string; timerState?: TimerState };
 
         sendResponse({
-          timerState,
-          apiUrl: apiUrl ?? null,
-          authToken: authToken ?? null,
+          timerState: stored.timerState ?? null,
+          apiUrl: stored.apiUrl ?? null,
+          authToken: stored.authToken ?? null,
         });
+
+        // Fire-and-forget: refresh timer state from server in background
+        if (stored.authToken) {
+          const base = stored.apiUrl ?? "https://timetracker.blakebauman.dev";
+          fetch(`${base}/api/time_entries?running=true&limit=1`, {
+            headers: { Authorization: `Bearer ${stored.authToken}` },
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((entries: Array<{ id: string; start: string; description: string; projectId: string | null; stop: string | null }> | null) => {
+              if (!entries) return;
+              const running = entries.find((e) => !e.stop);
+              if (running) {
+                chrome.storage.local.set({
+                  timerState: {
+                    running: true,
+                    entryId: running.id,
+                    startedAt: new Date(running.start).getTime(),
+                    description: running.description,
+                    projectId: running.projectId,
+                  } as TimerState,
+                });
+              } else {
+                chrome.storage.local.remove("timerState");
+              }
+            })
+            .catch(() => {});
+        }
         break;
       }
 

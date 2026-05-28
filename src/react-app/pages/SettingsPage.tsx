@@ -284,16 +284,19 @@ export function SettingsPage() {
           <Separator />
 
           {/* Change password */}
-          <div className="space-y-3">
-            <div>
-              <Label>Change password</Label>
-            </div>
+          <form
+            className="space-y-3"
+            noValidate
+            onSubmit={(e) => { e.preventDefault(); handleChangePassword(); }}
+          >
+            <Label>Change password</Label>
             <div className="space-y-2">
               <Input
                 type="password"
                 placeholder="Current password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
                 className="h-8 text-sm"
               />
               <Input
@@ -301,13 +304,14 @@ export function SettingsPage() {
                 placeholder="New password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
                 className="h-8 text-sm"
               />
             </div>
             <Button
+              type="submit"
               size="sm"
               variant="outline"
-              onClick={handleChangePassword}
               disabled={passwordPending || !currentPassword || !newPassword}
             >
               {passwordPending ? "Saving…" : "Change password"}
@@ -317,7 +321,7 @@ export function SettingsPage() {
                 {passwordStatus.message}
               </p>
             )}
-          </div>
+          </form>
         </CardContent>
       </Card>
     </div>
