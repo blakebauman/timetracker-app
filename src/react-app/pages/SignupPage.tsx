@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,16 +16,26 @@ import { Clock } from "lucide-react";
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, user } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
+  // Same timing issue as LoginPage: better-auth delays session atom refresh ~10ms
+  // after sign-up via setTimeout, so we watch user here instead of navigating inline.
+  useEffect(() => {
+    if (user) navigate("/");
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!name.trim() || !email.trim() || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
@@ -35,12 +45,11 @@ export function SignupPage() {
       const result = await signUp({ name, email, password });
       if (result?.error) {
         setError(result.error.message ?? "Failed to create account");
-      } else {
-        navigate("/");
+        setIsPending(false);
       }
+      // On success: keep isPending=true; useEffect navigates once session propagates.
     } catch {
       setError("Something went wrong. Please try again.");
-    } finally {
       setIsPending(false);
     }
   };
@@ -64,7 +73,7 @@ export function SignupPage() {
             </CardDescription>
           </CardHeader>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Name</Label>
@@ -112,7 +121,7 @@ export function SignupPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isPending || !name || !email || !password}
+                disabled={isPending}
               >
                 {isPending ? "Creating account…" : "Create account"}
               </Button>

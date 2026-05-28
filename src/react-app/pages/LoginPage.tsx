@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,26 +16,37 @@ import { Clock } from "lucide-react";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
+  // better-auth delays session atom refresh by ~10ms after sign-in via setTimeout,
+  // so navigate("/") would reach AuthGuard before the session is available and
+  // get bounced back to /login. Watching user here navigates once the atom settles.
+  useEffect(() => {
+    if (user) navigate("/");
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password");
+      return;
+    }
     setIsPending(true);
     try {
       const result = await signIn({ email, password });
       if (result?.error) {
         setError(result.error.message ?? "Invalid email or password");
-      } else {
-        navigate("/");
+        setIsPending(false);
       }
+      // On success: keep isPending=true; the useEffect above navigates once the
+      // session atom is populated (covers the 10ms better-auth setTimeout delay).
     } catch {
       setError("Something went wrong. Please try again.");
-    } finally {
       setIsPending(false);
     }
   };
@@ -59,7 +70,7 @@ export function LoginPage() {
             </CardDescription>
           </CardHeader>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
@@ -95,7 +106,7 @@ export function LoginPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isPending || !email || !password}
+                disabled={isPending}
               >
                 {isPending ? "Signing in…" : "Sign in"}
               </Button>
