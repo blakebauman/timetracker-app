@@ -1,46 +1,32 @@
-import { betterAuth } from "better-auth";
-import { bearer } from "better-auth/plugins";
+import { getCookie } from "hono/cookie";
+import { COOKIE_NAME } from "./routes/auth";
 
-export function createAuth(env: Env, baseURL?: string) {
-  return betterAuth({
-    // D1 is auto-detected via its batch/exec/prepare interface
-    database: env.DB as unknown as Parameters<typeof betterAuth>[0]["database"],
-    secret: env.AUTH_SECRET,
-    baseURL,
-    emailAndPassword: {
-      enabled: true,
-    },
-    databaseHooks: {
-      user: {
-        create: {
-          after: async (user) => {
-            // Auto-create a workspace for every new user
-            const id = crypto.randomUUID().replace(/-/g, "");
-            await env.DB.prepare(
-              `INSERT INTO workspaces (id, name, userId) VALUES (?, ?, ?)`,
-            )
-              .bind(id, `${user.name}'s Workspace`, user.id)
-              .run();
-          },
-        },
-      },
-    },
-    plugins: [bearer()],
-    // Trust requests from these origins (needed for cookie auth in same-origin SPA)
-    trustedOrigins: [
-      "http://localhost:5173",
-      "http://localhost:8787",
-      "https://timetracker.blakebauman.dev",
-      "https://time-tracker-app.fold-run.workers.dev",
-    ],
-    advanced: {
-      // Extension service workers can't set Origin headers and use bearer tokens,
-      // not cookies, so CSRF protection is not applicable for those requests.
-      disableCSRFCheck: true,
-      // Prefix for cookie names, to avoid collisions with other apps on the same domain
-      cookiePrefix: "timetracker",
-    },
-  });
+export type SessionUser = { id: string; name: string; email: string };
+export type AuthSession = { user: SessionUser; sessionId: string } | null;
+
+// Lightweight session lookup used by the workspace middleware.
+// Checks the tt_session cookie first, then the Authorization: Bearer header.
+export async function getSession(
+  db: D1Database,
+  c: { req: { header: (name: string) => string | undefined; url: string }; get: (key: string) => unknown },
+): Promise<AuthSession> {
+  const token =
+    getCookie(c as never, COOKIE_NAME) ??
+    c.req.header("Authorization")?.replace("Bearer ", "");
+  if (!token) return null;
+
+  const row = await db
+    .prepare(
+      `SELECT s.id AS sid, u.id AS uid, u.name, u.email
+       FROM session s JOIN user u ON s.userId = u.id
+       WHERE s.token = ? AND s.expiresAt > datetime('now') LIMIT 1`,
+    )
+    .bind(token)
+    .first<{ sid: string; uid: string; name: string; email: string }>();
+
+  if (!row) return null;
+  return {
+    user: { id: row.uid, name: row.name, email: row.email },
+    sessionId: row.sid,
+  };
 }
-
-export type Auth = ReturnType<typeof createAuth>;

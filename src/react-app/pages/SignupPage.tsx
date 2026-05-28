@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,18 +16,12 @@ import { Clock } from "lucide-react";
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { signUp, user } = useAuth();
+  const { signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
-
-  // Same timing issue as LoginPage: better-auth delays session atom refresh ~10ms
-  // after sign-up via setTimeout, so we watch user here instead of navigating inline.
-  useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,8 +40,9 @@ export function SignupPage() {
       if (result?.error) {
         setError(result.error.message ?? "Failed to create account");
         setIsPending(false);
+      } else {
+        navigate("/");
       }
-      // On success: keep isPending=true; useEffect navigates once session propagates.
     } catch {
       setError("Something went wrong. Please try again.");
       setIsPending(false);

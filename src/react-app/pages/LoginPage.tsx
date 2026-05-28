@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,18 +16,11 @@ import { Clock } from "lucide-react";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, user } = useAuth();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
-
-  // better-auth delays session atom refresh by ~10ms after sign-in via setTimeout,
-  // so navigate("/") would reach AuthGuard before the session is available and
-  // get bounced back to /login. Watching user here navigates once the atom settles.
-  useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,9 +35,11 @@ export function LoginPage() {
       if (result?.error) {
         setError(result.error.message ?? "Invalid email or password");
         setIsPending(false);
+      } else {
+        // updateSession() was already called inside signIn(), so the session
+        // state is current — AuthGuard will see the user immediately.
+        navigate("/");
       }
-      // On success: keep isPending=true; the useEffect above navigates once the
-      // session atom is populated (covers the 10ms better-auth setTimeout delay).
     } catch {
       setError("Something went wrong. Please try again.");
       setIsPending(false);
