@@ -178,6 +178,10 @@ authRouter.post("/sign-up/email", async (c) => {
     return c.json({ message: "All fields are required" }, 400);
   }
 
+  if (password.length < 8) {
+    return c.json({ message: "Password must be at least 8 characters" }, 400);
+  }
+
   const existing = await c.env.DB.prepare(
     `SELECT id FROM user WHERE email = ? LIMIT 1`,
   )
@@ -303,12 +307,20 @@ authRouter.post("/change-password", async (c) => {
     return c.json({ message: "Current password is incorrect" }, 400);
   }
 
+  if (newPassword.length < 8) {
+    return c.json({ message: "New password must be at least 8 characters" }, 400);
+  }
+
   const newHash = await hashPassword(newPassword);
-  await c.env.DB.prepare(
-    `UPDATE user SET passwordHash = ?, updatedAt = ? WHERE id = ?`,
-  )
-    .bind(newHash, new Date().toISOString(), row.id)
-    .run();
+  const now = new Date().toISOString();
+
+  // Invalidate all other sessions so compromised old sessions stop working
+  await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE user SET passwordHash = ?, updatedAt = ? WHERE id = ?`)
+      .bind(newHash, now, row.id),
+    c.env.DB.prepare(`DELETE FROM session WHERE userId = ? AND token != ?`)
+      .bind(row.id, token),
+  ]);
 
   return c.json({ success: true });
 });

@@ -123,7 +123,7 @@ export const reportsRouter = new Hono<{
   })
   .get("/detailed", zValidator("query", ReportQuerySchema.partial().required({since: true, until: true})), async (c) => {
     const workspaceId = c.get("workspaceId");
-    const { since, until, projectId } = c.req.query();
+    const { since, until, projectId } = c.req.valid("query");
 
     let whereClause = `te.workspace_id = ? AND te.start >= ? AND te.start < ? AND te.stop IS NOT NULL`;
     const bindings: unknown[] = [workspaceId, since, until];

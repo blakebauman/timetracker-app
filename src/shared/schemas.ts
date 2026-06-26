@@ -20,8 +20,8 @@ export const ClientSchema = z.object({
 });
 
 export const CreateClientSchema = z.object({
-  name: z.string().min(1),
-  notes: z.string().nullable().optional(),
+  name: z.string().min(1).max(255),
+  notes: z.string().max(2000).nullable().optional(),
 });
 
 export const UpdateClientSchema = CreateClientSchema.partial().extend({
@@ -48,7 +48,7 @@ export const ProjectSchema = z.object({
 });
 
 export const CreateProjectSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(255),
   color: z.string().regex(/^#[0-9a-f]{6}$/i).default("#0ea5e9"),
   clientId: z.string().nullable().optional(),
   billable: z.boolean().default(false),
@@ -78,13 +78,13 @@ export const TaskSchema = z.object({
 });
 
 export const CreateTaskSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(255),
   projectId: z.string(),
   estimatedSeconds: z.number().nullable().optional(),
 });
 
 export const UpdateTaskSchema = z.object({
-  name: z.string().min(1).optional(),
+  name: z.string().min(1).max(255).optional(),
   active: z.boolean().optional(),
   estimatedSeconds: z.number().nullable().optional(),
 });
@@ -118,17 +118,17 @@ export const TimeEntrySchema = z.object({
 });
 
 export const CreateTimeEntrySchema = z.object({
-  description: z.string().default(""),
+  description: z.string().max(2000).default(""),
   projectId: z.string().nullable().optional(),
   taskId: z.string().nullable().optional(),
   start: z.string(),
   stop: z.string().nullable().optional(),
   billable: z.boolean().default(false),
-  tags: z.array(z.string()).default([]),
+  tags: z.array(z.string().max(100)).max(50).default([]),
 });
 
 export const UpdateTimeEntrySchema = z.object({
-  description: z.string().optional(),
+  description: z.string().max(2000).optional(),
   projectId: z.string().nullable().optional(),
   taskId: z.string().nullable().optional(),
   start: z.string().optional(),

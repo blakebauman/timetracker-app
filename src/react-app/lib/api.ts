@@ -1,17 +1,32 @@
+import { addPendingMutation } from "@/lib/idb";
+
 const API_BASE = "/api";
 
+const MUTABLE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!res.ok) {
-    const msg = await res.text().catch(() => res.statusText);
-    throw new Error(`API ${res.status}: ${msg}`);
+  const method = (options?.method ?? "GET").toUpperCase();
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => res.statusText);
+      throw new Error(`API ${res.status}: ${msg}`);
+    }
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
+  } catch (err) {
+    // Queue mutating requests when the network is unavailable so they can be
+    // replayed by useOfflineSync once connectivity is restored.
+    if (err instanceof TypeError && MUTABLE_METHODS.has(method)) {
+      const body = options?.body ? JSON.parse(options.body as string) : undefined;
+      await addPendingMutation({ method: method as "POST" | "PUT" | "PATCH" | "DELETE", url: `${API_BASE}${path}`, body });
+    }
+    throw err;
   }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
 }
 
 export const api = {
