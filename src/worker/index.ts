@@ -12,7 +12,8 @@ import { reportsRouter } from "./routes/reports";
 import { integrationsRouter } from "./routes/integrations";
 import { aiRouter } from "./routes/ai";
 import { websocketRouter } from "./routes/websocket";
-import { authRouter, handleSignIn } from "./routes/auth";
+import { extSignIn } from "./routes/auth";
+import { createAuth } from "./auth";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 
 // 10 attempts per minute on auth endpoints
@@ -27,11 +28,16 @@ const app = new Hono<{ Bindings: Env }>()
   .use("/api/auth/sign-in/*", authRateLimit)
   .use("/api/auth/sign-up/*", authRateLimit)
   .use("/api/auth/change-password", authRateLimit)
+  .use("/api/auth/email-otp/send-verification-otp", authRateLimit)
+  .use("/api/auth/sign-in/magic-link", authRateLimit)
   .use("/api/ext/sign-in", authRateLimit)
-  .route("/api/auth", authRouter)
-  // Extension sign-in: same handler as /api/auth/sign-in/email.
-  // The extension can't set cookies so it reads the token from the response body.
-  .post("/api/ext/sign-in", handleSignIn)
+  .on(["GET", "POST"], "/api/auth/*", (c) => {
+    const origin = new URL(c.req.url).origin;
+    return createAuth(c.env, origin).handler(c.req.raw);
+  })
+  // Extension sign-in: the extension can't read Set-Cookie cross-origin, so it
+  // reads the token straight out of the JSON body instead.
+  .post("/api/ext/sign-in", extSignIn)
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
   .route("/api/time_entries", timeEntriesRouter)

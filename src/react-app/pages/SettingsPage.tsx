@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/stores/uiStore";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
+import { TeamCard } from "@/components/settings/TeamCard";
 
 // ── Preferences helpers ──────────────────────────────────────────────────────
 
@@ -238,6 +239,9 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Team */}
+      <TeamCard />
 
       {/* Integrations */}
       <IntegrationsCard />

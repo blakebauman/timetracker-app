@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
@@ -32,6 +32,11 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
     navigate("/login");
   };
 
+  const items =
+    user?.role === "admin"
+      ? [...navItems, { to: "/admin", icon: ShieldCheck, label: "Admin" }]
+      : navItems;
+
   return (
     <>
       {/* Running timer indicator */}
@@ -53,7 +58,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 p-2 pt-3">
-        {navItems.map(({ to, icon: Icon, label }) => (
+        {items.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}

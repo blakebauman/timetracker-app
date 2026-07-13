@@ -1,27 +1,36 @@
 import { createMiddleware } from "hono/factory";
-import { getSession } from "../auth";
+import { createAuth } from "../auth";
 
 export const workspaceMiddleware = createMiddleware<{
   Bindings: Env;
   Variables: { workspaceId: string; userId: string };
 }>(async (c, next) => {
-  const session = await getSession(c.env.DB, c);
+  const origin = new URL(c.req.url).origin;
+  const auth = createAuth(c.env, origin);
 
-  if (!session) {
+  const result = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!result) {
     return c.json({ error: "Unauthorized" }, 401);
   }
+  const { session, user } = result;
 
-  const row = await c.env.DB.prepare(
-    `SELECT id FROM workspaces WHERE userId = ? LIMIT 1`,
-  )
-    .bind(session.user.id)
-    .first<{ id: string }>();
+  let workspaceId = session.activeOrganizationId;
 
-  if (!row) {
-    return c.json({ error: "Workspace not found" }, 404);
+  if (!workspaceId) {
+    // First request after signup/sign-in before any org-switch has happened —
+    // fall back to the user's first organization and persist it as active.
+    const orgs = await auth.api.listOrganizations({ headers: c.req.raw.headers });
+    if (orgs.length === 0) {
+      return c.json({ error: "Workspace not found" }, 404);
+    }
+    workspaceId = orgs[0].id;
+    await auth.api.setActiveOrganization({
+      body: { organizationId: workspaceId },
+      headers: c.req.raw.headers,
+    });
   }
 
-  c.set("workspaceId", row.id);
-  c.set("userId", session.user.id);
+  c.set("workspaceId", workspaceId);
+  c.set("userId", user.id);
   await next();
 });

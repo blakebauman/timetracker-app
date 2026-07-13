@@ -1,0 +1,96 @@
+import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { authClient } from "@/lib/auth-client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string | null;
+  banned?: boolean | null;
+};
+
+export function AdminPage() {
+  const { user } = useAuth();
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    const { data } = await authClient.admin.listUsers({ query: { limit: 100 } });
+    setUsers((data?.users as AdminUser[] | undefined) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (user?.role === "admin") loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role]);
+
+  if (!user) return null;
+  if (user.role !== "admin") return <Navigate to="/" replace />;
+
+  const handleBan = async (userId: string) => {
+    await authClient.admin.banUser({ userId, banReason: "Violation of terms" });
+    loadUsers();
+  };
+
+  const handleUnban = async (userId: string) => {
+    await authClient.admin.unbanUser({ userId });
+    loadUsers();
+  };
+
+  const handleImpersonate = async (userId: string) => {
+    await authClient.admin.impersonateUser({ userId });
+    window.location.href = "/";
+  };
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-xl font-semibold">Admin</h1>
+        <p className="text-sm text-muted-foreground">Manage all timetracker.run users</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Users</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            users.map((u) => (
+              <div key={u.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                <div>
+                  <span className="font-medium">{u.name}</span>
+                  <span className="ml-2 text-muted-foreground">{u.email}</span>
+                  {u.role === "admin" && <Badge className="ml-2" variant="secondary">admin</Badge>}
+                  {u.banned && <Badge className="ml-2" variant="destructive">banned</Badge>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {u.banned ? (
+                    <Button size="sm" variant="outline" onClick={() => handleUnban(u.id)}>
+                      Unban
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => handleBan(u.id)}>
+                      Ban
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => handleImpersonate(u.id)}>
+                    Impersonate
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
