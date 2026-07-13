@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +13,7 @@ import {
 import { ProjectPicker } from "./ProjectPicker";
 import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
+import { TimeOfDayInput } from "./TimeOfDayInput";
 import { useUpdateEntry } from "@/hooks/useEntries";
 import type { TimeEntry } from "@shared/schemas";
 
@@ -23,26 +23,14 @@ interface EntryFormProps {
   onClose: () => void;
 }
 
-function toTimeInput(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function applyTimeInput(iso: string, timeStr: string): string {
-  const d = new Date(iso);
-  const [h, m] = timeStr.split(":").map(Number);
-  d.setHours(h, m, 0, 0);
-  return d.toISOString();
-}
-
 export function EntryForm({ entry, open, onClose }: EntryFormProps) {
   const [description, setDescription] = useState(entry.description);
   const [projectId, setProjectId] = useState<string | null>(entry.projectId);
   const [taskId, setTaskId] = useState<string | null>(entry.taskId ?? null);
   const [tags, setTags] = useState<string[]>(entry.tags);
   const [billable, setBillable] = useState(entry.billable);
-  const [startTime, setStartTime] = useState(toTimeInput(entry.start));
-  const [stopTime, setStopTime] = useState(entry.stop ? toTimeInput(entry.stop) : "");
+  const [start, setStart] = useState(entry.start);
+  const [stop, setStop] = useState<string | null>(entry.stop);
   const updateEntry = useUpdateEntry();
 
   const handleSave = () => {
@@ -55,8 +43,8 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
           taskId,
           tags,
           billable,
-          start: applyTimeInput(entry.start, startTime),
-          stop: stopTime ? applyTimeInput(entry.stop ?? entry.start, stopTime) : undefined,
+          start,
+          stop: stop ?? undefined,
         },
       },
       { onSuccess: onClose }
@@ -105,11 +93,16 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
               <Label>Start</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <TimeOfDayInput value={start} fallbackIso={entry.start} onChange={(iso) => setStart(iso ?? start)} />
             </div>
             <div className="flex-1 space-y-1.5">
               <Label>Stop</Label>
-              <Input type="time" value={stopTime} onChange={(e) => setStopTime(e.target.value)} />
+              <TimeOfDayInput
+                value={stop}
+                fallbackIso={stop ?? entry.start}
+                onChange={setStop}
+                allowClear
+              />
             </div>
           </div>
 

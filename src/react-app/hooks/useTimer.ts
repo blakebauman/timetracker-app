@@ -3,6 +3,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useTimerStore } from "@/stores/timerStore";
 import { api } from "@/lib/api";
+import { formatSeconds } from "@/lib/dateUtils";
 import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
 import type { TimeEntry } from "@shared/schemas";
 
@@ -20,11 +21,7 @@ export function useTimer() {
     const tick = () => {
       const s = Math.floor((Date.now() - localStartTime) / 1000);
       setElapsed(s);
-      const h = Math.floor(s / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const sec = s % 60;
-      const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-      document.title = `${hms} — Time Tracker`;
+      document.title = `${formatSeconds(s)} — Time Tracker`;
     };
     tick();
     const id = setInterval(tick, 1000);

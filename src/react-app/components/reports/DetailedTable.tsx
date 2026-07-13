@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatSeconds, formatEntryTime } from "@/lib/dateUtils";
+import { formatSeconds, formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 import { useUIStore } from "@/stores/uiStore";
 import { Search } from "lucide-react";
 
@@ -170,7 +170,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                   )}
                 </TableCell>
                 <TableCell className="hidden py-2.5 text-xs text-muted-foreground md:table-cell">
-                  {entry.start.slice(0, 10)}
+                  {formatShortDate(entry.start)}
                 </TableCell>
                 <TableCell className="hidden py-2.5 text-xs text-muted-foreground md:table-cell">
                   {formatEntryTime(entry.start, timeFormat)}

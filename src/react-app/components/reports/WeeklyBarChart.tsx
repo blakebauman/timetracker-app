@@ -9,14 +9,21 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDurationShort } from "@/lib/dateUtils";
-import type { WeeklyData } from "@/hooks/useReports";
+import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
+import type { WeeklyData, WeeklyDay } from "@/hooks/useReports";
 
 interface WeeklyBarChartProps {
   data: WeeklyData[];
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function weekRangeLabel(days: WeeklyDay[]): string {
+  if (!days.length) return "";
+  const first = formatPlainDate(days[0].date, "MMM d");
+  const last = formatPlainDate(days[days.length - 1].date, "MMM d");
+  return first === last ? first : `${first} – ${last}`;
+}
 
 function CustomTooltip({
   active,
@@ -62,10 +69,7 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
   if (isSingleWeek) {
     const week = data[0];
     const dayMap = new Map(
-      week.days.map((d) => [
-        DAY_NAMES[new Date(d.date + "T12:00:00").getDay()],
-        d,
-      ])
+      week.days.map((d) => [formatPlainDate(d.date, "EEE"), d])
     );
     const chartData = DAY_NAMES.map((name) => {
       const d = dayMap.get(name);
@@ -79,7 +83,7 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Weekly breakdown — {week.week}</CardTitle>
+          <CardTitle className="text-base">Weekly breakdown — {weekRangeLabel(week.days)}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={240}>
@@ -110,7 +114,7 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
 
   // Multi-week: one bar per week showing total hours
   const chartData = data.map((w) => ({
-    week: w.week,
+    week: weekRangeLabel(w.days),
     Total: parseFloat(
       (w.days.reduce((s, d) => s + d.totalSeconds, 0) / 3600).toFixed(2)
     ),

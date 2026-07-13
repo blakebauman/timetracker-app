@@ -18,7 +18,7 @@ import { ProjectForm } from "./ProjectForm";
 import { TaskList } from "./TaskList";
 import { useAllProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatSeconds } from "@/lib/dateUtils";
+import { formatSeconds, formatPlainDate } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import type { Project } from "@shared/schemas";
 
@@ -112,7 +112,7 @@ export function ProjectList() {
                         <span>{formatSeconds(project.trackedSeconds)} tracked</span>
                       )}
                       {project.endDate && (
-                        <span>Due {project.endDate}</span>
+                        <span>Due {formatPlainDate(project.endDate)}</span>
                       )}
                     </div>
                     {/* Budget progress bar */}

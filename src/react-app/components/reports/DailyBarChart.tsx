@@ -9,7 +9,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDurationShort, formatShortDate } from "@/lib/dateUtils";
+import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
 
 interface DailyData {
   date: string;
@@ -21,14 +21,8 @@ interface DailyBarChartProps {
   data: DailyData[];
 }
 
-const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 function formatXLabel(dateStr: string, useDayOfWeek: boolean): string {
-  const d = new Date(dateStr + "T12:00:00");
-  if (useDayOfWeek) {
-    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
-  }
-  return `${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
+  return formatPlainDate(dateStr, useDayOfWeek ? "EEE" : "d MMM");
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: { value: number; payload: DailyData }[] }) {
@@ -36,7 +30,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { valu
   const d = payload[0].payload;
   return (
     <div className="rounded-md border bg-popover px-3 py-2 shadow text-sm">
-      <p className="font-medium">{formatShortDate(d.date + "T00:00:00")}</p>
+      <p className="font-medium">{formatPlainDate(d.date)}</p>
       <p className="text-muted-foreground">{formatDurationShort(d.totalSeconds)}</p>
       <p className="text-xs text-muted-foreground">{d.entryCount} entries</p>
     </div>
