@@ -21,7 +21,7 @@ You are a Cloudflare Workers expert specializing in this time-tracker app's back
 - Migrations in `migrations/` — numbered `0001_`, `0002_`, etc.
 - Local dev DB: `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite`
 - Compatibility date: `2025-10-08`, `nodejs_compat` flag enabled
-- Deployed to: `timetracker.blakebauman.dev`
+- Deployed to: `timetracker.run`
 
 ## Key commands
 

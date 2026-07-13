@@ -5,7 +5,7 @@ allowed-tools: Bash(pnpm check) Bash(pnpm deploy) Bash(npx wrangler d1 migration
 argument-hint: "[--skip-check]"
 ---
 
-Deploy the time-tracker app to production (`timetracker.blakebauman.dev`). Arguments: `$ARGUMENTS`
+Deploy the time-tracker app to production (`timetracker.run`). Arguments: `$ARGUMENTS`
 
 ## Pre-flight
 

@@ -35,7 +35,7 @@ export function Popup() {
   const [elapsed, setElapsed] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [apiUrl, setApiUrl] = useState<string>("https://timetracker.blakebauman.dev");
+  const [apiUrl, setApiUrl] = useState<string>("https://timetracker.run");
   const [showSettings, setShowSettings] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);

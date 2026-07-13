@@ -2,7 +2,7 @@
 
 A Toggl-like time tracking app built on Cloudflare Workers, Hono, React 19, and Shadcn UI. Features real-time timer sync across browser tabs via Durable Objects WebSockets, a browser extension, and offline support via IndexedDB.
 
-**Live:** https://timetracker.blakebauman.dev
+**Live:** https://timetracker.run
 
 ## Stack
 

@@ -34,7 +34,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   // so polling every tick is fine and avoids the 5-minute stale state window
   // that the old tickCount % 5 throttle caused.
   if (authToken) {
-    const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+    const base = apiUrl ?? "https://timetracker.run";
     try {
       const res = await fetch(`${base}/api/time_entries?running=true&limit=1`, {
         headers: { Authorization: `Bearer ${authToken}` },
@@ -106,7 +106,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
         // Fire-and-forget: refresh timer state from server in background
         if (stored.authToken) {
-          const base = stored.apiUrl ?? "https://timetracker.blakebauman.dev";
+          const base = stored.apiUrl ?? "https://timetracker.run";
           fetch(`${base}/api/time_entries?running=true&limit=1`, {
             headers: { Authorization: `Bearer ${stored.authToken}` },
           })
@@ -137,7 +137,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const { apiUrl } = (await chrome.storage.local.get("apiUrl")) as {
           apiUrl?: string;
         };
-        const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+        const base = apiUrl ?? "https://timetracker.run";
         try {
           const res = await fetch(`${base}/api/ext/sign-in`, {
             method: "POST",
@@ -176,7 +176,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           "apiUrl",
           "authToken",
         ])) as { apiUrl?: string; authToken?: string };
-        const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+        const base = apiUrl ?? "https://timetracker.run";
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
         try {
@@ -222,7 +222,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           "apiUrl",
           "authToken",
         ])) as { apiUrl?: string; authToken?: string };
-        const base = apiUrl ?? "https://timetracker.blakebauman.dev";
+        const base = apiUrl ?? "https://timetracker.run";
         const headers: Record<string, string> = {};
         if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
         try {
