@@ -118,6 +118,24 @@ export const api = {
     list: () => request<unknown[]>("/tags"),
   },
 
+  // ─── Integrations ────────────────────────────────────────────────────────
+  integrations: {
+    list: () => request<unknown[]>("/integrations"),
+    create: (body: Record<string, unknown>) =>
+      request<unknown>("/integrations", { method: "POST", body: JSON.stringify(body) }),
+    update: (id: string, body: Record<string, unknown>) =>
+      request<unknown>(`/integrations/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      request<unknown>(`/integrations/${id}`, { method: "DELETE" }),
+    test: (id: string) =>
+      request<{ ok: boolean; error?: string }>(`/integrations/${id}/test`, { method: "POST" }),
+    push: (body: { entryIds: string[]; comment?: string }) =>
+      request<{ results: { id: string; ok: boolean; externalId?: string; error?: string }[] }>(
+        "/integrations/push",
+        { method: "POST", body: JSON.stringify(body) }
+      ),
+  },
+
   // ─── AI ───────────────────────────────────────────────────────────────────
   ai: {
     quickEntry: (body: Record<string, unknown>) =>

@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useUIStore } from "@/stores/uiStore";
 
 const navItems = [
@@ -15,11 +17,15 @@ const navItems = [
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
-export function Sidebar() {
+interface SidebarContentProps {
+  collapsed: boolean;
+  onNavigate?: () => void;
+}
+
+function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
   const { runningEntry, elapsed } = useTimerStore();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { sidebarCollapsed, toggleSidebar } = useUIStore();
 
   const handleSignOut = async () => {
     await signOut();
@@ -27,36 +33,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside
-      className={cn(
-        "flex h-full flex-col border-r bg-card transition-all duration-200",
-        sidebarCollapsed ? "w-14" : "w-56"
-      )}
-    >
-      {/* Brand */}
-      <div className="relative flex h-14 items-center border-b px-4">
-        <Clock className="h-5 w-5 shrink-0 text-primary" />
-        {!sidebarCollapsed && (
-          <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "h-6 w-6 shrink-0 text-muted-foreground",
-            sidebarCollapsed ? "ml-auto" : "absolute right-2"
-          )}
-          onClick={toggleSidebar}
-          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {sidebarCollapsed ? (
-            <ChevronRight className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronLeft className="h-3.5 w-3.5" />
-          )}
-        </Button>
-      </div>
-
+    <>
       {/* Running timer indicator */}
       {runningEntry && (
         <div className="mx-3 mt-3 rounded-md bg-primary/10 px-3 py-2 text-xs">
@@ -66,7 +43,7 @@ export function Sidebar() {
               {formatSeconds(elapsed)}
             </span>
           </div>
-          {!sidebarCollapsed && (
+          {!collapsed && (
             <p className="mt-0.5 truncate text-muted-foreground">
               {runningEntry.description || "No description"}
             </p>
@@ -81,19 +58,21 @@ export function Sidebar() {
             key={to}
             to={to}
             end={to === "/"}
+            aria-label={label}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                sidebarCollapsed ? "justify-center gap-0" : "gap-3",
+                "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                collapsed ? "justify-center gap-0" : "gap-3",
                 isActive
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )
             }
-            title={sidebarCollapsed ? label : undefined}
+            title={collapsed ? label : undefined}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            {!sidebarCollapsed && label}
+            {!collapsed && label}
           </NavLink>
         ))}
       </nav>
@@ -104,10 +83,10 @@ export function Sidebar() {
           <div
             className={cn(
               "mb-2 flex items-center rounded-md px-1 py-1",
-              sidebarCollapsed ? "justify-center" : "justify-between gap-2"
+              collapsed ? "justify-center" : "justify-between gap-2"
             )}
           >
-            {!sidebarCollapsed && (
+            {!collapsed && (
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium">{user.name}</p>
                 <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
@@ -124,13 +103,79 @@ export function Sidebar() {
             </Button>
           </div>
         )}
-        {!sidebarCollapsed && (
+        {!collapsed && (
           <div className="text-[10px] text-muted-foreground">
             <p>Alt+Shift+S — Start/Stop</p>
             <p>Alt+Shift+X — Discard</p>
           </div>
         )}
       </div>
-    </aside>
+    </>
+  );
+}
+
+export function Sidebar() {
+  const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <>
+      {/* Mobile top bar — replaces the sidebar below md */}
+      <div className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 shrink-0 text-primary" />
+          <span className="font-semibold tracking-tight">Time Tracker</span>
+        </div>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 gap-0 p-0">
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <div className="flex h-14 items-center border-b px-4">
+              <Clock className="h-5 w-5 shrink-0 text-primary" />
+              <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
+            </div>
+            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          "hidden h-full flex-col border-r bg-card transition-all duration-200 md:flex",
+          sidebarCollapsed ? "w-14" : "w-56"
+        )}
+      >
+        {/* Brand */}
+        <div className="relative flex h-14 items-center border-b px-4">
+          <Clock className="h-5 w-5 shrink-0 text-primary" />
+          {!sidebarCollapsed && (
+            <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-6 w-6 shrink-0 text-muted-foreground",
+              sidebarCollapsed ? "ml-auto" : "absolute right-2"
+            )}
+            onClick={toggleSidebar}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
+
+        <SidebarContent collapsed={sidebarCollapsed} />
+      </aside>
+    </>
   );
 }

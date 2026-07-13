@@ -43,6 +43,9 @@ export const ProjectSchema = z.object({
   startDate: z.string().nullable(),
   endDate: z.string().nullable(),
   estimatedHours: z.number().nullable(),
+  integrationId: z.string().nullable(),
+  externalProjectId: z.string().nullable(),
+  externalTaskId: z.string().nullable(),
   trackedSeconds: z.number().default(0),
   createdAt: z.string(),
 });
@@ -56,6 +59,9 @@ export const CreateProjectSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   estimatedHours: z.number().nullable().optional(),
+  integrationId: z.string().nullable().optional(),
+  externalProjectId: z.string().max(255).nullable().optional(),
+  externalTaskId: z.string().max(255).nullable().optional(),
 });
 
 export const UpdateProjectSchema = CreateProjectSchema.partial().extend({
@@ -113,6 +119,10 @@ export const TimeEntrySchema = z.object({
   duration: z.number().nullable(),
   billable: z.boolean(),
   tags: z.array(z.string()),
+  syncStatus: z.enum(["synced", "error"]).nullable(),
+  externalId: z.string().nullable(),
+  syncedAt: z.string().nullable(),
+  syncError: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -160,6 +170,69 @@ export const ReportQuerySchema = z.object({
   groupBy: z.enum(["day", "week", "month"]).default("day"),
   projectId: z.string().optional(),
   clientId: z.string().optional(),
+});
+
+// ─── Integrations ──────────────────────────────────────────────────────────────
+
+export const IntegrationTypeSchema = z.enum(["workfront", "dynamics"]);
+
+// Per-type credential shapes (only ever sent to the server, never returned).
+export const WorkfrontCredentialsSchema = z.object({
+  apiKey: z.string().min(1),
+});
+export const DynamicsCredentialsSchema = z.object({
+  tenantId: z.string().min(1),
+  clientId: z.string().min(1),
+  clientSecret: z.string().min(1),
+});
+export const IntegrationCredentialsSchema = z.union([
+  WorkfrontCredentialsSchema,
+  DynamicsCredentialsSchema,
+]);
+
+// API response shape — no secrets, only whether credentials are set.
+export const IntegrationSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  type: IntegrationTypeSchema,
+  name: z.string(),
+  baseUrl: z.string(),
+  hasCredentials: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const CreateIntegrationSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("workfront"),
+    name: z.string().min(1).max(255),
+    baseUrl: z.string().min(1).max(500),
+    credentials: WorkfrontCredentialsSchema,
+  }),
+  z.object({
+    type: z.literal("dynamics"),
+    name: z.string().min(1).max(255),
+    baseUrl: z.string().min(1).max(500),
+    credentials: DynamicsCredentialsSchema,
+  }),
+]);
+
+// Type is immutable on update so the stored credential shape stays aligned.
+export const UpdateIntegrationSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  baseUrl: z.string().min(1).max(500).optional(),
+  credentials: IntegrationCredentialsSchema.optional(),
+});
+
+export const PushTimeEntriesSchema = z.object({
+  entryIds: z.array(z.string()).min(1).max(200),
+  comment: z.string().max(2000).optional(),
+});
+
+export const PushResultSchema = z.object({
+  id: z.string(),
+  ok: z.boolean(),
+  externalId: z.string().optional(),
+  error: z.string().optional(),
 });
 
 // ─── AI ──────────────────────────────────────────────────────────────────────
@@ -230,6 +303,15 @@ export type CreateProject = z.infer<typeof CreateProjectSchema>;
 export type CreateClient = z.infer<typeof CreateClientSchema>;
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
+export type IntegrationType = z.infer<typeof IntegrationTypeSchema>;
+export type Integration = z.infer<typeof IntegrationSchema>;
+export type CreateIntegration = z.infer<typeof CreateIntegrationSchema>;
+export type UpdateIntegration = z.infer<typeof UpdateIntegrationSchema>;
+export type WorkfrontCredentials = z.infer<typeof WorkfrontCredentialsSchema>;
+export type DynamicsCredentials = z.infer<typeof DynamicsCredentialsSchema>;
+export type IntegrationCredentials = z.infer<typeof IntegrationCredentialsSchema>;
+export type PushTimeEntries = z.infer<typeof PushTimeEntriesSchema>;
+export type PushResult = z.infer<typeof PushResultSchema>;
 export type AiQuickEntryRequest = z.infer<typeof AiQuickEntryRequestSchema>;
 export type AiQuickEntryRaw = z.infer<typeof AiQuickEntryRawSchema>;
 export type AiQuickEntryResult = z.infer<typeof AiQuickEntryResultSchema>;

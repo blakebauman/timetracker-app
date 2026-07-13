@@ -8,6 +8,8 @@ import { WeeklyBarChart } from "@/components/reports/WeeklyBarChart";
 import { DetailedTable, type DetailedEntry } from "@/components/reports/DetailedTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { BarChart2 } from "lucide-react";
 import { useReportSummary, useReportDetailed, useReportWeekly } from "@/hooks/useReports";
 import { getDateRangePresets } from "@/lib/dateUtils";
 import { exportToCSV } from "@/lib/exportUtils";
@@ -101,9 +103,11 @@ export function ReportsPage() {
           </Tabs>
         </>
       ) : (
-        <div className="py-16 text-center text-sm text-muted-foreground">
-          No data for this period
-        </div>
+        <EmptyState
+          icon={BarChart2}
+          title="No data for this period"
+          description="Try a different date range, or start tracking time"
+        />
       )}
     </div>
   );

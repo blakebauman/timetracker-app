@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateProject, useUpdateProject, useClients } from "@/hooks/useProjects";
-import { PROJECT_COLORS } from "@/lib/colorUtils";
+import { useIntegrations } from "@/hooks/useIntegrations";
+import { PROJECT_COLORS, PROJECT_COLOR_NAMES } from "@/lib/colorUtils";
 import { cn } from "@/lib/utils";
 import type { Project } from "@shared/schemas";
 
@@ -39,11 +40,30 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
   const [estimatedHours, setEstimatedHours] = useState<string>(
     project?.estimatedHours?.toString() ?? ""
   );
+  const [integrationId, setIntegrationId] = useState<string>(
+    project?.integrationId ?? "none"
+  );
+  const [externalProjectId, setExternalProjectId] = useState(
+    project?.externalProjectId ?? ""
+  );
+  const [externalTaskId, setExternalTaskId] = useState(
+    project?.externalTaskId ?? ""
+  );
   const { data: clients = [] } = useClients();
+  const { data: integrations = [] } = useIntegrations();
+  const selectedIntegration = integrations.find((i) => i.id === integrationId);
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
 
   const isPending = createProject.isPending || updateProject.isPending;
+
+  // Dynamics always requires a project ID; Workfront requires a project or task ID.
+  const integrationMissingRequiredId =
+    selectedIntegration?.type === "dynamics"
+      ? !externalProjectId.trim()
+      : selectedIntegration?.type === "workfront"
+        ? !externalProjectId.trim() && !externalTaskId.trim()
+        : false;
 
   const handleSave = () => {
     const data = {
@@ -55,6 +75,9 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
       startDate: startDate || null,
       endDate: endDate || null,
       estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
+      integrationId: integrationId === "none" ? null : integrationId,
+      externalProjectId: integrationId === "none" ? null : externalProjectId || null,
+      externalTaskId: integrationId === "none" ? null : externalTaskId || null,
     };
 
     if (project) {
@@ -90,8 +113,12 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
               {PROJECT_COLORS.map((c) => (
                 <button
                   key={c}
+                  type="button"
+                  aria-label={`Select color ${PROJECT_COLOR_NAMES[c] ?? c}`}
+                  aria-pressed={color === c}
+                  title={PROJECT_COLOR_NAMES[c] ?? c}
                   className={cn(
-                    "h-6 w-6 rounded-full ring-2 ring-offset-2 transition-all",
+                    "h-6 w-6 rounded-full ring-2 ring-offset-2 transition-all focus-visible:outline-none focus-visible:ring-ring focus-visible:ring-offset-2",
                     color === c ? "scale-110 ring-foreground" : "ring-transparent hover:scale-105"
                   )}
                   style={{ backgroundColor: c }}
@@ -174,11 +201,80 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
               />
             </div>
           </div>
+
+          {/* Integration */}
+          {integrations.length > 0 && (
+            <div className="space-y-3 border-t pt-4">
+              <div className="space-y-1.5">
+                <Label>Integration</Label>
+                <Select value={integrationId} onValueChange={setIntegrationId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="No integration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No integration</SelectItem>
+                    {integrations.map((i) => (
+                      <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Push this project's time entries to an external system.
+                </p>
+              </div>
+
+              {selectedIntegration && (
+                <div className="space-y-2">
+                  <div className="flex gap-3">
+                    <div className="flex-1 space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        {selectedIntegration.type === "workfront" ? "Workfront project ID" : "Dynamics project ID"}
+                      </Label>
+                      <Input
+                        value={externalProjectId}
+                        onChange={(e) => setExternalProjectId(e.target.value)}
+                        placeholder={selectedIntegration.type === "workfront" ? "optional if task set" : "GUID (required)"}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        {selectedIntegration.type === "workfront" ? "Workfront task ID" : "Dynamics task ID"}
+                      </Label>
+                      <Input
+                        value={externalTaskId}
+                        onChange={(e) => setExternalTaskId(e.target.value)}
+                        placeholder="optional"
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                  <p
+                    className={cn(
+                      "text-xs",
+                      integrationMissingRequiredId ? "text-destructive" : "text-muted-foreground"
+                    )}
+                  >
+                    {integrationMissingRequiredId
+                      ? selectedIntegration.type === "workfront"
+                        ? "Set a project ID or a task ID before saving."
+                        : "A project ID is required for Dynamics."
+                      : selectedIntegration.type === "workfront"
+                        ? "Time logs against the task ID when set, otherwise the project ID."
+                        : "Project ID is required (a Dataverse GUID). Task ID is optional."}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!name.trim() || isPending}>
+          <Button
+            onClick={handleSave}
+            disabled={!name.trim() || isPending || integrationMissingRequiredId}
+          >
             {project ? "Save changes" : "Create project"}
           </Button>
         </DialogFooter>

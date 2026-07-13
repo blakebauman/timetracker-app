@@ -12,6 +12,7 @@ import { exportToCSV } from "@/lib/exportUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/stores/uiStore";
+import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 
 // ── Preferences helpers ──────────────────────────────────────────────────────
 
@@ -237,6 +238,9 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Integrations */}
+      <IntegrationsCard />
 
       {/* Account */}
       <Card>

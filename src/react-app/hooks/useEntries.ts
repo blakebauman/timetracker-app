@@ -121,7 +121,6 @@ export function useDeleteEntry() {
       toast.error("Failed to delete entry");
     },
     onSuccess: () => {
-      toast.success("Entry deleted");
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
     },
   });
@@ -145,8 +144,7 @@ export function useBulkDeleteEntries() {
       ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
       toast.error("Failed to delete entries");
     },
-    onSuccess: (_data, ids) => {
-      toast.success(`${ids.length} ${ids.length === 1 ? "entry" : "entries"} deleted`);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
     },
   });

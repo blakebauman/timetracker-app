@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useHotkeys } from "react-hotkeys-hook";
+import { toast } from "sonner";
 import { useTimerStore } from "@/stores/timerStore";
 import { api } from "@/lib/api";
 import { formatSeconds } from "@/lib/dateUtils";
@@ -75,6 +76,10 @@ export function useTimer() {
               duration: null,
               billable: false,
               tags: [],
+              syncStatus: null,
+              externalId: null,
+              syncedAt: null,
+              syncError: null,
               createdAt: new Date(saved.startedAt).toISOString(),
               updatedAt: new Date(saved.startedAt).toISOString(),
             },
@@ -121,6 +126,10 @@ export function useTimer() {
         duration: null,
         billable: partial.billable ?? false,
         tags: [],
+        syncStatus: null,
+        externalId: null,
+        syncedAt: null,
+        syncError: null,
         createdAt: new Date(now).toISOString(),
         updatedAt: new Date(now).toISOString(),
       };
@@ -136,7 +145,10 @@ export function useTimer() {
         projectColor: entry.projectColor,
       });
     },
-    onError: () => clearTimer(),
+    onError: () => {
+      clearTimer();
+      toast.error("Failed to start timer");
+    },
   });
 
   // ─── Stop timer ──────────────────────────────────────────────────────────
@@ -148,8 +160,10 @@ export function useTimer() {
       clearTimerState();
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
     },
-    onError: () =>
-      queryClient.invalidateQueries({ queryKey: ["timer-current"] }),
+    onError: () => {
+      toast.error("Failed to stop timer — please try again");
+      queryClient.invalidateQueries({ queryKey: ["timer-current"] });
+    },
   });
 
   // ─── Discard timer ───────────────────────────────────────────────────────
@@ -157,6 +171,7 @@ export function useTimer() {
     mutationFn: (id: string) => api.timeEntries.delete(id),
     onMutate: () => clearTimer(),
     onSuccess: () => clearTimerState(),
+    onError: () => toast.error("Failed to discard timer"),
   });
 
   const startTimer = useCallback(

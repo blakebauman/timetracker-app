@@ -79,8 +79,8 @@ export function DetailedTable({ entries }: DetailedTableProps) {
   return (
     <div className="space-y-3">
       {/* Filters */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-auto">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search entries…"
@@ -90,7 +90,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
           />
         </div>
         <Select value={projectFilter} onValueChange={setProjectFilter}>
-          <SelectTrigger className="w-44 text-sm">
+          <SelectTrigger className="w-full text-sm sm:w-44">
             <SelectValue placeholder="All projects" />
           </SelectTrigger>
           <SelectContent>

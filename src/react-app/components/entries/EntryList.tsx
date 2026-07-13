@@ -1,21 +1,33 @@
 import { useState, useCallback } from "react";
-import { Trash2, X, DollarSign, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { Trash2, X, DollarSign, Upload, Sparkles } from "lucide-react";
 import { EntryGroup } from "./EntryGroup";
 import { AiQuickAddDialog } from "./AiQuickAddDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { useGroupedEntries, useBulkDeleteEntries, useBulkUpdateEntries } from "@/hooks/useEntries";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  useGroupedEntries,
+  useBulkDeleteEntries,
+  useBulkUpdateEntries,
+  useCreateEntry,
+} from "@/hooks/useEntries";
+import { useIntegrations, usePushEntries } from "@/hooks/useIntegrations";
 import { useTimerStore } from "@/stores/timerStore";
+import { toCreatePayload } from "@/lib/entryUtils";
 import { Clock } from "lucide-react";
 
 export function EntryList() {
-  const { days, isLoading, error } = useGroupedEntries(30);
+  const { days, entries, isLoading, error } = useGroupedEntries(30);
   const { runningEntry } = useTimerStore();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [aiQuickAddOpen, setAiQuickAddOpen] = useState(false);
   const bulkDelete = useBulkDeleteEntries();
   const bulkUpdate = useBulkUpdateEntries();
+  const pushEntries = usePushEntries();
+  const createEntry = useCreateEntry();
+  const { data: integrations = [] } = useIntegrations();
 
   const onToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -29,12 +41,26 @@ export function EntryList() {
 
   const handleBulkDelete = () => {
     const ids = [...selectedIds];
+    const payloads = entries
+      .filter((e) => selectedIds.has(e.id))
+      .map(toCreatePayload);
     bulkDelete.mutate(ids, { onSuccess: clearSelection });
+    toast.success(`${ids.length} ${ids.length === 1 ? "entry" : "entries"} deleted`, {
+      action: {
+        label: "Undo",
+        onClick: () => payloads.forEach((p) => createEntry.mutate(p)),
+      },
+    });
   };
 
   const handleBulkBillable = (billable: boolean) => {
     const ids = [...selectedIds];
     bulkUpdate.mutate({ ids, patch: { billable } }, { onSuccess: clearSelection });
+  };
+
+  const handleBulkPush = () => {
+    const ids = [...selectedIds];
+    pushEntries.mutate({ entryIds: ids }, { onSuccess: clearSelection });
   };
 
   const selectionCount = selectedIds.size;
@@ -63,13 +89,12 @@ export function EntryList() {
     );
   } else if (days.length === 0 && !runningEntry) {
     content = (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <Clock className="mb-4 h-12 w-12 text-muted-foreground/30" />
-        <h3 className="font-semibold">No time entries yet</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Start the timer or add an entry manually
-        </p>
-      </div>
+      <EmptyState
+        icon={Clock}
+        title="No time entries yet"
+        description="Start the timer or add an entry manually"
+        className="py-24"
+      />
     );
   } else {
     content = (
@@ -101,6 +126,18 @@ export function EntryList() {
                 <DollarSign className="h-3 w-3 line-through opacity-50" />
                 Non-billable
               </Button>
+              {integrations.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={handleBulkPush}
+                  disabled={pushEntries.isPending}
+                >
+                  <Upload className="h-3 w-3" />
+                  Push to integration
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

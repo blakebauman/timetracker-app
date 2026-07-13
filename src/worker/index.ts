@@ -9,6 +9,7 @@ import { clientsRouter } from "./routes/clients";
 import { tagsRouter } from "./routes/tags";
 import { tasksRouter } from "./routes/tasks";
 import { reportsRouter } from "./routes/reports";
+import { integrationsRouter } from "./routes/integrations";
 import { aiRouter } from "./routes/ai";
 import { websocketRouter } from "./routes/websocket";
 import { authRouter, handleSignIn } from "./routes/auth";
@@ -39,6 +40,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/tags", tagsRouter)
   .route("/api/tasks", tasksRouter)
   .route("/api/reports", reportsRouter)
+  .route("/api/integrations", integrationsRouter)
   .route("/api/ai", aiRouter)
   .route("/api/ws", websocketRouter);
 

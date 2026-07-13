@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Play, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TimerDisplay } from "./TimerDisplay";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
@@ -19,6 +20,7 @@ export function TimerBar() {
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const descRef = useRef<HTMLInputElement>(null);
 
   const isRunning = Boolean(runningEntry);
@@ -57,7 +59,7 @@ export function TimerBar() {
   };
 
   return (
-    <header className="flex h-14 items-center gap-3 border-b bg-card px-4 shadow-sm">
+    <header className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm md:h-14 md:flex-nowrap md:gap-3 md:py-0">
       {/* Description input */}
       <Input
         ref={descRef}
@@ -66,7 +68,7 @@ export function TimerBar() {
         onKeyDown={handleKeyDown}
         placeholder="What are you working on?"
         className={cn(
-          "flex-1 border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60",
+          "basis-full border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 md:flex-1 md:basis-auto",
           isRunning && "font-medium"
         )}
       />
@@ -108,8 +110,9 @@ export function TimerBar() {
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          onClick={discardTimer}
+          onClick={() => setConfirmDiscard(true)}
           title="Discard timer (Alt+Shift+X)"
+          aria-label="Discard timer"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -132,6 +135,15 @@ export function TimerBar() {
       </Button>
 
       <ThemeToggle />
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        title="Discard running timer?"
+        description="The time tracked so far will be permanently deleted. This cannot be undone."
+        confirmLabel="Discard"
+        onConfirm={discardTimer}
+      />
     </header>
   );
 }

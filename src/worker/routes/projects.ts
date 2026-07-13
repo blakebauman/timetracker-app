@@ -24,6 +24,9 @@ function formatProject(row: Record<string, unknown>) {
     startDate: (row.start_date as string | null) ?? null,
     endDate: (row.end_date as string | null) ?? null,
     estimatedHours: (row.estimated_hours as number | null) ?? null,
+    integrationId: (row.integration_id as string | null) ?? null,
+    externalProjectId: (row.external_project_id as string | null) ?? null,
+    externalTaskId: (row.external_task_id as string | null) ?? null,
     trackedSeconds: (row.tracked_seconds as number) ?? 0,
     createdAt: row.created_at as string,
   };
@@ -53,8 +56,8 @@ export const projectsRouter = new Hono<{
 
     await c.env.DB.prepare(
       `INSERT INTO projects
-         (id, workspace_id, client_id, name, color, billable, rate, active, start_date, end_date, estimated_hours, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`
+         (id, workspace_id, client_id, name, color, billable, rate, active, start_date, end_date, estimated_hours, integration_id, external_project_id, external_task_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       id, workspaceId,
       data.clientId ?? null,
@@ -64,6 +67,9 @@ export const projectsRouter = new Hono<{
       data.startDate ?? null,
       data.endDate ?? null,
       data.estimatedHours ?? null,
+      data.integrationId ?? null,
+      data.externalProjectId ?? null,
+      data.externalTaskId ?? null,
       now
     ).run();
 
@@ -98,6 +104,9 @@ export const projectsRouter = new Hono<{
     if (data.startDate !== undefined)      { fields.push("start_date = ?");     values.push(data.startDate ?? null); }
     if (data.endDate !== undefined)        { fields.push("end_date = ?");       values.push(data.endDate ?? null); }
     if (data.estimatedHours !== undefined) { fields.push("estimated_hours = ?"); values.push(data.estimatedHours ?? null); }
+    if (data.integrationId !== undefined)     { fields.push("integration_id = ?");      values.push(data.integrationId ?? null); }
+    if (data.externalProjectId !== undefined) { fields.push("external_project_id = ?");  values.push(data.externalProjectId ?? null); }
+    if (data.externalTaskId !== undefined)    { fields.push("external_task_id = ?");     values.push(data.externalTaskId ?? null); }
 
     if (fields.length) {
       await c.env.DB.prepare(

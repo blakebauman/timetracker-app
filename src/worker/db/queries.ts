@@ -51,6 +51,10 @@ export function formatEntry(row: Record<string, unknown>) {
     tags: row.tag_names
       ? String(row.tag_names).split(",").filter(Boolean)
       : [],
+    syncStatus: (row.sync_status as "synced" | "error" | null) ?? null,
+    externalId: (row.external_id as string | null) ?? null,
+    syncedAt: (row.synced_at as string | null) ?? null,
+    syncError: (row.sync_error as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

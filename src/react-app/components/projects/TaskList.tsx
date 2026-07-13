@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
 import { formatSeconds, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import type { Task } from "@shared/schemas";
@@ -23,6 +24,7 @@ export function TaskList({ projectId }: TaskListProps) {
   const [editName, setEditName] = useState("");
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editEstimated, setEditEstimated] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
 
   const handleCreate = () => {
     const name = newName.trim();
@@ -161,7 +163,7 @@ export function TaskList({ projectId }: TaskListProps) {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
               <Button
                 variant="ghost"
                 size="icon"
@@ -174,7 +176,7 @@ export function TaskList({ projectId }: TaskListProps) {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 hover:text-destructive"
-                onClick={() => deleteTask.mutate(task.id)}
+                onClick={() => setDeleteTarget(task)}
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -202,6 +204,17 @@ export function TaskList({ projectId }: TaskListProps) {
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete task?"
+        description={`"${deleteTarget?.name}" will be permanently deleted. This cannot be undone.`}
+        onConfirm={() => {
+          if (deleteTarget) deleteTask.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

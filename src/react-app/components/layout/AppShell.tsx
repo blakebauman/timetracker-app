@@ -15,7 +15,7 @@ export function AppShell() {
   // the tick loop, IDB restore, and keyboard shortcuts globally.
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen flex-col overflow-hidden bg-background md:flex-row">
       <Sidebar />
 
       <div className="flex flex-1 flex-col overflow-hidden">

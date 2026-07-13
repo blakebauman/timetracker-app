@@ -9,6 +9,7 @@ import { ReportsPage } from "@/pages/ReportsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
+import { NotFoundPage } from "@/pages/NotFoundPage";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: "clients", element: <ClientsPage /> },
       { path: "reports", element: <ReportsPage /> },
       { path: "settings", element: <SettingsPage /> },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);
