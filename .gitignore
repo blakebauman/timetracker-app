@@ -197,3 +197,8 @@ dist
 !.env.example
 .dev.vars*
 !.dev.vars.example
+
+### Playwright ###
+/test-results/
+/playwright-report/
+/playwright/.cache/

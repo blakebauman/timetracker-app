@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Trash2, X, DollarSign, Upload, Sparkles } from "lucide-react";
+import { Trash2, X, DollarSign, Upload, Sparkles, Plus } from "lucide-react";
 import { EntryGroup } from "./EntryGroup";
 import { AiQuickAddDialog } from "./AiQuickAddDialog";
+import { AddEntryDialog } from "./AddEntryDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export function EntryList() {
   const { runningEntry } = useTimerStore();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [aiQuickAddOpen, setAiQuickAddOpen] = useState(false);
+  const [addEntryOpen, setAddEntryOpen] = useState(false);
   const bulkDelete = useBulkDeleteEntries();
   const bulkUpdate = useBulkUpdateEntries();
   const pushEntries = usePushEntries();
@@ -180,7 +182,16 @@ export function EntryList() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-end border-b px-4 py-2">
+      <div className="flex items-center justify-end gap-2 border-b px-4 py-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={() => setAddEntryOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add entry
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -193,6 +204,7 @@ export function EntryList() {
       </div>
       {content}
       <AiQuickAddDialog open={aiQuickAddOpen} onClose={() => setAiQuickAddOpen(false)} />
+      <AddEntryDialog open={addEntryOpen} onClose={() => setAddEntryOpen(false)} />
     </div>
   );
 }

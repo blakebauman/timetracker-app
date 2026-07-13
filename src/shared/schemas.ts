@@ -127,25 +127,35 @@ export const TimeEntrySchema = z.object({
   updatedAt: z.string(),
 });
 
-export const CreateTimeEntrySchema = z.object({
-  description: z.string().max(2000).default(""),
-  projectId: z.string().nullable().optional(),
-  taskId: z.string().nullable().optional(),
-  start: z.string(),
-  stop: z.string().nullable().optional(),
-  billable: z.boolean().default(false),
-  tags: z.array(z.string().max(100)).max(50).default([]),
-});
+export const CreateTimeEntrySchema = z
+  .object({
+    description: z.string().max(2000).default(""),
+    projectId: z.string().nullable().optional(),
+    taskId: z.string().nullable().optional(),
+    start: z.string(),
+    stop: z.string().nullable().optional(),
+    billable: z.boolean().default(false),
+    tags: z.array(z.string().max(100)).max(50).default([]),
+  })
+  .refine((data) => !data.stop || new Date(data.stop) > new Date(data.start), {
+    message: "Stop time must be after start time",
+    path: ["stop"],
+  });
 
-export const UpdateTimeEntrySchema = z.object({
-  description: z.string().max(2000).optional(),
-  projectId: z.string().nullable().optional(),
-  taskId: z.string().nullable().optional(),
-  start: z.string().optional(),
-  stop: z.string().nullable().optional(),
-  billable: z.boolean().optional(),
-  tags: z.array(z.string()).optional(),
-});
+export const UpdateTimeEntrySchema = z
+  .object({
+    description: z.string().max(2000).optional(),
+    projectId: z.string().nullable().optional(),
+    taskId: z.string().nullable().optional(),
+    start: z.string().optional(),
+    stop: z.string().nullable().optional(),
+    billable: z.boolean().optional(),
+    tags: z.array(z.string()).optional(),
+  })
+  .refine(
+    (data) => !data.start || !data.stop || new Date(data.stop) > new Date(data.start),
+    { message: "Stop time must be after start time", path: ["stop"] }
+  );
 
 export const BulkUpdateTimeEntriesSchema = z.object({
   ids: z.array(z.string()).min(1),

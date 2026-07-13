@@ -13,9 +13,10 @@ pnpm check            # Full validation: typecheck + build + wrangler dry-run de
 pnpm deploy           # Deploy to Cloudflare Workers
 pnpm cf-typegen       # Regenerate TS types from wrangler.jsonc bindings (run after binding changes)
 npx wrangler tail     # Stream live worker logs
+pnpm test:e2e         # Run Playwright e2e tests (spins up `pnpm dev` against localhost:5173)
 ```
 
-No test framework is configured.
+No unit test framework is configured. Playwright e2e tests live in `e2e/` and drive the app through a real browser against the Vite dev server.
 
 ## Architecture
 
