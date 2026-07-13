@@ -36,7 +36,9 @@ async function initSession() {
   fetchStarted = true;
   try {
     const res = await fetch("/api/auth/get-session", { credentials: "include" });
-    const json = res.ok ? await res.json<{ user?: AuthUser; session?: { id: string; expiresAt: string } }>() : null;
+    const json = res.ok
+      ? ((await res.json()) as { user?: AuthUser; session?: { id: string; expiresAt: string } })
+      : null;
     updateSession(json?.user ? (json as AuthSessionData) : null);
   } catch {
     updateSession(null);
@@ -82,7 +84,11 @@ export const authClient = {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const json = await res.json<{ user?: AuthUser; session?: { id: string; expiresAt: string }; message?: string }>();
+      const json = (await res.json()) as {
+        user?: AuthUser;
+        session?: { id: string; expiresAt: string };
+        message?: string;
+      };
       if (!res.ok) {
         return { data: null, error: { message: json.message ?? "Invalid email or password" } };
       }
@@ -108,7 +114,11 @@ export const authClient = {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
-      const json = await res.json<{ user?: AuthUser; session?: { id: string; expiresAt: string }; message?: string }>();
+      const json = (await res.json()) as {
+        user?: AuthUser;
+        session?: { id: string; expiresAt: string };
+        message?: string;
+      };
       if (!res.ok) {
         return { data: null, error: { message: json.message ?? "Failed to create account" } };
       }
@@ -130,7 +140,7 @@ export const authClient = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name }),
     });
-    const json = await res.json<{ success?: boolean; message?: string }>();
+    const json = (await res.json()) as { success?: boolean; message?: string };
     if (!res.ok) {
       return { data: null, error: { message: json.message ?? "Failed to update name" } };
     }
@@ -155,7 +165,7 @@ export const authClient = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),
     });
-    const json = await res.json<{ success?: boolean; message?: string }>();
+    const json = (await res.json()) as { success?: boolean; message?: string };
     if (!res.ok) {
       return { data: null, error: { message: json.message ?? "Failed to change password" } };
     }

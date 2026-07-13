@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 
 export const COOKIE_NAME = "tt_session";
@@ -74,19 +74,6 @@ function newId(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
-function setSessionCookie(c: { req: { url: string } }, res: Response, token: string, expires: Date) {
-  const secure = new URL(c.req.url).protocol === "https:";
-  const cookieParts = [
-    `${COOKIE_NAME}=${token}`,
-    `Path=/`,
-    `HttpOnly`,
-    `SameSite=Lax`,
-    `Expires=${expires.toUTCString()}`,
-    ...(secure ? ["Secure"] : []),
-  ];
-  res.headers.append("Set-Cookie", cookieParts.join("; "));
-}
-
 // ── Router ────────────────────────────────────────────────────────────────────
 
 type App = { Bindings: Env };
@@ -116,7 +103,7 @@ authRouter.get("/get-session", async (c) => {
 });
 
 // POST /sign-in/email  (also used by the extension via /api/ext/sign-in)
-export async function handleSignIn(c: Parameters<Parameters<typeof authRouter.post>[1]>[0]) {
+export async function handleSignIn(c: Context<App>) {
   const body = await c.req.json<{ email?: string; password?: string }>();
   const email = body.email?.toLowerCase().trim();
   const password = body.password;

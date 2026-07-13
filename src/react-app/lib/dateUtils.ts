@@ -15,6 +15,7 @@ import {
   subMonths,
   parseISO,
   differenceInSeconds,
+  type Duration,
 } from "date-fns";
 
 export function formatSeconds(seconds: number): string {
@@ -33,9 +34,9 @@ export function formatDurationShort(seconds: number): string {
 
 export function formatDurationHuman(seconds: number): string {
   const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
-  const units = duration.days
-    ? (["days", "hours", "minutes"] as const)
-    : (["hours", "minutes"] as const);
+  const units: (keyof Duration)[] = duration.days
+    ? ["days", "hours", "minutes"]
+    : ["hours", "minutes"];
   return (
     formatDuration(duration, {
       format: units,

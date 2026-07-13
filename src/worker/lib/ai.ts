@@ -2,8 +2,8 @@ import { z } from "zod";
 import { AiQuickEntryRawSchema, type AiQuickEntryRaw } from "@shared/schemas";
 
 // Small, fast, JSON-mode-capable — good fit for a single-user, low-latency call.
-const QUICK_ENTRY_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
-const SUMMARY_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const QUICK_ENTRY_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const SUMMARY_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 const GATEWAY = { id: "default" };
 
 export class AiParseError extends Error {}
