@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ReportHeader } from "@/components/reports/ReportHeader";
+import { AiSummaryDialog } from "@/components/reports/AiSummaryDialog";
 import { SummaryCards } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
 import { ProjectBreakdown } from "@/components/reports/ProjectBreakdown";
@@ -33,7 +34,12 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <ReportHeader range={range} onRangeChange={setRange} onExport={handleExport} />
+      <div className="flex items-start gap-2">
+        <div className="flex-1">
+          <ReportHeader range={range} onRangeChange={setRange} onExport={handleExport} />
+        </div>
+        <AiSummaryDialog since={range.since} until={range.until} />
+      </div>
 
       {isLoading ? (
         <div className="space-y-4">

@@ -118,6 +118,14 @@ export const api = {
     list: () => request<unknown[]>("/tags"),
   },
 
+  // ─── AI ───────────────────────────────────────────────────────────────────
+  ai: {
+    quickEntry: (body: Record<string, unknown>) =>
+      request<unknown>("/ai/quick-entry", { method: "POST", body: JSON.stringify(body) }),
+    summary: (body: Record<string, unknown>) =>
+      request<unknown>("/ai/summary", { method: "POST", body: JSON.stringify(body) }),
+  },
+
   // ─── Reports ──────────────────────────────────────────────────────────────
   reports: {
     summary: (params: { since: string; until: string; groupBy?: string }) => {

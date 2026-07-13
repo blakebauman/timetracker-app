@@ -9,12 +9,15 @@ import { clientsRouter } from "./routes/clients";
 import { tagsRouter } from "./routes/tags";
 import { tasksRouter } from "./routes/tasks";
 import { reportsRouter } from "./routes/reports";
+import { aiRouter } from "./routes/ai";
 import { websocketRouter } from "./routes/websocket";
 import { authRouter, handleSignIn } from "./routes/auth";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 
 // 10 attempts per minute on auth endpoints
 const authRateLimit = rateLimit(10, 60_000);
+// AI calls have real latency/cost — cap per-workspace request rate
+const aiRateLimit = rateLimit(20, 60_000);
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
@@ -29,12 +32,14 @@ const app = new Hono<{ Bindings: Env }>()
   // The extension can't set cookies so it reads the token from the response body.
   .post("/api/ext/sign-in", handleSignIn)
   .use("/api/*", workspaceMiddleware)
+  .use("/api/ai/*", aiRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)
   .route("/api/clients", clientsRouter)
   .route("/api/tags", tagsRouter)
   .route("/api/tasks", tasksRouter)
   .route("/api/reports", reportsRouter)
+  .route("/api/ai", aiRouter)
   .route("/api/ws", websocketRouter);
 
 export type AppType = typeof app;

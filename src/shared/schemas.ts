@@ -162,6 +162,60 @@ export const ReportQuerySchema = z.object({
   clientId: z.string().optional(),
 });
 
+// ─── AI ──────────────────────────────────────────────────────────────────────
+
+export const AiQuickEntryRequestSchema = z.object({
+  text: z.string().min(1).max(1000),
+  // Client's local "now" and timezone offset, so relative phrases like
+  // "yesterday afternoon" resolve against the user's clock, not the server's.
+  referenceDate: z.string(),
+  timezoneOffsetMinutes: z.number(),
+});
+
+// Shape the model must return.
+export const AiQuickEntryRawSchema = z.object({
+  projectName: z.string().nullable(),
+  taskName: z.string().nullable(),
+  description: z.string(),
+  start: z.string(),
+  stop: z.string().nullable(),
+  billable: z.boolean(),
+  tags: z.array(z.string()).max(10).default([]),
+  confidence: z.enum(["high", "medium", "low"]).default("medium"),
+});
+
+// What the API returns to the frontend: the raw guess plus grounding
+// resolution, so the preview can show real picker values instead of free text.
+export const AiQuickEntryResultSchema = z.object({
+  projectId: z.string().nullable(),
+  projectName: z.string().nullable(),
+  projectMatched: z.boolean(),
+  taskId: z.string().nullable(),
+  taskName: z.string().nullable(),
+  taskMatched: z.boolean(),
+  description: z.string(),
+  start: z.string(),
+  stop: z.string().nullable(),
+  billable: z.boolean(),
+  tags: z.array(z.string()),
+  confidence: z.enum(["high", "medium", "low"]),
+  warnings: z.array(z.string()).default([]),
+});
+
+export const AiSummaryRequestSchema = z.object({
+  since: z.string(),
+  until: z.string(),
+  projectId: z.string().optional(),
+  clientId: z.string().optional(),
+  style: z.enum(["narrative", "bullets"]).default("bullets"),
+});
+
+export const AiSummaryResultSchema = z.object({
+  summary: z.string(),
+  entryCount: z.number(),
+  totalSeconds: z.number(),
+});
+
 // ─── Inferred types ──────────────────────────────────────────────────────────
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;
@@ -176,3 +230,8 @@ export type CreateProject = z.infer<typeof CreateProjectSchema>;
 export type CreateClient = z.infer<typeof CreateClientSchema>;
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
+export type AiQuickEntryRequest = z.infer<typeof AiQuickEntryRequestSchema>;
+export type AiQuickEntryRaw = z.infer<typeof AiQuickEntryRawSchema>;
+export type AiQuickEntryResult = z.infer<typeof AiQuickEntryResultSchema>;
+export type AiSummaryRequest = z.infer<typeof AiSummaryRequestSchema>;
+export type AiSummaryResult = z.infer<typeof AiSummaryResultSchema>;

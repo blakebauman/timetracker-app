@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatDayHeader } from "@/lib/dateUtils";
-import type { TimeEntry, UpdateTimeEntry } from "@shared/schemas";
+import type { TimeEntry, CreateTimeEntry, UpdateTimeEntry } from "@shared/schemas";
 import { startOfDay, subDays, endOfDay } from "date-fns";
 
 export function useEntries(days = 30) {
@@ -75,6 +75,19 @@ export function useGroupedEntries(days = 30) {
     });
 
   return { days: days_list, entries, ...rest };
+}
+
+export function useCreateEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateTimeEntry) =>
+      api.timeEntries.create(data as unknown as Record<string, unknown>) as Promise<TimeEntry>,
+    onSuccess: () => {
+      toast.success("Entry added");
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+    },
+    onError: () => toast.error("Failed to add entry"),
+  });
 }
 
 export function useUpdateEntry() {
