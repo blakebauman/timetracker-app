@@ -22,6 +22,7 @@ import {
   Play,
   Square,
 } from "lucide-react";
+import { ColorDot } from "@/components/ColorDot";
 import type { TimeEntry } from "@shared/schemas";
 
 export function CommandPalette() {
@@ -156,12 +157,7 @@ export function CommandPalette() {
                   <span className="flex-1 truncate">{entry.description}</span>
                   {entry.projectName && (
                     <span className="ml-2 flex items-center gap-1 text-xs text-muted-foreground">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{
-                          backgroundColor: entry.projectColor ?? "#94a3b8",
-                        }}
-                      />
+                      <ColorDot color={entry.projectColor} className="h-2 w-2" />
                       {entry.projectName}
                     </span>
                   )}

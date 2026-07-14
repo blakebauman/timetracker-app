@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { formatSeconds, formatShortDate, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { useUIStore } from "@/stores/uiStore";
+import { ColorDot } from "@/components/ColorDot";
+import { ProjectBadge } from "@/components/ProjectBadge";
 import type { TimeEntry } from "@shared/schemas";
 
 interface EntryRowProps {
@@ -133,12 +135,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         )}
 
         {/* Project color dot */}
-        <span
-          className="h-3 w-3 shrink-0 rounded-full"
-          style={{
-            backgroundColor: entry.projectColor ?? "#94a3b8",
-          }}
-        />
+        <ColorDot color={entry.projectColor} className="h-3 w-3" />
 
         {/* Description */}
         <div className="min-w-0 flex-1">
@@ -148,12 +145,18 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               onBlur={handleDescBlur}
-              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-              className="w-full bg-transparent text-sm outline-none ring-0"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") {
+                  setDesc(entry.description);
+                  setEditingDesc(false);
+                }
+              }}
+              className="w-full border-b border-primary/40 bg-transparent text-sm outline-none ring-0"
             />
           ) : (
             <button
-              className="text-left text-sm hover:text-primary transition-colors"
+              className="rounded-sm text-left text-sm transition-colors hover:text-primary focus-visible:text-primary focus-visible:underline focus-visible:outline-none"
               onClick={() => setEditingDesc(true)}
             >
               {entry.description || (
@@ -167,15 +170,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           {/* Project + tags row */}
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
             {entry.projectName && (
-              <span
-                className="rounded-sm px-1.5 py-0.5 text-xs font-medium"
-                style={{
-                  backgroundColor: `${entry.projectColor}22`,
-                  color: entry.projectColor ?? undefined,
-                }}
-              >
-                {entry.projectName}
-              </span>
+              <ProjectBadge name={entry.projectName} color={entry.projectColor} />
             )}
             {entry.tags.map((tag) => (
               <Badge
@@ -246,7 +241,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         ) : (
           <button
             onClick={handleStartEditDuration}
-            className="min-w-16 text-right font-mono text-sm tabular-nums hover:text-primary transition-colors"
+            className="min-w-16 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary focus-visible:text-primary focus-visible:underline focus-visible:outline-none"
           >
             {entry.duration ? formatSeconds(entry.duration) : "–"}
           </button>

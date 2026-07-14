@@ -88,6 +88,7 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                   type="button"
                   onClick={() => removeTag(tag)}
                   aria-label={`Remove ${tag}`}
+                  className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <X className="h-2.5 w-2.5" />
                 </button>
