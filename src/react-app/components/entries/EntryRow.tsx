@@ -111,7 +111,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
 
   return (
     <>
-      <div className={`group flex items-center gap-3 border-b px-4 py-2.5 hover:bg-accent/40 transition-colors ${isSelected ? "bg-accent/60" : ""}`}>
+      <div className={`group flex animate-fade-up items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/40 ${isSelected ? "bg-accent/60" : ""}`}>
         {/* Checkbox (visible on hover or when any selection active) */}
         {onToggleSelect && (
           <button

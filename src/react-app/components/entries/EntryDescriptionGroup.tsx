@@ -66,7 +66,7 @@ export function EntryDescriptionGroup({
     <Collapsible open={open} onOpenChange={setOpen}>
       <div
         className={cn(
-          "group flex items-center gap-3 border-b px-4 py-2.5 hover:bg-accent/40 transition-colors",
+          "group flex animate-fade-up items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/40",
           someSelected && "bg-accent/60"
         )}
       >

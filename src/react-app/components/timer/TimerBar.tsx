@@ -100,7 +100,10 @@ export function TimerBar() {
 
       {/* Timer display (only when running) */}
       {isRunning && (
-        <TimerDisplay seconds={elapsed} className="min-w-20 text-right text-primary" />
+        <TimerDisplay
+          seconds={elapsed}
+          className="min-w-20 animate-in fade-in slide-in-from-right-2 text-right text-primary duration-300 ease-out"
+        />
       )}
 
       {/* Discard button (only when running) */}
@@ -108,7 +111,7 @@ export function TimerBar() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          className="h-8 w-8 animate-in fade-in text-muted-foreground duration-300 hover:text-destructive"
           onClick={() => setConfirmDiscard(true)}
           title="Discard timer (Alt+Shift+X)"
           aria-label="Discard timer"

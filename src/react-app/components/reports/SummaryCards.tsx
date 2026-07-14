@@ -70,8 +70,12 @@ export function SummaryCards({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {tiles.map(({ icon: Icon, label, value, accent, extra }) => (
-        <Card key={label}>
+      {tiles.map(({ icon: Icon, label, value, accent, extra }, i) => (
+        <Card
+          key={label}
+          className="animate-fade-up"
+          style={{ animationDelay: `${i * 60}ms` }}
+        >
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className={`rounded-md p-2 ${accent}`}>
