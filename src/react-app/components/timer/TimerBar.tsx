@@ -55,7 +55,9 @@ export function TimerBar() {
   const handleStart = () => startTimer({ description, projectId, taskId });
   const handleStop = () => stopTimer();
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") isRunning ? handleStop() : handleStart();
+    if (e.key !== "Enter") return;
+    if (isRunning) handleStop();
+    else handleStart();
   };
 
   return (
