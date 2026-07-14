@@ -119,7 +119,7 @@ export function ReportsPage() {
               <div className="grid gap-4 lg:grid-cols-2">
                 <DailyBarChart data={summary.daily} />
                 <BreakdownCard
-                  title={GROUP_DIMS.find((d) => d.value === groupDim)!.label}
+                  title="Breakdown"
                   rows={summary[
                     GROUP_DIMS.find((d) => d.value === groupDim)!.key
                   ] as ReportSummary["byProject"]}
