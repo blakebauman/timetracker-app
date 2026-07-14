@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { formatEntryTime, parseTimeOfDayInput, applyTimeOfDay } from "@/lib/dateUtils";
 import { useUIStore } from "@/stores/uiStore";
@@ -25,9 +25,14 @@ export function TimeOfDayInput({
   const display = (iso: string | null) => (iso ? formatEntryTime(iso, timeFormat) : "");
   const [text, setText] = useState(() => display(value));
 
-  useEffect(() => {
+  // Resync the editable text when the value or format preference changes from
+  // outside. Adjusting during render (rather than in an effect) avoids a frame
+  // of stale text and keeps the field a pure function of its inputs.
+  const [synced, setSynced] = useState({ value, timeFormat });
+  if (synced.value !== value || synced.timeFormat !== timeFormat) {
+    setSynced({ value, timeFormat });
     setText(display(value));
-  }, [value, timeFormat]);
+  }
 
   const commit = () => {
     const trimmed = text.trim();
