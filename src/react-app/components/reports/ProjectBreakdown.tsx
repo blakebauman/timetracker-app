@@ -1,6 +1,13 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { formatDurationShort } from "@/lib/dateUtils";
+import { ColorDot } from "@/components/ColorDot";
 
 interface ProjectData {
   projectId: string | null;
@@ -17,6 +24,10 @@ interface ProjectBreakdownProps {
 
 const EMPTY_DONUT = [{ name: "No data", value: 1 }];
 
+const chartConfig = {
+  totalSeconds: { label: "Time" },
+} satisfies ChartConfig;
+
 export function ProjectBreakdown({ data, totalSeconds }: ProjectBreakdownProps) {
   const sorted = [...data].sort((a, b) => b.totalSeconds - a.totalSeconds);
   const isEmpty = totalSeconds === 0;
@@ -28,8 +39,8 @@ export function ProjectBreakdown({ data, totalSeconds }: ProjectBreakdownProps) 
       </CardHeader>
       <CardContent className="flex flex-col gap-4 md:flex-row md:items-start">
         {/* Donut chart */}
-        <div className="flex-shrink-0">
-          <ResponsiveContainer width={160} height={160}>
+        <div className="shrink-0">
+          <ChartContainer config={chartConfig} className="aspect-square h-40 w-40">
             <PieChart>
               {isEmpty ? (
                 <Pie
@@ -51,6 +62,7 @@ export function ProjectBreakdown({ data, totalSeconds }: ProjectBreakdownProps) 
                   innerRadius={48}
                   outerRadius={70}
                   dataKey="totalSeconds"
+                  nameKey="projectName"
                   stroke="none"
                 >
                   {sorted.map((entry, i) => (
@@ -59,15 +71,25 @@ export function ProjectBreakdown({ data, totalSeconds }: ProjectBreakdownProps) 
                 </Pie>
               )}
               {!isEmpty && (
-                <Tooltip
-                  formatter={(value) => [
-                    formatDurationShort(Number(value ?? 0)),
-                    "Time",
-                  ]}
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      hideLabel
+                      formatter={(value, name, item) => (
+                        <>
+                          <ColorDot color={(item.payload as ProjectData).projectColor} />
+                          <span className="text-muted-foreground">{name}</span>
+                          <span className="ml-auto font-mono font-medium tabular-nums text-foreground">
+                            {formatDurationShort(Number(value))}
+                          </span>
+                        </>
+                      )}
+                    />
+                  }
                 />
               )}
             </PieChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         </div>
 
         {/* Project table */}
@@ -84,10 +106,7 @@ export function ProjectBreakdown({ data, totalSeconds }: ProjectBreakdownProps) 
                   : 0;
                 return (
                   <div key={p.projectId ?? "none"} className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: p.projectColor }}
-                    />
+                    <ColorDot color={p.projectColor} />
                     <span className="min-w-0 flex-1 shrink-0 truncate text-sm">
                       {p.projectName}
                     </span>

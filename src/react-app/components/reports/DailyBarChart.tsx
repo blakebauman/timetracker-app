@@ -4,11 +4,15 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
 
 interface DailyData {
@@ -21,20 +25,12 @@ interface DailyBarChartProps {
   data: DailyData[];
 }
 
+const chartConfig = {
+  hours: { label: "Hours", color: "var(--primary)" },
+} satisfies ChartConfig;
+
 function formatXLabel(dateStr: string, useDayOfWeek: boolean): string {
   return formatPlainDate(dateStr, useDayOfWeek ? "EEE" : "d MMM");
-}
-
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: { value: number; payload: DailyData }[] }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="rounded-md border bg-popover px-3 py-2 shadow text-sm">
-      <p className="font-medium">{formatPlainDate(d.date)}</p>
-      <p className="text-muted-foreground">{formatDurationShort(d.totalSeconds)}</p>
-      <p className="text-xs text-muted-foreground">{d.entryCount} entries</p>
-    </div>
-  );
 }
 
 export function DailyBarChart({ data }: DailyBarChartProps) {
@@ -59,22 +55,46 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
         <CardTitle className="text-base">Daily breakdown</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={220}>
+        <ChartContainer config={chartConfig} className="h-55 w-full">
           <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tick={{ fontSize: 11 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tick={{ fontSize: 11 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `${v}h`}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--accent)" }} />
+            <ChartTooltip
+              cursor={{ fill: "var(--accent)" }}
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(_, payload) =>
+                    payload?.[0]
+                      ? formatPlainDate((payload[0].payload as DailyData).date)
+                      : ""
+                  }
+                  formatter={(_value, _name, item) => {
+                    const d = item.payload as DailyData;
+                    return (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-muted-foreground">
+                          {formatDurationShort(d.totalSeconds)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {d.entryCount} entries
+                        </span>
+                      </div>
+                    );
+                  }}
+                />
+              }
+            />
             {avgHours > 0 && (
               <ReferenceLine
                 y={avgHours}
@@ -85,12 +105,12 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
             )}
             <Bar
               dataKey="hours"
-              fill="var(--primary)"
+              fill="var(--color-hours)"
               radius={[3, 3, 0, 0]}
               maxBarSize={40}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
     </Card>
   );

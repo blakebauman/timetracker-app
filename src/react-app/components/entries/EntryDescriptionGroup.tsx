@@ -17,6 +17,7 @@ import { formatSeconds } from "@/lib/dateUtils";
 import { useTimer } from "@/hooks/useTimer";
 import { useBulkDeleteEntries } from "@/hooks/useEntries";
 import { cn } from "@/lib/utils";
+import { ColorDot, DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import type { DescriptionGroup } from "@/hooks/useEntries";
 
 interface EntryDescriptionGroupProps {
@@ -96,10 +97,7 @@ export function EntryDescriptionGroup({
         )}
 
         {/* Project color dot */}
-        <span
-          className="h-3 w-3 shrink-0 rounded-full"
-          style={{ backgroundColor: group.projectColor ?? "#94a3b8" }}
-        />
+        <ColorDot color={group.projectColor} className="h-3 w-3" />
 
         {/* Description + project */}
         <CollapsibleTrigger className="min-w-0 flex-1 text-left">
@@ -121,8 +119,8 @@ export function EntryDescriptionGroup({
               <span
                 className="rounded-sm px-1.5 py-0.5 text-xs font-medium"
                 style={{
-                  backgroundColor: `${group.projectColor}22`,
-                  color: group.projectColor ?? undefined,
+                  backgroundColor: `${group.projectColor ?? DEFAULT_PROJECT_COLOR}22`,
+                  color: group.projectColor ?? DEFAULT_PROJECT_COLOR,
                 }}
               >
                 {group.projectName}

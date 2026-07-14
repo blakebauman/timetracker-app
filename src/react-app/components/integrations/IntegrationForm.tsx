@@ -213,7 +213,7 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
           </div>
 
           {testStatus && (
-            <p className={`text-xs ${testStatus.ok ? "text-green-600" : "text-destructive"}`}>
+            <p className={`text-xs ${testStatus.ok ? "text-success" : "text-destructive"}`}>
               {testStatus.message}
             </p>
           )}
