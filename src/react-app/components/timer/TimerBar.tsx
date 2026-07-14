@@ -33,11 +33,32 @@ export function TimerBar() {
   const [syncedEntryId, setSyncedEntryId] = useState<string | null>(
     runningEntry?.id ?? null
   );
+  const [syncedProjectId, setSyncedProjectId] = useState<string | null>(
+    runningEntry?.projectId ?? null
+  );
+  const [syncedTaskId, setSyncedTaskId] = useState<string | null>(
+    runningEntry?.taskId ?? null
+  );
   if (syncedEntryId !== (runningEntry?.id ?? null)) {
     setSyncedEntryId(runningEntry?.id ?? null);
+    setSyncedProjectId(runningEntry?.projectId ?? null);
+    setSyncedTaskId(runningEntry?.taskId ?? null);
     setDescription(runningEntry?.description ?? "");
     setProjectId(runningEntry?.projectId ?? null);
     setTaskId(runningEntry?.taskId ?? null);
+  } else if (runningEntry) {
+    // Same entry, but its project/task may have been reassigned elsewhere
+    // (e.g. from the entries list). Keep the bar's pickers in sync. Description
+    // is intentionally not re-synced here to avoid clobbering in-progress typing
+    // while the debounced save is in flight.
+    if (syncedProjectId !== (runningEntry.projectId ?? null)) {
+      setSyncedProjectId(runningEntry.projectId ?? null);
+      setProjectId(runningEntry.projectId ?? null);
+    }
+    if (syncedTaskId !== (runningEntry.taskId ?? null)) {
+      setSyncedTaskId(runningEntry.taskId ?? null);
+      setTaskId(runningEntry.taskId ?? null);
+    }
   }
 
   // Debounced description update while running
