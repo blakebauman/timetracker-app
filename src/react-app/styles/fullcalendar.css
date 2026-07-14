@@ -1,0 +1,94 @@
+/*
+ * FullCalendar theming, scoped to `.tt-calendar`, mapping FC's CSS variables to
+ * the app's design tokens. Tokens (--border, --card, --primary, …) are swapped
+ * by the `.dark` class, so these overrides adapt to dark mode automatically —
+ * no separate dark block needed.
+ */
+.tt-calendar {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: var(--card);
+  --fc-neutral-bg-color: var(--muted);
+  --fc-neutral-text-color: var(--muted-foreground);
+  --fc-today-bg-color: color-mix(in oklab, var(--primary) 6%, transparent);
+  --fc-now-indicator-color: var(--primary);
+  --fc-highlight-color: color-mix(in oklab, var(--primary) 14%, transparent);
+  --fc-event-selected-overlay-color: color-mix(in oklab, var(--foreground) 8%, transparent);
+  --fc-small-font-size: 0.75rem;
+
+  font-family: var(--font-sans);
+  height: 100%;
+}
+
+/* Grid text uses muted foreground; the app font already applies via inheritance. */
+.tt-calendar .fc {
+  color: var(--foreground);
+}
+
+.tt-calendar .fc .fc-col-header-cell-cushion,
+.tt-calendar .fc .fc-timegrid-axis-cushion,
+.tt-calendar .fc .fc-timegrid-slot-label-cushion {
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.tt-calendar .fc .fc-col-header-cell {
+  padding: 0.5rem 0;
+}
+
+/* Slightly taller slots for comfortable drag targets. */
+.tt-calendar .fc .fc-timegrid-slot {
+  height: 2.75rem;
+}
+
+.tt-calendar .fc-theme-standard td,
+.tt-calendar .fc-theme-standard th,
+.tt-calendar .fc-theme-standard .fc-scrollgrid {
+  border-color: var(--border);
+}
+
+/* Events: rounded, no heavy default chrome; our renderer supplies the content. */
+.tt-calendar .fc .fc-timegrid-event {
+  border-radius: var(--radius-sm);
+  border: none;
+  border-left: 3px solid var(--fc-event-border-color, var(--primary));
+  box-shadow: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.tt-calendar .fc .fc-timegrid-event .fc-event-main {
+  padding: 2px 6px;
+  color: var(--foreground);
+}
+
+.tt-calendar .fc .fc-timegrid-event:hover {
+  filter: brightness(1.03);
+}
+
+/* Running entry: animated left border pulse. */
+.tt-calendar .fc-event.tt-event-running {
+  border-left-style: dashed;
+}
+.tt-calendar .fc-event.tt-event-running .tt-running-dot {
+  animation: tt-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tt-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* Now-indicator line + arrow. */
+.tt-calendar .fc .fc-timegrid-now-indicator-line {
+  border-color: var(--primary);
+  border-width: 2px 0 0;
+}
+.tt-calendar .fc .fc-timegrid-now-indicator-arrow {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+/* Scrollbars stay subtle. */
+.tt-calendar .fc .fc-scroller {
+  scrollbar-width: thin;
+}
