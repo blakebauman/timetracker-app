@@ -25,23 +25,20 @@ export function TimerBar() {
 
   const isRunning = Boolean(runningEntry);
 
-  // Sync description/project/task from running entry
-  useEffect(() => {
-    if (runningEntry) {
-      setDescription(runningEntry.description);
-      setProjectId(runningEntry.projectId);
-      setTaskId(runningEntry.taskId ?? null);
-    } else {
-      setDescription("");
-      setProjectId(null);
-      setTaskId(null);
-    }
-  }, [runningEntry?.id]);
-
-  // Clear task when project changes
-  useEffect(() => {
-    setTaskId(null);
-  }, [projectId]);
+  // Sync the editable fields from the running entry whenever it changes
+  // (restored from IndexedDB, or started/stopped in another tab). Adjusting
+  // during render avoids a frame of stale fields. The task is cleared on user
+  // project changes by the ProjectPicker handler below, so restoring the
+  // entry's own task here is safe and correct.
+  const [syncedEntryId, setSyncedEntryId] = useState<string | null>(
+    runningEntry?.id ?? null
+  );
+  if (syncedEntryId !== (runningEntry?.id ?? null)) {
+    setSyncedEntryId(runningEntry?.id ?? null);
+    setDescription(runningEntry?.description ?? "");
+    setProjectId(runningEntry?.projectId ?? null);
+    setTaskId(runningEntry?.taskId ?? null);
+  }
 
   // Debounced description update while running
   useEffect(() => {
