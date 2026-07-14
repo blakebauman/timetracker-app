@@ -1,15 +1,27 @@
 import { useMemo } from "react";
-import { X } from "lucide-react";
+import { X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MultiSelect, type MultiSelectOption } from "./MultiSelect";
 import { useAllClients, useAllProjects, useTags } from "@/hooks/useProjects";
 import { useAllTasks } from "@/hooks/useTasks";
+
+export type BillableFilter = "all" | "billable" | "nonbillable";
 
 export interface ReportFilters {
   clientIds: string[];
   projectIds: string[];
   taskIds: string[];
   tagIds: string[];
+  billable: BillableFilter;
+  search: string;
 }
 
 export const EMPTY_FILTERS: ReportFilters = {
@@ -17,6 +29,8 @@ export const EMPTY_FILTERS: ReportFilters = {
   projectIds: [],
   taskIds: [],
   tagIds: [],
+  billable: "all",
+  search: "",
 };
 
 interface ReportFilterBarProps {
@@ -85,14 +99,26 @@ export function ReportFilterBar({ filters, onChange }: ReportFilterBarProps) {
     onChange({ ...pruneTasks(filters, projectIds, tasks), projectIds });
   };
 
-  const hasAny =
+  const hasAny = Boolean(
     filters.clientIds.length ||
-    filters.projectIds.length ||
-    filters.taskIds.length ||
-    filters.tagIds.length;
+      filters.projectIds.length ||
+      filters.taskIds.length ||
+      filters.tagIds.length ||
+      filters.billable !== "all" ||
+      filters.search.trim().length
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={filters.search}
+          onChange={(e) => onChange({ ...filters, search: e.target.value })}
+          placeholder="Search description…"
+          className="h-8 w-48 pl-8 text-sm"
+        />
+      </div>
       <MultiSelect
         label="Client"
         options={clientOptions}
@@ -117,7 +143,20 @@ export function ReportFilterBar({ filters, onChange }: ReportFilterBarProps) {
         value={filters.tagIds}
         onChange={(tagIds) => onChange({ ...filters, tagIds })}
       />
-      {hasAny > 0 && (
+      <Select
+        value={filters.billable}
+        onValueChange={(v) => onChange({ ...filters, billable: v as BillableFilter })}
+      >
+        <SelectTrigger className="h-8 w-36 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All entries</SelectItem>
+          <SelectItem value="billable">Billable</SelectItem>
+          <SelectItem value="nonbillable">Non-billable</SelectItem>
+        </SelectContent>
+      </Select>
+      {hasAny && (
         <Button
           variant="ghost"
           size="sm"

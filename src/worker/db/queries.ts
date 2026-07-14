@@ -45,6 +45,8 @@ export function buildReportWhere(opts: {
   clientIds?: string[];
   taskIds?: string[];
   tagIds?: string[];
+  billable?: "billable" | "nonbillable";
+  search?: string;
 }): { where: string; bindings: unknown[] } {
   const where = [
     `te.workspace_id = ?`,
@@ -73,8 +75,40 @@ export function buildReportWhere(opts: {
     );
     bindings.push(...opts.tagIds);
   }
+  if (opts.billable === "billable") {
+    where.push(`te.billable = 1`);
+  } else if (opts.billable === "nonbillable") {
+    where.push(`te.billable = 0`);
+  }
+  if (opts.search && opts.search.trim()) {
+    // LIKE is case-insensitive for ASCII; escape the term's wildcards.
+    const term = opts.search.trim().replace(/[%_\\]/g, "\\$&");
+    where.push(`te.description LIKE ? ESCAPE '\\'`);
+    bindings.push(`%${term}%`);
+  }
 
   return { where: where.join(" AND "), bindings };
+}
+
+// SQL expression for a time entry's duration with optional per-entry rounding
+// applied (used everywhere `te.duration` would appear). Integer arithmetic only
+// — no ceil/floor math functions (not guaranteed on D1). Positive durations.
+export function durationExpr(
+  roundMode?: "off" | "nearest" | "up" | "down",
+  roundMinutes?: number
+): string {
+  if (!roundMode || roundMode === "off" || !roundMinutes || roundMinutes <= 0) {
+    return "te.duration";
+  }
+  const step = Math.floor(roundMinutes) * 60;
+  switch (roundMode) {
+    case "up":
+      return `(((te.duration + ${step - 1}) / ${step}) * ${step})`;
+    case "down":
+      return `((te.duration / ${step}) * ${step})`;
+    default: // nearest
+      return `(((te.duration + ${step / 2}) / ${step}) * ${step})`;
+  }
 }
 
 // Format a raw D1 time entry row into the API shape

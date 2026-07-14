@@ -9,11 +9,11 @@ import { clientsRouter } from "./routes/clients";
 import { tagsRouter } from "./routes/tags";
 import { tasksRouter } from "./routes/tasks";
 import { reportsRouter } from "./routes/reports";
+import { savedReportsRouter } from "./routes/saved-reports";
 import { settingsRouter } from "./routes/settings";
 import { integrationsRouter } from "./routes/integrations";
 import { aiRouter } from "./routes/ai";
 import { websocketRouter } from "./routes/websocket";
-import { extSignIn } from "./routes/auth";
 import { createAuth } from "./auth";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 
@@ -31,14 +31,10 @@ const app = new Hono<{ Bindings: Env }>()
   .use("/api/auth/change-password", authRateLimit)
   .use("/api/auth/email-otp/send-verification-otp", authRateLimit)
   .use("/api/auth/sign-in/magic-link", authRateLimit)
-  .use("/api/ext/sign-in", authRateLimit)
   .on(["GET", "POST"], "/api/auth/*", (c) => {
     const origin = new URL(c.req.url).origin;
     return createAuth(c.env, origin).handler(c.req.raw);
   })
-  // Extension sign-in: the extension can't read Set-Cookie cross-origin, so it
-  // reads the token straight out of the JSON body instead.
-  .post("/api/ext/sign-in", extSignIn)
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
@@ -47,6 +43,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/tags", tagsRouter)
   .route("/api/tasks", tasksRouter)
   .route("/api/reports", reportsRouter)
+  .route("/api/saved-reports", savedReportsRouter)
   .route("/api/settings", settingsRouter)
   .route("/api/integrations", integrationsRouter)
   .route("/api/ai", aiRouter)

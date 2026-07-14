@@ -32,6 +32,11 @@ export function createAuth(env: Env, baseURL: string) {
       "http://localhost:5173",
       "http://localhost:8787",
       "https://timetracker.run",
+      // Browser extension. Its ID is pinned via the manifest "key" (public key
+      // in extension/manifest.json; see extension/.keys/README.md) so this
+      // origin is stable across local dev and production. The extension signs in
+      // with the standard better-auth client + bearer() plugin.
+      "chrome-extension://nogikmhdpnnedmfldanickgpikmifcje",
     ],
     emailAndPassword: {
       enabled: true,
@@ -93,9 +98,10 @@ export function createAuth(env: Env, baseURL: string) {
       }),
     ],
     advanced: {
-      // Extension service workers can't set Origin headers and use bearer tokens,
-      // not cookies, so CSRF protection is not applicable for those requests.
-      disableCSRFCheck: true,
+      // CSRF/origin checks stay ON. The web app (cookies) and the browser
+      // extension are both covered by trustedOrigins above — the extension's
+      // pinned chrome-extension:// origin is trusted, and it authenticates with
+      // bearer tokens (bearer() plugin) rather than cookies.
       // Prefix for cookie names, to avoid collisions with other apps on the same domain
       cookiePrefix: "timetracker",
     },

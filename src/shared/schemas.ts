@@ -206,6 +206,8 @@ const csvIds = z
   .optional()
   .transform((v) => (v ? v.split(",").filter(Boolean) : undefined));
 
+export const RoundingModeSchema = z.enum(["off", "nearest", "up", "down"]);
+
 export const ReportQuerySchema = z.object({
   since: z.string(),
   until: z.string(),
@@ -214,7 +216,48 @@ export const ReportQuerySchema = z.object({
   clientIds: csvIds,
   taskIds: csvIds,
   tagIds: csvIds,
+  // billable = only billable entries, nonbillable = only non-billable
+  billable: z.enum(["billable", "nonbillable"]).optional(),
+  // free-text search over the entry description
+  search: z.string().optional(),
+  // per-entry duration rounding applied before aggregation
+  roundMode: RoundingModeSchema.optional(),
+  roundMinutes: z.coerce.number().int().min(0).max(1440).optional(),
 });
+
+// Group/sub-group dimensions for the grouped summary tree.
+export const GroupDimensionSchema = z.enum(["project", "client", "task", "tag"]);
+export const SubGroupDimensionSchema = z.enum([
+  "none",
+  "project",
+  "client",
+  "task",
+  "tag",
+]);
+
+export const GroupedReportQuerySchema = ReportQuerySchema.extend({
+  group: GroupDimensionSchema.default("project"),
+  subGroup: SubGroupDimensionSchema.default("none"),
+});
+
+// ─── Saved reports ───────────────────────────────────────────────────────────
+
+// Config is a serialized report view; validated loosely (client owns the shape).
+export const SavedReportSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  config: z.record(z.string(), z.unknown()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const CreateSavedReportSchema = z.object({
+  name: z.string().min(1).max(120),
+  config: z.record(z.string(), z.unknown()),
+});
+
+export type SavedReport = z.infer<typeof SavedReportSchema>;
+export type CreateSavedReport = z.infer<typeof CreateSavedReportSchema>;
 
 // ─── Integrations ──────────────────────────────────────────────────────────────
 

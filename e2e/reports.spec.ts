@@ -22,7 +22,7 @@ test.describe("reports charts", () => {
     // Summary tab: stat tiles + daily bar chart + project donut both mount.
     await expect(page.getByText("Total tracked")).toBeVisible();
     await expect(page.getByText("Daily breakdown")).toBeVisible();
-    await expect(page.getByText("By project")).toBeVisible();
+    await expect(page.getByText("Breakdown", { exact: true })).toBeVisible();
     await expect(page.locator('[data-slot="chart"]').first()).toBeVisible();
     expect(await page.locator('[data-slot="chart"]').count()).toBeGreaterThanOrEqual(2);
 
@@ -32,6 +32,24 @@ test.describe("reports charts", () => {
     await expect(weekly.locator('[data-slot="chart"]')).toBeVisible();
     await expect(weekly.getByText("Total", { exact: true })).toBeVisible();
     await expect(weekly.getByText("Billable", { exact: true })).toBeVisible();
+  });
+
+  test("exposes filters, rounding, saved reports & export formats", async ({ page }) => {
+    await page.goto("/reports");
+
+    // Filter bar: description search + billable filter default.
+    await expect(page.getByPlaceholder("Search description…")).toBeVisible();
+    await expect(page.getByText("All entries")).toBeVisible();
+
+    // Toolbar: rounding, saved reports, export.
+    await expect(page.getByRole("button", { name: "Rounding" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
+
+    // Export menu offers CSV, Excel, and Print/PDF.
+    await page.getByRole("button", { name: "Export" }).click();
+    await expect(page.getByRole("menuitem", { name: "CSV" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Excel" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Print / PDF" })).toBeVisible();
   });
 
   test("charts render in dark mode", async ({ page }) => {

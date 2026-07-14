@@ -21,7 +21,9 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background md:flex-row">
-      <Sidebar />
+      <div className="contents print:hidden">
+        <Sidebar />
+      </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Offline banner */}
@@ -35,7 +37,9 @@ export function AppShell() {
         )}
 
         {/* Timer bar — always visible at the top */}
-        <TimerBar />
+        <div className="contents print:hidden">
+          <TimerBar />
+        </div>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

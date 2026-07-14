@@ -137,6 +137,21 @@
   }
 }
 
+/* Print: let the fixed app shell expand so the whole report flows onto pages. */
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  main {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+
 /* Accessibility: honor the user's reduced-motion preference everywhere. */
 @media (prefers-reduced-motion: reduce) {
   *,

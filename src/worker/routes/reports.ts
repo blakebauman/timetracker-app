@@ -1,12 +1,61 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { ReportQuerySchema } from "@shared/schemas";
-import { buildReportWhere } from "../db/queries";
+import { ReportQuerySchema, GroupedReportQuerySchema } from "@shared/schemas";
+import { buildReportWhere, durationExpr } from "../db/queries";
 
-// Row-level product summed → correct even when a group spans projects with
-// different rates. rate is per-hour and may be NULL.
-const AMOUNT_EXPR = `SUM((CASE WHEN te.billable = 1 THEN te.duration ELSE 0 END) * COALESCE(p.rate, 0) / 3600.0)`;
-const BILLABLE_EXPR = `SUM(CASE WHEN te.billable = 1 THEN te.duration ELSE 0 END)`;
+type RoundMode = "off" | "nearest" | "up" | "down";
+
+// The filter/rounding fields every report query reads (since/until required).
+interface ReportQuery {
+  since: string;
+  until: string;
+  projectIds?: string[];
+  clientIds?: string[];
+  taskIds?: string[];
+  tagIds?: string[];
+  billable?: "billable" | "nonbillable";
+  search?: string;
+  roundMode?: RoundMode;
+  roundMinutes?: number;
+}
+
+// Pull the shared filter args out of a validated query.
+function filterArgs(q: ReportQuery, workspaceId: string) {
+  return {
+    workspaceId,
+    since: q.since,
+    until: q.until,
+    projectIds: q.projectIds,
+    clientIds: q.clientIds,
+    taskIds: q.taskIds,
+    tagIds: q.tagIds,
+    billable: q.billable,
+    search: q.search,
+  };
+}
+
+// Aggregation expressions parameterised by the (optionally rounded) duration.
+// Amounts are a row-level product summed → correct across mixed project rates.
+function exprs(q: { roundMode?: RoundMode; roundMinutes?: number }) {
+  const dur = durationExpr(q.roundMode, q.roundMinutes);
+  return {
+    dur,
+    total: `SUM(${dur})`,
+    billable: `SUM(CASE WHEN te.billable = 1 THEN ${dur} ELSE 0 END)`,
+    amount: `SUM((CASE WHEN te.billable = 1 THEN ${dur} ELSE 0 END) * COALESCE(p.rate, 0) / 3600.0)`,
+  };
+}
+
+// Grouped-summary dimension → SQL column + display-name + color expressions.
+const DIM: Record<
+  string,
+  { col: string; name: string; color: string; needs?: "clients" | "tasks" | "tags" }
+> = {
+  project: { col: "te.project_id", name: "COALESCE(p.name, 'No project')", color: "p.color" },
+  client: { col: "p.client_id", name: "COALESCE(cl.name, 'No client')", color: "NULL", needs: "clients" },
+  task: { col: "te.task_id", name: "COALESCE(tk.name, 'No task')", color: "NULL", needs: "tasks" },
+  tag: { col: "t.id", name: "COALESCE(t.name, 'No tag')", color: "NULL", needs: "tags" },
+};
 
 export const reportsRouter = new Hono<{
   Bindings: Env;
@@ -14,26 +63,18 @@ export const reportsRouter = new Hono<{
 }>()
   .get("/summary", zValidator("query", ReportQuerySchema), async (c) => {
     const workspaceId = c.get("workspaceId");
-    const { since, until, projectIds, clientIds, taskIds, tagIds } =
-      c.req.valid("query");
-    const { where, bindings } = buildReportWhere({
-      workspaceId,
-      since,
-      until,
-      projectIds,
-      clientIds,
-      taskIds,
-      tagIds,
-    });
+    const q = c.req.valid("query");
+    const { where, bindings } = buildReportWhere(filterArgs(q, workspaceId));
+    const e = exprs(q);
 
     // Total stats
     const { results: totals } = await c.env.DB.prepare(
       `
       SELECT
         COUNT(*) as entry_count,
-        SUM(te.duration) as total_seconds,
-        ${BILLABLE_EXPR} as billable_seconds,
-        ${AMOUNT_EXPR} as billable_amount
+        ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
+        ${e.amount} as billable_amount
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
       WHERE ${where}
@@ -46,13 +87,11 @@ export const reportsRouter = new Hono<{
     const { results: byProject } = await c.env.DB.prepare(
       `
       SELECT
-        p.id as id,
-        p.name as name,
-        p.color as color,
+        p.id as id, p.name as name, p.color as color,
         COUNT(*) as entry_count,
-        SUM(te.duration) as total_seconds,
-        ${BILLABLE_EXPR} as billable_seconds,
-        ${AMOUNT_EXPR} as billable_amount
+        ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
+        ${e.amount} as billable_amount
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
       WHERE ${where}
@@ -63,16 +102,15 @@ export const reportsRouter = new Hono<{
       .bind(...bindings)
       .all<Record<string, unknown>>();
 
-    // By client (client lives on the project)
+    // By client
     const { results: byClient } = await c.env.DB.prepare(
       `
       SELECT
-        p.client_id as id,
-        COALESCE(cl.name, 'No client') as name,
+        p.client_id as id, COALESCE(cl.name, 'No client') as name,
         COUNT(*) as entry_count,
-        SUM(te.duration) as total_seconds,
-        ${BILLABLE_EXPR} as billable_seconds,
-        ${AMOUNT_EXPR} as billable_amount
+        ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
+        ${e.amount} as billable_amount
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
       LEFT JOIN clients cl ON cl.id = p.client_id
@@ -88,12 +126,11 @@ export const reportsRouter = new Hono<{
     const { results: byTask } = await c.env.DB.prepare(
       `
       SELECT
-        te.task_id as id,
-        COALESCE(tk.name, 'No task') as name,
+        te.task_id as id, COALESCE(tk.name, 'No task') as name,
         COUNT(*) as entry_count,
-        SUM(te.duration) as total_seconds,
-        ${BILLABLE_EXPR} as billable_seconds,
-        ${AMOUNT_EXPR} as billable_amount
+        ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
+        ${e.amount} as billable_amount
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
       LEFT JOIN tasks tk ON tk.id = te.task_id
@@ -105,18 +142,15 @@ export const reportsRouter = new Hono<{
       .bind(...bindings)
       .all<Record<string, unknown>>();
 
-    // By tag — this query DOES join tags (grouping by tag). An entry with N
-    // tags contributes to N tags, so per-tag totals may sum to more than the
-    // grand total. Entries with no tags collapse into a single "No tag" group.
+    // By tag — joins tags, so an entry with N tags counts toward N tags.
     const { results: byTag } = await c.env.DB.prepare(
       `
       SELECT
-        t.id as id,
-        COALESCE(t.name, 'No tag') as name,
+        t.id as id, COALESCE(t.name, 'No tag') as name,
         COUNT(DISTINCT te.id) as entry_count,
-        SUM(te.duration) as total_seconds,
-        ${BILLABLE_EXPR} as billable_seconds,
-        ${AMOUNT_EXPR} as billable_amount
+        ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
+        ${e.amount} as billable_amount
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
       LEFT JOIN time_entry_tags tet ON tet.time_entry_id = te.id
@@ -134,7 +168,7 @@ export const reportsRouter = new Hono<{
       `
       SELECT
         date(te.start) as date,
-        SUM(te.duration) as total_seconds,
+        ${e.total} as total_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
@@ -180,29 +214,146 @@ export const reportsRouter = new Hono<{
     });
   })
   .get(
+    "/grouped",
+    zValidator("query", GroupedReportQuerySchema),
+    async (c) => {
+      const workspaceId = c.get("workspaceId");
+      const q = c.req.valid("query");
+      const { where, bindings } = buildReportWhere(filterArgs(q, workspaceId));
+      const e = exprs(q);
+
+      const g = DIM[q.group];
+      const sub = q.subGroup === "none" ? null : DIM[q.subGroup];
+
+      // Assemble only the joins the chosen dimensions require.
+      const needs = new Set([g.needs, sub?.needs].filter(Boolean));
+      const joins = ["LEFT JOIN projects p ON p.id = te.project_id"];
+      if (needs.has("clients"))
+        joins.push("LEFT JOIN clients cl ON cl.id = p.client_id");
+      if (needs.has("tasks"))
+        joins.push("LEFT JOIN tasks tk ON tk.id = te.task_id");
+      if (needs.has("tags")) {
+        joins.push("LEFT JOIN time_entry_tags tet ON tet.time_entry_id = te.id");
+        joins.push("LEFT JOIN tags t ON t.id = tet.tag_id");
+      }
+
+      const cols = [
+        `${g.col} as g_id`,
+        `${g.name} as g_name`,
+        `${g.color} as g_color`,
+      ];
+      const groupBy = [g.col];
+      if (sub) {
+        cols.push(`${sub.col} as s_id`, `${sub.name} as s_name`, `${sub.color} as s_color`);
+        groupBy.push(sub.col);
+      }
+
+      const { results } = await c.env.DB.prepare(
+        `
+        SELECT ${cols.join(", ")},
+          COUNT(DISTINCT te.id) as entry_count,
+          ${e.total} as total_seconds,
+          ${e.billable} as billable_seconds,
+          ${e.amount} as billable_amount
+        FROM time_entries te
+        ${joins.join("\n        ")}
+        WHERE ${where}
+        GROUP BY ${groupBy.join(", ")}
+        ORDER BY total_seconds DESC
+      `
+      )
+        .bind(...bindings)
+        .all<Record<string, unknown>>();
+
+      // Grand totals (single query so tag double-counting never inflates them).
+      const { results: totals } = await c.env.DB.prepare(
+        `
+        SELECT COUNT(*) as entry_count, ${e.total} as total_seconds,
+          ${e.billable} as billable_seconds, ${e.amount} as billable_amount
+        FROM time_entries te
+        LEFT JOIN projects p ON p.id = te.project_id
+        WHERE ${where}
+      `
+      )
+        .bind(...bindings)
+        .all<Record<string, number>>();
+
+      // Nest rows into group → subGroup.
+      type Row = {
+        id: string | null;
+        name: string;
+        color: string | null;
+        entryCount: number;
+        totalSeconds: number;
+        billableSeconds: number;
+        billableAmount: number;
+        subGroups?: Row[];
+      };
+      const groups = new Map<string, Row>();
+      for (const r of results) {
+        const gid = (r.g_id as string | null) ?? "__none__";
+        let grp = groups.get(gid);
+        if (!grp) {
+          grp = {
+            id: (r.g_id as string | null) ?? null,
+            name: (r.g_name as string) ?? "—",
+            color: (r.g_color as string | null) ?? null,
+            entryCount: 0,
+            totalSeconds: 0,
+            billableSeconds: 0,
+            billableAmount: 0,
+            subGroups: sub ? [] : undefined,
+          };
+          groups.set(gid, grp);
+        }
+        const secs = (r.total_seconds as number) ?? 0;
+        const bsecs = (r.billable_seconds as number) ?? 0;
+        const amt = (r.billable_amount as number) ?? 0;
+        const cnt = (r.entry_count as number) ?? 0;
+        grp.totalSeconds += secs;
+        grp.billableSeconds += bsecs;
+        grp.billableAmount += amt;
+        grp.entryCount += cnt;
+        if (sub) {
+          grp.subGroups!.push({
+            id: (r.s_id as string | null) ?? null,
+            name: (r.s_name as string) ?? "—",
+            color: (r.s_color as string | null) ?? null,
+            entryCount: cnt,
+            totalSeconds: secs,
+            billableSeconds: bsecs,
+            billableAmount: amt,
+          });
+        }
+      }
+
+      return c.json({
+        group: q.group,
+        subGroup: q.subGroup,
+        totalSeconds: (totals[0]?.total_seconds as number) ?? 0,
+        billableSeconds: (totals[0]?.billable_seconds as number) ?? 0,
+        billableAmount: (totals[0]?.billable_amount as number) ?? 0,
+        entryCount: (totals[0]?.entry_count as number) ?? 0,
+        groups: [...groups.values()],
+      });
+    }
+  )
+  .get(
     "/weekly",
     zValidator("query", ReportQuerySchema.partial().required({ since: true, until: true })),
     async (c) => {
       const workspaceId = c.get("workspaceId");
-      const { since, until, projectIds, clientIds, taskIds, tagIds } =
-        c.req.valid("query");
-      const { where, bindings } = buildReportWhere({
-        workspaceId,
-        since,
-        until,
-        projectIds,
-        clientIds,
-        taskIds,
-        tagIds,
-      });
+      const q = c.req.valid("query");
+      const { where, bindings } = buildReportWhere(filterArgs(q, workspaceId));
+      const e = exprs(q);
 
       const { results } = await c.env.DB.prepare(
         `
       SELECT
         date(te.start) as date,
         strftime('%Y-W%W', te.start) as week,
-        SUM(te.duration) as total_seconds,
-        ${BILLABLE_EXPR} as billable_seconds,
+        ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
@@ -214,7 +365,6 @@ export const reportsRouter = new Hono<{
         .bind(...bindings)
         .all<Record<string, unknown>>();
 
-      // Group by week
       const weekMap = new Map<string, { week: string; days: unknown[] }>();
       for (const r of results) {
         const week = r.week as string;
@@ -235,21 +385,14 @@ export const reportsRouter = new Hono<{
     zValidator("query", ReportQuerySchema.partial().required({ since: true, until: true })),
     async (c) => {
       const workspaceId = c.get("workspaceId");
-      const { since, until, projectIds, clientIds, taskIds, tagIds } =
-        c.req.valid("query");
-      const { where, bindings } = buildReportWhere({
-        workspaceId,
-        since,
-        until,
-        projectIds,
-        clientIds,
-        taskIds,
-        tagIds,
-      });
+      const q = c.req.valid("query");
+      const { where, bindings } = buildReportWhere(filterArgs(q, workspaceId));
+      const dur = durationExpr(q.roundMode, q.roundMinutes);
 
       const { results } = await c.env.DB.prepare(
         `
       SELECT te.*,
+        ${dur} as rounded_duration,
         p.name as project_name, p.color as project_color, p.rate as project_rate,
         c.name as client_name,
         tk.name as task_name,
@@ -271,7 +414,7 @@ export const reportsRouter = new Hono<{
       return c.json(
         results.map((r) => {
           const billable = Boolean(r.billable);
-          const duration = (r.duration as number | null) ?? 0;
+          const duration = (r.rounded_duration as number | null) ?? 0;
           const rate = (r.project_rate as number | null) ?? 0;
           return {
             id: r.id,

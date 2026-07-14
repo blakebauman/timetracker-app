@@ -202,6 +202,10 @@ dist
 package-lock.json
 yarn.lock
 
+### Chrome extension signing key (never commit the private key) ###
+extension/.keys/*
+!extension/.keys/README.md
+
 ### Playwright ###
 /test-results/
 /playwright-report/

@@ -38,7 +38,13 @@ export interface ReportParams {
   clientIds?: string;
   taskIds?: string;
   tagIds?: string;
+  billable?: string;
+  search?: string;
+  roundMode?: string;
+  roundMinutes?: string;
   groupBy?: string;
+  // Allows passing the object straight to reportQuery() (all values stringy).
+  [k: string]: string | undefined;
 }
 
 // Build a query string, dropping undefined/empty values (same pattern as the
@@ -184,9 +190,20 @@ export const api = {
   reports: {
     summary: (params: ReportParams & { groupBy?: string }) =>
       request<unknown>(`/reports/summary?${reportQuery(params)}`),
+    grouped: (params: ReportParams & { group?: string; subGroup?: string }) =>
+      request<unknown>(`/reports/grouped?${reportQuery(params)}`),
     detailed: (params: ReportParams) =>
       request<unknown[]>(`/reports/detailed?${reportQuery(params)}`),
     weekly: (params: ReportParams) =>
       request<unknown[]>(`/reports/weekly?${reportQuery(params)}`),
+  },
+
+  // ─── Saved reports ────────────────────────────────────────────────────────
+  savedReports: {
+    list: () => request<unknown[]>("/saved-reports"),
+    create: (body: { name: string; config: Record<string, unknown> }) =>
+      request<unknown>("/saved-reports", { method: "POST", body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      request<unknown>(`/saved-reports/${id}`, { method: "DELETE" }),
   },
 };

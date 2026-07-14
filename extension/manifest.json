@@ -3,7 +3,8 @@
   "name": "Time Tracker",
   "version": "1.0.2",
   "description": "Track time directly from your browser. Works with your Time Tracker app.",
-  "permissions": ["storage", "alarms", "notifications"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtopwHkMbw/cqw7ivwGnAJXdM4cXLL1ZFY4escub6YxnS3a2lU8y9dEgsj0VPNczZFHHSXZCbyfADXC6rhjqFyrYAHgy0KXiGhStpDLUeet4QOiImatiZg2evdyOK6XjmjAUlIyXeAQF+qwfqFZBdQi02cXpETHfyreyomreLjNjY7JlqlGByMsvkvQtaPvsW8YD2no9so2UKa9DlDoqzXYhwUHmEQ94ggaQ03ZE52Gobz0Nj31v2ruuijoVIUifNHBmTviMEnLwoMSlJI+juU2JChf5X8YQDX/Bs94CmrEo/jO+ATa8rzTvdym6iO311bTBTJyYFAAHjTNIqqN6wvQIDAQAB",
+  "permissions": ["storage", "alarms"],
   "host_permissions": [
     "http://localhost/*",
     "https://*.workers.dev/*",
@@ -17,6 +18,7 @@
     "default_popup": "popup/index.html",
     "default_icon": {
       "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
@@ -28,8 +30,7 @@
         "https://timetracker.run/*",
         "https://*.atlassian.net/*",
         "https://github.com/*",
-        "https://linear.app/*",
-        "https://app.asana.com/*"
+        "https://linear.app/*"
       ],
       "js": ["content/content-script.js"],
       "run_at": "document_idle"
@@ -37,6 +38,7 @@
   ],
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   }

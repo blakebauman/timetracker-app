@@ -5,12 +5,24 @@
 // The web app fires "timetracker:sync" CustomEvents on the window whenever the
 // timer starts or stops (received via WebSocket). We relay them instantly to the
 // service worker so the badge updates without waiting for a poll cycle.
-window.addEventListener("timetracker:sync", (e: Event) => {
-  const { detail } = e as CustomEvent;
-  // sendMessage wakes the service worker if it's sleeping; ignore errors
-  // (e.g. extension reloading mid-session) to avoid uncaught promise rejections.
-  chrome.runtime.sendMessage({ type: "TIMER_STATE_CHANGED", state: detail }).catch(() => {});
-});
+//
+// A dispatched CustomEvent has isTrusted === false and cannot be distinguished
+// from one a hostile page script fires, so this relay is only registered on our
+// OWN origins. The content script is also injected into GitHub/Jira/Linear for
+// context detection (below); we must not accept spoofed timer state from those.
+const APP_ORIGINS = new Set([
+  "http://localhost:5173",
+  "https://timetracker.run",
+]);
+
+if (APP_ORIGINS.has(window.location.origin)) {
+  window.addEventListener("timetracker:sync", (e: Event) => {
+    const { detail } = e as CustomEvent;
+    // sendMessage wakes the service worker if it's sleeping; ignore errors
+    // (e.g. extension reloading mid-session) to avoid uncaught promise rejections.
+    chrome.runtime.sendMessage({ type: "TIMER_STATE_CHANGED", state: detail }).catch(() => {});
+  });
+}
 
 function detectContext(): string | null {
   const url = window.location.href;
