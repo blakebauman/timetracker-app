@@ -38,10 +38,11 @@ export function createAuth(env: Env, baseURL: string) {
       "http://localhost:5173",
       "http://localhost:8787",
       "https://timetracker.run",
-      // Browser extension. Its ID is pinned via the manifest "key" (public key
-      // in extension/manifest.json; see extension/.keys/README.md) so this
-      // origin is stable across local dev and production. The extension signs in
-      // with the standard better-auth client + bearer() plugin.
+      // Browser extension. The ID below is pinned via the manifest "key" for
+      // local dev/testing (see extension/.keys/README.md). NOTE: the Chrome Web
+      // Store assigns its OWN id on publish — after the first upload, add the
+      // published chrome-extension://<id> here too. See extension/PUBLISHING.md.
+      // The extension signs in with the standard better-auth client + bearer().
       "chrome-extension://nogikmhdpnnedmfldanickgpikmifcje",
     ],
     emailAndPassword: {
