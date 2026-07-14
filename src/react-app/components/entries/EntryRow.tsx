@@ -35,6 +35,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingDuration, setEditingDuration] = useState(false);
   const [durationInput, setDurationInput] = useState("");
+  const [removing, setRemoving] = useState(false);
   const updateEntry = useUpdateEntry();
   const deleteEntry = useDeleteEntry();
   const createEntry = useCreateEntry();
@@ -98,7 +99,10 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     });
   };
 
-  const handleDelete = () => {
+  // Play the exit animation first, then actually delete once it finishes. The
+  // reduced-motion guard collapses the animation to ~0ms, so those users get an
+  // immediate delete.
+  const finalizeDelete = () => {
     const payload = toCreatePayload(entry);
     deleteEntry.mutate(entry.id);
     toast.success("Entry deleted", {
@@ -109,9 +113,22 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     });
   };
 
+  const handleDelete = () => setRemoving(true);
+
   return (
     <>
-      <div className={`group flex animate-fade-up items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/40 ${isSelected ? "bg-accent/60" : ""}`}>
+      <div
+        onAnimationEnd={(e) => {
+          if (removing && e.target === e.currentTarget) finalizeDelete();
+        }}
+        className={cn(
+          "group flex items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/40",
+          removing
+            ? "pointer-events-none animate-out fade-out slide-out-to-right-4 fill-mode-forwards duration-200 ease-out"
+            : "animate-fade-up",
+          isSelected && "bg-accent/60"
+        )}
+      >
         {/* Checkbox (visible on hover or when any selection active) */}
         {onToggleSelect && (
           <button
@@ -254,6 +271,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             size="icon"
             className="h-7 w-7"
             title="Continue"
+            aria-label="Continue timing this entry"
             onClick={handleContinue}
           >
             <Play className="h-3.5 w-3.5" />
@@ -261,7 +279,12 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                aria-label="Entry actions"
+              >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
