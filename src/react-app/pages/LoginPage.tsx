@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
-import { Clock } from "lucide-react";
+import { Clock, KeyRound } from "lucide-react";
 
 function GoogleIcon() {
   return (
@@ -63,6 +63,17 @@ export function LoginPage() {
   const [passwordlessPending, setPasswordlessPending] = useState(false);
   const [passwordlessError, setPasswordlessError] = useState("");
 
+  // — Two-factor challenge state (shown after password sign-in when 2FA is on)
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState("");
+  const [twoFactorPending, setTwoFactorPending] = useState(false);
+
+  // — Passkey state
+  const [passkeyPending, setPasskeyPending] = useState(false);
+
   // Navigate only once the shared session store has actually caught up —
   // navigating right after a sign-in call resolves races AuthGuard's
   // useSession(), which can still read the stale "logged out" cache for a tick.
@@ -83,12 +94,55 @@ export function LoginPage() {
       if (result?.error) {
         setError(result.error.message ?? "Invalid email or password");
         setIsPending(false);
+        return;
+      }
+      // When 2FA is enabled, no session is created yet — Better Auth signals a
+      // second step. Switch to the code-entry view instead of navigating.
+      if ((result?.data as { twoFactorRedirect?: boolean } | undefined)?.twoFactorRedirect) {
+        setTwoFactorRequired(true);
+        setIsPending(false);
+        return;
       }
       // On success, the useEffect above navigates once `user` updates.
     } catch {
       setError("Something went wrong. Please try again.");
       setIsPending(false);
     }
+  };
+
+  const handleVerifyTwoFactor = async () => {
+    const value = totpCode.trim();
+    if (!value) return;
+    setTwoFactorError("");
+    setTwoFactorPending(true);
+    const { error: verifyError } = useBackupCode
+      ? await authClient.twoFactor.verifyBackupCode({ code: value })
+      : await authClient.twoFactor.verifyTotp({ code: value, trustDevice });
+    setTwoFactorPending(false);
+    if (verifyError) {
+      setTwoFactorError(verifyError.message ?? "Invalid code");
+      return;
+    }
+    // The useEffect above navigates once `user` updates.
+  };
+
+  const resetTwoFactor = () => {
+    setTwoFactorRequired(false);
+    setTotpCode("");
+    setUseBackupCode(false);
+    setTwoFactorError("");
+    setPassword("");
+  };
+
+  const handlePasskeySignIn = async () => {
+    setError("");
+    setPasskeyPending(true);
+    const res = await authClient.signIn.passkey();
+    setPasskeyPending(false);
+    if (res?.error) {
+      setError(res.error.message ?? "Passkey sign-in failed");
+    }
+    // On success, the useEffect above navigates once `user` updates.
   };
 
   const handleGoogleSignIn = () => {
@@ -167,6 +221,69 @@ export function LoginPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
+            {twoFactorRequired ? (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Two-factor authentication</p>
+                  <p className="text-xs text-muted-foreground">
+                    {useBackupCode
+                      ? "Enter one of your saved backup codes."
+                      : "Enter the 6-digit code from your authenticator app."}
+                  </p>
+                </div>
+                <Input
+                  inputMode={useBackupCode ? "text" : "numeric"}
+                  value={totpCode}
+                  onChange={(e) =>
+                    setTotpCode(useBackupCode ? e.target.value : e.target.value.replace(/\D/g, ""))
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && handleVerifyTwoFactor()}
+                  placeholder={useBackupCode ? "backup code" : "123456"}
+                  autoComplete="one-time-code"
+                  className="font-mono tracking-widest"
+                  autoFocus
+                />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={trustDevice}
+                    onChange={(e) => setTrustDevice(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-input"
+                  />
+                  Trust this device for 60 days
+                </label>
+                {twoFactorError && <p className="text-sm text-destructive">{twoFactorError}</p>}
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={twoFactorPending || !totpCode.trim()}
+                  onClick={handleVerifyTwoFactor}
+                >
+                  {twoFactorPending ? "Verifying…" : "Verify"}
+                </Button>
+                <div className="flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:underline"
+                    onClick={() => {
+                      setUseBackupCode((v) => !v);
+                      setTotpCode("");
+                      setTwoFactorError("");
+                    }}
+                  >
+                    {useBackupCode ? "Use authenticator app" : "Use a backup code"}
+                  </button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:underline"
+                    onClick={resetTwoFactor}
+                  >
+                    Back to sign in
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             <Button
               type="button"
               variant="outline"
@@ -175,6 +292,17 @@ export function LoginPage() {
             >
               <GoogleIcon />
               Continue with Google
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={handlePasskeySignIn}
+              disabled={passkeyPending}
+            >
+              <KeyRound className="h-4 w-4" />
+              {passkeyPending ? "Waiting for passkey…" : "Sign in with a passkey"}
             </Button>
 
             <div className="flex items-center gap-2">
@@ -296,6 +424,8 @@ export function LoginPage() {
                 </Button>
               </TabsContent>
             </Tabs>
+            </>
+            )}
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3 pt-0">
