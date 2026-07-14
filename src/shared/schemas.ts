@@ -15,6 +15,9 @@ export const ClientSchema = z.object({
   workspaceId: z.string(),
   name: z.string(),
   notes: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  address: z.string().nullable(),
   archived: z.boolean(),
   createdAt: z.string(),
 });
@@ -22,6 +25,9 @@ export const ClientSchema = z.object({
 export const CreateClientSchema = z.object({
   name: z.string().min(1).max(255),
   notes: z.string().max(2000).nullable().optional(),
+  email: z.string().email().max(255).nullable().optional(),
+  phone: z.string().max(50).nullable().optional(),
+  address: z.string().max(1000).nullable().optional(),
 });
 
 export const UpdateClientSchema = CreateClientSchema.partial().extend({
@@ -311,6 +317,7 @@ export type CreateTimeEntry = z.infer<typeof CreateTimeEntrySchema>;
 export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
 export type CreateClient = z.infer<typeof CreateClientSchema>;
+export type UpdateClient = z.infer<typeof UpdateClientSchema>;
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
 export type IntegrationType = z.infer<typeof IntegrationTypeSchema>;

@@ -107,10 +107,13 @@ export const api = {
         : "";
       return request<unknown[]>(`/clients${qs ? `?${qs}` : ""}`);
     },
+    get: (id: string) => request<unknown>(`/clients/${id}`),
     create: (body: Record<string, unknown>) =>
       request<unknown>("/clients", { method: "POST", body: JSON.stringify(body) }),
     update: (id: string, body: Record<string, unknown>) =>
       request<unknown>(`/clients/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      request<unknown>(`/clients/${id}`, { method: "DELETE" }),
   },
 
   // ─── Tags ─────────────────────────────────────────────────────────────────

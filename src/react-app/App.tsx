@@ -18,6 +18,9 @@ const ProjectsPage = lazyWithReload(() =>
 const ClientsPage = lazyWithReload(() =>
   import("@/pages/ClientsPage").then((m) => ({ default: m.ClientsPage }))
 );
+const ClientDetailPage = lazyWithReload(() =>
+  import("@/pages/ClientDetailPage").then((m) => ({ default: m.ClientDetailPage }))
+);
 const ReportsPage = lazyWithReload(() =>
   import("@/pages/ReportsPage").then((m) => ({ default: m.ReportsPage }))
 );
@@ -59,6 +62,7 @@ const router = createBrowserRouter([
       { index: true, element: <TimerPage /> },
       { path: "projects", element: <ProjectsPage /> },
       { path: "clients", element: <ClientsPage /> },
+      { path: "clients/:id", element: <ClientDetailPage /> },
       { path: "reports", element: <ReportsPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "admin", element: <AdminPage /> },

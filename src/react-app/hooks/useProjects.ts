@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import type { Project, Client, CreateProject, CreateClient } from "@shared/schemas";
+import type {
+  Project,
+  Client,
+  CreateProject,
+  CreateClient,
+  UpdateClient,
+} from "@shared/schemas";
 
 export function useProjects() {
   return useQuery({
@@ -73,6 +79,23 @@ export function useClients() {
   });
 }
 
+export function useAllClients() {
+  return useQuery({
+    queryKey: ["clients", "all"],
+    queryFn: () =>
+      api.clients.list({ includeArchived: "true" }) as Promise<Client[]>,
+    staleTime: 60_000,
+  });
+}
+
+export function useClient(id: string | undefined) {
+  return useQuery({
+    queryKey: ["clients", id],
+    queryFn: () => api.clients.get(id as string) as Promise<Client>,
+    enabled: !!id,
+  });
+}
+
 export function useCreateClient() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -83,6 +106,29 @@ export function useCreateClient() {
       toast.success("Client created");
     },
     onError: () => toast.error("Failed to create client"),
+  });
+}
+
+export function useUpdateClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateClient }) =>
+      api.clients.update(id, data as Record<string, unknown>) as Promise<Client>,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["clients"] }),
+    onError: () => toast.error("Failed to update client"),
+  });
+}
+
+export function useDeleteClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.clients.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("Client archived");
+    },
+    onError: () => toast.error("Failed to archive client"),
   });
 }
 
