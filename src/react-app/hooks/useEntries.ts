@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { useTimerStore } from "@/stores/timerStore";
 import { formatDayHeader } from "@/lib/dateUtils";
 import type { TimeEntry, CreateTimeEntry, UpdateTimeEntry } from "@shared/schemas";
 import { startOfDay, subDays, endOfDay } from "date-fns";
@@ -96,7 +97,14 @@ export function useUpdateEntry() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTimeEntry }) =>
       api.timeEntries.update(id, data as Record<string, unknown>) as Promise<TimeEntry>,
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      // Keep the live timer (bar + sidebar) in sync when the edit targets the
+      // currently running entry — e.g. assigning a project from the entries
+      // list. setFromWS merges same-id entries without resetting elapsed.
+      const timer = useTimerStore.getState();
+      if (updated && timer.runningEntry && updated.id === timer.runningEntry.id) {
+        timer.setFromWS(updated);
+      }
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
     },

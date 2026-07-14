@@ -81,9 +81,18 @@ export function useWebSocket() {
           queryClient.invalidateQueries({ queryKey: ["time-entries"] });
           break;
         }
-        case "entries:changed":
+        case "entries:changed": {
+          // If another tab edited the entry we're currently tracking (e.g.
+          // reassigned its project), fold the change into the running timer so
+          // the bar/sidebar stay in sync. Merges same-id without resetting elapsed.
+          const changed = msg.data as TimeEntry | null;
+          const running = useTimerStore.getState().runningEntry;
+          if (changed && running && changed.id === running.id) {
+            setFromWS(changed);
+          }
           queryClient.invalidateQueries({ queryKey: ["time-entries"] });
           break;
+        }
       }
     }
 

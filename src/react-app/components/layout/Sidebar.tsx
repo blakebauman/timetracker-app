@@ -69,19 +69,34 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
         </button>
       </div>
 
-      {/* Running timer indicator */}
+      {/* Running timer indicator. When collapsed the pill is too narrow for the
+          full HH:MM:SS, so we show just a pulsing dot (time on hover) instead of
+          letting the timer text overflow the rail. */}
       {runningEntry && (
-        <div className="mx-3 mt-3 rounded-md bg-primary/10 px-3 py-2 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
-            <span className="font-mono font-medium text-primary">
-              {formatSeconds(elapsed)}
-            </span>
-          </div>
-          {!collapsed && (
-            <p className="mt-0.5 truncate text-muted-foreground">
-              {runningEntry.description || "No description"}
-            </p>
+        <div
+          className={cn(
+            "mt-3 rounded-md bg-primary/10 text-xs",
+            collapsed ? "mx-2 flex justify-center p-2.5" : "mx-3 px-3 py-2"
+          )}
+        >
+          {collapsed ? (
+            <span
+              className="h-2 w-2 rounded-full bg-primary animate-pulse"
+              title={`Running — ${formatSeconds(elapsed)}`}
+              aria-label={`Timer running — ${formatSeconds(elapsed)}`}
+            />
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
+                <span className="font-mono font-medium text-primary">
+                  {formatSeconds(elapsed)}
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-muted-foreground">
+                {runningEntry.description || "No description"}
+              </p>
+            </>
           )}
         </div>
       )}
