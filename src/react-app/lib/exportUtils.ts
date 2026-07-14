@@ -6,7 +6,10 @@ interface ExportEntry {
   duration: number | null;
   description: string;
   projectName?: string | null;
+  clientName?: string | null;
+  taskName?: string | null;
   billable: boolean;
+  amount?: number;
   tags: string[];
 }
 
@@ -17,8 +20,11 @@ export function exportToCSV(entries: ExportEntry[], filename = "time-entries"): 
     "Stop",
     "Duration",
     "Description",
+    "Client",
     "Project",
+    "Task",
     "Billable",
+    "Amount",
     "Tags",
   ];
 
@@ -28,8 +34,11 @@ export function exportToCSV(entries: ExportEntry[], filename = "time-entries"): 
     e.stop ? formatEntryTime(e.stop) : "",
     e.duration ? formatSeconds(e.duration) : "",
     `"${(e.description ?? "").replace(/"/g, '""')}"`,
+    `"${(e.clientName ?? "").replace(/"/g, '""')}"`,
     `"${(e.projectName ?? "").replace(/"/g, '""')}"`,
+    `"${(e.taskName ?? "").replace(/"/g, '""')}"`,
     e.billable ? "Yes" : "No",
+    (e.amount ?? 0).toFixed(2),
     `"${(e.tags ?? []).join(", ")}"`,
   ]);
 

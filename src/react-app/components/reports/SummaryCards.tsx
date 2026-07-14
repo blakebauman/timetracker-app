@@ -1,12 +1,15 @@
-import { Clock, DollarSign, Hash, TrendingUp } from "lucide-react";
+import { Clock, DollarSign, Hash, TrendingUp, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatDurationHuman } from "@/lib/dateUtils";
+import { formatCurrency } from "@/lib/currency";
+import { useUIStore } from "@/stores/uiStore";
 
 interface SummaryCardsProps {
   totalSeconds: number;
   billableSeconds: number;
+  billableAmount: number;
   entryCount: number;
   avgSeconds: number;
 }
@@ -23,9 +26,11 @@ interface Tile {
 export function SummaryCards({
   totalSeconds,
   billableSeconds,
+  billableAmount,
   entryCount,
   avgSeconds,
 }: SummaryCardsProps) {
+  const currency = useUIStore((s) => s.currency);
   const billablePercent = totalSeconds
     ? Math.round((billableSeconds / totalSeconds) * 100)
     : 0;
@@ -55,6 +60,12 @@ export function SummaryCards({
       ),
     },
     {
+      icon: Wallet,
+      label: "Billable amount",
+      value: formatCurrency(billableAmount, currency),
+      accent: "bg-success/10 text-success",
+    },
+    {
       icon: Hash,
       label: "Entries",
       value: String(entryCount),
@@ -69,7 +80,7 @@ export function SummaryCards({
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {tiles.map(({ icon: Icon, label, value, accent, extra }, i) => (
         <Card
           key={label}

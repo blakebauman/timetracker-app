@@ -33,6 +33,50 @@ export const ENTRY_SELECT = `
   LEFT JOIN tags t ON t.id = tet.tag_id
 `;
 
+// Builds the shared WHERE clause + bindings for report queries.
+// Every report query LEFT JOINs `projects p` (aliased `p`) so `p.client_id`
+// is available here for the client filter. Tag filtering uses a subquery
+// (NOT a join) so SUM(te.duration) is never multiplied by an entry's tag count.
+export function buildReportWhere(opts: {
+  workspaceId: string;
+  since: string;
+  until: string;
+  projectIds?: string[];
+  clientIds?: string[];
+  taskIds?: string[];
+  tagIds?: string[];
+}): { where: string; bindings: unknown[] } {
+  const where = [
+    `te.workspace_id = ?`,
+    `te.start >= ?`,
+    `te.start < ?`,
+    `te.stop IS NOT NULL`,
+  ];
+  const bindings: unknown[] = [opts.workspaceId, opts.since, opts.until];
+  const ph = (a: string[]) => a.map(() => "?").join(",");
+
+  if (opts.projectIds?.length) {
+    where.push(`te.project_id IN (${ph(opts.projectIds)})`);
+    bindings.push(...opts.projectIds);
+  }
+  if (opts.clientIds?.length) {
+    where.push(`p.client_id IN (${ph(opts.clientIds)})`);
+    bindings.push(...opts.clientIds);
+  }
+  if (opts.taskIds?.length) {
+    where.push(`te.task_id IN (${ph(opts.taskIds)})`);
+    bindings.push(...opts.taskIds);
+  }
+  if (opts.tagIds?.length) {
+    where.push(
+      `te.id IN (SELECT time_entry_id FROM time_entry_tags WHERE tag_id IN (${ph(opts.tagIds)}))`
+    );
+    bindings.push(...opts.tagIds);
+  }
+
+  return { where: where.join(" AND "), bindings };
+}
+
 // Format a raw D1 time entry row into the API shape
 export function formatEntry(row: Record<string, unknown>) {
   return {

@@ -9,9 +9,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useHydrateSettings } from "@/hooks/useSettings";
 
 export function AppShell() {
   useWebSocket();
+  useHydrateSettings();
   const { isOnline } = useOfflineSync();
   const location = useLocation();
   // useTimer() is called inside TimerBar (always mounted), which registers

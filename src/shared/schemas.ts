@@ -8,6 +8,26 @@ export const WorkspaceSchema = z.object({
   createdAt: z.string(),
 });
 
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+export const TimeFormatSchema = z.enum(["24h", "12h"]);
+
+// Per-user display settings persisted to D1 (survive a localStorage wipe).
+export const SettingsSchema = z.object({
+  currency: z.string(), // ISO 4217 code, e.g. "USD"
+  timeFormat: TimeFormatSchema,
+});
+
+export const UpdateSettingsSchema = z
+  .object({
+    currency: z.string().regex(/^[A-Z]{3}$/, "Must be a 3-letter currency code"),
+    timeFormat: TimeFormatSchema,
+  })
+  .partial();
+
+export type Settings = z.infer<typeof SettingsSchema>;
+export type UpdateSettings = z.infer<typeof UpdateSettingsSchema>;
+
 // ─── Client ──────────────────────────────────────────────────────────────────
 
 export const ClientSchema = z.object({
@@ -180,12 +200,20 @@ export const BulkDeleteTimeEntriesSchema = z.object({
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
+// Optional comma-separated list of IDs → string[] (e.g. "a,b,c"). Undefined when absent.
+const csvIds = z
+  .string()
+  .optional()
+  .transform((v) => (v ? v.split(",").filter(Boolean) : undefined));
+
 export const ReportQuerySchema = z.object({
   since: z.string(),
   until: z.string(),
   groupBy: z.enum(["day", "week", "month"]).default("day"),
-  projectId: z.string().optional(),
-  clientId: z.string().optional(),
+  projectIds: csvIds,
+  clientIds: csvIds,
+  taskIds: csvIds,
+  tagIds: csvIds,
 });
 
 // ─── Integrations ──────────────────────────────────────────────────────────────

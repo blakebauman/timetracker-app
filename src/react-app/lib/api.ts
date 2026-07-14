@@ -1,4 +1,5 @@
 import { addPendingMutation } from "@/lib/idb";
+import type { Settings } from "@shared/schemas";
 
 const API_BASE = "/api";
 
@@ -27,6 +28,28 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     }
     throw err;
   }
+}
+
+// Report filters: comma-joined ID lists (or undefined when no selection).
+export interface ReportParams {
+  since: string;
+  until: string;
+  projectIds?: string;
+  clientIds?: string;
+  taskIds?: string;
+  tagIds?: string;
+  groupBy?: string;
+}
+
+// Build a query string, dropping undefined/empty values (same pattern as the
+// list endpoints) so unselected filters aren't sent as empty params.
+function reportQuery(params: Record<string, string | undefined>): string {
+  return new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== "") as [
+      string,
+      string,
+    ][]
+  ).toString();
 }
 
 export const api = {
@@ -147,19 +170,23 @@ export const api = {
       request<unknown>("/ai/summary", { method: "POST", body: JSON.stringify(body) }),
   },
 
+  // ─── Settings ─────────────────────────────────────────────────────────────
+  settings: {
+    get: () => request<Settings>("/settings"),
+    update: (body: Partial<Pick<Settings, "currency" | "timeFormat">>) =>
+      request<Settings>("/settings", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+  },
+
   // ─── Reports ──────────────────────────────────────────────────────────────
   reports: {
-    summary: (params: { since: string; until: string; groupBy?: string }) => {
-      const qs = new URLSearchParams(params as Record<string, string>);
-      return request<unknown>(`/reports/summary?${qs}`);
-    },
-    detailed: (params: { since: string; until: string }) => {
-      const qs = new URLSearchParams(params);
-      return request<unknown[]>(`/reports/detailed?${qs}`);
-    },
-    weekly: (params: { since: string; until: string }) => {
-      const qs = new URLSearchParams(params);
-      return request<unknown[]>(`/reports/weekly?${qs}`);
-    },
+    summary: (params: ReportParams & { groupBy?: string }) =>
+      request<unknown>(`/reports/summary?${reportQuery(params)}`),
+    detailed: (params: ReportParams) =>
+      request<unknown[]>(`/reports/detailed?${reportQuery(params)}`),
+    weekly: (params: ReportParams) =>
+      request<unknown[]>(`/reports/weekly?${reportQuery(params)}`),
   },
 };

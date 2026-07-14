@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatSeconds, formatShortDate, formatEntryTime } from "@/lib/dateUtils";
+import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
 import { ColorDot } from "@/components/ColorDot";
 import { Search } from "lucide-react";
@@ -28,10 +29,12 @@ export interface DetailedEntry {
   projectName: string | null;
   projectColor: string | null;
   clientName: string | null;
+  taskName: string | null;
   start: string;
   stop: string | null;
   duration: number | null;
   billable: boolean;
+  amount: number;
   tags: string[];
 }
 
@@ -43,6 +46,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const timeFormat = useUIStore((s) => s.timeFormat);
+  const currency = useUIStore((s) => s.currency);
 
   const projects = useMemo(() => {
     const seen = new Map<string, string>();
@@ -120,6 +124,9 @@ export function DetailedTable({ entries }: DetailedTableProps) {
               <TableHead className="hidden text-xs md:table-cell">
                 Time
               </TableHead>
+              <TableHead className="hidden text-right text-xs sm:table-cell">
+                Amount
+              </TableHead>
               <TableHead className="text-right text-xs">Duration</TableHead>
             </TableRow>
           </TableHeader>
@@ -155,11 +162,18 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                 </TableCell>
                 <TableCell className="hidden py-2.5 sm:table-cell">
                   {entry.projectName ? (
-                    <div className="flex items-center gap-1.5">
-                      <ColorDot color={entry.projectColor} className="h-2 w-2" />
-                      <span className="truncate text-xs">
-                        {entry.projectName}
-                      </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <ColorDot color={entry.projectColor} className="h-2 w-2" />
+                        <span className="truncate text-xs">
+                          {entry.projectName}
+                        </span>
+                      </div>
+                      {entry.taskName && (
+                        <span className="ml-3.5 block truncate text-[10px] text-muted-foreground">
+                          {entry.taskName}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
@@ -171,6 +185,9 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                 <TableCell className="hidden py-2.5 text-xs text-muted-foreground md:table-cell">
                   {formatEntryTime(entry.start, timeFormat)}
                   {entry.stop && <> – {formatEntryTime(entry.stop, timeFormat)}</>}
+                </TableCell>
+                <TableCell className="hidden py-2.5 text-right font-mono text-xs tabular-nums text-muted-foreground sm:table-cell">
+                  {entry.amount ? formatCurrency(entry.amount, currency) : "–"}
                 </TableCell>
                 <TableCell className="py-2.5 text-right font-mono text-xs tabular-nums">
                   {entry.duration ? formatSeconds(entry.duration) : "–"}

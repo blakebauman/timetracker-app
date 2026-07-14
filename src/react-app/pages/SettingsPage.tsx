@@ -6,12 +6,21 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Download, Pencil, Check, X } from "lucide-react";
 import { useEntries } from "@/hooks/useEntries";
 import { exportToCSV } from "@/lib/exportUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/stores/uiStore";
+import { useUpdateSettings } from "@/hooks/useSettings";
+import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 
@@ -31,6 +40,9 @@ export function SettingsPage() {
   const [defaultBillable, setDefaultBillable] = useState<boolean>(getDefaultBillable);
   const timeFormat = useUIStore((s) => s.timeFormat);
   const setTimeFormatStore = useUIStore((s) => s.setTimeFormat);
+  const currency = useUIStore((s) => s.currency);
+  const setCurrencyStore = useUIStore((s) => s.setCurrency);
+  const updateSettings = useUpdateSettings();
 
   // — Account / edit-name state
   const [editingName, setEditingName] = useState(false);
@@ -55,7 +67,13 @@ export function SettingsPage() {
   };
 
   const handleTimeFormatChange = (value: "24h" | "12h") => {
-    setTimeFormatStore(value);
+    setTimeFormatStore(value); // optimistic; server confirms via mutation
+    updateSettings.mutate({ timeFormat: value });
+  };
+
+  const handleCurrencyChange = (value: string) => {
+    setCurrencyStore(value); // optimistic; server confirms via mutation
+    updateSettings.mutate({ currency: value });
   };
 
   const handleStartEditName = () => {
@@ -236,6 +254,30 @@ export function SettingsPage() {
                 12h
               </button>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Currency */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Currency</Label>
+              <p className="text-xs text-muted-foreground">
+                Used for billable amounts in reports
+              </p>
+            </div>
+            <Select value={currency} onValueChange={handleCurrencyChange}>
+              <SelectTrigger className="w-48 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

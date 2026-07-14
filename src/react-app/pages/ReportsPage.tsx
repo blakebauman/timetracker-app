@@ -4,18 +4,44 @@ import { AiSummaryDialog } from "@/components/reports/AiSummaryDialog";
 import { SummaryCards } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
 import { CumulativeAreaChart } from "@/components/reports/CumulativeAreaChart";
-import { ProjectBreakdown } from "@/components/reports/ProjectBreakdown";
+import { BreakdownCard } from "@/components/reports/BreakdownCard";
+import {
+  ReportFilterBar,
+  EMPTY_FILTERS,
+  type ReportFilters,
+} from "@/components/reports/ReportFilterBar";
 import { WeeklyBarChart } from "@/components/reports/WeeklyBarChart";
 import { DetailedTable, type DetailedEntry } from "@/components/reports/DetailedTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart2 } from "lucide-react";
-import { useReportSummary, useReportDetailed, useReportWeekly } from "@/hooks/useReports";
+import {
+  useReportSummary,
+  useReportDetailed,
+  useReportWeekly,
+  type ReportSummary,
+} from "@/hooks/useReports";
 import { getDateRangePresets } from "@/lib/dateUtils";
 import { exportToCSV } from "@/lib/exportUtils";
 
 const { last7days } = getDateRangePresets();
+
+type GroupDim = "project" | "client" | "task" | "tag";
+
+const GROUP_DIMS: { value: GroupDim; label: string; key: keyof ReportSummary }[] = [
+  { value: "project", label: "By project", key: "byProject" },
+  { value: "client", label: "By client", key: "byClient" },
+  { value: "task", label: "By task", key: "byTask" },
+  { value: "tag", label: "By tag", key: "byTag" },
+];
 
 export function ReportsPage() {
   const [range, setRange] = useState({
@@ -23,10 +49,12 @@ export function ReportsPage() {
     until: last7days.until,
     label: last7days.label,
   });
+  const [filters, setFilters] = useState<ReportFilters>(EMPTY_FILTERS);
+  const [groupDim, setGroupDim] = useState<GroupDim>("project");
 
-  const { data: summary, isLoading } = useReportSummary(range.since, range.until);
-  const { data: detailed = [] } = useReportDetailed(range.since, range.until);
-  const { data: weekly = [] } = useReportWeekly(range.since, range.until);
+  const { data: summary, isLoading } = useReportSummary(range.since, range.until, filters);
+  const { data: detailed = [] } = useReportDetailed(range.since, range.until, filters);
+  const { data: weekly = [] } = useReportWeekly(range.since, range.until, filters);
 
   const handleExport = () => {
     exportToCSV(
@@ -44,6 +72,8 @@ export function ReportsPage() {
         <AiSummaryDialog since={range.since} until={range.until} />
       </div>
 
+      <ReportFilterBar filters={filters} onChange={setFilters} />
+
       {isLoading ? (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -58,6 +88,7 @@ export function ReportsPage() {
           <SummaryCards
             totalSeconds={summary.totalSeconds}
             billableSeconds={summary.billableSeconds}
+            billableAmount={summary.billableAmount}
             entryCount={summary.entryCount}
             avgSeconds={(() => {
               const sinceMs = range.since ? new Date(range.since).getTime() : NaN;
@@ -87,9 +118,30 @@ export function ReportsPage() {
             <TabsContent value="summary" className="mt-4 space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <DailyBarChart data={summary.daily} />
-                <ProjectBreakdown
-                  data={summary.byProject}
+                <BreakdownCard
+                  title={GROUP_DIMS.find((d) => d.value === groupDim)!.label}
+                  rows={summary[
+                    GROUP_DIMS.find((d) => d.value === groupDim)!.key
+                  ] as ReportSummary["byProject"]}
                   totalSeconds={summary.totalSeconds}
+                  showAmount
+                  header={
+                    <Select
+                      value={groupDim}
+                      onValueChange={(v) => setGroupDim(v as GroupDim)}
+                    >
+                      <SelectTrigger className="h-7 w-32 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GROUP_DIMS.map((d) => (
+                          <SelectItem key={d.value} value={d.value}>
+                            {d.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  }
                 />
               </div>
               <CumulativeAreaChart data={summary.daily} />
