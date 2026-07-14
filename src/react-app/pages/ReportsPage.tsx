@@ -32,13 +32,14 @@ import {
   useReportDetailed,
   useReportWeekly,
   useReportGrouped,
-  DEFAULT_ROUNDING,
   type ReportSummary,
   type Rounding,
   type GroupDimension,
   type SubGroupDimension,
 } from "@/hooks/useReports";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useUIStore } from "@/stores/uiStore";
+import { useUpdateSettings } from "@/hooks/useSettings";
 import { getDateRangePresets } from "@/lib/dateUtils";
 import { exportToCSV, exportToExcel } from "@/lib/exportUtils";
 
@@ -62,9 +63,19 @@ export function ReportsPage() {
     label: last7days.label,
   });
   const [filters, setFilters] = useState<ReportFilters>(EMPTY_FILTERS);
-  const [rounding, setRounding] = useState<Rounding>(DEFAULT_ROUNDING);
   const [groupDim, setGroupDim] = useState<GroupDimension>("project");
   const [subGroupDim, setSubGroupDim] = useState<SubGroupDimension>("none");
+
+  // Rounding is a persisted per-user preference (hydrated into the UI store).
+  const roundMode = useUIStore((s) => s.roundMode);
+  const roundMinutes = useUIStore((s) => s.roundMinutes);
+  const setRoundingStore = useUIStore((s) => s.setRounding);
+  const updateSettings = useUpdateSettings();
+  const rounding: Rounding = { mode: roundMode, minutes: roundMinutes };
+  const setRounding = (r: Rounding) => {
+    setRoundingStore(r.mode, r.minutes); // optimistic; persisted below
+    updateSettings.mutate({ roundMode: r.mode, roundMinutes: r.minutes });
+  };
 
   // Debounce the free-text search so typing doesn't refetch on every keystroke.
   const debouncedSearch = useDebouncedValue(filters.search, 300);

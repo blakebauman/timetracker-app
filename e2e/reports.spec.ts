@@ -34,6 +34,27 @@ test.describe("reports charts", () => {
     await expect(weekly.getByText("Billable", { exact: true })).toBeVisible();
   });
 
+  test("detailed report: row selection reveals the bulk action bar", async ({ page }) => {
+    // Seed an entry so the detailed table has a row to select.
+    await page.getByRole("button", { name: "Add entry" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("textarea").fill("Billable review call");
+    const [start, stop] = await dialog.locator('input[type="time"]').all();
+    await start.fill("09:00");
+    await stop.fill("10:00");
+    await dialog.getByRole("button", { name: "Add entry" }).click();
+    await expect(dialog).not.toBeVisible();
+
+    await page.goto("/reports");
+    await page.getByRole("tab", { name: "Detailed" }).click();
+
+    // Selecting all rows shows the bulk action bar with billable + delete.
+    await page.getByRole("checkbox", { name: "Select all" }).check();
+    await expect(page.getByText("1 selected")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Non-billable" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
+  });
+
   test("exposes filters, rounding, saved reports & export formats", async ({ page }) => {
     await page.goto("/reports");
 
