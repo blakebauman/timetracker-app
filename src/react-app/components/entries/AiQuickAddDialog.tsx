@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -153,17 +154,17 @@ export function AiQuickAddDialog({ open, onClose }: AiQuickAddDialogProps) {
         ) : (
           <div className="space-y-5 py-2">
             {(result.confidence === "low" || result.warnings.length > 0) && (
-              <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <div className="space-y-0.5">
+              <Alert variant="warning" className="text-xs">
+                <AlertTriangle />
+                <AlertDescription className="text-xs">
                   {result.confidence === "low" && (
                     <p>Low confidence — please double check these values.</p>
                   )}
                   {result.warnings.map((w) => (
                     <p key={w}>{w}</p>
                   ))}
-                </div>
-              </div>
+                </AlertDescription>
+              </Alert>
             )}
 
             <div className="space-y-1.5">

@@ -268,7 +268,7 @@ export function SettingsPage() {
                   autoFocus
                 />
                 <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleSaveName} title="Save">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4 text-success" />
                 </Button>
                 <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleCancelEditName} title="Cancel">
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -283,7 +283,7 @@ export function SettingsPage() {
               </div>
             )}
             {nameStatus && (
-              <p className={`text-xs ${nameStatus.type === "success" ? "text-green-600" : "text-destructive"}`}>
+              <p className={`text-xs ${nameStatus.type === "success" ? "text-success" : "text-destructive"}`}>
                 {nameStatus.message}
               </p>
             )}
@@ -325,7 +325,7 @@ export function SettingsPage() {
               {passwordPending ? "Saving…" : "Change password"}
             </Button>
             {passwordStatus && (
-              <p className={`text-xs ${passwordStatus.type === "success" ? "text-green-600" : "text-destructive"}`}>
+              <p className={`text-xs ${passwordStatus.type === "success" ? "text-success" : "text-destructive"}`}>
                 {passwordStatus.message}
               </p>
             )}

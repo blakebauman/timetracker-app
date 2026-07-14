@@ -156,23 +156,31 @@ export function Sidebar() {
         )}
       >
         {/* Brand */}
-        <div className="relative flex h-14 items-center border-b px-4">
-          <Clock className="h-5 w-5 shrink-0 text-primary" />
+        <div
+          className={cn(
+            "relative flex h-14 items-center border-b",
+            sidebarCollapsed ? "justify-center px-0" : "px-4"
+          )}
+        >
           {!sidebarCollapsed && (
-            <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
+            <>
+              <Clock className="h-5 w-5 shrink-0 text-primary" />
+              <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
+            </>
           )}
           <Button
             variant="ghost"
             size="icon"
             className={cn(
-              "h-6 w-6 shrink-0 text-muted-foreground",
-              sidebarCollapsed ? "ml-auto" : "absolute right-2"
+              "h-8 w-8 shrink-0 text-muted-foreground",
+              !sidebarCollapsed && "absolute right-2"
             )}
             onClick={toggleSidebar}
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4" />
             ) : (
               <ChevronLeft className="h-3.5 w-3.5" />
             )}

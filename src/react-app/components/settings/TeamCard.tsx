@@ -5,6 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
 import { X, Mail } from "lucide-react";
 
@@ -54,7 +62,11 @@ export function TeamCard() {
       </CardHeader>
       <CardContent className="space-y-5">
         {isPending ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-2/3" />
+          </div>
         ) : (
           <>
             <div className="space-y-2">
@@ -71,14 +83,18 @@ export function TeamCard() {
                         {member.role === "owner" ? (
                           <Badge variant="secondary">owner</Badge>
                         ) : (
-                          <select
-                            className="h-7 rounded border bg-background px-1.5 text-xs"
+                          <Select
                             value={member.role}
-                            onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                            onValueChange={(role) => handleRoleChange(member.id, role)}
                           >
-                            <option value="member">member</option>
-                            <option value="admin">admin</option>
-                          </select>
+                            <SelectTrigger size="sm" className="h-7 w-24 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="member">member</SelectItem>
+                              <SelectItem value="admin">admin</SelectItem>
+                            </SelectContent>
+                          </Select>
                         )}
                         {member.role !== "owner" && (
                           <Button

@@ -123,9 +123,9 @@ export function ProjectList() {
                           className={cn(
                             "h-1.5 flex-1",
                             budgetPercent >= 100
-                              ? "bg-red-500/20 [&>div]:bg-red-500"
+                              ? "bg-destructive/20 [&>div]:bg-destructive"
                               : budgetPercent >= 80
-                              ? "bg-amber-500/20 [&>div]:bg-amber-500"
+                              ? "bg-warning/20 [&>div]:bg-warning"
                               : undefined
                           )}
                         />

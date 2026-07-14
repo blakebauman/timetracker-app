@@ -1,9 +1,16 @@
-import { useState, useRef } from "react";
-import { X, Tag } from "lucide-react";
+import { useState } from "react";
+import { X, Tag, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { useTags } from "@/hooks/useProjects";
 
@@ -16,16 +23,16 @@ interface TagPickerProps {
 export function TagPicker({ value, onChange, className }: TagPickerProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const { data: allTags = [] } = useTags();
 
+  const query = input.trim();
   const suggestions = allTags
     .map((t) => t.name)
     .filter(
       (name) =>
-        name.toLowerCase().includes(input.toLowerCase()) &&
-        !value.includes(name)
+        name.toLowerCase().includes(query.toLowerCase()) && !value.includes(name)
     );
+  const canCreate = query.length > 0 && !suggestions.some((s) => s === query);
 
   const addTag = (tag: string) => {
     const trimmed = tag.trim();
@@ -40,10 +47,7 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && input) {
-      e.preventDefault();
-      addTag(input);
-    } else if (e.key === "Backspace" && !input && value.length) {
+    if (e.key === "Backspace" && !input && value.length) {
       removeTag(value[value.length - 1]);
     }
   };
@@ -62,16 +66,17 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
         >
           <Tag className="h-3.5 w-3.5" />
           {value.length > 0 ? (
-            <span>{value.length} tag{value.length > 1 ? "s" : ""}</span>
+            <span>
+              {value.length} tag{value.length > 1 ? "s" : ""}
+            </span>
           ) : (
             <span>Tags</span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-3" align="start">
-        {/* Selected tags */}
+      <PopoverContent className="w-64 p-0" align="start">
         {value.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 border-b p-2">
             {value.map((tag) => (
               <Badge
                 key={tag}
@@ -79,50 +84,53 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                 className="gap-1 text-xs font-normal"
               >
                 {tag}
-                <button onClick={() => removeTag(tag)}>
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  aria-label={`Remove ${tag}`}
+                >
                   <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             ))}
           </div>
         )}
-
-        {/* Input */}
-        <Input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Add a tag..."
-          className="h-7 text-sm"
-          autoFocus
-        />
-
-        {/* Suggestions */}
-        {suggestions.length > 0 && (
-          <div className="mt-2 space-y-0.5">
-            {suggestions.slice(0, 8).map((tag) => (
-              <button
-                key={tag}
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent"
-                onClick={() => addTag(tag)}
-              >
-                <Tag className="h-3 w-3 text-muted-foreground" />
-                {tag}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {input && !suggestions.find((s) => s === input) && (
-          <button
-            className="mt-1 flex w-full items-center gap-2 rounded px-2 py-1 text-sm text-primary hover:bg-accent"
-            onClick={() => addTag(input)}
-          >
-            <Tag className="h-3 w-3" />
-            Create "{input}"
-          </button>
-        )}
+        <Command shouldFilter={false}>
+          <CommandInput
+            value={input}
+            onValueChange={setInput}
+            onKeyDown={handleKeyDown}
+            placeholder="Add a tag..."
+            className="h-9"
+          />
+          <CommandList>
+            {!suggestions.length && !canCreate && (
+              <CommandEmpty>No tags found</CommandEmpty>
+            )}
+            {suggestions.length > 0 && (
+              <CommandGroup>
+                {suggestions.slice(0, 8).map((tag) => (
+                  <CommandItem key={tag} value={tag} onSelect={() => addTag(tag)}>
+                    <Tag className="h-3 w-3 text-muted-foreground" />
+                    {tag}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {canCreate && (
+              <CommandGroup>
+                <CommandItem
+                  value={`create-${query}`}
+                  onSelect={() => addTag(query)}
+                  className="text-primary"
+                >
+                  <Plus className="h-3 w-3" />
+                  Create "{query}"
+                </CommandItem>
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );

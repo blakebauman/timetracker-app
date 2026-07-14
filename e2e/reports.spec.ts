@@ -1,0 +1,49 @@
+import { test, expect } from "@playwright/test";
+import { signUp } from "./auth";
+
+test.describe("reports charts", () => {
+  test.beforeEach(async ({ page }) => {
+    await signUp(page);
+  });
+
+  test("renders summary + weekly charts with a tracked entry", async ({ page }) => {
+    // Seed a tracked entry so the daily chart has data to plot.
+    await page.getByRole("button", { name: "Add entry" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("textarea").fill("Reports smoke entry");
+    const [start, stop] = await dialog.locator('input[type="time"]').all();
+    await start.fill("09:00");
+    await stop.fill("11:00");
+    await dialog.getByRole("button", { name: "Add entry" }).click();
+    await expect(dialog).not.toBeVisible();
+
+    await page.goto("/reports");
+
+    // Summary tab: stat tiles + daily bar chart + project donut both mount.
+    await expect(page.getByText("Total tracked")).toBeVisible();
+    await expect(page.getByText("Daily breakdown")).toBeVisible();
+    await expect(page.getByText("By project")).toBeVisible();
+    await expect(page.locator('[data-slot="chart"]').first()).toBeVisible();
+    expect(await page.locator('[data-slot="chart"]').count()).toBeGreaterThanOrEqual(2);
+
+    // Weekly tab: grouped bar chart mounts with its legend.
+    await page.getByRole("tab", { name: "Weekly" }).click();
+    const weekly = page.getByRole("tabpanel");
+    await expect(weekly.locator('[data-slot="chart"]')).toBeVisible();
+    await expect(weekly.getByText("Total", { exact: true })).toBeVisible();
+    await expect(weekly.getByText("Billable", { exact: true })).toBeVisible();
+  });
+
+  test("charts render in dark mode", async ({ page }) => {
+    await page.goto("/reports");
+    // next-themes stores the choice in localStorage and toggles the .dark class.
+    await page.evaluate(() => {
+      localStorage.setItem("theme", "dark");
+      document.documentElement.classList.add("dark");
+    });
+    await page.reload();
+    await expect(page.getByText("Daily breakdown")).toBeVisible();
+    await expect(page.locator("html.dark")).toBeVisible();
+    await expect(page.locator('[data-slot="chart"]').first()).toBeVisible();
+  });
+});

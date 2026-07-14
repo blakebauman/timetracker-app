@@ -197,7 +197,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             className={cn(
               "flex h-5 w-5 shrink-0 items-center justify-center",
               entry.syncStatus === "synced"
-                ? "text-green-600 dark:text-green-500"
+                ? "text-success"
                 : entry.syncStatus === "error"
                   ? "text-destructive"
                   : "text-muted-foreground"

@@ -6,7 +6,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { useTasks } from "@/hooks/useTasks";
 
@@ -26,13 +33,14 @@ export function TaskPicker({
   className,
 }: TaskPickerProps) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const { data: tasks = [] } = useTasks(projectId ?? undefined);
 
   const selected = tasks.find((t) => t.id === value);
-  const filtered = tasks.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
-  );
+
+  const select = (taskId: string | null) => {
+    onChange(taskId);
+    setOpen(false);
+  };
 
   // No project selected = no tasks possible
   if (!projectId) return null;
@@ -52,7 +60,7 @@ export function TaskPicker({
         >
           <CheckSquare className="h-3.5 w-3.5 shrink-0" />
           {selected ? (
-            <span className="max-w-[120px] truncate">{selected.name}</span>
+            <span className="max-w-30 truncate">{selected.name}</span>
           ) : (
             !compact && <span>No task</span>
           )}
@@ -60,55 +68,39 @@ export function TaskPicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
-        <div className="p-2">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks..."
-            className="h-8 text-sm"
-            autoFocus
-          />
-        </div>
-        <div className="max-h-52 overflow-y-auto pb-1">
-          <button
-            className={cn(
-              "flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent",
-              !value && "font-medium"
-            )}
-            onClick={() => { onChange(null); setOpen(false); }}
-          >
-            <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">No task</span>
-            {!value && <Check className="ml-auto h-3.5 w-3.5" />}
-          </button>
-
-          {filtered.length > 0 && (
-            <div className="my-1 px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Tasks
-            </div>
-          )}
-
-          {filtered.map((task) => (
-            <button
-              key={task.id}
-              className={cn(
-                "flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent",
-                value === task.id && "font-medium"
-              )}
-              onClick={() => { onChange(task.id); setOpen(false); }}
-            >
-              <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">{task.name}</span>
-              {value === task.id && <Check className="ml-auto h-3.5 w-3.5 shrink-0" />}
-            </button>
-          ))}
-
-          {filtered.length === 0 && (
-            <p className="px-3 py-2 text-sm text-muted-foreground">
+        <Command>
+          <CommandInput placeholder="Search tasks..." className="h-9" />
+          <CommandList>
+            <CommandEmpty>
               {tasks.length === 0 ? "No tasks for this project" : "No tasks found"}
-            </p>
-          )}
-        </div>
+            </CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="no-task"
+                keywords={["no task"]}
+                onSelect={() => select(null)}
+              >
+                <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-muted-foreground">No task</span>
+                {!value && <Check className="ml-auto h-3.5 w-3.5" />}
+              </CommandItem>
+              {tasks.map((task) => (
+                <CommandItem
+                  key={task.id}
+                  value={task.id}
+                  keywords={[task.name]}
+                  onSelect={() => select(task.id)}
+                >
+                  <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{task.name}</span>
+                  {value === task.id && (
+                    <Check className="ml-auto h-3.5 w-3.5 shrink-0" />
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );
