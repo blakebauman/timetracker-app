@@ -21,7 +21,7 @@ import {
 import { ClientForm } from "@/components/clients/ClientForm";
 import { TaskList } from "@/components/projects/TaskList";
 import { useClient, useAllProjects } from "@/hooks/useProjects";
-import { formatSeconds } from "@/lib/dateUtils";
+import { formatDurationShort } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 
 export function ClientDetailPage() {
@@ -139,7 +139,7 @@ export function ClientDetailPage() {
         </h2>
         {totalTracked > 0 && (
           <span className="text-xs text-muted-foreground">
-            {formatSeconds(totalTracked)} tracked total
+            {formatDurationShort(totalTracked)} tracked total
           </span>
         )}
       </div>
@@ -175,7 +175,7 @@ export function ClientDetailPage() {
                     </div>
                     {project.trackedSeconds > 0 && (
                       <div className="mt-0.5 text-xs text-muted-foreground">
-                        {formatSeconds(project.trackedSeconds)} tracked
+                        {formatDurationShort(project.trackedSeconds)} tracked
                       </div>
                     )}
                   </div>

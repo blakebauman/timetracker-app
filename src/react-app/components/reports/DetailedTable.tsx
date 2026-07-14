@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatSeconds, formatShortDate, formatEntryTime } from "@/lib/dateUtils";
+import { formatDurationShort, formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
 import {
@@ -41,7 +41,9 @@ import {
   DollarSign,
   Trash2,
   X,
+  Inbox,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export interface DetailedEntry {
   id: string;
@@ -184,9 +186,11 @@ export function DetailedTable({ entries }: DetailedTableProps) {
 
   if (entries.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        No entries for this period
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title="No entries for this period"
+        description="Try widening the date range or adjusting your filters."
+      />
     );
   }
 
@@ -412,6 +416,6 @@ function renderCell(
     case "amount":
       return entry.amount ? formatCurrency(entry.amount, currency) : "–";
     case "duration":
-      return entry.duration ? formatSeconds(entry.duration) : "–";
+      return entry.duration ? formatDurationShort(entry.duration) : "–";
   }
 }

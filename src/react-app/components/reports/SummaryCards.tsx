@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatDurationHuman } from "@/lib/dateUtils";
+import { formatDurationShort } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
 
@@ -94,14 +94,14 @@ export function SummaryCards({
       key: "total",
       icon: Clock,
       label: "Total tracked",
-      value: formatDurationHuman(totalSeconds),
+      value: formatDurationShort(totalSeconds),
       accent: "bg-primary/10 text-primary",
     },
     {
       key: "billable",
       icon: DollarSign,
       label: "Billable",
-      value: formatDurationHuman(billableSeconds),
+      value: formatDurationShort(billableSeconds),
       accent: "bg-success/10 text-success",
       extra: (
         <div className="mt-1.5 flex items-center gap-2">
@@ -126,14 +126,14 @@ export function SummaryCards({
       key: "entries",
       icon: Hash,
       label: "Entries",
-      value: String(entryCount),
+      value: entryCount.toLocaleString(),
       accent: "bg-chart-2/10 text-chart-2",
     },
     {
       key: "avg",
       icon: TrendingUp,
       label: "Avg / day",
-      value: formatDurationHuman(avgSeconds),
+      value: formatDurationShort(avgSeconds),
       accent: "bg-warning/10 text-warning",
     },
   ];

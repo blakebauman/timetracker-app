@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
-import { formatSeconds, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
+import { formatDurationShort, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import type { Task } from "@shared/schemas";
 
 interface TaskListProps {
@@ -86,6 +86,8 @@ export function TaskList({ projectId }: TaskListProps) {
             {/* Done toggle */}
             <button
               onClick={() => handleToggleDone(task)}
+              aria-label={task.active ? "Mark task done" : "Mark task not done"}
+              aria-pressed={!task.active}
               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                 !task.active
                   ? "border-primary bg-primary text-primary-foreground"
@@ -141,8 +143,8 @@ export function TaskList({ projectId }: TaskListProps) {
                 >
                   <Progress value={progress} className="h-1 flex-1" />
                   <span className="text-[10px] tabular-nums text-muted-foreground">
-                    {formatSeconds(task.trackedSeconds)} /{" "}
-                    {formatSeconds(task.estimatedSeconds!)}
+                    {formatDurationShort(task.trackedSeconds)} /{" "}
+                    {formatDurationShort(task.estimatedSeconds!)}
                   </span>
                 </button>
               ) : task.trackedSeconds > 0 ? (
@@ -150,7 +152,7 @@ export function TaskList({ projectId }: TaskListProps) {
                   className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:opacity-70 transition-opacity"
                   onClick={() => handleStartEditTime(task)}
                 >
-                  {formatSeconds(task.trackedSeconds)} tracked · <span className="underline decoration-dashed">add estimate</span>
+                  {formatDurationShort(task.trackedSeconds)} tracked · <span className="underline decoration-dashed">add estimate</span>
                 </button>
               ) : (
                 <button
@@ -168,6 +170,7 @@ export function TaskList({ projectId }: TaskListProps) {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
+                aria-label="Edit task"
                 onClick={() => handleStartEdit(task)}
               >
                 <Pencil className="h-3 w-3" />
@@ -176,6 +179,7 @@ export function TaskList({ projectId }: TaskListProps) {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 hover:text-destructive"
+                aria-label="Delete task"
                 onClick={() => setDeleteTarget(task)}
               >
                 <Trash2 className="h-3 w-3" />
@@ -192,12 +196,14 @@ export function TaskList({ projectId }: TaskListProps) {
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder="Add a task…"
+          aria-label="Add a task"
           className="h-7 text-xs"
         />
         <Button
           size="icon"
           variant="ghost"
           className="h-7 w-7 shrink-0"
+          aria-label="Add task"
           onClick={handleCreate}
           disabled={!newName.trim() || createTask.isPending}
         >

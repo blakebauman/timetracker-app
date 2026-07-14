@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/collapsible";
 import { EntryRow } from "./EntryRow";
 import { EntryDescriptionGroup } from "./EntryDescriptionGroup";
-import { formatSeconds } from "@/lib/dateUtils";
+import { formatDurationShort } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import type { DescriptionGroup } from "@/hooks/useEntries";
 
@@ -36,7 +36,7 @@ export function EntryGroup({ label, groups, totalSeconds, selectedIds, onToggleS
           <span className="text-sm font-semibold">{label}</span>
         </div>
         <span className="font-mono text-sm text-muted-foreground">
-          {formatSeconds(totalSeconds)}
+          {formatDurationShort(totalSeconds)}
         </span>
       </CollapsibleTrigger>
 

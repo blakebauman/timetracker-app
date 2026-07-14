@@ -4,7 +4,6 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -13,16 +12,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Pencil, Check, X } from "lucide-react";
+import { Download } from "lucide-react";
 import { useEntries } from "@/hooks/useEntries";
 import { exportToCSV } from "@/lib/exportUtils";
-import { useAuth } from "@/hooks/useAuth";
-import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/stores/uiStore";
 import { useUpdateSettings } from "@/hooks/useSettings";
 import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { TeamCard } from "@/components/settings/TeamCard";
+import { AccountCard } from "@/components/settings/AccountCard";
+import { SessionsCard } from "@/components/settings/SessionsCard";
+import { ConnectedAccountsCard } from "@/components/settings/ConnectedAccountsCard";
+import { TwoFactorCard } from "@/components/settings/TwoFactorCard";
+import { PasskeysCard } from "@/components/settings/PasskeysCard";
+import { DangerZoneCard } from "@/components/settings/DangerZoneCard";
 
 // ── Preferences helpers ──────────────────────────────────────────────────────
 
@@ -34,7 +37,6 @@ function getDefaultBillable(): boolean {
 
 export function SettingsPage() {
   const { data: entries = [] } = useEntries(365);
-  const { user } = useAuth();
 
   // — Preferences state
   const [defaultBillable, setDefaultBillable] = useState<boolean>(getDefaultBillable);
@@ -43,17 +45,6 @@ export function SettingsPage() {
   const currency = useUIStore((s) => s.currency);
   const setCurrencyStore = useUIStore((s) => s.setCurrency);
   const updateSettings = useUpdateSettings();
-
-  // — Account / edit-name state
-  const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState(user?.name ?? "");
-  const [nameStatus, setNameStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
-
-  // — Account / change-password state
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [passwordStatus, setPasswordStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [passwordPending, setPasswordPending] = useState(false);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -74,57 +65,6 @@ export function SettingsPage() {
   const handleCurrencyChange = (value: string) => {
     setCurrencyStore(value); // optimistic; server confirms via mutation
     updateSettings.mutate({ currency: value });
-  };
-
-  const handleStartEditName = () => {
-    setNameValue(user?.name ?? "");
-    setNameStatus(null);
-    setEditingName(true);
-  };
-
-  const handleCancelEditName = () => {
-    setEditingName(false);
-    setNameStatus(null);
-  };
-
-  const handleSaveName = async () => {
-    const trimmed = nameValue.trim();
-    if (!trimmed) return;
-    try {
-      const result = await authClient.updateUser({ name: trimmed });
-      if (result.error) {
-        setNameStatus({ type: "error", message: result.error.message ?? "Failed to update name." });
-      } else {
-        setNameStatus({ type: "success", message: "Name updated." });
-        setEditingName(false);
-      }
-    } catch {
-      setNameStatus({ type: "error", message: "An unexpected error occurred." });
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword) return;
-    setPasswordPending(true);
-    setPasswordStatus(null);
-    try {
-      const result = await authClient.changePassword({
-        currentPassword,
-        newPassword,
-        revokeOtherSessions: false,
-      });
-      if (result.error) {
-        setPasswordStatus({ type: "error", message: result.error.message ?? "Failed to change password." });
-      } else {
-        setPasswordStatus({ type: "success", message: "Password changed successfully." });
-        setCurrentPassword("");
-        setNewPassword("");
-      }
-    } catch {
-      setPasswordStatus({ type: "error", message: "An unexpected error occurred." });
-    } finally {
-      setPasswordPending(false);
-    }
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -289,91 +229,16 @@ export function SettingsPage() {
       <IntegrationsCard />
 
       {/* Account */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Account</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Edit name */}
-          <div className="space-y-2">
-            <Label>Name</Label>
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={nameValue}
-                  onChange={(e) => setNameValue(e.target.value)}
-                  className="h-8 text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveName();
-                    if (e.key === "Escape") handleCancelEditName();
-                  }}
-                  autoFocus
-                />
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleSaveName} title="Save">
-                  <Check className="h-4 w-4 text-success" />
-                </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleCancelEditName} title="Cancel">
-                  <X className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm">{user?.name ?? "—"}</span>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={handleStartEditName} title="Edit name">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-            {nameStatus && (
-              <p className={`text-xs ${nameStatus.type === "success" ? "text-success" : "text-destructive"}`}>
-                {nameStatus.message}
-              </p>
-            )}
-          </div>
+      <AccountCard />
 
-          <Separator />
+      {/* Security */}
+      <TwoFactorCard />
+      <PasskeysCard />
+      <ConnectedAccountsCard />
+      <SessionsCard />
 
-          {/* Change password */}
-          <form
-            className="space-y-3"
-            noValidate
-            onSubmit={(e) => { e.preventDefault(); handleChangePassword(); }}
-          >
-            <Label>Change password</Label>
-            <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Current password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                autoComplete="current-password"
-                className="h-8 text-sm"
-              />
-              <Input
-                type="password"
-                placeholder="New password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                autoComplete="new-password"
-                className="h-8 text-sm"
-              />
-            </div>
-            <Button
-              type="submit"
-              size="sm"
-              variant="outline"
-              disabled={passwordPending || !currentPassword || !newPassword}
-            >
-              {passwordPending ? "Saving…" : "Change password"}
-            </Button>
-            {passwordStatus && (
-              <p className={`text-xs ${passwordStatus.type === "success" ? "text-success" : "text-destructive"}`}>
-                {passwordStatus.message}
-              </p>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+      {/* Danger zone */}
+      <DangerZoneCard />
     </div>
   );
 }

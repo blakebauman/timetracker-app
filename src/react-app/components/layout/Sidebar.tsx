@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { UserAvatar } from "@/components/layout/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useUIStore } from "@/stores/uiStore";
@@ -138,9 +139,12 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
             )}
           >
             {!collapsed && (
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium">{user.name}</p>
-                <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+              <div className="flex min-w-0 items-center gap-2">
+                <UserAvatar name={user.name} email={user.email} image={user.image} />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium">{user.name}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+                </div>
               </div>
             )}
             <Button
