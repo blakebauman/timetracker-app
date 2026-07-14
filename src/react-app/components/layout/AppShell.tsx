@@ -9,9 +9,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useHydrateSettings } from "@/hooks/useSettings";
 
 export function AppShell() {
   useWebSocket();
+  useHydrateSettings();
   const { isOnline } = useOfflineSync();
   const location = useLocation();
   // useTimer() is called inside TimerBar (always mounted), which registers
@@ -19,7 +21,9 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background md:flex-row">
-      <Sidebar />
+      <div className="contents print:hidden">
+        <Sidebar />
+      </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Offline banner */}
@@ -33,7 +37,9 @@ export function AppShell() {
         )}
 
         {/* Timer bar — always visible at the top */}
-        <TimerBar />
+        <div className="contents print:hidden">
+          <TimerBar />
+        </div>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

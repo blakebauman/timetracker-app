@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { normalizeApiUrl, DEFAULT_API_URL } from "../lib/apiUrl";
+import { makeAuthClient, type ExtAuthClient } from "../lib/auth-client";
 
 interface TimerState {
   running: boolean;
@@ -35,46 +37,55 @@ export function Popup() {
   const [elapsed, setElapsed] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [apiUrl, setApiUrl] = useState<string>("https://timetracker.run");
+  const [apiUrl, setApiUrl] = useState<string>(DEFAULT_API_URL);
   const [showSettings, setShowSettings] = useState(false);
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [apiUrlError, setApiUrlError] = useState<string | null>(null);
+  const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
+  const clientRef = useRef<ExtAuthClient | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // Load state on mount
+  // Load state on mount. GET_STATE gives us the stored apiUrl + timer state (and
+  // nudges the service worker to refresh timer state from the server). We then
+  // build the auth client against that apiUrl and validate the session.
   useEffect(() => {
-    chrome.runtime.sendMessage({ type: "GET_STATE" }, (res) => {
+    chrome.runtime.sendMessage({ type: "GET_STATE" }, async (res) => {
+      const base = (res?.apiUrl && normalizeApiUrl(res.apiUrl)) || DEFAULT_API_URL;
+      setApiUrl(base);
       if (res?.timerState) {
         setTimerState(res.timerState);
         setDescription(res.timerState.description);
       }
-      if (res?.apiUrl) setApiUrl(res.apiUrl);
-      if (res?.authToken) setAuthToken(res.authToken);
+      const client = makeAuthClient(base);
+      clientRef.current = client;
+      try {
+        const { data } = await client.getSession();
+        if (data?.user) setUser({ email: data.user.email, name: data.user.name });
+      } catch {
+        // Offline or unreachable backend — treat as signed out for now.
+      }
       setInitializing(false);
     });
 
     chrome.storage.session.get("pageContext", ({ pageContext }) => {
-      if (pageContext && !timerState) {
-        setDescription(pageContext as string);
-      }
+      if (pageContext) setDescription((d) => d || (pageContext as string));
     });
   }, []);
 
-  // Reactively sync auth token from storage — handles the case where the MV3
-  // service worker is terminated before sendResponse fires (dropped callback),
-  // meaning the SIGN_IN callback never updates React state even though the token
-  // was successfully stored.
+  // Reactively drop to the login form when the token is cleared from storage —
+  // e.g. the service worker got a 401 on a poll and cleared it (authedFetch).
   useEffect(() => {
     const handler = (
       changes: { [key: string]: chrome.storage.StorageChange },
       area: string
     ) => {
       if (area !== "local") return;
-      if (changes.authToken?.newValue) setAuthToken(changes.authToken.newValue);
-      if ("authToken" in changes && !changes.authToken?.newValue) setAuthToken(null);
+      if ("authToken" in changes && !changes.authToken?.newValue) {
+        setUser(null);
+        setTimerState(null);
+      }
     };
     chrome.storage.onChanged.addListener(handler);
     return () => chrome.storage.onChanged.removeListener(handler);
@@ -90,38 +101,49 @@ export function Popup() {
     return () => clearInterval(id);
   }, [timerState?.running, timerState?.startedAt]);
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    const client = clientRef.current;
+    if (!client) return;
     setLoginLoading(true);
     setLoginError(null);
-    chrome.runtime.sendMessage(
-      { type: "SIGN_IN", email: loginEmail, password: loginPassword },
-      (res) => {
-        setLoginLoading(false);
-        if (res?.ok) {
-          chrome.runtime.sendMessage({ type: "GET_STATE" }, (state) => {
-            if (state?.authToken) setAuthToken(state.authToken);
-            if (state?.timerState) {
-              setTimerState(state.timerState);
-              setDescription(state.timerState.description);
-            }
-          });
-          setUserEmail(loginEmail);
-        } else {
-          setLoginError(res?.error ?? "Sign in failed");
-        }
+    // Standard better-auth client. The bearer() plugin returns the token in the
+    // `set-auth-token` header, which the client's onSuccess persists to
+    // chrome.storage.local for the service worker to reuse.
+    const { data, error } = await client.signIn.email({
+      email: loginEmail,
+      password: loginPassword,
+    });
+    setLoginLoading(false);
+    if (error || !data) {
+      setLoginError(error?.message ?? "Sign in failed");
+      return;
+    }
+    setUser({ email: data.user.email, name: data.user.name });
+    setLoginPassword("");
+    // Now that a token is stored, nudge the worker to refresh the badge/timer.
+    chrome.runtime.sendMessage({ type: "GET_STATE" }, (state) => {
+      if (state?.timerState) {
+        setTimerState(state.timerState);
+        setDescription(state.timerState.description);
       }
-    );
+    });
   };
 
-  const handleSignOut = () => {
-    chrome.runtime.sendMessage({ type: "SIGN_OUT" }, () => {
-      setAuthToken(null);
-      setUserEmail(null);
-      setTimerState(null);
-      setDescription("");
-      setElapsed(0);
-      setShowSettings(false);
-    });
+  const handleSignOut = async () => {
+    // Revoke server-side first (needs the bearer token, still in storage), then
+    // clear local state and reset the badge.
+    try {
+      await clientRef.current?.signOut();
+    } catch {
+      // Ignore network errors — we clear locally regardless.
+    }
+    await chrome.storage.local.remove(["authToken", "timerState"]);
+    chrome.runtime.sendMessage({ type: "SIGN_OUT" });
+    setUser(null);
+    setTimerState(null);
+    setDescription("");
+    setElapsed(0);
+    setShowSettings(false);
   };
 
   const handleStart = () => {
@@ -153,9 +175,33 @@ export function Popup() {
   };
 
   const handleSaveApiUrl = () => {
-    chrome.runtime.sendMessage({ type: "SET_API_URL", url: apiUrl }, () => {
-      setShowSettings(false);
-    });
+    const normalized = normalizeApiUrl(apiUrl);
+    if (!normalized) {
+      setApiUrlError("Must be timetracker.run, a *.workers.dev URL, or localhost");
+      return;
+    }
+    setApiUrlError(null);
+    chrome.runtime.sendMessage(
+      { type: "SET_API_URL", url: normalized },
+      async (res) => {
+        if (res?.ok) {
+          const base = res.url ?? normalized;
+          setApiUrl(base);
+          // Rebuild the client against the new backend and re-check the session.
+          const client = makeAuthClient(base);
+          clientRef.current = client;
+          try {
+            const { data } = await client.getSession();
+            setUser(data?.user ? { email: data.user.email, name: data.user.name } : null);
+          } catch {
+            setUser(null);
+          }
+          setShowSettings(false);
+        } else {
+          setApiUrlError(res?.error ?? "Could not save API URL");
+        }
+      }
+    );
   };
 
   const isRunning = timerState?.running;
@@ -199,7 +245,7 @@ export function Popup() {
   }
 
   // ── Login form ───────────────────────────────────────────────────────────────
-  if (!authToken) {
+  if (!user) {
     return (
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "12px 14px", borderBottom: `1px solid ${c.border}`, background: c.bg }}>
@@ -277,10 +323,10 @@ export function Popup() {
       {showSettings && (
         <div style={{ padding: "10px 14px", borderBottom: `1px solid ${c.border}`, background: c.bgMuted }}>
           <label style={{ fontSize: 12, color: c.fgMuted, display: "block", marginBottom: 4 }}>API URL</label>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: apiUrlError ? 4 : 8 }}>
             <input
               value={apiUrl}
-              onChange={(e) => setApiUrl(e.target.value)}
+              onChange={(e) => { setApiUrl(e.target.value); setApiUrlError(null); }}
               style={{ ...inputStyle, padding: "4px 8px", fontSize: 12 }}
               placeholder="https://your-worker.workers.dev"
             />
@@ -289,9 +335,12 @@ export function Popup() {
               borderRadius: 4, padding: "4px 10px", fontSize: 12, cursor: "pointer",
             }}>Save</button>
           </div>
-          {userEmail && (
+          {apiUrlError && (
+            <p style={{ fontSize: 11, color: c.brand, margin: "0 0 8px" }}>{apiUrlError}</p>
+          )}
+          {user && (
             <p style={{ fontSize: 11, color: c.fgMuted, margin: "0 0 6px" }}>
-              Signed in as {userEmail}
+              Signed in as {user.email}
             </p>
           )}
           <button onClick={handleSignOut} style={{

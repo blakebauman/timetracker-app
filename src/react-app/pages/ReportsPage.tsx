@@ -1,21 +1,59 @@
-import { useState } from "react";
-import { ReportHeader } from "@/components/reports/ReportHeader";
+import { useMemo, useState } from "react";
+import { ReportHeader, type ExportFormat } from "@/components/reports/ReportHeader";
 import { AiSummaryDialog } from "@/components/reports/AiSummaryDialog";
 import { SummaryCards } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
 import { CumulativeAreaChart } from "@/components/reports/CumulativeAreaChart";
-import { ProjectBreakdown } from "@/components/reports/ProjectBreakdown";
+import { BreakdownCard } from "@/components/reports/BreakdownCard";
+import { SummaryTree } from "@/components/reports/SummaryTree";
+import { RoundingControl } from "@/components/reports/RoundingControl";
+import { SavedReportsMenu } from "@/components/reports/SavedReportsMenu";
+import type { ReportConfig } from "@/hooks/useSavedReports";
+import {
+  ReportFilterBar,
+  EMPTY_FILTERS,
+  type ReportFilters,
+} from "@/components/reports/ReportFilterBar";
 import { WeeklyBarChart } from "@/components/reports/WeeklyBarChart";
 import { DetailedTable, type DetailedEntry } from "@/components/reports/DetailedTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart2 } from "lucide-react";
-import { useReportSummary, useReportDetailed, useReportWeekly } from "@/hooks/useReports";
+import {
+  useReportSummary,
+  useReportDetailed,
+  useReportWeekly,
+  useReportGrouped,
+  DEFAULT_ROUNDING,
+  type ReportSummary,
+  type Rounding,
+  type GroupDimension,
+  type SubGroupDimension,
+} from "@/hooks/useReports";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getDateRangePresets } from "@/lib/dateUtils";
-import { exportToCSV } from "@/lib/exportUtils";
+import { exportToCSV, exportToExcel } from "@/lib/exportUtils";
 
 const { last7days } = getDateRangePresets();
+
+const GROUP_DIMS: {
+  value: GroupDimension;
+  label: string;
+  key: keyof ReportSummary;
+}[] = [
+  { value: "project", label: "Project", key: "byProject" },
+  { value: "client", label: "Client", key: "byClient" },
+  { value: "task", label: "Task", key: "byTask" },
+  { value: "tag", label: "Tag", key: "byTag" },
+];
 
 export function ReportsPage() {
   const [range, setRange] = useState({
@@ -23,17 +61,112 @@ export function ReportsPage() {
     until: last7days.until,
     label: last7days.label,
   });
+  const [filters, setFilters] = useState<ReportFilters>(EMPTY_FILTERS);
+  const [rounding, setRounding] = useState<Rounding>(DEFAULT_ROUNDING);
+  const [groupDim, setGroupDim] = useState<GroupDimension>("project");
+  const [subGroupDim, setSubGroupDim] = useState<SubGroupDimension>("none");
 
-  const { data: summary, isLoading } = useReportSummary(range.since, range.until);
-  const { data: detailed = [] } = useReportDetailed(range.since, range.until);
-  const { data: weekly = [] } = useReportWeekly(range.since, range.until);
+  // Debounce the free-text search so typing doesn't refetch on every keystroke.
+  const debouncedSearch = useDebouncedValue(filters.search, 300);
+  const queryFilters = useMemo(
+    () => ({ ...filters, search: debouncedSearch }),
+    [filters, debouncedSearch]
+  );
 
-  const handleExport = () => {
-    exportToCSV(
-      detailed as DetailedEntry[],
-      `time-entries-${range.label.replace(/\s/g, "-")}`
-    );
+  const { data: summary, isLoading } = useReportSummary(
+    range.since,
+    range.until,
+    queryFilters,
+    rounding
+  );
+  const { data: detailed = [] } = useReportDetailed(
+    range.since,
+    range.until,
+    queryFilters,
+    rounding
+  );
+  const { data: weekly = [] } = useReportWeekly(
+    range.since,
+    range.until,
+    queryFilters,
+    rounding
+  );
+  const subGrouped = subGroupDim !== "none";
+  const { data: grouped } = useReportGrouped(
+    range.since,
+    range.until,
+    groupDim,
+    subGroupDim,
+    queryFilters,
+    rounding,
+    subGrouped
+  );
+
+  const handleExport = (format: ExportFormat) => {
+    const entries = detailed as DetailedEntry[];
+    const name = `time-entries-${range.label.replace(/\s/g, "-")}`;
+    if (format === "csv") exportToCSV(entries, name);
+    else if (format === "excel") exportToExcel(entries, name);
+    else window.print();
   };
+
+  const currentConfig: ReportConfig = {
+    range,
+    filters,
+    rounding,
+    group: groupDim,
+    subGroup: subGroupDim,
+  };
+
+  const loadConfig = (cfg: ReportConfig) => {
+    if (cfg.range?.since) setRange(cfg.range);
+    if (cfg.filters) setFilters({ ...EMPTY_FILTERS, ...cfg.filters });
+    if (cfg.rounding) setRounding(cfg.rounding);
+    if (cfg.group) setGroupDim(cfg.group);
+    if (cfg.subGroup) setSubGroupDim(cfg.subGroup);
+  };
+
+  // Group-by + sub-group-by controls, shared by the breakdown and tree views.
+  const groupControls = (
+    <div className="flex items-center gap-1.5">
+      <Select
+        value={groupDim}
+        onValueChange={(v) => {
+          const dim = v as GroupDimension;
+          setGroupDim(dim);
+          if (subGroupDim === dim) setSubGroupDim("none");
+        }}
+      >
+        <SelectTrigger className="h-7 w-24 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {GROUP_DIMS.map((d) => (
+            <SelectItem key={d.value} value={d.value}>
+              {d.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="text-xs text-muted-foreground">›</span>
+      <Select
+        value={subGroupDim}
+        onValueChange={(v) => setSubGroupDim(v as SubGroupDimension)}
+      >
+        <SelectTrigger className="h-7 w-28 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">No sub-group</SelectItem>
+          {GROUP_DIMS.filter((d) => d.value !== groupDim).map((d) => (
+            <SelectItem key={d.value} value={d.value}>
+              {d.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -41,7 +174,17 @@ export function ReportsPage() {
         <div className="flex-1">
           <ReportHeader range={range} onRangeChange={setRange} onExport={handleExport} />
         </div>
-        <AiSummaryDialog since={range.since} until={range.until} />
+        <div className="print:hidden">
+          <AiSummaryDialog since={range.since} until={range.until} />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-start justify-between gap-2 print:hidden">
+        <ReportFilterBar filters={filters} onChange={setFilters} />
+        <div className="flex items-center gap-2">
+          <RoundingControl value={rounding} onChange={setRounding} />
+          <SavedReportsMenu current={currentConfig} onLoad={loadConfig} />
+        </div>
       </div>
 
       {isLoading ? (
@@ -58,6 +201,7 @@ export function ReportsPage() {
           <SummaryCards
             totalSeconds={summary.totalSeconds}
             billableSeconds={summary.billableSeconds}
+            billableAmount={summary.billableAmount}
             entryCount={summary.entryCount}
             avgSeconds={(() => {
               const sinceMs = range.since ? new Date(range.since).getTime() : NaN;
@@ -71,7 +215,7 @@ export function ReportsPage() {
           />
 
           <Tabs defaultValue="summary">
-            <TabsList>
+            <TabsList className="print:hidden">
               <TabsTrigger value="summary">Summary</TabsTrigger>
               <TabsTrigger value="weekly">Weekly</TabsTrigger>
               <TabsTrigger value="detailed">
@@ -87,10 +231,21 @@ export function ReportsPage() {
             <TabsContent value="summary" className="mt-4 space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <DailyBarChart data={summary.daily} />
-                <ProjectBreakdown
-                  data={summary.byProject}
-                  totalSeconds={summary.totalSeconds}
-                />
+                {subGrouped && grouped ? (
+                  <SummaryTree data={grouped} showAmount header={groupControls} />
+                ) : (
+                  <BreakdownCard
+                    title="Breakdown"
+                    rows={
+                      summary[
+                        GROUP_DIMS.find((d) => d.value === groupDim)!.key
+                      ] as ReportSummary["byProject"]
+                    }
+                    totalSeconds={summary.totalSeconds}
+                    showAmount
+                    header={groupControls}
+                  />
+                )}
               </div>
               <CumulativeAreaChart data={summary.daily} />
             </TabsContent>

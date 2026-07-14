@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Download } from "lucide-react";
+import { Calendar, Download, FileText, FileSpreadsheet, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,10 +15,12 @@ interface DateRange {
   label: string;
 }
 
+export type ExportFormat = "csv" | "excel" | "print";
+
 interface ReportHeaderProps {
   range: DateRange;
   onRangeChange: (range: DateRange) => void;
-  onExport?: () => void;
+  onExport?: (format: ExportFormat) => void;
 }
 
 export function ReportHeader({
@@ -51,7 +53,7 @@ export function ReportHeader({
         <p className="text-sm text-muted-foreground">{range.label}</p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 print:hidden">
         {range.label === "Custom range" && (
           <div className="flex items-center gap-1.5">
             <input
@@ -105,10 +107,28 @@ export function ReportHeader({
         </DropdownMenu>
 
         {onExport && (
-          <Button variant="outline" size="sm" onClick={onExport} className="gap-1.5">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onExport("csv")}>
+                <FileText className="h-4 w-4" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport("excel")}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport("print")}>
+                <Printer className="h-4 w-4" />
+                Print / PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>
