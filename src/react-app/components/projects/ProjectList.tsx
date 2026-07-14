@@ -19,12 +19,15 @@ import { ProjectForm } from "./ProjectForm";
 import { TaskList } from "./TaskList";
 import { useAllProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatSeconds, formatPlainDate } from "@/lib/dateUtils";
+import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
+import { formatCurrency } from "@/lib/currency";
+import { useUIStore } from "@/stores/uiStore";
 import { cn } from "@/lib/utils";
 import type { Project } from "@shared/schemas";
 
 export function ProjectList() {
   const { data: projects = [], isLoading } = useAllProjects();
+  const currency = useUIStore((s) => s.currency);
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const [editProject, setEditProject] = useState<Project | null>(null);
@@ -104,14 +107,14 @@ export function ProjectList() {
                       )}
                       {project.billable && (
                         <Badge variant="secondary" className="text-xs">
-                          Billable{project.rate ? ` $${project.rate}/h` : ""}
+                          Billable{project.rate ? ` ${formatCurrency(project.rate, currency)}/h` : ""}
                         </Badge>
                       )}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {project.clientName && <span>{project.clientName}</span>}
                       {project.trackedSeconds > 0 && (
-                        <span>{formatSeconds(project.trackedSeconds)} tracked</span>
+                        <span>{formatDurationShort(project.trackedSeconds)} tracked</span>
                       )}
                       {project.endDate && (
                         <span>Due {formatPlainDate(project.endDate)}</span>
@@ -132,7 +135,7 @@ export function ProjectList() {
                           )}
                         />
                         <span className="text-[10px] tabular-nums text-muted-foreground">
-                          {formatSeconds(project.trackedSeconds)} / {project.estimatedHours}h
+                          {formatDurationShort(project.trackedSeconds)} / {project.estimatedHours}h
                         </span>
                       </div>
                     )}
@@ -157,7 +160,7 @@ export function ProjectList() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Project actions">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

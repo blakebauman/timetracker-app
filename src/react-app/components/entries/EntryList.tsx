@@ -155,6 +155,7 @@ export function EntryList() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
+                aria-label="Clear selection"
                 onClick={clearSelection}
               >
                 <X className="h-3.5 w-3.5" />
@@ -183,7 +184,9 @@ export function EntryList() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-end gap-2 border-b px-4 py-2">
+      <div className="flex items-center justify-between gap-2 border-b px-4 py-2">
+        <h1 className="text-sm font-semibold">Time entries</h1>
+        <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -202,6 +205,7 @@ export function EntryList() {
           <Sparkles className="h-3.5 w-3.5" />
           AI quick add
         </Button>
+        </div>
       </div>
       {content}
       <AiQuickAddDialog open={aiQuickAddOpen} onClose={() => setAiQuickAddOpen(false)} />

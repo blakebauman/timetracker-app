@@ -1,7 +1,5 @@
 import {
   format,
-  formatDuration,
-  intervalToDuration,
   isToday,
   isYesterday,
   startOfDay,
@@ -15,7 +13,6 @@ import {
   subMonths,
   parseISO,
   differenceInSeconds,
-  type Duration,
 } from "date-fns";
 
 export function formatSeconds(seconds: number): string {
@@ -25,25 +22,20 @@ export function formatSeconds(seconds: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// Canonical human-readable duration for all static (non-ticking) displays.
+//   0            → "0m"
+//   1–59s        → "49s"   (so a real sub-minute entry isn't shown as "0m")
+//   <1h          → "45m"
+//   exact hour   → "2h"    (drop the trailing "0m")
+//   otherwise    → "2h 30m"
 export function formatDurationShort(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
+  const total = Math.floor(seconds);
+  if (total <= 0) return "0m";
+  if (total < 60) return `${total}s`;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
   return `${m}m`;
-}
-
-export function formatDurationHuman(seconds: number): string {
-  const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
-  const units: (keyof Duration)[] = duration.days
-    ? ["days", "hours", "minutes"]
-    : ["hours", "minutes"];
-  return (
-    formatDuration(duration, {
-      format: units,
-      zero: true,
-      delimiter: " ",
-    }) || "0 minutes"
-  );
 }
 
 // Parse a human-readable time string to seconds.

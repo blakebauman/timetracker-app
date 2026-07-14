@@ -21,12 +21,15 @@ interface ReportHeaderProps {
   range: DateRange;
   onRangeChange: (range: DateRange) => void;
   onExport?: (format: ExportFormat) => void;
+  /** Extra actions rendered inline with the date/export controls (e.g. AI summary). */
+  actions?: React.ReactNode;
 }
 
 export function ReportHeader({
   range,
   onRangeChange,
   onExport,
+  actions,
 }: ReportHeaderProps) {
   const presets = getDateRangePresets();
   const [customSince, setCustomSince] = useState("");
@@ -58,6 +61,7 @@ export function ReportHeader({
           <div className="flex items-center gap-1.5">
             <input
               type="date"
+              aria-label="Start date"
               value={customSince}
               onChange={(e) => handleCustomSince(e.target.value)}
               className="border rounded-md px-2 py-1 text-sm bg-background"
@@ -65,6 +69,7 @@ export function ReportHeader({
             <span className="text-sm text-muted-foreground">–</span>
             <input
               type="date"
+              aria-label="End date"
               value={customUntil}
               onChange={(e) => handleCustomUntil(e.target.value)}
               className="border rounded-md px-2 py-1 text-sm bg-background"
@@ -130,6 +135,8 @@ export function ReportHeader({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        {actions}
       </div>
     </div>
   );

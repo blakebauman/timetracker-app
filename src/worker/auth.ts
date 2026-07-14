@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
-import { bearer, organization, admin, emailOTP, magicLink } from "better-auth/plugins";
+import { bearer, organization, admin, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
+import { passkey } from "@better-auth/passkey";
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
 
@@ -23,6 +24,11 @@ async function sendEmail(env: Env, to: string, subject: string, text: string, ht
 }
 
 export function createAuth(env: Env, baseURL: string) {
+  // WebAuthn/passkey relying-party is derived from the request origin so it works
+  // unchanged in local dev (localhost) and production (timetracker.run). Frontend
+  // and worker share an origin here, so the RP origin is just the base origin.
+  const rpURL = new URL(baseURL);
+
   const auth = betterAuth({
     // D1 is auto-detected via its batch/exec/prepare interface
     database: env.DB as unknown as Parameters<typeof betterAuth>[0]["database"],
@@ -40,6 +46,12 @@ export function createAuth(env: Env, baseURL: string) {
     ],
     emailAndPassword: {
       enabled: true,
+    },
+    user: {
+      // Enables the account self-deletion flow (authClient.deleteUser()).
+      deleteUser: {
+        enabled: true,
+      },
     },
     socialProviders: {
       google: {
@@ -95,6 +107,14 @@ export function createAuth(env: Env, baseURL: string) {
           const html = `<p>Click below to sign in to timetracker.run:</p><p><a href="${url}">${url}</a></p>`;
           await sendEmail(env, email, "Sign in to timetracker.run", text, html);
         },
+      }),
+      twoFactor({
+        issuer: "Time Tracker",
+      }),
+      passkey({
+        rpID: rpURL.hostname,
+        rpName: "Time Tracker",
+        origin: rpURL.origin,
       }),
     ],
     advanced: {

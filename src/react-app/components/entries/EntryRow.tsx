@@ -16,7 +16,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { usePushEntries, useIntegrations } from "@/hooks/useIntegrations";
 import { useTimer } from "@/hooks/useTimer";
 import { cn } from "@/lib/utils";
-import { formatSeconds, formatShortDate, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
+import { formatSeconds, formatDurationShort, formatShortDate, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { useUIStore } from "@/stores/uiStore";
 import { ColorDot } from "@/components/ColorDot";
@@ -260,7 +260,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             onClick={handleStartEditDuration}
             className="min-w-16 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary focus-visible:text-primary focus-visible:underline focus-visible:outline-none"
           >
-            {entry.duration ? formatSeconds(entry.duration) : "–"}
+            {entry.duration ? formatDurationShort(entry.duration) : "–"}
           </button>
         )}
 

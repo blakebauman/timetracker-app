@@ -14,7 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
+import { UserAvatar } from "@/components/layout/UserAvatar";
 import { X, Mail } from "lucide-react";
+import { toast } from "sonner";
 
 export function TeamCard() {
   const { data: org, isPending, refetch } = authClient.useActiveOrganization();
@@ -41,17 +43,32 @@ export function TeamCard() {
   };
 
   const handleCancelInvite = async (invitationId: string) => {
-    await authClient.organization.cancelInvitation({ invitationId });
+    const { error } = await authClient.organization.cancelInvitation({ invitationId });
+    if (error) {
+      toast.error(error.message ?? "Failed to cancel invitation");
+      return;
+    }
+    toast.success("Invitation cancelled");
     refetch();
   };
 
   const handleRoleChange = async (memberId: string, role: string) => {
-    await authClient.organization.updateMemberRole({ memberId, role });
+    const { error } = await authClient.organization.updateMemberRole({ memberId, role });
+    if (error) {
+      toast.error(error.message ?? "Failed to update role");
+      return;
+    }
+    toast.success("Role updated");
     refetch();
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    await authClient.organization.removeMember({ memberIdOrEmail: memberId });
+    const { error } = await authClient.organization.removeMember({ memberIdOrEmail: memberId });
+    if (error) {
+      toast.error(error.message ?? "Failed to remove member");
+      return;
+    }
+    toast.success("Member removed");
     refetch();
   };
 
@@ -75,9 +92,17 @@ export function TeamCard() {
                 <div className="space-y-2">
                   {org.members.map((member) => (
                     <div key={member.id} className="flex items-center justify-between text-sm">
-                      <div>
-                        <span className="font-medium">{member.user?.name ?? member.user?.email}</span>
-                        <span className="ml-2 text-muted-foreground">{member.user?.email}</span>
+                      <div className="flex items-center gap-2">
+                        <UserAvatar
+                          name={member.user?.name}
+                          email={member.user?.email}
+                          image={member.user?.image}
+                          className="h-7 w-7"
+                        />
+                        <div className="min-w-0">
+                          <span className="font-medium">{member.user?.name ?? member.user?.email}</span>
+                          <span className="ml-2 text-muted-foreground">{member.user?.email}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {member.role === "owner" ? (

@@ -90,13 +90,13 @@ export function ReportsPage() {
     queryFilters,
     rounding
   );
-  const { data: detailed = [] } = useReportDetailed(
+  const { data: detailed = [], isLoading: detailedLoading } = useReportDetailed(
     range.since,
     range.until,
     queryFilters,
     rounding
   );
-  const { data: weekly = [] } = useReportWeekly(
+  const { data: weekly = [], isLoading: weeklyLoading } = useReportWeekly(
     range.since,
     range.until,
     queryFilters,
@@ -181,14 +181,12 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-start gap-2">
-        <div className="flex-1">
-          <ReportHeader range={range} onRangeChange={setRange} onExport={handleExport} />
-        </div>
-        <div className="print:hidden">
-          <AiSummaryDialog since={range.since} until={range.until} />
-        </div>
-      </div>
+      <ReportHeader
+        range={range}
+        onRangeChange={setRange}
+        onExport={handleExport}
+        actions={<AiSummaryDialog since={range.since} until={range.until} />}
+      />
 
       <div className="flex flex-wrap items-start justify-between gap-2 print:hidden">
         <ReportFilterBar filters={filters} onChange={setFilters} />
@@ -262,11 +260,23 @@ export function ReportsPage() {
             </TabsContent>
 
             <TabsContent value="weekly" className="mt-4">
-              <WeeklyBarChart data={weekly} />
+              {weeklyLoading ? (
+                <Skeleton className="h-72" />
+              ) : (
+                <WeeklyBarChart data={weekly} />
+              )}
             </TabsContent>
 
             <TabsContent value="detailed" className="mt-4">
-              <DetailedTable entries={detailed as DetailedEntry[]} />
+              {detailedLoading ? (
+                <div className="space-y-2">
+                  {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="h-10" />
+                  ))}
+                </div>
+              ) : (
+                <DetailedTable entries={detailed as DetailedEntry[]} />
+              )}
             </TabsContent>
           </Tabs>
         </>

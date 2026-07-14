@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EntryRow } from "./EntryRow";
-import { formatSeconds } from "@/lib/dateUtils";
+import { formatDurationShort } from "@/lib/dateUtils";
 import { useTimer } from "@/hooks/useTimer";
 import { useBulkDeleteEntries } from "@/hooks/useEntries";
 import { cn } from "@/lib/utils";
@@ -140,7 +140,7 @@ export function EntryDescriptionGroup({
 
         {/* Total duration */}
         <span className="min-w-16 text-right font-mono text-sm tabular-nums">
-          {formatSeconds(group.totalSeconds)}
+          {formatDurationShort(group.totalSeconds)}
         </span>
 
         {/* Actions */}
@@ -156,7 +156,7 @@ export function EntryDescriptionGroup({
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Entry group actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>

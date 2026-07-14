@@ -30,7 +30,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function formatXLabel(dateStr: string, useDayOfWeek: boolean): string {
-  return formatPlainDate(dateStr, useDayOfWeek ? "EEE" : "d MMM");
+  return formatPlainDate(dateStr, useDayOfWeek ? "EEE" : "MMM d");
 }
 
 export function DailyBarChart({ data }: DailyBarChartProps) {

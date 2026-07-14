@@ -5,7 +5,9 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
+import { BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   ChartContainer,
   ChartTooltip,
@@ -46,8 +48,12 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Weekly breakdown</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center py-16">
-          <p className="text-sm text-muted-foreground">No data for this period</p>
+        <CardContent>
+          <EmptyState
+            icon={BarChart3}
+            title="No data for this period"
+            description="Track some time to see your weekly breakdown."
+          />
         </CardContent>
       </Card>
     );

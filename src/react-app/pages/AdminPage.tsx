@@ -1,11 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type AdminUser = {
   id: string;
@@ -35,17 +38,36 @@ export function AdminPage() {
   if (user.role !== "admin") return <Navigate to="/" replace />;
 
   const handleBan = async (userId: string) => {
-    await authClient.admin.banUser({ userId, banReason: "Violation of terms" });
+    const banReason = window.prompt("Reason for banning this user?", "Violation of terms");
+    if (banReason === null) return; // cancelled
+    const { error } = await authClient.admin.banUser({
+      userId,
+      banReason: banReason.trim() || "Violation of terms",
+    });
+    if (error) {
+      toast.error(error.message || "Failed to ban user");
+      return;
+    }
+    toast.success("User banned");
     refetchUsers();
   };
 
   const handleUnban = async (userId: string) => {
-    await authClient.admin.unbanUser({ userId });
+    const { error } = await authClient.admin.unbanUser({ userId });
+    if (error) {
+      toast.error(error.message || "Failed to unban user");
+      return;
+    }
+    toast.success("User unbanned");
     refetchUsers();
   };
 
   const handleImpersonate = async (userId: string) => {
-    await authClient.admin.impersonateUser({ userId });
+    const { error } = await authClient.admin.impersonateUser({ userId });
+    if (error) {
+      toast.error(error.message || "Failed to impersonate user");
+      return;
+    }
     window.location.href = "/";
   };
 
@@ -67,6 +89,8 @@ export function AdminPage() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
+          ) : users.length === 0 ? (
+            <EmptyState icon={Users} title="No users yet" description="Users will appear here once they sign up." />
           ) : (
             users.map((u) => (
               <div key={u.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">

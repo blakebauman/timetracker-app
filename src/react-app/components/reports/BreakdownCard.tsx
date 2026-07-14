@@ -6,8 +6,10 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Inbox } from "lucide-react";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ColorDot } from "@/components/ColorDot";
 import { useUIStore } from "@/stores/uiStore";
 import type { BreakdownRow } from "@/hooks/useReports";
@@ -111,11 +113,12 @@ export function BreakdownCard({
         {/* Row table */}
         <div className="flex-1 space-y-1.5">
           {isEmpty ? (
-            <div className="flex h-full items-center justify-center py-8">
-              <p className="text-sm text-muted-foreground">
-                No tracked time for this period
-              </p>
-            </div>
+            <EmptyState
+              icon={Inbox}
+              title="No tracked time"
+              description="Nothing recorded for this period yet."
+              className="h-full py-8"
+            />
           ) : (
             <>
               {sorted.map((row, i) => {

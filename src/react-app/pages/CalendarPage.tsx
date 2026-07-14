@@ -7,6 +7,7 @@ import type {
 } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
 import { startOfWeek, endOfWeek } from "date-fns";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { CalendarToolbar } from "@/components/calendar/CalendarToolbar";
@@ -47,10 +48,16 @@ export function CalendarPage() {
     return () => clearInterval(t);
   }, []);
 
-  const { data: entries = [] } = useEntriesRange(
-    range.start.toISOString(),
-    range.end.toISOString()
-  );
+  const {
+    data: entries = [],
+    isLoading: entriesLoading,
+    isError: entriesError,
+  } = useEntriesRange(range.start.toISOString(), range.end.toISOString());
+
+  // Surface load failures — otherwise the calendar just renders empty.
+  useEffect(() => {
+    if (entriesError) toast.error("Couldn't load calendar entries");
+  }, [entriesError]);
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const updateEntry = useUpdateEntry();
 
@@ -126,7 +133,12 @@ export function CalendarPage() {
         }}
       />
 
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+      <Card className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+        {entriesLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
         <CalendarView
           ref={calendarRef}
           // Constant — driving this from changing state re-initializes FullCalendar
