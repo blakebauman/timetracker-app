@@ -1,22 +1,51 @@
+import { lazy, Suspense } from "react";
+import type { ReactNode } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageFallback } from "@/components/layout/PageFallback";
 import { TimerPage } from "@/pages/TimerPage";
-import { ProjectsPage } from "@/pages/ProjectsPage";
-import { ClientsPage } from "@/pages/ClientsPage";
-import { ReportsPage } from "@/pages/ReportsPage";
-import { SettingsPage } from "@/pages/SettingsPage";
-import { AdminPage } from "@/pages/AdminPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { SignupPage } from "@/pages/SignupPage";
-import { AcceptInvitePage } from "@/pages/AcceptInvitePage";
-import { NotFoundPage } from "@/pages/NotFoundPage";
+
+// Timer is the landing route and stays eager. Every other route is split into
+// its own chunk (Reports pulls in recharts, the largest of them) and loaded on
+// demand behind a Suspense fallback.
+const ProjectsPage = lazy(() =>
+  import("@/pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage }))
+);
+const ClientsPage = lazy(() =>
+  import("@/pages/ClientsPage").then((m) => ({ default: m.ClientsPage }))
+);
+const ReportsPage = lazy(() =>
+  import("@/pages/ReportsPage").then((m) => ({ default: m.ReportsPage }))
+);
+const SettingsPage = lazy(() =>
+  import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage }))
+);
+const AdminPage = lazy(() =>
+  import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage }))
+);
+const LoginPage = lazy(() =>
+  import("@/pages/LoginPage").then((m) => ({ default: m.LoginPage }))
+);
+const SignupPage = lazy(() =>
+  import("@/pages/SignupPage").then((m) => ({ default: m.SignupPage }))
+);
+const AcceptInvitePage = lazy(() =>
+  import("@/pages/AcceptInvitePage").then((m) => ({ default: m.AcceptInvitePage }))
+);
+const NotFoundPage = lazy(() =>
+  import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage }))
+);
+
+const withSuspense = (node: ReactNode) => (
+  <Suspense fallback={<PageFallback />}>{node}</Suspense>
+);
 
 const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
-  { path: "/signup", element: <SignupPage /> },
-  { path: "/accept-invite", element: <AcceptInvitePage /> },
+  { path: "/login", element: withSuspense(<LoginPage />) },
+  { path: "/signup", element: withSuspense(<SignupPage />) },
+  { path: "/accept-invite", element: withSuspense(<AcceptInvitePage />) },
   {
     path: "/",
     element: (

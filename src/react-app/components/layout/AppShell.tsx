@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { TimerBar } from "@/components/timer/TimerBar";
 import { CommandPalette } from "./CommandPalette";
+import { PageFallback } from "./PageFallback";
 import { Toaster } from "@/components/ui/sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -34,7 +36,9 @@ export function AppShell() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

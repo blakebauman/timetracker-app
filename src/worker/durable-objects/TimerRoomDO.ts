@@ -1,11 +1,6 @@
 export class TimerRoomDO implements DurableObject {
   private sessions: Set<WebSocket> = new Set();
 
-  constructor(
-    _state: DurableObjectState,
-    _env: Env
-  ) {}
-
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
