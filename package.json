@@ -72,6 +72,8 @@
 		"preinstall": "npx only-allow pnpm",
 		"build": "tsc -b && vite build",
 		"build:ext": "cd extension && vite build && cp manifest.json ../dist/extension/ && cp -r icons ../dist/extension/ 2>/dev/null || true",
+		"zip:ext": "pnpm build:ext && cd dist/extension && zip -qr -X ../timetracker-extension.zip . -x '.*' && echo 'Wrote dist/timetracker-extension.zip (upload this to the Chrome Web Store)'",
+		"ext:id": "openssl rsa -in extension/.keys/extension.pem -pubout -outform DER 2>/dev/null | openssl dgst -sha256 -binary | xxd -p -c 32 | head -c 32 | tr '0-9a-f' 'a-p'; echo",
 		"generate-icons": "node scripts/generate-icons.mjs",
 		"cf-typegen": "wrangler types",
 		"check": "tsc && vite build && wrangler deploy --dry-run",

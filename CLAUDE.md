@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm dev              # Start Vite + Cloudflare Worker dev server (http://localhost:5173) via @cloudflare/vite-plugin
 pnpm build            # TypeScript compile + Vite bundle
 pnpm build:ext        # Build browser extension to dist/extension/
+pnpm zip:ext          # Build + package dist/timetracker-extension.zip for Chrome Web Store upload
+pnpm ext:id           # Print the dev extension ID derived from extension/.keys/extension.pem
 pnpm lint             # ESLint
 pnpm check            # Full validation: typecheck + build + wrangler dry-run deploy
 pnpm deploy           # Deploy to Cloudflare Workers
@@ -57,6 +59,8 @@ Multi-tenant: every row is scoped to a `workspace_id`. Better Auth tables use ca
 ### Browser Extension (`extension/`)
 
 Built separately with its own `vite.config.ts`. Auth uses the **standard better-auth client** (`extension/lib/auth-client.ts`, `makeAuthClient(baseURL)`) with the server's `bearer()` plugin: the popup calls `authClient.signIn.email` / `getSession` / `signOut`, the session token arrives in the `set-auth-token` response header, and the client persists it to `chrome.storage.local` so the background service worker can reuse it for badge polling. There is no refresh flow — on a 401 the service worker clears the token and the popup drops back to the login form. The extension is trusted server-side by its pinned origin: `chrome-extension://<id>` (ID pinned via the manifest `key`, see `extension/.keys/README.md`) is listed in `trustedOrigins` in `src/worker/auth.ts`; CSRF/origin checks stay on for the cookie-based web app. The API base URL is user-configurable but validated against an allow-list (`extension/lib/apiUrl.ts`: `timetracker.run`, `*.workers.dev`, `localhost`) so the token is never sent to an arbitrary origin.
+
+Docs: `extension/README.md` (overview + local dev), `extension/PUBLISHING.md` (Chrome Web Store flow — note the extension ID/`trustedOrigins` reconciliation after first upload), `extension/PRIVACY.md` (privacy-policy draft), `extension/SECURITY_AUDIT.md` (security model). The signing key lives in `extension/.keys/` (private key gitignored). Package for the store with `pnpm zip:ext`.
 
 ### Real-time
 

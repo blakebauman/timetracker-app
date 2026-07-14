@@ -3,6 +3,7 @@
   "name": "Time Tracker",
   "version": "1.0.2",
   "description": "Track time directly from your browser. Works with your Time Tracker app.",
+  "homepage_url": "https://timetracker.run",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtopwHkMbw/cqw7ivwGnAJXdM4cXLL1ZFY4escub6YxnS3a2lU8y9dEgsj0VPNczZFHHSXZCbyfADXC6rhjqFyrYAHgy0KXiGhStpDLUeet4QOiImatiZg2evdyOK6XjmjAUlIyXeAQF+qwfqFZBdQi02cXpETHfyreyomreLjNjY7JlqlGByMsvkvQtaPvsW8YD2no9so2UKa9DlDoqzXYhwUHmEQ94ggaQ03ZE52Gobz0Nj31v2ruuijoVIUifNHBmTviMEnLwoMSlJI+juU2JChf5X8YQDX/Bs94CmrEo/jO+ATa8rzTvdym6iO311bTBTJyYFAAHjTNIqqN6wvQIDAQAB",
   "permissions": ["storage", "alarms"],
   "host_permissions": [
