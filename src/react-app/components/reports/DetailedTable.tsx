@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -20,9 +21,27 @@ import {
 import { formatSeconds, formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
+import {
+  useUpdateEntry,
+  useDeleteEntry,
+  useCreateEntry,
+  useBulkUpdateEntries,
+  useBulkDeleteEntries,
+} from "@/hooks/useEntries";
+import { EntryForm } from "@/components/entries/EntryForm";
 import { ColorDot } from "@/components/ColorDot";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, Columns3 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Columns3,
+  MoreHorizontal,
+  Pencil,
+  Copy,
+  DollarSign,
+  Trash2,
+  X,
+} from "lucide-react";
 
 export interface DetailedEntry {
   id: string;
@@ -31,6 +50,7 @@ export interface DetailedEntry {
   projectName: string | null;
   projectColor: string | null;
   clientName: string | null;
+  taskId: string | null;
   taskName: string | null;
   start: string;
   stop: string | null;
@@ -55,7 +75,6 @@ interface ColumnDef {
   label: string;
   defaultVisible: boolean;
   align?: "right";
-  // Value used for sorting (string sorts case-insensitively, number numerically).
   sortValue: (e: DetailedEntry) => string | number;
 }
 
@@ -77,8 +96,7 @@ function loadVisible(): Record<ColumnKey, boolean> {
     COLUMNS.map((c) => [c.key, c.defaultVisible])
   ) as Record<ColumnKey, boolean>;
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    return { ...defaults, ...saved };
+    return { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
   } catch {
     return defaults;
   }
@@ -96,14 +114,21 @@ export function DetailedTable({ entries }: DetailedTableProps) {
     key: "date",
     dir: "desc",
   });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<DetailedEntry | null>(null);
 
-  const toggleColumn = (key: ColumnKey) => {
+  const updateEntry = useUpdateEntry();
+  const deleteEntry = useDeleteEntry();
+  const createEntry = useCreateEntry();
+  const bulkUpdate = useBulkUpdateEntries();
+  const bulkDelete = useBulkDeleteEntries();
+
+  const toggleColumn = (key: ColumnKey) =>
     setVisible((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-  };
 
   const setSortKey = (key: ColumnKey) =>
     setSort((prev) =>
@@ -126,6 +151,37 @@ export function DetailedTable({ entries }: DetailedTableProps) {
     });
   }, [entries, sort]);
 
+  const clearSelection = () => setSelected(new Set());
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allSelected = sorted.length > 0 && selected.size === sorted.length;
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(sorted.map((e) => e.id)));
+
+  const duplicate = (e: DetailedEntry) =>
+    createEntry.mutate({
+      description: e.description,
+      projectId: e.projectId,
+      taskId: e.taskId,
+      start: e.start,
+      stop: e.stop,
+      billable: e.billable,
+      tags: e.tags,
+    });
+
+  const bulkBillable = (billable: boolean) =>
+    bulkUpdate.mutate(
+      { ids: [...selected], patch: { billable } },
+      { onSuccess: clearSelection }
+    );
+  const bulkRemove = () =>
+    bulkDelete.mutate([...selected], { onSuccess: clearSelection });
+
   if (entries.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-muted-foreground">
@@ -136,42 +192,69 @@ export function DetailedTable({ entries }: DetailedTableProps) {
 
   return (
     <div className="space-y-3">
-      {/* Column visibility */}
-      <div className="flex justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm">
-              <Columns3 className="h-3.5 w-3.5" />
-              Columns
+      {/* Toolbar: bulk action bar when rows are selected, else column menu */}
+      {selected.size > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 print:hidden">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button variant="outline" size="sm" className="h-8" onClick={() => bulkBillable(true)}>
+              Billable
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {COLUMNS.map((c) => (
-              <DropdownMenuCheckboxItem
-                key={c.key}
-                checked={visible[c.key]}
-                onCheckedChange={() => toggleColumn(c.key)}
-                onSelect={(e) => e.preventDefault()}
-              >
-                {c.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+            <Button variant="outline" size="sm" className="h-8" onClick={() => bulkBillable(false)}>
+              Non-billable
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-destructive" onClick={bulkRemove}>
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={clearSelection} aria-label="Clear selection">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-end print:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm">
+                <Columns3 className="h-3.5 w-3.5" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {COLUMNS.map((c) => (
+                <DropdownMenuCheckboxItem
+                  key={c.key}
+                  checked={visible[c.key]}
+                  onCheckedChange={() => toggleColumn(c.key)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {c.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="w-8 print:hidden">
+                <input
+                  type="checkbox"
+                  aria-label="Select all"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="size-3.5 accent-primary"
+                />
+              </TableHead>
               {cols.map((c) => (
-                <TableHead
-                  key={c.key}
-                  className={cn("text-xs", c.align === "right" && "text-right")}
-                >
+                <TableHead key={c.key} className={cn("text-xs", c.align === "right" && "text-right")}>
                   <button
                     type="button"
                     onClick={() => setSortKey(c.key)}
@@ -190,26 +273,69 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                   </button>
                 </TableHead>
               ))}
+              <TableHead className="w-8 print:hidden" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {sorted.map((entry) => (
-              <TableRow key={entry.id}>
+              <TableRow key={entry.id} data-state={selected.has(entry.id) ? "selected" : undefined}>
+                <TableCell className="print:hidden">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${entry.description || "entry"}`}
+                    checked={selected.has(entry.id)}
+                    onChange={() => toggleSelect(entry.id)}
+                    className="size-3.5 accent-primary"
+                  />
+                </TableCell>
                 {cols.map((c) => (
                   <TableCell
                     key={c.key}
                     className={cn(
                       "py-2.5",
-                      c.align === "right" &&
-                        "text-right font-mono text-xs tabular-nums",
-                      (c.key === "date" || c.key === "time") &&
-                        "text-xs text-muted-foreground",
+                      c.align === "right" && "text-right font-mono text-xs tabular-nums",
+                      (c.key === "date" || c.key === "time") && "text-xs text-muted-foreground",
                       c.key === "amount" && "text-muted-foreground"
                     )}
                   >
                     {renderCell(c.key, entry, timeFormat, currency)}
                   </TableCell>
                 ))}
+                <TableCell className="py-2.5 print:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditing(entry)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => duplicate(entry)}>
+                        <Copy className="h-3.5 w-3.5" />
+                        Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          updateEntry.mutate({ id: entry.id, data: { billable: !entry.billable } })
+                        }
+                      >
+                        <DollarSign className="h-3.5 w-3.5" />
+                        {entry.billable ? "Mark non-billable" : "Mark billable"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => deleteEntry.mutate(entry.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -218,6 +344,10 @@ export function DetailedTable({ entries }: DetailedTableProps) {
           {entries.length} entr{entries.length !== 1 ? "ies" : "y"}
         </div>
       </div>
+
+      {editing && (
+        <EntryForm entry={editing} open onClose={() => setEditing(null)} />
+      )}
     </div>
   );
 }
@@ -242,11 +372,7 @@ function renderCell(
               <span className="text-[10px] font-semibold text-primary">$</span>
             )}
             {entry.tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="outline"
-                className="h-4 px-1 py-0 text-[10px] font-normal"
-              >
+              <Badge key={tag} variant="outline" className="h-4 px-1 py-0 text-[10px] font-normal">
                 {tag}
               </Badge>
             ))}

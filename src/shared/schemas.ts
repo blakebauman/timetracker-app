@@ -16,12 +16,16 @@ export const TimeFormatSchema = z.enum(["24h", "12h"]);
 export const SettingsSchema = z.object({
   currency: z.string(), // ISO 4217 code, e.g. "USD"
   timeFormat: TimeFormatSchema,
+  roundMode: z.enum(["off", "nearest", "up", "down"]),
+  roundMinutes: z.number().int(),
 });
 
 export const UpdateSettingsSchema = z
   .object({
     currency: z.string().regex(/^[A-Z]{3}$/, "Must be a 3-letter currency code"),
     timeFormat: TimeFormatSchema,
+    roundMode: z.enum(["off", "nearest", "up", "down"]),
+    roundMinutes: z.coerce.number().int().min(0).max(1440),
   })
   .partial();
 

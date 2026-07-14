@@ -13,6 +13,7 @@ import type { Settings, UpdateSettings } from "@shared/schemas";
 export function useHydrateSettings() {
   const setCurrency = useUIStore((s) => s.setCurrency);
   const setTimeFormat = useUIStore((s) => s.setTimeFormat);
+  const setRounding = useUIStore((s) => s.setRounding);
 
   const query = useQuery({
     queryKey: ["settings"],
@@ -20,11 +21,12 @@ export function useHydrateSettings() {
     staleTime: 5 * 60_000,
   });
 
-  const { currency, timeFormat } = query.data ?? {};
+  const { currency, timeFormat, roundMode, roundMinutes } = query.data ?? {};
   useEffect(() => {
     if (currency) setCurrency(currency);
     if (timeFormat) setTimeFormat(timeFormat);
-  }, [currency, timeFormat, setCurrency, setTimeFormat]);
+    if (roundMode) setRounding(roundMode, roundMinutes ?? 15);
+  }, [currency, timeFormat, roundMode, roundMinutes, setCurrency, setTimeFormat, setRounding]);
 
   return query;
 }
@@ -33,6 +35,7 @@ export function useUpdateSettings() {
   const queryClient = useQueryClient();
   const setCurrency = useUIStore((s) => s.setCurrency);
   const setTimeFormat = useUIStore((s) => s.setTimeFormat);
+  const setRounding = useUIStore((s) => s.setRounding);
 
   return useMutation({
     mutationFn: (body: UpdateSettings) => api.settings.update(body),
@@ -40,6 +43,7 @@ export function useUpdateSettings() {
       queryClient.setQueryData(["settings"], settings);
       setCurrency(settings.currency);
       setTimeFormat(settings.timeFormat);
+      setRounding(settings.roundMode, settings.roundMinutes);
     },
     onError: () => toast.error("Failed to save settings"),
   });

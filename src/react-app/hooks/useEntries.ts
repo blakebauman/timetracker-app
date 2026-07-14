@@ -85,6 +85,7 @@ export function useCreateEntry() {
     onSuccess: () => {
       toast.success("Entry added");
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
     onError: () => toast.error("Failed to add entry"),
   });
@@ -95,8 +96,10 @@ export function useUpdateEntry() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTimeEntry }) =>
       api.timeEntries.update(id, data as Record<string, unknown>) as Promise<TimeEntry>,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
     onError: () => toast.error("Failed to update entry"),
   });
 }
@@ -122,6 +125,7 @@ export function useDeleteEntry() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }
@@ -146,6 +150,7 @@ export function useBulkDeleteEntries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }
@@ -157,6 +162,7 @@ export function useBulkUpdateEntries() {
       api.timeEntries.bulkUpdate({ ids, patch }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
     onError: () => toast.error("Failed to update entries"),
   });

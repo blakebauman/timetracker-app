@@ -15,10 +15,22 @@ import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
 import { TimeOfDayInput } from "./TimeOfDayInput";
 import { useUpdateEntry } from "@/hooks/useEntries";
-import type { TimeEntry } from "@shared/schemas";
+
+// Only the fields the form actually reads — so a full TimeEntry OR a report's
+// DetailedEntry (both structurally provide these) can be edited.
+export interface EditableEntry {
+  id: string;
+  description: string;
+  projectId: string | null;
+  taskId: string | null;
+  tags: string[];
+  billable: boolean;
+  start: string;
+  stop: string | null;
+}
 
 interface EntryFormProps {
-  entry: TimeEntry;
+  entry: EditableEntry;
   open: boolean;
   onClose: () => void;
 }

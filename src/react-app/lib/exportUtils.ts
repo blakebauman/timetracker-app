@@ -1,4 +1,5 @@
 import { formatSeconds, formatEntryTime } from "./dateUtils";
+import { buildXlsx } from "./xlsx";
 
 interface ExportEntry {
   start: string;
@@ -13,87 +14,61 @@ interface ExportEntry {
   tags: string[];
 }
 
-export function exportToCSV(entries: ExportEntry[], filename = "time-entries"): void {
-  const headers = [
-    "Date",
-    "Start",
-    "Stop",
-    "Duration",
-    "Description",
-    "Client",
-    "Project",
-    "Task",
-    "Billable",
-    "Amount",
-    "Tags",
-  ];
+const EXPORT_HEADERS = [
+  "Date",
+  "Start",
+  "Stop",
+  "Duration",
+  "Description",
+  "Client",
+  "Project",
+  "Task",
+  "Billable",
+  "Amount",
+  "Tags",
+];
 
-  const rows = entries.map((e) => [
+// Row cells shared by CSV and XLSX (Amount kept numeric for spreadsheets).
+function exportRow(e: ExportEntry): (string | number)[] {
+  return [
     e.start.slice(0, 10),
     formatEntryTime(e.start),
     e.stop ? formatEntryTime(e.stop) : "",
     e.duration ? formatSeconds(e.duration) : "",
-    `"${(e.description ?? "").replace(/"/g, '""')}"`,
-    `"${(e.clientName ?? "").replace(/"/g, '""')}"`,
-    `"${(e.projectName ?? "").replace(/"/g, '""')}"`,
-    `"${(e.taskName ?? "").replace(/"/g, '""')}"`,
+    e.description ?? "",
+    e.clientName ?? "",
+    e.projectName ?? "",
+    e.taskName ?? "",
     e.billable ? "Yes" : "No",
-    (e.amount ?? 0).toFixed(2),
-    `"${(e.tags ?? []).join(", ")}"`,
-  ]);
-
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  download(`${filename}.csv`, csv, "text/csv;charset=utf-8;");
-}
-
-// Excel export: an HTML table with an .xls extension + Excel MIME type. Excel
-// opens it natively as a spreadsheet (no external library needed).
-export function exportToExcel(entries: ExportEntry[], filename = "time-entries"): void {
-  const headers = [
-    "Date",
-    "Start",
-    "Stop",
-    "Duration",
-    "Description",
-    "Client",
-    "Project",
-    "Task",
-    "Billable",
-    "Amount",
-    "Tags",
+    Number((e.amount ?? 0).toFixed(2)),
+    (e.tags ?? []).join(", "),
   ];
-  const esc = (v: string | number) =>
-    String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  const body = entries
-    .map((e) => {
-      const cells = [
-        e.start.slice(0, 10),
-        formatEntryTime(e.start),
-        e.stop ? formatEntryTime(e.stop) : "",
-        e.duration ? formatSeconds(e.duration) : "",
-        e.description ?? "",
-        e.clientName ?? "",
-        e.projectName ?? "",
-        e.taskName ?? "",
-        e.billable ? "Yes" : "No",
-        (e.amount ?? 0).toFixed(2),
-        (e.tags ?? []).join(", "),
-      ];
-      return `<tr>${cells.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`;
-    })
-    .join("");
-
-  const html =
-    `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>` +
-    `<table><thead><tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>` +
-    `<tbody>${body}</tbody></table></body></html>`;
-
-  download(`${filename}.xls`, html, "application/vnd.ms-excel");
 }
 
-function download(filename: string, content: string, type: string): void {
-  const blob = new Blob([content], { type });
+export function exportToCSV(entries: ExportEntry[], filename = "time-entries"): void {
+  const csvCell = (v: string | number) =>
+    typeof v === "number" ? String(v) : `"${v.replace(/"/g, '""')}"`;
+  const lines = [
+    EXPORT_HEADERS.join(","),
+    ...entries.map((e) => exportRow(e).map(csvCell).join(",")),
+  ];
+  download(`${filename}.csv`, new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" }));
+}
+
+// Real .xlsx (OOXML) via the dependency-free writer — opens in Excel/Sheets
+// without the format-mismatch warning the old HTML-table .xls trick produced.
+export function exportToExcel(entries: ExportEntry[], filename = "time-entries"): void {
+  const rows = [EXPORT_HEADERS, ...entries.map(exportRow)];
+  const bytes = buildXlsx("Time entries", rows);
+  download(
+    `${filename}.xlsx`,
+    new Blob([bytes as BlobPart], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+  );
+}
+
+function download(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

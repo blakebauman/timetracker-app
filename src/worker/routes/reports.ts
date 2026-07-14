@@ -423,6 +423,7 @@ export const reportsRouter = new Hono<{
             projectName: r.project_name ?? null,
             projectColor: r.project_color ?? null,
             clientName: r.client_name ?? null,
+            taskId: r.task_id ?? null,
             taskName: r.task_name ?? null,
             start: r.start,
             stop: r.stop,

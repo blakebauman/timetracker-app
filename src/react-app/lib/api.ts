@@ -179,7 +179,11 @@ export const api = {
   // ─── Settings ─────────────────────────────────────────────────────────────
   settings: {
     get: () => request<Settings>("/settings"),
-    update: (body: Partial<Pick<Settings, "currency" | "timeFormat">>) =>
+    update: (
+      body: Partial<
+        Pick<Settings, "currency" | "timeFormat" | "roundMode" | "roundMinutes">
+      >
+    ) =>
       request<Settings>("/settings", {
         method: "PATCH",
         body: JSON.stringify(body),

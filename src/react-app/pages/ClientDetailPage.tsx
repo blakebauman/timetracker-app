@@ -35,7 +35,8 @@ export function ClientDetailPage() {
   const toggle = (projectId: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(projectId) ? next.delete(projectId) : next.add(projectId);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
       return next;
     });
 
