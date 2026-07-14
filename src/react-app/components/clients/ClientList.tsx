@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { ClientForm } from "./ClientForm";
 import { useClients } from "@/hooks/useProjects";
@@ -52,12 +53,17 @@ export function ClientList() {
         ))}
 
         {clients.length === 0 && (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">No clients yet</p>
-            <Button variant="link" size="sm" onClick={() => setShowCreate(true)}>
-              Add your first client
-            </Button>
-          </div>
+          <EmptyState
+            icon={Users}
+            title="No clients yet"
+            description="Group projects under clients to organize your work."
+            action={
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                Add your first client
+              </Button>
+            }
+          />
         )}
       </div>
 

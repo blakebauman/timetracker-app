@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Plus, MoreHorizontal, Archive, Edit2, ChevronDown } from "lucide-react";
+import { Plus, MoreHorizontal, Archive, Edit2, ChevronDown, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -190,12 +191,17 @@ export function ProjectList() {
         })}
 
         {projects.length === 0 && (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">No projects yet</p>
-            <Button variant="link" size="sm" onClick={() => setShowCreate(true)}>
-              Create your first project
-            </Button>
-          </div>
+          <EmptyState
+            icon={FolderOpen}
+            title="No projects yet"
+            description="Group your time entries by project and track budgets."
+            action={
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                Create your first project
+              </Button>
+            }
+          />
         )}
       </div>
 
