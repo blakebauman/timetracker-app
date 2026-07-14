@@ -3,6 +3,7 @@ import { ReportHeader } from "@/components/reports/ReportHeader";
 import { AiSummaryDialog } from "@/components/reports/AiSummaryDialog";
 import { SummaryCards } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
+import { CumulativeAreaChart } from "@/components/reports/CumulativeAreaChart";
 import { ProjectBreakdown } from "@/components/reports/ProjectBreakdown";
 import { WeeklyBarChart } from "@/components/reports/WeeklyBarChart";
 import { DetailedTable, type DetailedEntry } from "@/components/reports/DetailedTable";
@@ -91,6 +92,7 @@ export function ReportsPage() {
                   totalSeconds={summary.totalSeconds}
                 />
               </div>
+              <CumulativeAreaChart data={summary.daily} />
             </TabsContent>
 
             <TabsContent value="weekly" className="mt-4">
