@@ -159,9 +159,10 @@ export function LoginPage() {
 
         <Card>
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Sign in</CardTitle>
+            <CardTitle className="text-xl">Welcome back, clock-watcher</CardTitle>
             <CardDescription>
-              Enter your email and password to continue
+              Those billable hours won't track themselves. Sign in and let's
+              make time accountable.
             </CardDescription>
           </CardHeader>
 
@@ -217,7 +218,7 @@ export function LoginPage() {
                     </div>
                     {error && <p className="text-sm text-destructive">{error}</p>}
                     <Button type="submit" className="w-full" disabled={isPending}>
-                      {isPending ? "Signing in…" : "Sign in"}
+                      {isPending ? "Punching the clock…" : "Sign in"}
                     </Button>
                   </div>
                 </form>
@@ -259,7 +260,8 @@ export function LoginPage() {
                 )}
                 {linkSent && (
                   <p className="text-sm text-muted-foreground">
-                    Check your email for a sign-in link.
+                    Magic link deployed. Check your inbox — no password
+                    memorization required.
                   </p>
                 )}
 
@@ -298,7 +300,7 @@ export function LoginPage() {
 
           <CardFooter className="flex flex-col gap-3 pt-0">
             <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
+              New around here and still tracking time in a spreadsheet?{" "}
               <Link
                 to="/signup"
                 className="font-medium text-primary hover:underline"

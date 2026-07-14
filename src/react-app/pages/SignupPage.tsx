@@ -95,9 +95,10 @@ export function SignupPage() {
 
         <Card>
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Create account</CardTitle>
+            <CardTitle className="text-xl">Where does the time go?</CardTitle>
             <CardDescription>
-              Sign up to start tracking your time
+              Create an account and finally find out. Spoiler: it was
+              "meetings."
             </CardDescription>
           </CardHeader>
 
@@ -174,10 +175,10 @@ export function SignupPage() {
                 className="w-full"
                 disabled={isPending}
               >
-                {isPending ? "Creating account…" : "Create account"}
+                {isPending ? "Starting the clock…" : "Create account"}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
+                Already clocking in with us?{" "}
                 <Link
                   to="/login"
                   className="font-medium text-primary hover:underline"
