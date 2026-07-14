@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck } from "lucide-react";
+import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
@@ -25,11 +25,17 @@ interface SidebarContentProps {
 function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
   const { runningEntry, elapsed } = useTimerStore();
   const { user, signOut } = useAuth();
+  const openCommand = useUIStore((s) => s.openCommand);
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
+  };
+
+  const handleOpenCommand = () => {
+    openCommand();
+    onNavigate?.();
   };
 
   const items =
@@ -39,6 +45,30 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
 
   return (
     <>
+      {/* Command palette trigger — reminds users of the ⌘K shortcut */}
+      <div className="px-2 pt-3">
+        <button
+          type="button"
+          onClick={handleOpenCommand}
+          aria-label="Open command palette (Command or Control K)"
+          title="Search and commands — ⌘K"
+          className={cn(
+            "flex w-full items-center rounded-md border bg-background text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5"
+          )}
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">Search…</span>
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
+                ⌘K
+              </kbd>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Running timer indicator */}
       {runningEntry && (
         <div className="mx-3 mt-3 rounded-md bg-primary/10 px-3 py-2 text-xs">

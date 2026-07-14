@@ -13,6 +13,7 @@ import {
 import { useTimer } from "@/hooks/useTimer";
 import { useGroupedEntries } from "@/hooks/useEntries";
 import { useTimerStore } from "@/stores/timerStore";
+import { useUIStore } from "@/stores/uiStore";
 import {
   Timer,
   FolderOpen,
@@ -26,7 +27,8 @@ import { ColorDot } from "@/components/ColorDot";
 import type { TimeEntry } from "@shared/schemas";
 
 export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+  const open = useUIStore((s) => s.commandOpen);
+  const setOpen = useUIStore((s) => s.setCommandOpen);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const { startTimer, stopTimer } = useTimer();
@@ -37,7 +39,8 @@ export function CommandPalette() {
     "meta+k,ctrl+k",
     (e) => {
       e.preventDefault();
-      setOpen((o) => !o);
+      const s = useUIStore.getState();
+      s.setCommandOpen(!s.commandOpen);
     },
     { preventDefault: true }
   );
