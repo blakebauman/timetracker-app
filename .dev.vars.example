@@ -1,0 +1,17 @@
+# Local dev secrets for `pnpm dev` — copy to .dev.vars and fill in real values.
+# Production equivalents are set with `wrangler secret put <NAME>`.
+
+# Better Auth session/token signing secret. Generate one:
+#   openssl rand -base64 32
+BETTER_AUTH_SECRET=replace-with-random-32-byte-secret
+
+# Key used to encrypt third-party integration credentials at rest
+# (src/worker/lib/crypto.ts). Any long random string; keep it stable or
+# existing integration connections become undecryptable.
+AUTH_SECRET=replace-with-random-32-byte-secret
+
+# Google OAuth client (https://console.cloud.google.com/apis/credentials).
+# Add http://localhost:5173/api/auth/callback/google as an authorized
+# redirect URI on the client for local sign-in to work.
+GOOGLE_CLIENT_ID=1234567890-example.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-replace-with-client-secret

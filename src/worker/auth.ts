@@ -36,14 +36,6 @@ export function createAuth(env: Env, baseURL: string) {
     emailAndPassword: {
       enabled: true,
     },
-    account: {
-      // The OAuth state cookie isn't reliably surviving the Google redirect
-      // round-trip in this dev environment, causing a false state_mismatch on
-      // every attempt. The state param is still validated against a single-use,
-      // time-limited, server-side verification row (plus PKCE) — this cookie
-      // was an additional defense-in-depth layer, not the only CSRF protection.
-      skipStateCookieCheck: true,
-    },
     socialProviders: {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
