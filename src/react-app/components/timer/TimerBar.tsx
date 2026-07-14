@@ -68,7 +68,7 @@ export function TimerBar() {
         onKeyDown={handleKeyDown}
         placeholder="What are you working on?"
         className={cn(
-          "basis-full border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 md:flex-1 md:basis-auto",
+          "basis-full border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground md:flex-1 md:basis-auto",
           isRunning && "font-medium"
         )}
       />
