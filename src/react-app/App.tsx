@@ -12,6 +12,9 @@ import { TimerPage } from "@/pages/TimerPage";
 // its own chunk (Reports pulls in recharts, the largest of them) and loaded on
 // demand behind a Suspense fallback. lazyWithReload recovers from stale-chunk
 // import failures after a deploy by reloading once to fetch the fresh assets.
+const CalendarPage = lazyWithReload(() =>
+  import("@/pages/CalendarPage").then((m) => ({ default: m.CalendarPage }))
+);
 const ProjectsPage = lazyWithReload(() =>
   import("@/pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage }))
 );
@@ -60,6 +63,7 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <TimerPage /> },
+      { path: "calendar", element: <CalendarPage /> },
       { path: "projects", element: <ProjectsPage /> },
       { path: "clients", element: <ClientsPage /> },
       { path: "clients/:id", element: <ClientDetailPage /> },

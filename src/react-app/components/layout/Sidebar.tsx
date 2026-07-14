@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Timer, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck, Search } from "lucide-react";
+import { Timer, CalendarDays, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
@@ -11,6 +11,7 @@ import { useUIStore } from "@/stores/uiStore";
 
 const navItems = [
   { to: "/", icon: Timer, label: "Timer" },
+  { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/projects", icon: FolderOpen, label: "Projects" },
   { to: "/clients", icon: Users, label: "Clients" },
   { to: "/reports", icon: BarChart2, label: "Reports" },

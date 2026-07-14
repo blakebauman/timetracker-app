@@ -16,6 +16,19 @@ export function useEntries(days = 30) {
   });
 }
 
+// Fetch entries within an explicit [since, until) range — used by the calendar,
+// which navigates to arbitrary weeks/days (the anchored-to-today `useEntries`
+// can't reach future or custom ranges). Shares the ["time-entries", …] key
+// prefix so create/update/delete invalidations and the WebSocket `entries:changed`
+// handler keep it in sync automatically.
+export function useEntriesRange(sinceIso: string, untilIso: string) {
+  return useQuery({
+    queryKey: ["time-entries", sinceIso, untilIso],
+    queryFn: () =>
+      api.timeEntries.list({ since: sinceIso, until: untilIso }) as Promise<TimeEntry[]>,
+  });
+}
+
 export interface DescriptionGroup {
   key: string; // `${description}__${projectId ?? ""}`
   description: string;
