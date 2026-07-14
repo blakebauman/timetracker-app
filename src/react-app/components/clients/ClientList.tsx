@@ -1,15 +1,28 @@
 import { useState } from "react";
-import { Plus, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Users, MoreHorizontal, Archive, Edit2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ClientForm } from "./ClientForm";
-import { useClients } from "@/hooks/useProjects";
+import { useAllClients, useDeleteClient, useUpdateClient } from "@/hooks/useProjects";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import type { Client } from "@shared/schemas";
 
 export function ClientList() {
-  const { data: clients = [], isLoading } = useClients();
+  const { data: clients = [], isLoading } = useAllClients();
+  const deleteClient = useDeleteClient();
+  const updateClient = useUpdateClient();
+  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
+  const [editClient, setEditClient] = useState<Client | null>(null);
 
   if (isLoading) {
     return (
@@ -42,13 +55,55 @@ export function ClientList() {
             key={client.id}
             className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3"
           >
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="flex-1 text-sm font-medium">{client.name}</span>
-            {client.archived && (
-              <Badge variant="outline" className="text-xs">
-                Archived
-              </Badge>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate(`/clients/${client.id}`)}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+            >
+              <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span
+                className={cn(
+                  "truncate text-sm font-medium",
+                  client.archived && "text-muted-foreground line-through"
+                )}
+              >
+                {client.name}
+              </span>
+              {client.archived && (
+                <Badge variant="outline" className="text-xs">Archived</Badge>
+              )}
+              {client.email && (
+                <span className="truncate text-xs text-muted-foreground">
+                  {client.email}
+                </span>
+              )}
+            </button>
+
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditClient(client)}>
+                  <Edit2 className="mr-2 h-3.5 w-3.5" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    client.archived
+                      ? updateClient.mutate({ id: client.id, data: { archived: false } })
+                      : deleteClient.mutate(client.id)
+                  }
+                >
+                  <Archive className="mr-2 h-3.5 w-3.5" />
+                  {client.archived ? "Unarchive" : "Archive"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         ))}
 
@@ -68,6 +123,9 @@ export function ClientList() {
       </div>
 
       {showCreate && <ClientForm open onClose={() => setShowCreate(false)} />}
+      {editClient && (
+        <ClientForm client={editClient} open onClose={() => setEditClient(null)} />
+      )}
     </div>
   );
 }

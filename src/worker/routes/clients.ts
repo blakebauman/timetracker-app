@@ -7,6 +7,10 @@ function formatClient(row: Record<string, unknown>) {
     id: row.id as string,
     workspaceId: row.workspace_id as string,
     name: row.name as string,
+    notes: (row.notes as string | null) ?? null,
+    email: (row.email as string | null) ?? null,
+    phone: (row.phone as string | null) ?? null,
+    address: (row.address as string | null) ?? null,
     archived: Boolean(row.archived),
     createdAt: row.created_at as string,
   };
@@ -40,9 +44,19 @@ export const clientsRouter = new Hono<{
     const now = new Date().toISOString();
 
     await c.env.DB.prepare(
-      `INSERT INTO clients (id, workspace_id, name, archived, created_at) VALUES (?, ?, ?, 0, ?)`
+      `INSERT INTO clients (id, workspace_id, name, notes, email, phone, address, archived, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`
     )
-      .bind(id, workspaceId, data.name, now)
+      .bind(
+        id,
+        workspaceId,
+        data.name,
+        data.notes ?? null,
+        data.email ?? null,
+        data.phone ?? null,
+        data.address ?? null,
+        now
+      )
       .run();
 
     const { results } = await c.env.DB.prepare(
@@ -72,6 +86,10 @@ export const clientsRouter = new Hono<{
     const values: unknown[] = [];
 
     if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
+    if (data.notes !== undefined) { fields.push("notes = ?"); values.push(data.notes ?? null); }
+    if (data.email !== undefined) { fields.push("email = ?"); values.push(data.email ?? null); }
+    if (data.phone !== undefined) { fields.push("phone = ?"); values.push(data.phone ?? null); }
+    if (data.address !== undefined) { fields.push("address = ?"); values.push(data.address ?? null); }
     if (data.archived !== undefined) { fields.push("archived = ?"); values.push(data.archived ? 1 : 0); }
 
     if (fields.length) {
