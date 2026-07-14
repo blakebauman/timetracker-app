@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
@@ -17,32 +17,31 @@ type AdminUser = {
 
 export function AdminPage() {
   const { user } = useAuth();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const loadUsers = async () => {
-    setLoading(true);
-    const { data } = await authClient.admin.listUsers({ query: { limit: 100 } });
-    setUsers((data?.users as AdminUser[] | undefined) ?? []);
-    setLoading(false);
-  };
+  const { data: users = [], isLoading: loading } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: async () => {
+      const { data } = await authClient.admin.listUsers({ query: { limit: 100 } });
+      return (data?.users as AdminUser[] | undefined) ?? [];
+    },
+    enabled: user?.role === "admin",
+  });
 
-  useEffect(() => {
-    if (user?.role === "admin") loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.role]);
+  const refetchUsers = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
 
   if (!user) return null;
   if (user.role !== "admin") return <Navigate to="/" replace />;
 
   const handleBan = async (userId: string) => {
     await authClient.admin.banUser({ userId, banReason: "Violation of terms" });
-    loadUsers();
+    refetchUsers();
   };
 
   const handleUnban = async (userId: string) => {
     await authClient.admin.unbanUser({ userId });
-    loadUsers();
+    refetchUsers();
   };
 
   const handleImpersonate = async (userId: string) => {

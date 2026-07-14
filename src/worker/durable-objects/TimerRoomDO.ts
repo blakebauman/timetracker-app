@@ -1,4 +1,6 @@
-export class TimerRoomDO implements DurableObject {
+import { DurableObject } from "cloudflare:workers";
+
+export class TimerRoomDO extends DurableObject<Env> {
   private sessions: Set<WebSocket> = new Set();
 
   async fetch(request: Request): Promise<Response> {

@@ -34,7 +34,8 @@
     ]
   },
   "ai": {
-    "binding": "AI"
+    "binding": "AI",
+    "remote": true
   },
   "send_email": [
     {
