@@ -17,7 +17,8 @@ import { formatSeconds } from "@/lib/dateUtils";
 import { useTimer } from "@/hooks/useTimer";
 import { useBulkDeleteEntries } from "@/hooks/useEntries";
 import { cn } from "@/lib/utils";
-import { ColorDot, DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
+import { ColorDot } from "@/components/ColorDot";
+import { ProjectBadge } from "@/components/ProjectBadge";
 import type { DescriptionGroup } from "@/hooks/useEntries";
 
 interface EntryDescriptionGroupProps {
@@ -72,14 +73,18 @@ export function EntryDescriptionGroup({
         {/* Checkbox */}
         {onToggleSelect && (
           <button
+            type="button"
+            role="checkbox"
+            aria-checked={allSelected ? true : someSelected ? "mixed" : false}
+            aria-label="Select all entries in group"
             onClick={handleGroupSelect}
             className={cn(
-              "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+              "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               allSelected
                 ? "border-primary bg-primary text-primary-foreground"
                 : someSelected
                 ? "border-primary bg-primary/40"
-                : "border-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:border-primary"
+                : "border-muted-foreground/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:border-primary"
             )}
           >
             {(allSelected || someSelected) && (
@@ -116,15 +121,7 @@ export function EntryDescriptionGroup({
           </div>
           {group.projectName && (
             <div className="mt-0.5 pl-4">
-              <span
-                className="rounded-sm px-1.5 py-0.5 text-xs font-medium"
-                style={{
-                  backgroundColor: `${group.projectColor ?? DEFAULT_PROJECT_COLOR}22`,
-                  color: group.projectColor ?? DEFAULT_PROJECT_COLOR,
-                }}
-              >
-                {group.projectName}
-              </span>
+              <ProjectBadge name={group.projectName} color={group.projectColor} />
             </div>
           )}
         </CollapsibleTrigger>

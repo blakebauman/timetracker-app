@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { formatSeconds, formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 import { useUIStore } from "@/stores/uiStore";
+import { ColorDot } from "@/components/ColorDot";
 import { Search } from "lucide-react";
 
 export interface DetailedEntry {
@@ -155,12 +156,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                 <TableCell className="hidden py-2.5 sm:table-cell">
                   {entry.projectName ? (
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{
-                          backgroundColor: entry.projectColor ?? "#94a3b8",
-                        }}
-                      />
+                      <ColorDot color={entry.projectColor} className="h-2 w-2" />
                       <span className="truncate text-xs">
                         {entry.projectName}
                       </span>
