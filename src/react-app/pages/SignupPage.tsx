@@ -106,7 +106,13 @@ export function SignupPage() {
               type="button"
               variant="outline"
               className="w-full gap-2"
-              onClick={() => authClient.signIn.social({ provider: "google", callbackURL: redirect })}
+              onClick={() =>
+                authClient.signIn.social({
+                  provider: "google",
+                  callbackURL: redirect,
+                  errorCallbackURL: "/login?error=google",
+                })
+              }
             >
               <GoogleIcon />
               Continue with Google

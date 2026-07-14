@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,10 +42,18 @@ function GoogleIcon() {
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { user, signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    const oauthError = params.get("error");
+    if (!oauthError) return "";
+    if (oauthError === "account_not_linked") {
+      return "An account with this email already exists. Sign in with your password to continue — Google sign-in isn't linked to it yet.";
+    }
+    return "Google sign-in failed. Please try again.";
+  });
   const [isPending, setIsPending] = useState(false);
 
   // — Passwordless (email code / magic link) state
@@ -84,7 +92,7 @@ export function LoginPage() {
   };
 
   const handleGoogleSignIn = () => {
-    authClient.signIn.social({ provider: "google", callbackURL: "/" });
+    authClient.signIn.social({ provider: "google", callbackURL: "/", errorCallbackURL: "/login?error=google" });
   };
 
   const handleSendCode = async () => {
