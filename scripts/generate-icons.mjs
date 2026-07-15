@@ -11,7 +11,7 @@ import { fileURLToPath } from "url";
 
 const require = createRequire(import.meta.url);
 const sharp = require(
-  "/Users/blake/Sites/PlayGround/time-tracker-app/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp"
+  "/Users/blake/Projects/timetracker-app/node_modules/.pnpm/sharp@0.34.5/node_modules/sharp"
 );
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

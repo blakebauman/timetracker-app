@@ -57,11 +57,11 @@ listed there. So after the first upload you must reconcile the IDs:
      | xxd -p -c 32 | head -c 32 | tr '0-9a-f' 'a-p'; echo
    ```
    Put `chrome-extension://<that-id>` in `src/worker/auth.ts` `trustedOrigins`,
-   deploy the worker (`pnpm deploy`), then rebuild + re-zip + re-upload the
+   deploy the worker (`pnpm run deploy`), then rebuild + re-zip + re-upload the
    extension. Now local dev and production share one ID.
 4. **Alternative (keep separate dev/prod IDs):** leave the dev key as-is and just
    **add** the CWS-assigned `chrome-extension://<published-id>` as a second entry
-   in `trustedOrigins` alongside the dev one, then `pnpm deploy`.
+   in `trustedOrigins` alongside the dev one, then `pnpm run deploy`.
 
 > The published `host_permissions` already cover `https://timetracker.run/*`, so
 > no host-permission change is needed for production.
