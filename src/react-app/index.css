@@ -99,17 +99,17 @@
      the disc read as a lit dome; the outer drop shadow lifts it off the bar.
      -hover deepens the lift and adds a brand glow; -press collapses it inward. */
   --btn-3d:
-    inset 0 1px 0.5px oklch(1 0 0 / 0.4),
-    inset 0 -2px 3px oklch(0 0 0 / 0.22),
-    0 2px 5px -1px oklch(0 0 0 / 0.32);
+    inset 0 1px 0.5px oklch(1 0 0 / 0.22),
+    inset 0 -1px 2px oklch(0 0 0 / 0.12),
+    0 1px 3px -1px oklch(0 0 0 / 0.2);
   --btn-3d-hover:
-    inset 0 1px 0.5px oklch(1 0 0 / 0.45),
-    inset 0 -2px 3px oklch(0 0 0 / 0.22),
-    0 5px 12px -2px oklch(0 0 0 / 0.4),
-    0 0 18px -2px var(--primary);
+    inset 0 1px 0.5px oklch(1 0 0 / 0.26),
+    inset 0 -1px 2px oklch(0 0 0 / 0.12),
+    0 3px 8px -2px oklch(0 0 0 / 0.28),
+    0 0 14px -3px var(--primary);
   --btn-3d-press:
-    inset 0 2px 5px oklch(0 0 0 / 0.35),
-    inset 0 1px 1px oklch(0 0 0 / 0.25);
+    inset 0 1px 3px oklch(0 0 0 / 0.22),
+    inset 0 1px 1px oklch(0 0 0 / 0.15);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

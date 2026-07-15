@@ -204,7 +204,7 @@ export function TimerBar() {
         onClick={isRunning ? handleStop : handleStart}
         disabled={isStarting || isStopping}
         className={cn(
-          "h-10 w-10 shrink-0 rounded-full bg-linear-to-b from-white/20 to-black/15",
+          "h-10 w-10 shrink-0 rounded-full bg-linear-to-b from-white/10 to-black/8",
           "transition-[transform,box-shadow] duration-200 ease-out-quint",
           "hover:scale-105 active:scale-95",
           "[box-shadow:var(--btn-3d)]",
