@@ -14,7 +14,7 @@ For all limits and quotas, retrieve from the product's `/platform/limits/` page.
 | Command | Purpose |
 |---------|---------|
 | `pnpm dev` | Local development (Vite + Worker via `@cloudflare/vite-plugin`) |
-| `pnpm deploy` | Deploy to Cloudflare |
+| `pnpm run deploy` | Deploy to Cloudflare (use `run` — bare `pnpm deploy` hits pnpm's built-in) |
 | `pnpm cf-typegen` | Generate TypeScript types from wrangler.jsonc bindings |
 | `npx wrangler tail` | Stream live worker logs |
 

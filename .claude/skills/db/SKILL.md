@@ -10,13 +10,13 @@ Query the local Cloudflare D1 dev database. Query/target: `$ARGUMENTS`
 ## Dev database location
 
 ```!
-ls /Users/blake/Sites/PlayGround/time-tracker-app/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v metadata || echo "NOT FOUND — run 'pnpm dev' first to initialise the local DB"
+ls /Users/blake/Projects/timetracker-app/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v metadata || echo "NOT FOUND — run 'pnpm dev' first to initialise the local DB"
 ```
 
 ## Schema snapshot
 
 ```!
-DBFILE=$(ls /Users/blake/Sites/PlayGround/time-tracker-app/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v metadata | head -1); [ -n "$DBFILE" ] && sqlite3 "$DBFILE" ".tables" || true
+DBFILE=$(ls /Users/blake/Projects/timetracker-app/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v metadata | head -1); [ -n "$DBFILE" ] && sqlite3 "$DBFILE" ".tables" || true
 ```
 
 ## Key tables

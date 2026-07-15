@@ -15,7 +15,7 @@ This runs: `tsc` → `vite build` → `wrangler deploy --dry-run` in sequence.
 
 Current TypeScript issues (if any):
 ```!
-cd /Users/blake/Sites/PlayGround/time-tracker-app && npx tsc --noEmit 2>&1 | head -40 || true
+cd /Users/blake/Projects/timetracker-app && npx tsc --noEmit 2>&1 | head -40 || true
 ```
 
 ## Rules

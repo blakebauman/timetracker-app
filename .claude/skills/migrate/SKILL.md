@@ -10,7 +10,7 @@ Create a new Cloudflare D1 migration. Arguments: `$ARGUMENTS`
 ## Existing migrations
 
 ```!
-ls /Users/blake/Sites/PlayGround/time-tracker-app/migrations/ 2>/dev/null | sort
+ls /Users/blake/Projects/timetracker-app/migrations/ 2>/dev/null | sort
 ```
 
 ## Steps
@@ -22,7 +22,7 @@ ls /Users/blake/Sites/PlayGround/time-tracker-app/migrations/ 2>/dev/null | sort
 ## Conventions
 
 ```!
-cat /Users/blake/Sites/PlayGround/time-tracker-app/.claude/skills/migrate/scripts/conventions.sh | bash
+cat /Users/blake/Projects/timetracker-app/.claude/skills/migrate/scripts/conventions.sh | bash
 ```
 
 - **snake_case** column names for all app tables (Better Auth tables use camelCase — don't touch those)
