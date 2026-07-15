@@ -1,7 +1,7 @@
 ---
 name: deploy
 description: Validate then deploy the time-tracker app to Cloudflare Workers production. Always runs pnpm check first and confirms before deploying.
-allowed-tools: Bash(pnpm check) Bash(pnpm deploy) Bash(npx wrangler d1 migrations apply *)
+allowed-tools: Bash(pnpm check) Bash(pnpm run deploy) Bash(npx wrangler d1 migrations apply *)
 argument-hint: "[--skip-check]"
 ---
 
@@ -11,22 +11,22 @@ Deploy the time-tracker app to production (`timetracker.run`). Arguments: `$ARGU
 
 Pending migrations (unapplied to remote):
 ```!
-cd /Users/blake/Sites/PlayGround/time-tracker-app && ls migrations/ | sort
+cd /Users/blake/Projects/timetracker-app && ls migrations/ | sort
 ```
 
 Git status:
 ```!
-git -C /Users/blake/Sites/PlayGround/time-tracker-app log --oneline -5
+git -C /Users/blake/Projects/timetracker-app log --oneline -5
 ```
 
 ## Steps
 
 1. Unless `--skip-check` was passed, run `pnpm check` and fix any errors before continuing.
 2. Tell the user exactly what will be deployed (latest commit, any pending migrations).
-3. **Ask the user to confirm** before running `pnpm deploy`.
+3. **Ask the user to confirm** before running `pnpm run deploy`.
 4. If confirmed, run:
    ```bash
-   pnpm deploy
+   pnpm run deploy
    ```
 5. If there are unapplied migrations, remind the user to run:
    ```bash

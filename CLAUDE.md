@@ -12,7 +12,7 @@ pnpm zip:ext          # Build + package dist/timetracker-extension.zip for Chrom
 pnpm ext:id           # Print the dev extension ID derived from extension/.keys/extension.pem
 pnpm lint             # ESLint
 pnpm check            # Full validation: typecheck + build + wrangler dry-run deploy
-pnpm deploy           # Deploy to Cloudflare Workers
+pnpm run deploy       # Deploy to Cloudflare Workers (use `run` — `pnpm deploy` hits pnpm's built-in)
 pnpm cf-typegen       # Regenerate TS types from wrangler.jsonc bindings (run after binding changes)
 npx wrangler tail     # Stream live worker logs
 pnpm test:e2e         # Run Playwright e2e tests (spins up `pnpm dev` against localhost:5173)
