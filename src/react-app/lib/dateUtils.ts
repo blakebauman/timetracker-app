@@ -13,6 +13,9 @@ import {
   subMonths,
   parseISO,
   differenceInSeconds,
+  getISOWeek,
+  isSameMonth,
+  isSameYear,
 } from "date-fns";
 
 export function formatSeconds(seconds: number): string {
@@ -94,6 +97,25 @@ export function formatDayHeader(isoString: string): string {
   if (isToday(date)) return "Today";
   if (isYesterday(date)) return "Yesterday";
   return format(date, "EEEE, MMM d");
+}
+
+// Compact label for a navigable period, e.g. "Jul 14 – 20 · W29" (same month),
+// "Jun 30 – Jul 6 · W27" (spans months), or with the year when the range does
+// not fall in the current calendar year. The week number is the ISO week of the
+// period start.
+export function formatPeriodLabel(since: Date, until: Date): string {
+  const week = getISOWeek(since);
+  const startFmt = "MMM d";
+  let range: string;
+  if (isSameMonth(since, until)) {
+    range = `${format(since, startFmt)} – ${format(until, "d")}`;
+  } else {
+    range = `${format(since, startFmt)} – ${format(until, "MMM d")}`;
+  }
+  if (!isSameYear(since, new Date())) {
+    range += `, ${format(until, "yyyy")}`;
+  }
+  return `${range} · W${week}`;
 }
 
 export function formatFullDate(isoString: string): string {

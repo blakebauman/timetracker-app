@@ -1,18 +1,12 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import type FullCalendar from "@fullcalendar/react";
-import type {
-  DatesSetArg,
-  EventClickArg,
-  EventDropArg,
-} from "@fullcalendar/core";
+import type { EventClickArg, EventDropArg } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
-import { startOfWeek, endOfWeek } from "date-fns";
+import { endOfWeek, isWithinInterval } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
-import { CalendarToolbar } from "@/components/calendar/CalendarToolbar";
-import { CalendarView, type CalendarViewType } from "@/components/calendar/CalendarView";
-import { CalendarCreateDialog } from "@/components/calendar/CalendarCreateDialog";
+import { CalendarView, type CalendarViewType } from "./CalendarView";
+import { CalendarCreateDialog } from "./CalendarCreateDialog";
 import { EntryForm, type EditableEntry } from "@/components/entries/EntryForm";
 import { useEntriesRange, useUpdateEntry } from "@/hooks/useEntries";
 import { useCalendarEvents } from "@/hooks/useCalendarSync";
@@ -25,26 +19,44 @@ import {
 
 import "@/styles/fullcalendar.css";
 
-// A sensible default block for the "Add entry" button: 1 hour starting at the
-// current time snapped to the nearest 15 minutes.
-function defaultRange(): { start: string; stop: string } {
-  const start = new Date();
-  start.setMinutes(Math.round(start.getMinutes() / 15) * 15, 0, 0);
-  const stop = new Date(start.getTime() + 60 * 60 * 1000);
-  return { start: start.toISOString(), stop: stop.toISOString() };
+interface CalendarBodyProps {
+  weekStart: Date;
+  calendarView: CalendarViewType;
+  slotHeight: number;
 }
 
-export function CalendarPage() {
+// The FullCalendar time grid, externally driven by the shared week + view.
+// Extracted from the old standalone CalendarPage so it can be embedded in the
+// unified Timer tab (calendar + split views) under one shared header.
+export function CalendarBody({ weekStart, calendarView, slotHeight }: CalendarBodyProps) {
   const calendarRef = useRef<FullCalendar>(null);
-  const [view, setView] = useState<CalendarViewType>("timeGridWeek");
-  const [title, setTitle] = useState("");
-  const [range, setRange] = useState(() => {
-    const now = new Date();
-    return {
-      start: startOfWeek(now, { weekStartsOn: 1 }),
-      end: endOfWeek(now, { weekStartsOn: 1 }),
-    };
-  });
+  const api = () => calendarRef.current?.getApi();
+
+  // Captured once — FullCalendar's initialView/initialDate must be constant;
+  // subsequent view/date changes are driven imperatively via the API below.
+  const [initialView] = useState<CalendarViewType>(calendarView);
+  const [initialDate] = useState<Date>(weekStart);
+
+  // Always fetch the full Mon–Sun week; day/5-day views just show fewer columns.
+  const range = useMemo(
+    () => ({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) }),
+    [weekStart]
+  );
+
+  // For day view, focus today when it falls in the week, else the week start.
+  const focusDate = useMemo(() => {
+    if (calendarView !== "timeGridDay") return weekStart;
+    const today = new Date();
+    return isWithinInterval(today, { start: range.start, end: range.end }) ? today : weekStart;
+  }, [calendarView, weekStart, range.start, range.end]);
+
+  // Drive FullCalendar imperatively when the shared week or view changes.
+  useEffect(() => {
+    const a = api();
+    if (!a) return;
+    if (a.view.type !== calendarView) a.changeView(calendarView);
+    a.gotoDate(focusDate);
+  }, [calendarView, focusDate]);
 
   // Advance "now" every minute so the running entry's live block grows.
   const [nowIso, setNowIso] = useState(() => new Date().toISOString());
@@ -59,14 +71,13 @@ export function CalendarPage() {
     isError: entriesError,
   } = useEntriesRange(range.start.toISOString(), range.end.toISOString());
 
-  // Surface load failures — otherwise the calendar just renders empty.
   useEffect(() => {
     if (entriesError) toast.error("Couldn't load calendar entries");
   }, [entriesError]);
+
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const updateEntry = useUpdateEntry();
 
-  // External calendar events for the visible range, shown as "ghost" blocks.
   const { data: externalEvents = [] } = useCalendarEvents(
     range.start.toISOString(),
     range.end.toISOString()
@@ -74,8 +85,6 @@ export function CalendarPage() {
 
   const events = useMemo(() => {
     const real = buildEvents(entries, runningEntry, range, nowIso);
-    // Drop any ghost already confirmed into an entry (belt-and-suspenders — the
-    // server filters too, but this keeps the swap instant after create).
     const confirmed = new Set(
       entries.map((e) => e.calendarEventId).filter(Boolean) as string[]
     );
@@ -85,31 +94,25 @@ export function CalendarPage() {
     return [...real, ...ghosts];
   }, [entries, runningEntry, range, nowIso, externalEvents]);
 
-  // Create + edit dialog state. createRange optionally carries a ghost's title +
-  // calendar event id so confirming stamps the link and prefills the description.
   const [createOpen, setCreateOpen] = useState(false);
   const [createRange, setCreateRange] = useState<{
     start: string;
     stop: string;
     description?: string;
     calendarEventId?: string;
-  }>(defaultRange);
+  }>(() => {
+    const start = new Date();
+    start.setMinutes(Math.round(start.getMinutes() / 15) * 15, 0, 0);
+    const stop = new Date(start.getTime() + 60 * 60 * 1000);
+    return { start: start.toISOString(), stop: stop.toISOString() };
+  });
   const [editEntry, setEditEntry] = useState<EditableEntry | null>(null);
-
-  const api = () => calendarRef.current?.getApi();
-
-  const handleDatesSet = (arg: DatesSetArg) => {
-    setRange({ start: arg.start, end: arg.end });
-    setTitle(arg.view.title);
-    setView(arg.view.type as CalendarViewType);
-  };
 
   const handleSelect = (startIso: string, stopIso: string) => {
     setCreateRange({ start: startIso, stop: stopIso });
     setCreateOpen(true);
   };
 
-  // Clicking an empty slot creates a default 1-hour block starting at that time.
   const handleDateClick = (startIso: string) => {
     const stopIso = new Date(new Date(startIso).getTime() + 60 * 60 * 1000).toISOString();
     setCreateRange({ start: startIso, stop: stopIso });
@@ -140,8 +143,6 @@ export function CalendarPage() {
 
   const handleEventClick = (arg: EventClickArg) => {
     const props = arg.event.extendedProps as CalendarEventExtendedProps;
-    // Ghost (external calendar event) → open the create dialog prefilled, so the
-    // user picks a project and confirms it into a tracked entry.
     if (props.ghost && props.external) {
       setCreateRange({
         start: props.external.start,
@@ -156,41 +157,25 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
-      <CalendarToolbar
-        title={title}
-        view={view}
-        onPrev={() => api()?.prev()}
-        onNext={() => api()?.next()}
-        onToday={() => api()?.today()}
-        onViewChange={(v) => api()?.changeView(v)}
-        onAdd={() => {
-          setCreateRange(defaultRange());
-          setCreateOpen(true);
-        }}
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+      {entriesLoading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <CalendarView
+        ref={calendarRef}
+        initialView={initialView}
+        initialDate={initialDate}
+        slotHeight={slotHeight}
+        events={events}
+        onSelect={handleSelect}
+        onDateClick={handleDateClick}
+        onEventDrop={handleMoveOrResize}
+        onEventResize={handleMoveOrResize}
+        onEventClick={handleEventClick}
+        onDatesSet={() => {}}
       />
-
-      <Card className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-2">
-        {entriesLoading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        )}
-        <CalendarView
-          ref={calendarRef}
-          // Constant — driving this from changing state re-initializes FullCalendar
-          // and breaks declarative event updates after a view switch. View changes
-          // go through the API (toolbar); `view` state only tracks the active button.
-          initialView="timeGridWeek"
-          events={events}
-          onSelect={handleSelect}
-          onDateClick={handleDateClick}
-          onEventDrop={handleMoveOrResize}
-          onEventResize={handleMoveOrResize}
-          onEventClick={handleEventClick}
-          onDatesSet={handleDatesSet}
-        />
-      </Card>
 
       <CalendarCreateDialog
         open={createOpen}

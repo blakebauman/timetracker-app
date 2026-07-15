@@ -13,10 +13,12 @@ import type { DateClickArg, EventResizeDoneArg } from "@fullcalendar/interaction
 import { CalendarEventContent } from "./CalendarEventContent";
 import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 
-export type CalendarViewType = "timeGridWeek" | "timeGridDay";
+export type CalendarViewType = "timeGridWeek" | "timeGridFiveDay" | "timeGridDay";
 
 interface CalendarViewProps {
   initialView: CalendarViewType;
+  initialDate?: Date;
+  slotHeight: number;
   events: EventInput[];
   onSelect: (startIso: string, stopIso: string) => void;
   onDateClick: (startIso: string) => void;
@@ -33,6 +35,8 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
   function CalendarView(
     {
       initialView,
+      initialDate,
+      slotHeight,
       events,
       onSelect,
       onDateClick,
@@ -44,11 +48,23 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
     ref
   ) {
     return (
-      <div className="tt-calendar min-h-0 flex-1">
+      <div
+        className="tt-calendar min-h-0 flex-1"
+        style={{ ["--fc-slot-height" as string]: `${slotHeight}px` }}
+      >
         <FullCalendar
           ref={ref}
           plugins={[timeGridPlugin, interactionPlugin]}
           initialView={initialView}
+          initialDate={initialDate}
+          // A work-week (5-day) view alongside the built-in week/day views.
+          views={{
+            timeGridFiveDay: {
+              type: "timeGrid",
+              duration: { days: 5 },
+              buttonText: "5 days",
+            },
+          }}
           headerToolbar={false}
           height="100%"
           timeZone="local"

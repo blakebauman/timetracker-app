@@ -4,6 +4,7 @@ import { WifiOff } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { TimerBar } from "@/components/timer/TimerBar";
 import { CommandPalette } from "./CommandPalette";
+import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { PageFallback } from "./PageFallback";
 import { Toaster } from "@/components/ui/sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -53,6 +54,7 @@ export function AppShell() {
       </div>
 
       <CommandPalette />
+      <KeyboardShortcuts />
       <Toaster richColors position="bottom-right" />
     </div>
   );
