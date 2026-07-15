@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Play, Square, Trash2 } from "lucide-react";
+import { Play, Square, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -193,20 +193,32 @@ export function TimerBar() {
         </Button>
       )}
 
-      {/* Start / Stop — round button */}
+      {/* Start / Stop — round button. When running, a red halo pulses outward
+          (see recording-pulse in index.css); when idle, a soft brand glow blooms
+          on hover to invite the start. Reduced-motion users still get the color
+          + Stop icon as the running-state cue. */}
       <Button
         variant={isRunning ? "destructive" : "default"}
         size="icon"
         onClick={isRunning ? handleStop : handleStart}
         disabled={isStarting || isStopping}
-        className="h-10 w-10 shrink-0 rounded-full shadow-sm transition-transform hover:scale-105 active:scale-95"
+        className={cn(
+          "h-10 w-10 shrink-0 rounded-full shadow-sm",
+          "transition-[transform,box-shadow] duration-200 ease-out-quint",
+          "hover:scale-105 active:scale-95",
+          isRunning
+            ? "animate-recording-pulse"
+            : "hover:shadow-[0_0_18px_-2px_var(--primary)]"
+        )}
         title={isRunning ? "Stop timer (Alt+Shift+S)" : "Start timer (Alt+Shift+S)"}
         aria-label={isRunning ? "Stop timer" : "Start timer"}
       >
-        {isRunning ? (
-          <Square className="h-4 w-4 fill-current" />
+        {isStarting || isStopping ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isRunning ? (
+          <Square key="stop" className="h-3.5 w-3.5 animate-scale-in fill-current" />
         ) : (
-          <Play className="h-4 w-4 translate-x-px fill-current" />
+          <Play key="play" className="h-4 w-4 translate-x-px animate-scale-in fill-current" />
         )}
       </Button>
 
