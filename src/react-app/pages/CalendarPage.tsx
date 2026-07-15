@@ -15,8 +15,13 @@ import { CalendarView, type CalendarViewType } from "@/components/calendar/Calen
 import { CalendarCreateDialog } from "@/components/calendar/CalendarCreateDialog";
 import { EntryForm, type EditableEntry } from "@/components/entries/EntryForm";
 import { useEntriesRange, useUpdateEntry } from "@/hooks/useEntries";
+import { useCalendarEvents } from "@/hooks/useCalendarSync";
 import { useTimerStore } from "@/stores/timerStore";
-import { buildEvents, type CalendarEventExtendedProps } from "@/lib/calendarMapping";
+import {
+  buildEvents,
+  externalEventToEvent,
+  type CalendarEventExtendedProps,
+} from "@/lib/calendarMapping";
 
 import "@/styles/fullcalendar.css";
 
@@ -61,14 +66,34 @@ export function CalendarPage() {
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const updateEntry = useUpdateEntry();
 
-  const events = useMemo(
-    () => buildEvents(entries, runningEntry, range, nowIso),
-    [entries, runningEntry, range, nowIso]
+  // External calendar events for the visible range, shown as "ghost" blocks.
+  const { data: externalEvents = [] } = useCalendarEvents(
+    range.start.toISOString(),
+    range.end.toISOString()
   );
 
-  // Create + edit dialog state.
+  const events = useMemo(() => {
+    const real = buildEvents(entries, runningEntry, range, nowIso);
+    // Drop any ghost already confirmed into an entry (belt-and-suspenders — the
+    // server filters too, but this keeps the swap instant after create).
+    const confirmed = new Set(
+      entries.map((e) => e.calendarEventId).filter(Boolean) as string[]
+    );
+    const ghosts = externalEvents
+      .filter((ext) => !confirmed.has(ext.calendarEventId))
+      .map(externalEventToEvent);
+    return [...real, ...ghosts];
+  }, [entries, runningEntry, range, nowIso, externalEvents]);
+
+  // Create + edit dialog state. createRange optionally carries a ghost's title +
+  // calendar event id so confirming stamps the link and prefills the description.
   const [createOpen, setCreateOpen] = useState(false);
-  const [createRange, setCreateRange] = useState(defaultRange);
+  const [createRange, setCreateRange] = useState<{
+    start: string;
+    stop: string;
+    description?: string;
+    calendarEventId?: string;
+  }>(defaultRange);
   const [editEntry, setEditEntry] = useState<EditableEntry | null>(null);
 
   const api = () => calendarRef.current?.getApi();
@@ -114,8 +139,20 @@ export function CalendarPage() {
   };
 
   const handleEventClick = (arg: EventClickArg) => {
-    const { entry } = arg.event.extendedProps as CalendarEventExtendedProps;
-    setEditEntry(entry);
+    const props = arg.event.extendedProps as CalendarEventExtendedProps;
+    // Ghost (external calendar event) → open the create dialog prefilled, so the
+    // user picks a project and confirms it into a tracked entry.
+    if (props.ghost && props.external) {
+      setCreateRange({
+        start: props.external.start,
+        stop: props.external.stop,
+        description: props.external.title,
+        calendarEventId: props.external.calendarEventId,
+      });
+      setCreateOpen(true);
+      return;
+    }
+    if (props.entry) setEditEntry(props.entry);
   };
 
   return (
@@ -159,6 +196,8 @@ export function CalendarPage() {
         open={createOpen}
         startIso={createRange.start}
         stopIso={createRange.stop}
+        description={createRange.description}
+        calendarEventId={createRange.calendarEventId}
         onClose={closeCreate}
       />
 

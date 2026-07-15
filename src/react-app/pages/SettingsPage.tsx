@@ -19,6 +19,7 @@ import { useUIStore } from "@/stores/uiStore";
 import { useUpdateSettings } from "@/hooks/useSettings";
 import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
+import { GoogleCalendarCard } from "@/components/settings/GoogleCalendarCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { AccountCard } from "@/components/settings/AccountCard";
 import { SessionsCard } from "@/components/settings/SessionsCard";
@@ -224,6 +225,9 @@ export function SettingsPage() {
 
       {/* Team */}
       <TeamCard />
+
+      {/* Calendar sync */}
+      <GoogleCalendarCard />
 
       {/* Integrations */}
       <IntegrationsCard />

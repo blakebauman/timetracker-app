@@ -3,11 +3,39 @@ import type { TimeEntry } from "@shared/schemas";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { hexToRgba } from "@/lib/colorUtils";
 
-// A FullCalendar event carries the originating TimeEntry so interaction handlers
-// (drop/resize/click) can read its id and fields without a lookup.
+// An unconfirmed external calendar event (Google) shown as a "ghost" block the
+// user can click to confirm into a tracked entry.
+export interface ExternalEvent {
+  calendarEventId: string;
+  title: string;
+  start: string;
+  stop: string;
+}
+
+// A FullCalendar event carries either the originating TimeEntry (real block) or,
+// for ghosts, the external event — so interaction handlers can branch without a
+// lookup. `running` is always present; `entry` is absent on ghosts.
 export interface CalendarEventExtendedProps {
-  entry: TimeEntry;
+  entry?: TimeEntry;
   running: boolean;
+  ghost?: boolean;
+  external?: ExternalEvent;
+}
+
+const GHOST_COLOR = "#94a3b8"; // slate-400 — muted, project-agnostic
+
+// Map an external calendar event to a dashed, non-editable ghost block.
+export function externalEventToEvent(ext: ExternalEvent): EventInput {
+  return {
+    id: `ghost:${ext.calendarEventId}`,
+    start: ext.start,
+    end: ext.stop,
+    editable: false,
+    display: "block",
+    backgroundColor: hexToRgba(GHOST_COLOR, 0.1),
+    borderColor: GHOST_COLOR,
+    extendedProps: { running: false, ghost: true, external: ext } satisfies CalendarEventExtendedProps,
+  };
 }
 
 // Map a TimeEntry to a FullCalendar event. Running entries (stop === null) are

@@ -67,11 +67,11 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
           eventDurationEditable
           events={events}
           eventContent={CalendarEventContent}
-          eventClassNames={(arg) =>
-            (arg.event.extendedProps as CalendarEventExtendedProps).running
-              ? ["tt-event-running"]
-              : []
-          }
+          eventClassNames={(arg) => {
+            const props = arg.event.extendedProps as CalendarEventExtendedProps;
+            if (props.ghost) return ["tt-event-ghost"];
+            return props.running ? ["tt-event-running"] : [];
+          }}
           select={(arg: DateSelectArg) =>
             onSelect(arg.start.toISOString(), arg.end.toISOString())
           }

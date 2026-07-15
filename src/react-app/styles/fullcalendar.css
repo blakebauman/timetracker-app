@@ -78,6 +78,17 @@
   50% { opacity: 0.35; }
 }
 
+/* Ghost = unconfirmed external calendar event: dashed outline, hollow fill,
+   cursor affordance. Sits visually "behind" real tracked blocks. */
+.tt-calendar .fc-event.tt-event-ghost {
+  border-style: dashed;
+  cursor: pointer;
+}
+.tt-calendar .fc-event.tt-event-ghost:hover {
+  filter: brightness(1);
+  border-style: solid;
+}
+
 /* Now-indicator line + arrow. */
 .tt-calendar .fc .fc-timegrid-now-indicator-line {
   border-color: var(--primary);
