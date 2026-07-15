@@ -193,19 +193,20 @@ export function TimerBar() {
         </Button>
       )}
 
-      {/* Start / Stop */}
+      {/* Start / Stop — round button */}
       <Button
-        size="sm"
         variant={isRunning ? "destructive" : "default"}
+        size="icon"
         onClick={isRunning ? handleStop : handleStart}
         disabled={isStarting || isStopping}
-        className="w-20 gap-1.5"
+        className="h-10 w-10 shrink-0 rounded-full shadow-sm transition-transform hover:scale-105 active:scale-95"
         title={isRunning ? "Stop timer (Alt+Shift+S)" : "Start timer (Alt+Shift+S)"}
+        aria-label={isRunning ? "Stop timer" : "Start timer"}
       >
         {isRunning ? (
-          <><Square className="h-3.5 w-3.5 fill-current" /> Stop</>
+          <Square className="h-4 w-4 fill-current" />
         ) : (
-          <><Play className="h-3.5 w-3.5 fill-current" /> Start</>
+          <Play className="h-4 w-4 translate-x-px fill-current" />
         )}
       </Button>
 

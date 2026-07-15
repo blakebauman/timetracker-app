@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { ReactNode } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -12,11 +12,11 @@ import { TimerPage } from "@/pages/TimerPage";
 // its own chunk (Reports pulls in recharts, the largest of them) and loaded on
 // demand behind a Suspense fallback. lazyWithReload recovers from stale-chunk
 // import failures after a deploy by reloading once to fetch the fresh assets.
-const CalendarPage = lazyWithReload(() =>
-  import("@/pages/CalendarPage").then((m) => ({ default: m.CalendarPage }))
-);
 const ProjectsPage = lazyWithReload(() =>
   import("@/pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage }))
+);
+const TasksPage = lazyWithReload(() =>
+  import("@/pages/TasksPage").then((m) => ({ default: m.TasksPage }))
 );
 const ClientsPage = lazyWithReload(() =>
   import("@/pages/ClientsPage").then((m) => ({ default: m.ClientsPage }))
@@ -63,8 +63,10 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <TimerPage /> },
-      { path: "calendar", element: <CalendarPage /> },
+      // Calendar folded into the Timer tab's view switcher — keep the old URL working.
+      { path: "calendar", element: <Navigate to="/" replace /> },
       { path: "projects", element: <ProjectsPage /> },
+      { path: "tasks", element: <TasksPage /> },
       { path: "clients", element: <ClientsPage /> },
       { path: "clients/:id", element: <ClientDetailPage /> },
       { path: "reports", element: <ReportsPage /> },

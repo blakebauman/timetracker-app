@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Timer, CalendarDays, FolderOpen, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck, Search } from "lucide-react";
+import { Timer, FolderOpen, ListChecks, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck, Search, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
@@ -12,8 +12,8 @@ import { useUIStore } from "@/stores/uiStore";
 
 const navItems = [
   { to: "/", icon: Timer, label: "Timer" },
-  { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/projects", icon: FolderOpen, label: "Projects" },
+  { to: "/tasks", icon: ListChecks, label: "Tasks" },
   { to: "/clients", icon: Users, label: "Clients" },
   { to: "/reports", icon: BarChart2, label: "Reports" },
   { to: "/settings", icon: Settings, label: "Settings" },
@@ -28,6 +28,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
   const { runningEntry, elapsed } = useTimerStore();
   const { user, signOut } = useAuth();
   const openCommand = useUIStore((s) => s.openCommand);
+  const openShortcuts = useUIStore((s) => s.openShortcuts);
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -37,6 +38,11 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
 
   const handleOpenCommand = () => {
     openCommand();
+    onNavigate?.();
+  };
+
+  const handleOpenShortcuts = () => {
+    openShortcuts();
     onNavigate?.();
   };
 
@@ -158,12 +164,27 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
             </Button>
           </div>
         )}
-        {!collapsed && (
-          <div className="text-[10px] text-muted-foreground">
-            <p>Alt+Shift+S — Start/Stop</p>
-            <p>Alt+Shift+X — Discard</p>
-          </div>
-        )}
+        {/* Keyboard shortcut reference — opens the full cheat sheet (also “?”) */}
+        <button
+          type="button"
+          onClick={handleOpenShortcuts}
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts — ?"
+          className={cn(
+            "flex w-full items-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            collapsed ? "justify-center p-2" : "gap-2 px-2 py-1.5"
+          )}
+        >
+          <Keyboard className="h-3.5 w-3.5 shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">Keyboard shortcuts</span>
+              <kbd className="pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border bg-muted px-1 font-mono text-[10px] font-medium">
+                ?
+              </kbd>
+            </>
+          )}
+        </button>
       </div>
     </>
   );

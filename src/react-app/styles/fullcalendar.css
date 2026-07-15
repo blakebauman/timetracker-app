@@ -36,9 +36,10 @@
   padding: 0.5rem 0;
 }
 
-/* Slightly taller slots for comfortable drag targets. */
+/* Slot height is driven by the zoom control (--fc-slot-height, px), falling
+   back to a comfortable drag target when unset. */
 .tt-calendar .fc .fc-timegrid-slot {
-  height: 2.75rem;
+  height: var(--fc-slot-height, 2.75rem);
 }
 
 .tt-calendar .fc-theme-standard td,

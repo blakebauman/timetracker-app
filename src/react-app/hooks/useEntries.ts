@@ -40,9 +40,17 @@ export interface DescriptionGroup {
   billable: boolean;
 }
 
-export function useGroupedEntries(days = 30) {
-  const { data: entries = [], ...rest } = useEntries(days);
+export interface DayGroup {
+  dateKey: string;
+  label: string;
+  groups: DescriptionGroup[];
+  totalSeconds: number;
+}
 
+// Pure grouping: buckets entries by day (desc), then sub-groups each day by
+// description + projectId. Shared by the anchored-to-today `useGroupedEntries`
+// and the range-scoped `useGroupedEntriesRange`.
+export function groupEntriesByDay(entries: TimeEntry[]): DayGroup[] {
   const grouped = entries.reduce(
     (acc, entry) => {
       const dayKey = entry.start.slice(0, 10);
@@ -53,7 +61,7 @@ export function useGroupedEntries(days = 30) {
     {} as Record<string, TimeEntry[]>
   );
 
-  const days_list = Object.keys(grouped)
+  return Object.keys(grouped)
     .sort((a, b) => b.localeCompare(a))
     .map((dateKey) => {
       const dayEntries = grouped[dateKey];
@@ -87,8 +95,17 @@ export function useGroupedEntries(days = 30) {
         totalSeconds: dayEntries.reduce((sum, e) => sum + (e.duration ?? 0), 0),
       };
     });
+}
 
-  return { days: days_list, entries, ...rest };
+export function useGroupedEntries(days = 30) {
+  const { data: entries = [], ...rest } = useEntries(days);
+  return { days: groupEntriesByDay(entries), entries, ...rest };
+}
+
+// Range-scoped variant used by the period-navigable timer list.
+export function useGroupedEntriesRange(sinceIso: string, untilIso: string) {
+  const { data: entries = [], ...rest } = useEntriesRange(sinceIso, untilIso);
+  return { days: groupEntriesByDay(entries), entries, ...rest };
 }
 
 export function useCreateEntry() {
