@@ -153,6 +153,7 @@ export const TimeEntrySchema = z.object({
   externalId: z.string().nullable(),
   syncedAt: z.string().nullable(),
   syncError: z.string().nullable(),
+  calendarEventId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -166,6 +167,7 @@ export const CreateTimeEntrySchema = z
     stop: z.string().nullable().optional(),
     billable: z.boolean().default(false),
     tags: z.array(z.string().max(100)).max(50).default([]),
+    calendarEventId: z.string().nullable().optional(),
   })
   .refine((data) => !data.stop || new Date(data.stop) > new Date(data.start), {
     message: "Stop time must be after start time",

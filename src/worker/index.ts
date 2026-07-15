@@ -12,6 +12,7 @@ import { reportsRouter } from "./routes/reports";
 import { savedReportsRouter } from "./routes/saved-reports";
 import { settingsRouter } from "./routes/settings";
 import { integrationsRouter } from "./routes/integrations";
+import { calendarRouter } from "./routes/calendar";
 import { aiRouter } from "./routes/ai";
 import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
@@ -46,6 +47,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/saved-reports", savedReportsRouter)
   .route("/api/settings", settingsRouter)
   .route("/api/integrations", integrationsRouter)
+  .route("/api/calendar", calendarRouter)
   .route("/api/ai", aiRouter)
   .route("/api/ws", websocketRouter);
 

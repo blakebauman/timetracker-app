@@ -47,8 +47,10 @@ export const integrationsRouter = new Hono<{
   Variables: { workspaceId: string };
 }>()
   .get("/", async (c) => {
+    // Calendar sync stores its OAuth token as a 'google_calendar' integration row
+    // but is managed via /api/calendar — keep it out of the push-integration UI.
     const { results } = await c.env.DB.prepare(
-      `SELECT * FROM integrations WHERE workspace_id = ? ORDER BY name ASC`
+      `SELECT * FROM integrations WHERE workspace_id = ? AND type != 'google_calendar' ORDER BY name ASC`
     ).bind(c.get("workspaceId")).all<Record<string, unknown>>();
     return c.json(results.map(formatIntegration));
   })

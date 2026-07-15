@@ -15,3 +15,12 @@ AUTH_SECRET=replace-with-random-32-byte-secret
 # redirect URI on the client for local sign-in to work.
 GOOGLE_CLIENT_ID=1234567890-example.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-replace-with-client-secret
+
+# Google Calendar OAuth client — SEPARATE from the login client above so it can
+# request the sensitive calendar.readonly scope with its own consent screen.
+# Enable the Google Calendar API, and add these authorized redirect URIs:
+#   http://localhost:5173/api/calendar/google/callback   (local)
+#   https://timetracker.run/api/calendar/google/callback (prod)
+# Optional — calendar sync is disabled until both are set.
+GOOGLE_CALENDAR_CLIENT_ID=1234567890-calendar.apps.googleusercontent.com
+GOOGLE_CALENDAR_CLIENT_SECRET=GOCSPX-replace-with-calendar-client-secret

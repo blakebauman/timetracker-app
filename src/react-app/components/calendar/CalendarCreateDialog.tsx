@@ -23,6 +23,10 @@ interface CalendarCreateDialogProps {
   // Prefilled from the dragged grid selection (ISO strings).
   startIso: string;
   stopIso: string;
+  // When confirming a Google Calendar "ghost": seed the description and stamp the
+  // entry with the external event id so the ghost stops reappearing.
+  description?: string;
+  calendarEventId?: string;
   onClose: () => void;
 }
 
@@ -30,6 +34,8 @@ export function CalendarCreateDialog({
   open,
   startIso,
   stopIso,
+  description: prefillDescription,
+  calendarEventId,
   onClose,
 }: CalendarCreateDialogProps) {
   const [description, setDescription] = useState("");
@@ -41,14 +47,16 @@ export function CalendarCreateDialog({
   const [stop, setStop] = useState(stopIso);
 
   const createEntry = useCreateEntry();
+  const fromCalendar = Boolean(calendarEventId);
 
   // Reset local state to the (possibly new) selection each time the dialog opens.
-  const [syncedKey, setSyncedKey] = useState(`${startIso}|${stopIso}`);
-  if (open && syncedKey !== `${startIso}|${stopIso}`) {
-    setSyncedKey(`${startIso}|${stopIso}`);
+  const openKey = `${startIso}|${stopIso}|${calendarEventId ?? ""}`;
+  const [syncedKey, setSyncedKey] = useState(openKey);
+  if (open && syncedKey !== openKey) {
+    setSyncedKey(openKey);
     setStart(startIso);
     setStop(stopIso);
-    setDescription("");
+    setDescription(prefillDescription ?? "");
     setProjectId(null);
     setTaskId(null);
     setTags([]);
@@ -63,7 +71,7 @@ export function CalendarCreateDialog({
   const handleSave = () => {
     if (!hasValidRange) return;
     createEntry.mutate(
-      { description, projectId, taskId, tags, billable, start, stop },
+      { description, projectId, taskId, tags, billable, start, stop, calendarEventId },
       { onSuccess: onClose }
     );
   };
@@ -74,7 +82,7 @@ export function CalendarCreateDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarPlus className="h-4 w-4" />
-            New entry
+            {fromCalendar ? "Track calendar event" : "New entry"}
           </DialogTitle>
         </DialogHeader>
 

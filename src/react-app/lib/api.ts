@@ -168,6 +168,23 @@ export const api = {
       ),
   },
 
+  // ─── Calendar sync (Google) ────────────────────────────────────────────────
+  calendar: {
+    status: () =>
+      request<{ configured: boolean; connected: boolean; accountEmail?: string | null }>(
+        "/calendar/status"
+      ),
+    events: (params: { since: string; until: string }) => {
+      const qs = new URLSearchParams();
+      qs.set("since", params.since);
+      qs.set("until", params.until);
+      return request<
+        { calendarEventId: string; title: string; start: string; stop: string }[]
+      >(`/calendar/events?${qs}`);
+    },
+    disconnect: () => request<{ ok: boolean }>("/calendar/google", { method: "DELETE" }),
+  },
+
   // ─── AI ───────────────────────────────────────────────────────────────────
   ai: {
     quickEntry: (body: Record<string, unknown>) =>

@@ -80,6 +80,7 @@ export function useTimer() {
               externalId: null,
               syncedAt: null,
               syncError: null,
+              calendarEventId: null,
               createdAt: new Date(saved.startedAt).toISOString(),
               updatedAt: new Date(saved.startedAt).toISOString(),
             },
@@ -130,6 +131,7 @@ export function useTimer() {
         externalId: null,
         syncedAt: null,
         syncError: null,
+        calendarEventId: null,
         createdAt: new Date(now).toISOString(),
         updatedAt: new Date(now).toISOString(),
       };

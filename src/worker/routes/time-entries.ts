@@ -65,8 +65,8 @@ export const timeEntriesRouter = new Hono<{
 
     await c.env.DB.prepare(
       `INSERT INTO time_entries
-         (id, workspace_id, project_id, task_id, description, start, stop, duration, billable, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         (id, workspace_id, project_id, task_id, description, start, stop, duration, billable, calendar_event_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       id, workspaceId,
       data.projectId ?? null,
@@ -78,6 +78,7 @@ export const timeEntriesRouter = new Hono<{
         ? Math.round((new Date(data.stop).getTime() - new Date(data.start).getTime()) / 1000)
         : null,
       data.billable ? 1 : 0,
+      data.calendarEventId ?? null,
       now, now
     ).run();
 
