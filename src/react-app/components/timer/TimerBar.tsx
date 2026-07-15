@@ -193,22 +193,24 @@ export function TimerBar() {
         </Button>
       )}
 
-      {/* Start / Stop — round button. When running, a red halo pulses outward
-          (see recording-pulse in index.css); when idle, a soft brand glow blooms
-          on hover to invite the start. Reduced-motion users still get the color
-          + Stop icon as the running-state cue. */}
+      {/* Start / Stop — round button with a lit-dome finish (top-to-bottom tint
+          overlay + inner highlight/shade via --btn-3d). When running, a red halo
+          pulses outward (recording-pulse); when idle, hover deepens the lift and
+          blooms a brand glow, press collapses it inward. Reduced-motion users
+          still get the color + Stop icon as the running-state cue. */}
       <Button
         variant={isRunning ? "destructive" : "default"}
         size="icon"
         onClick={isRunning ? handleStop : handleStart}
         disabled={isStarting || isStopping}
         className={cn(
-          "h-10 w-10 shrink-0 rounded-full shadow-sm",
+          "h-10 w-10 shrink-0 rounded-full bg-linear-to-b from-white/20 to-black/15",
           "transition-[transform,box-shadow] duration-200 ease-out-quint",
           "hover:scale-105 active:scale-95",
+          "[box-shadow:var(--btn-3d)]",
           isRunning
             ? "animate-recording-pulse"
-            : "hover:shadow-[0_0_18px_-2px_var(--primary)]"
+            : "hover:[box-shadow:var(--btn-3d-hover)] active:[box-shadow:var(--btn-3d-press)]"
         )}
         title={isRunning ? "Stop timer (Alt+Shift+S)" : "Start timer (Alt+Shift+S)"}
         aria-label={isRunning ? "Stop timer" : "Start timer"}

@@ -67,20 +67,24 @@
   to { opacity: 1; transform: none; }
 }
 /* Halo that radiates outward from the round Stop button and fades — signals a
-   running timer. Two rings offset in the cycle give a continuous ripple. */
+   running timer. The button's own 3D depth (--btn-3d) rides along in every
+   frame so the disc keeps its lit-dome form while the ring ripples. */
 @keyframes recording-pulse {
   0% {
     box-shadow:
+      var(--btn-3d),
       0 0 0 0 color-mix(in oklab, var(--destructive) 45%, transparent),
       0 0 0 0 color-mix(in oklab, var(--destructive) 30%, transparent);
   }
   50% {
     box-shadow:
+      var(--btn-3d),
       0 0 0 6px color-mix(in oklab, var(--destructive) 12%, transparent),
       0 0 0 3px color-mix(in oklab, var(--destructive) 22%, transparent);
   }
   100% {
     box-shadow:
+      var(--btn-3d),
       0 0 0 12px color-mix(in oklab, var(--destructive) 0%, transparent),
       0 0 0 8px color-mix(in oklab, var(--destructive) 0%, transparent);
   }
@@ -90,6 +94,22 @@
   --font-geist-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-geist-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
   --radius: 0.5rem;
+
+  /* Round timer button depth: a top inner highlight + bottom inner shade make
+     the disc read as a lit dome; the outer drop shadow lifts it off the bar.
+     -hover deepens the lift and adds a brand glow; -press collapses it inward. */
+  --btn-3d:
+    inset 0 1px 0.5px oklch(1 0 0 / 0.4),
+    inset 0 -2px 3px oklch(0 0 0 / 0.22),
+    0 2px 5px -1px oklch(0 0 0 / 0.32);
+  --btn-3d-hover:
+    inset 0 1px 0.5px oklch(1 0 0 / 0.45),
+    inset 0 -2px 3px oklch(0 0 0 / 0.22),
+    0 5px 12px -2px oklch(0 0 0 / 0.4),
+    0 0 18px -2px var(--primary);
+  --btn-3d-press:
+    inset 0 2px 5px oklch(0 0 0 / 0.35),
+    inset 0 1px 1px oklch(0 0 0 / 0.25);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
