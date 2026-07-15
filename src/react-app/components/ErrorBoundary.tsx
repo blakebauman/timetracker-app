@@ -1,4 +1,6 @@
 import { Component, type ReactNode } from "react";
+import { TriangleAlert, RotateCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   children: ReactNode;
@@ -8,6 +10,11 @@ interface State {
   error: Error | null;
 }
 
+/**
+ * Outermost catch-all. Route-level errors are handled by RouteErrorBoundary
+ * (wired via `errorElement` in App.tsx); this class boundary only sees crashes
+ * that happen above the router — e.g. in providers rendered around it.
+ */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
@@ -15,22 +22,25 @@ export class ErrorBoundary extends Component<Props, State> {
     return { error };
   }
 
+  componentDidCatch(error: Error) {
+    console.error("App error:", error);
+  }
+
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-background p-8">
-          <div className="max-w-md text-center">
-            <h1 className="text-2xl font-semibold text-foreground mb-2">Something went wrong</h1>
-            <p className="text-sm text-muted-foreground mb-6">
-              {this.state.error.message || "An unexpected error occurred."}
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Reload page
-            </button>
-          </div>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center">
+          <TriangleAlert className="mb-4 h-10 w-10 text-muted-foreground/30" />
+          <h1 className="mb-2 text-2xl font-semibold text-foreground">
+            Something went wrong
+          </h1>
+          <p className="mb-6 max-w-md text-sm text-muted-foreground">
+            {this.state.error.message || "An unexpected error occurred."}
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            <RotateCw />
+            Reload page
+          </Button>
         </div>
       );
     }
