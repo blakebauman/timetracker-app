@@ -30,7 +30,7 @@ pnpm dev                                              # start local dev server
 npx wrangler d1 migrations apply DB --local           # apply migrations locally
 npx wrangler d1 migrations apply DB --remote          # apply migrations to prod
 npx wrangler tail                                     # stream live worker logs
-pnpm deploy                                           # deploy to prod (wrangler deploy)
+pnpm run deploy                                       # deploy to prod (wrangler deploy)
 pnpm cf-typegen                                       # regenerate TS types from wrangler.jsonc
 ```
 
