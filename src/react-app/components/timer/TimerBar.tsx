@@ -10,18 +10,23 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useTimerStore } from "@/stores/timerStore";
 import { useTimer } from "@/hooks/useTimer";
 import { useUpdateEntry } from "@/hooks/useEntries";
+import { formatSeconds, parseTimeInput } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 
 export function TimerBar() {
   const { runningEntry, elapsed } = useTimerStore();
-  const { startTimer, stopTimer, discardTimer, isStarting, isStopping } = useTimer();
+  const { startTimer, stopTimer, discardTimer, editElapsed, isStarting, isStopping } =
+    useTimer();
   const updateEntry = useUpdateEntry();
 
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [editingElapsed, setEditingElapsed] = useState(false);
+  const [elapsedInput, setElapsedInput] = useState("");
   const descRef = useRef<HTMLInputElement>(null);
+  const elapsedRef = useRef<HTMLInputElement>(null);
 
   const isRunning = Boolean(runningEntry);
 
@@ -78,6 +83,34 @@ export function TimerBar() {
     else handleStart();
   };
 
+  // Focus + select the elapsed input when entering edit mode
+  useEffect(() => {
+    if (editingElapsed) {
+      elapsedRef.current?.focus();
+      elapsedRef.current?.select();
+    }
+  }, [editingElapsed]);
+
+  const handleStartEditElapsed = () => {
+    setElapsedInput(formatSeconds(elapsed));
+    setEditingElapsed(true);
+  };
+  const handleSaveElapsed = () => {
+    setEditingElapsed(false);
+    const parsed = parseTimeInput(elapsedInput);
+    if (parsed !== null && parsed >= 0) editElapsed(parsed);
+  };
+  const handleElapsedKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSaveElapsed();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setEditingElapsed(false);
+    }
+  };
+
   return (
     <header className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm md:h-14 md:flex-nowrap md:gap-3 md:py-0">
       {/* Description input */}
@@ -119,13 +152,32 @@ export function TimerBar() {
         compact
       />
 
-      {/* Timer display (only when running) */}
-      {isRunning && (
-        <TimerDisplay
-          seconds={elapsed}
-          className="min-w-20 animate-in fade-in slide-in-from-right-2 text-right text-primary duration-300 ease-out"
-        />
-      )}
+      {/* Timer display (only when running) — click to edit elapsed time */}
+      {isRunning &&
+        (editingElapsed ? (
+          <Input
+            ref={elapsedRef}
+            value={elapsedInput}
+            onChange={(e) => setElapsedInput(e.target.value)}
+            onKeyDown={handleElapsedKeyDown}
+            onBlur={handleSaveElapsed}
+            aria-label="Edit elapsed time"
+            className="h-8 w-24 text-right font-mono text-lg font-semibold tabular-nums"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={handleStartEditElapsed}
+            title="Edit elapsed time"
+            aria-label="Edit elapsed time"
+            className="rounded px-1 transition-colors hover:bg-accent"
+          >
+            <TimerDisplay
+              seconds={elapsed}
+              className="min-w-20 animate-in fade-in slide-in-from-right-2 cursor-pointer text-right text-primary duration-300 ease-out"
+            />
+          </button>
+        ))}
 
       {/* Discard button (only when running) */}
       {isRunning && (

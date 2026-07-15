@@ -176,6 +176,38 @@ export function useTimer() {
     onError: () => toast.error("Failed to discard timer"),
   });
 
+  // ─── Edit elapsed ────────────────────────────────────────────────────────
+  // Set the running timer's elapsed time to `seconds` by shifting its start
+  // back to `now - seconds`; the timer keeps ticking from the new value. The
+  // display reads only `localStartTime`, so we update the store optimistically
+  // and persist to IDB, then mirror the new start to the server.
+  const editElapsedMutation = useMutation({
+    mutationFn: (seconds: number) => {
+      if (!runningEntry) throw new Error("No running timer");
+      const newStart = Date.now() - seconds * 1000;
+      return api.timeEntries.update(runningEntry.id, {
+        start: new Date(newStart).toISOString(),
+      }) as Promise<TimeEntry>;
+    },
+    onMutate: async (seconds) => {
+      if (!runningEntry) return;
+      const newStart = Date.now() - seconds * 1000;
+      setRunningEntry(runningEntry, newStart);
+      setElapsed(seconds); // avoid a 1-frame flash to 00:00:00 before the tick
+      await saveTimerState({
+        entryId: runningEntry.id,
+        startedAt: newStart,
+        description: runningEntry.description,
+        projectId: runningEntry.projectId,
+        projectColor: runningEntry.projectColor,
+      });
+    },
+    onError: () => {
+      toast.error("Failed to update timer");
+      queryClient.invalidateQueries({ queryKey: ["timer-current"] });
+    },
+  });
+
   const startTimer = useCallback(
     (
       partial: {
@@ -196,6 +228,13 @@ export function useTimer() {
     if (runningEntry) discardMutation.mutate(runningEntry.id);
   }, [runningEntry, discardMutation]);
 
+  const editElapsed = useCallback(
+    (seconds: number) => {
+      if (runningEntry && seconds >= 0) editElapsedMutation.mutate(seconds);
+    },
+    [runningEntry, editElapsedMutation]
+  );
+
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────
   useHotkeys(
     "alt+shift+s",
@@ -214,6 +253,7 @@ export function useTimer() {
     startTimer,
     stopTimer,
     discardTimer,
+    editElapsed,
     isStarting: startMutation.isPending,
     isStopping: stopMutation.isPending,
   };
