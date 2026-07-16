@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { PageFallback } from "@/components/layout/PageFallback";
 import { lazyWithReload } from "@/lib/lazyWithReload";
 import { TimerPage } from "@/pages/TimerPage";
@@ -51,9 +52,21 @@ const withSuspense = (node: ReactNode) => (
 );
 
 const router = createBrowserRouter([
-  { path: "/login", element: withSuspense(<LoginPage />) },
-  { path: "/signup", element: withSuspense(<SignupPage />) },
-  { path: "/accept-invite", element: withSuspense(<AcceptInvitePage />) },
+  {
+    path: "/login",
+    element: withSuspense(<LoginPage />),
+    errorElement: <RouteErrorBoundary fullScreen />,
+  },
+  {
+    path: "/signup",
+    element: withSuspense(<SignupPage />),
+    errorElement: <RouteErrorBoundary fullScreen />,
+  },
+  {
+    path: "/accept-invite",
+    element: withSuspense(<AcceptInvitePage />),
+    errorElement: <RouteErrorBoundary fullScreen />,
+  },
   {
     path: "/",
     element: (
@@ -61,18 +74,28 @@ const router = createBrowserRouter([
         <AppShell />
       </AuthGuard>
     ),
+    // Safety net for failures in AuthGuard/AppShell themselves (before the
+    // Outlet exists) — nothing to render inside, so go full screen.
+    errorElement: <RouteErrorBoundary fullScreen />,
     children: [
-      { index: true, element: <TimerPage /> },
-      // Calendar folded into the Timer tab's view switcher — keep the old URL working.
-      { path: "calendar", element: <Navigate to="/" replace /> },
-      { path: "projects", element: <ProjectsPage /> },
-      { path: "tasks", element: <TasksPage /> },
-      { path: "clients", element: <ClientsPage /> },
-      { path: "clients/:id", element: <ClientDetailPage /> },
-      { path: "reports", element: <ReportsPage /> },
-      { path: "settings", element: <SettingsPage /> },
-      { path: "admin", element: <AdminPage /> },
-      { path: "*", element: <NotFoundPage /> },
+      {
+        // Pathless layout route: content-page errors render here, inside
+        // AppShell's <Outlet>, so the sidebar/topbar stay mounted.
+        errorElement: <RouteErrorBoundary />,
+        children: [
+          { index: true, element: <TimerPage /> },
+          // Calendar folded into the Timer tab's view switcher — keep the old URL working.
+          { path: "calendar", element: <Navigate to="/" replace /> },
+          { path: "projects", element: <ProjectsPage /> },
+          { path: "tasks", element: <TasksPage /> },
+          { path: "clients", element: <ClientsPage /> },
+          { path: "clients/:id", element: <ClientDetailPage /> },
+          { path: "reports", element: <ReportsPage /> },
+          { path: "settings", element: <SettingsPage /> },
+          { path: "admin", element: <AdminPage /> },
+          { path: "*", element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
 ]);
