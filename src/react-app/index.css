@@ -49,9 +49,9 @@
   --animate-fade-up: fade-up 0.35s var(--ease-out-quart) both;
   --animate-scale-in: scale-in 0.4s var(--ease-out-quart) both;
 
-  /* Running-timer "recording" pulse — a soft ring that radiates from the
-     round Stop button (utility: animate-recording-pulse). */
-  --animate-recording-pulse: recording-pulse 2s var(--ease-out-quart) infinite;
+  /* Running-timer heartbeat — a lub-dub double beat on the round Stop button
+     (utility: animate-heartbeat). */
+  --animate-heartbeat: heartbeat 1.5s var(--ease-out-quart) infinite;
 }
 
 @keyframes fade-in {
@@ -66,27 +66,46 @@
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: none; }
 }
-/* Halo that radiates outward from the round Stop button and fades — signals a
-   running timer. The button's own 3D depth (--btn-3d) rides along in every
-   frame so the disc keeps its lit-dome form while the ring ripples. */
-@keyframes recording-pulse {
+/* Lub-dub heartbeat on the round Stop button — two quick scale bumps early in
+   the cycle, then rest, while a red ring expands outward and fades on each beat.
+   The button's own 3D depth (--btn-3d) rides along in every frame so the disc
+   keeps its lit-dome form while it beats. */
+@keyframes heartbeat {
   0% {
+    transform: scale(1);
     box-shadow:
       var(--btn-3d),
-      0 0 0 0 color-mix(in oklab, var(--destructive) 45%, transparent),
-      0 0 0 0 color-mix(in oklab, var(--destructive) 30%, transparent);
+      0 0 0 0 color-mix(in oklab, var(--destructive) 45%, transparent);
   }
-  50% {
+  10% {
+    transform: scale(1.08);
     box-shadow:
       var(--btn-3d),
-      0 0 0 6px color-mix(in oklab, var(--destructive) 12%, transparent),
-      0 0 0 3px color-mix(in oklab, var(--destructive) 22%, transparent);
+      0 0 0 3px color-mix(in oklab, var(--destructive) 26%, transparent);
+  }
+  20% {
+    transform: scale(1);
+    box-shadow:
+      var(--btn-3d),
+      0 0 0 6px color-mix(in oklab, var(--destructive) 12%, transparent);
+  }
+  30% {
+    transform: scale(1.05);
+    box-shadow:
+      var(--btn-3d),
+      0 0 0 8px color-mix(in oklab, var(--destructive) 8%, transparent);
+  }
+  45% {
+    transform: scale(1);
+    box-shadow:
+      var(--btn-3d),
+      0 0 0 12px color-mix(in oklab, var(--destructive) 0%, transparent);
   }
   100% {
+    transform: scale(1);
     box-shadow:
       var(--btn-3d),
-      0 0 0 12px color-mix(in oklab, var(--destructive) 0%, transparent),
-      0 0 0 8px color-mix(in oklab, var(--destructive) 0%, transparent);
+      0 0 0 0 color-mix(in oklab, var(--destructive) 0%, transparent);
   }
 }
 
