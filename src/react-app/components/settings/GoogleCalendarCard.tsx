@@ -5,13 +5,20 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCalendarStatus, useDisconnectCalendar } from "@/hooks/useCalendarSync";
+import {
+  useCalendarStatus,
+  useDisconnectCalendar,
+  useSetAutoTrack,
+} from "@/hooks/useCalendarSync";
 
 export function GoogleCalendarCard() {
   const [params, setParams] = useSearchParams();
   const { data: status, isLoading } = useCalendarStatus();
   const disconnect = useDisconnectCalendar();
+  const setAutoTrack = useSetAutoTrack();
 
   // Surface the OAuth round-trip result (redirected back to /settings?calendar=…).
   useEffect(() => {
@@ -68,11 +75,27 @@ export function GoogleCalendarCard() {
             Calendar sync isn't configured on this server yet.
           </p>
         ) : status.connected ? (
-          <p className="text-sm text-muted-foreground">
-            Syncing {status.accountEmail ? <span className="font-medium">{status.accountEmail}</span> : "your calendar"}.
-            Your events show up on the <span className="font-medium">Calendar</span> as dashed blocks —
-            click one to track it as a time entry.
-          </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Syncing {status.accountEmail ? <span className="font-medium">{status.accountEmail}</span> : "your calendar"}.
+              Your events show up on the <span className="font-medium">Calendar</span> as dashed blocks —
+              click one to track it as a time entry.
+            </p>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="pr-4">
+                <Label htmlFor="auto-track">Auto-track calendar events</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically create a time entry when a calendar event ends.
+                </p>
+              </div>
+              <Switch
+                id="auto-track"
+                checked={Boolean(status.autoTrack)}
+                disabled={setAutoTrack.isPending}
+                onCheckedChange={(checked) => setAutoTrack.mutate(checked)}
+              />
+            </div>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">
             Connect your Google Calendar to see your events on the calendar and turn

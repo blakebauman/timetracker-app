@@ -101,6 +101,7 @@ export function useTimer() {
       projectId?: string | null;
       taskId?: string | null;
       billable?: boolean;
+      tags?: string[];
     }) => {
       return api.timeEntries.create({
         description: partial.description ?? "",
@@ -108,7 +109,7 @@ export function useTimer() {
         taskId: partial.taskId ?? null,
         start: new Date().toISOString(),
         billable: partial.billable ?? false,
-        tags: [],
+        tags: partial.tags ?? [],
       }) as Promise<TimeEntry>;
     },
     onMutate: async (partial) => {
@@ -126,7 +127,7 @@ export function useTimer() {
         stop: null,
         duration: null,
         billable: partial.billable ?? false,
-        tags: [],
+        tags: partial.tags ?? [],
         syncStatus: null,
         externalId: null,
         syncedAt: null,
@@ -157,6 +158,23 @@ export function useTimer() {
   const stopMutation = useMutation({
     mutationFn: (id: string) =>
       api.timeEntries.stop(id) as Promise<TimeEntry>,
+    onMutate: () => clearTimer(),
+    onSuccess: () => {
+      clearTimerState();
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+    },
+    onError: () => {
+      toast.error("Failed to stop timer — please try again");
+      queryClient.invalidateQueries({ queryKey: ["timer-current"] });
+    },
+  });
+
+  // ─── Stop at a specific time (used to trim idle time) ─────────────────────
+  const stopAtMutation = useMutation({
+    mutationFn: (iso: string) => {
+      if (!runningEntry) throw new Error("No running timer");
+      return api.timeEntries.update(runningEntry.id, { stop: iso }) as Promise<TimeEntry>;
+    },
     onMutate: () => clearTimer(),
     onSuccess: () => {
       clearTimerState();
@@ -215,6 +233,7 @@ export function useTimer() {
         projectId?: string | null;
         taskId?: string | null;
         billable?: boolean;
+        tags?: string[];
       } = {}
     ) => startMutation.mutate(partial),
     [startMutation]
@@ -227,6 +246,15 @@ export function useTimer() {
   const discardTimer = useCallback(() => {
     if (runningEntry) discardMutation.mutate(runningEntry.id);
   }, [runningEntry, discardMutation]);
+
+  // Stop the running timer at an explicit ISO time (e.g. trim idle time back to
+  // when the user went away).
+  const stopTimerAt = useCallback(
+    (iso: string) => {
+      if (runningEntry) stopAtMutation.mutate(iso);
+    },
+    [runningEntry, stopAtMutation]
+  );
 
   const editElapsed = useCallback(
     (seconds: number) => {
@@ -252,6 +280,7 @@ export function useTimer() {
   return {
     startTimer,
     stopTimer,
+    stopTimerAt,
     discardTimer,
     editElapsed,
     isStarting: startMutation.isPending,

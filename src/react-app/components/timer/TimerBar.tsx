@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TimerControl } from "./TimerControl";
+import { FavoritesMenu } from "./FavoritesMenu";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -131,6 +132,11 @@ export function TimerBar() {
         >
           <Trash2 className="h-4 w-4" />
         </Button>
+      )}
+
+      {/* Favorites: one-click start from a saved preset */}
+      {!isRunning && (
+        <FavoritesMenu current={{ description, projectId, taskId }} />
       )}
 
       {/* Combined elapsed + Start/Stop capsule */}

@@ -6,6 +6,28 @@ type RoundMode = "off" | "nearest" | "up" | "down";
 // The four interchangeable views hosted by the unified Timer tab.
 export type TimerView = "calendar" | "split" | "list" | "timesheet";
 
+// Device-local productivity preferences (idle detection, tracking reminders,
+// pomodoro). Kept client-side since they're per-device behaviors.
+export interface ProductivitySettings {
+  idleEnabled: boolean;
+  idleThresholdMinutes: number;
+  reminderEnabled: boolean;
+  reminderIntervalMinutes: number;
+  pomodoroEnabled: boolean;
+  pomodoroWorkMinutes: number;
+  pomodoroBreakMinutes: number;
+}
+
+const DEFAULT_PRODUCTIVITY: ProductivitySettings = {
+  idleEnabled: false,
+  idleThresholdMinutes: 10,
+  reminderEnabled: false,
+  reminderIntervalMinutes: 30,
+  pomodoroEnabled: false,
+  pomodoroWorkMinutes: 25,
+  pomodoroBreakMinutes: 5,
+};
+
 interface UIStore {
   sidebarCollapsed: boolean;
   theme: "light" | "dark" | "system";
@@ -16,6 +38,10 @@ interface UIStore {
   timerView: TimerView;
   calendarView: string;
   calendarSlotHeight: number;
+  // Calendar prefs, hydrated from D1 settings but persisted locally for instant paint.
+  weekStart: number; // 0=Sun … 6=Sat
+  showWeekends: boolean;
+  productivity: ProductivitySettings;
   commandOpen: boolean;
   shortcutsOpen: boolean;
 
@@ -28,6 +54,9 @@ interface UIStore {
   setTimerView: (v: TimerView) => void;
   setCalendarView: (v: string) => void;
   setCalendarSlotHeight: (v: number) => void;
+  setWeekStart: (v: number) => void;
+  setShowWeekends: (v: boolean) => void;
+  setProductivity: (p: Partial<ProductivitySettings>) => void;
   setCommandOpen: (v: boolean) => void;
   openCommand: () => void;
   setShortcutsOpen: (v: boolean) => void;
@@ -53,6 +82,9 @@ export const useUIStore = create<UIStore>()(
       timerView: "list",
       calendarView: "timeGridWeek",
       calendarSlotHeight: CALENDAR_SLOT_HEIGHT_DEFAULT,
+      weekStart: Number(localStorage.getItem("pref_weekStart") ?? 1),
+      showWeekends: localStorage.getItem("pref_showWeekends") !== "false",
+      productivity: DEFAULT_PRODUCTIVITY,
       commandOpen: false,
       shortcutsOpen: false,
 
@@ -82,6 +114,16 @@ export const useUIStore = create<UIStore>()(
             Math.min(CALENDAR_SLOT_HEIGHT_MAX, v)
           ),
         }),
+      setWeekStart: (v) => {
+        set({ weekStart: v });
+        localStorage.setItem("pref_weekStart", String(v));
+      },
+      setShowWeekends: (v) => {
+        set({ showWeekends: v });
+        localStorage.setItem("pref_showWeekends", String(v));
+      },
+      setProductivity: (p) =>
+        set((s) => ({ productivity: { ...s.productivity, ...p } })),
       setCommandOpen: (v) => set({ commandOpen: v }),
       openCommand: () => set({ commandOpen: true }),
       setShortcutsOpen: (v) => set({ shortcutsOpen: v }),
@@ -100,6 +142,9 @@ export const useUIStore = create<UIStore>()(
         timerView: s.timerView,
         calendarView: s.calendarView,
         calendarSlotHeight: s.calendarSlotHeight,
+        weekStart: s.weekStart,
+        showWeekends: s.showWeekends,
+        productivity: s.productivity,
       }),
     }
   )

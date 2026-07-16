@@ -150,6 +150,15 @@ export const api = {
     list: () => request<unknown[]>("/tags"),
   },
 
+  // ─── Favorites ────────────────────────────────────────────────────────────
+  favorites: {
+    list: () => request<unknown[]>("/favorites"),
+    create: (body: Record<string, unknown>) =>
+      request<unknown>("/favorites", { method: "POST", body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      request<unknown>(`/favorites/${id}`, { method: "DELETE" }),
+  },
+
   // ─── Integrations ────────────────────────────────────────────────────────
   integrations: {
     list: () => request<unknown[]>("/integrations"),
@@ -171,9 +180,22 @@ export const api = {
   // ─── Calendar sync (Google) ────────────────────────────────────────────────
   calendar: {
     status: () =>
-      request<{ configured: boolean; connected: boolean; accountEmail?: string | null }>(
-        "/calendar/status"
-      ),
+      request<{
+        configured: boolean;
+        connected: boolean;
+        accountEmail?: string | null;
+        autoTrack?: boolean;
+      }>("/calendar/status"),
+    setAutoTrack: (enabled: boolean) =>
+      request<{ ok: boolean; autoTrack: boolean }>("/calendar/auto-track", {
+        method: "PATCH",
+        body: JSON.stringify({ enabled }),
+      }),
+    convert: (params: { since: string; until: string }) =>
+      request<{ created: number }>("/calendar/convert", {
+        method: "POST",
+        body: JSON.stringify(params),
+      }),
     events: (params: { since: string; until: string }) => {
       const qs = new URLSearchParams();
       qs.set("since", params.since);
@@ -198,7 +220,15 @@ export const api = {
     get: () => request<Settings>("/settings"),
     update: (
       body: Partial<
-        Pick<Settings, "currency" | "timeFormat" | "roundMode" | "roundMinutes">
+        Pick<
+          Settings,
+          | "currency"
+          | "timeFormat"
+          | "roundMode"
+          | "roundMinutes"
+          | "weekStart"
+          | "showWeekends"
+        >
       >
     ) =>
       request<Settings>("/settings", {

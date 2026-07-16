@@ -9,6 +9,10 @@
   "observability": {
     "enabled": true
   },
+  // Auto-track: sweep finished Google Calendar events into time entries every 5 min.
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
   "upload_source_maps": true,
   "assets": {
     "directory": "./dist/client",

@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type {
   EventInput,
@@ -13,12 +14,18 @@ import type { DateClickArg, EventResizeDoneArg } from "@fullcalendar/interaction
 import { CalendarEventContent } from "./CalendarEventContent";
 import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 
-export type CalendarViewType = "timeGridWeek" | "timeGridFiveDay" | "timeGridDay";
+export type CalendarViewType =
+  | "timeGridWeek"
+  | "timeGridFiveDay"
+  | "timeGridDay"
+  | "dayGridMonth";
 
 interface CalendarViewProps {
   initialView: CalendarViewType;
   initialDate?: Date;
   slotHeight: number;
+  firstDay: number;
+  weekends: boolean;
   events: EventInput[];
   onSelect: (startIso: string, stopIso: string) => void;
   onDateClick: (startIso: string) => void;
@@ -37,6 +44,8 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
       initialView,
       initialDate,
       slotHeight,
+      firstDay,
+      weekends,
       events,
       onSelect,
       onDateClick,
@@ -54,10 +63,10 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
       >
         <FullCalendar
           ref={ref}
-          plugins={[timeGridPlugin, interactionPlugin]}
+          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
           initialView={initialView}
           initialDate={initialDate}
-          // A work-week (5-day) view alongside the built-in week/day views.
+          // A work-week (5-day) view alongside the built-in week/day/month views.
           views={{
             timeGridFiveDay: {
               type: "timeGrid",
@@ -68,7 +77,8 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
           headerToolbar={false}
           height="100%"
           timeZone="local"
-          firstDay={1}
+          firstDay={firstDay}
+          weekends={weekends}
           allDaySlot={false}
           nowIndicator
           slotDuration="00:30:00"

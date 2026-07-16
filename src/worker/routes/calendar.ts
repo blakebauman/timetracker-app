@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 import { encryptJSON, decryptJSON } from "../lib/crypto";
 import {
   buildConsentUrl,
@@ -8,6 +10,7 @@ import {
   listEvents,
   type GoogleCalendarTokens,
 } from "../lib/google-calendar";
+import { convertRange } from "../lib/calendar-autotrack";
 
 const STATE_COOKIE = "tt_gcal_state";
 
@@ -95,14 +98,54 @@ export const calendarRouter = new Hono<{
   // ── Connection status for the Settings card ───────────────────────────────
   .get("/status", async (c) => {
     const configured = isConfigured(c.env);
-    if (!configured) return c.json({ configured: false, connected: false });
-    const conn = await loadConnection(c.env.DB, c.env.AUTH_SECRET, c.get("workspaceId"));
+    if (!configured) return c.json({ configured: false, connected: false, autoTrack: false });
+    const row = await c.env.DB.prepare(
+      `SELECT credentials, auto_track FROM integrations
+       WHERE workspace_id = ? AND type = 'google_calendar' LIMIT 1`
+    )
+      .bind(c.get("workspaceId"))
+      .first<{ credentials: string; auto_track: number }>();
+    let accountEmail: string | null = null;
+    if (row) {
+      const tokens = await decryptJSON<GoogleCalendarTokens>(c.env.AUTH_SECRET, row.credentials);
+      accountEmail = tokens.accountEmail ?? null;
+    }
     return c.json({
       configured: true,
-      connected: Boolean(conn),
-      accountEmail: conn?.tokens.accountEmail ?? null,
+      connected: Boolean(row),
+      accountEmail,
+      autoTrack: Boolean(row?.auto_track),
     });
   })
+  // ── Toggle auto-track for the connected calendar ──────────────────────────
+  .patch(
+    "/auto-track",
+    zValidator("json", z.object({ enabled: z.boolean() })),
+    async (c) => {
+      const { enabled } = c.req.valid("json");
+      await c.env.DB.prepare(
+        `UPDATE integrations SET auto_track = ?
+         WHERE workspace_id = ? AND type = 'google_calendar'`
+      )
+        .bind(enabled ? 1 : 0, c.get("workspaceId"))
+        .run();
+      return c.json({ ok: true, autoTrack: enabled });
+    }
+  )
+  // ── Convert all events in a range into entries (user-triggered) ───────────
+  .post(
+    "/convert",
+    zValidator("json", z.object({ since: z.string(), until: z.string() })),
+    async (c) => {
+      const { since, until } = c.req.valid("json");
+      try {
+        const created = await convertRange(c.env, c.get("workspaceId"), since, until);
+        return c.json({ created });
+      } catch {
+        return c.json({ error: "Couldn't convert calendar events" }, 502);
+      }
+    }
+  )
   // ── Read-through: external events for a range, minus already-confirmed ─────
   .get("/events", async (c) => {
     const workspaceId = c.get("workspaceId");
