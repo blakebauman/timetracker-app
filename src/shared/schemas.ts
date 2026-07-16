@@ -18,6 +18,10 @@ export const SettingsSchema = z.object({
   timeFormat: TimeFormatSchema,
   roundMode: z.enum(["off", "nearest", "up", "down"]),
   roundMinutes: z.number().int(),
+  // Calendar preferences: first day of the week (0=Sun … 6=Sat) and whether
+  // Sat/Sun columns are shown on the calendar grid.
+  weekStart: z.number().int().min(0).max(6),
+  showWeekends: z.boolean(),
 });
 
 export const UpdateSettingsSchema = z
@@ -26,6 +30,8 @@ export const UpdateSettingsSchema = z
     timeFormat: TimeFormatSchema,
     roundMode: z.enum(["off", "nearest", "up", "down"]),
     roundMinutes: z.coerce.number().int().min(0).max(1440),
+    weekStart: z.coerce.number().int().min(0).max(6),
+    showWeekends: z.boolean(),
   })
   .partial();
 
@@ -131,6 +137,32 @@ export const TagSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
   name: z.string(),
+});
+
+// ─── Favorites ───────────────────────────────────────────────────────────────
+
+// A saved timer preset started in one click (Toggl-style favorites). Project and
+// task names/colors are joined in for display; tags ride along as a JSON array.
+export const FavoriteSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  description: z.string(),
+  projectId: z.string().nullable(),
+  projectName: z.string().nullable(),
+  projectColor: z.string().nullable(),
+  taskId: z.string().nullable(),
+  taskName: z.string().nullable(),
+  tags: z.array(z.string()),
+  billable: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const CreateFavoriteSchema = z.object({
+  description: z.string().max(2000).default(""),
+  projectId: z.string().nullable().optional(),
+  taskId: z.string().nullable().optional(),
+  tags: z.array(z.string().max(100)).max(50).default([]),
+  billable: z.boolean().default(false),
 });
 
 // ─── Time Entry ──────────────────────────────────────────────────────────────
@@ -389,6 +421,8 @@ export type Client = z.infer<typeof ClientSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
 export type Task = z.infer<typeof TaskSchema>;
 export type Tag = z.infer<typeof TagSchema>;
+export type Favorite = z.infer<typeof FavoriteSchema>;
+export type CreateFavorite = z.infer<typeof CreateFavoriteSchema>;
 export type TimeEntry = z.infer<typeof TimeEntrySchema>;
 export type CreateTimeEntry = z.infer<typeof CreateTimeEntrySchema>;
 export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;

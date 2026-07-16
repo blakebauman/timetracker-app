@@ -14,6 +14,8 @@ export function useHydrateSettings() {
   const setCurrency = useUIStore((s) => s.setCurrency);
   const setTimeFormat = useUIStore((s) => s.setTimeFormat);
   const setRounding = useUIStore((s) => s.setRounding);
+  const setWeekStart = useUIStore((s) => s.setWeekStart);
+  const setShowWeekends = useUIStore((s) => s.setShowWeekends);
 
   const query = useQuery({
     queryKey: ["settings"],
@@ -21,12 +23,27 @@ export function useHydrateSettings() {
     staleTime: 5 * 60_000,
   });
 
-  const { currency, timeFormat, roundMode, roundMinutes } = query.data ?? {};
+  const { currency, timeFormat, roundMode, roundMinutes, weekStart, showWeekends } =
+    query.data ?? {};
   useEffect(() => {
     if (currency) setCurrency(currency);
     if (timeFormat) setTimeFormat(timeFormat);
     if (roundMode) setRounding(roundMode, roundMinutes ?? 15);
-  }, [currency, timeFormat, roundMode, roundMinutes, setCurrency, setTimeFormat, setRounding]);
+    if (weekStart !== undefined) setWeekStart(weekStart);
+    if (showWeekends !== undefined) setShowWeekends(showWeekends);
+  }, [
+    currency,
+    timeFormat,
+    roundMode,
+    roundMinutes,
+    weekStart,
+    showWeekends,
+    setCurrency,
+    setTimeFormat,
+    setRounding,
+    setWeekStart,
+    setShowWeekends,
+  ]);
 
   return query;
 }
@@ -36,6 +53,8 @@ export function useUpdateSettings() {
   const setCurrency = useUIStore((s) => s.setCurrency);
   const setTimeFormat = useUIStore((s) => s.setTimeFormat);
   const setRounding = useUIStore((s) => s.setRounding);
+  const setWeekStart = useUIStore((s) => s.setWeekStart);
+  const setShowWeekends = useUIStore((s) => s.setShowWeekends);
 
   return useMutation({
     mutationFn: (body: UpdateSettings) => api.settings.update(body),
@@ -44,6 +63,8 @@ export function useUpdateSettings() {
       setCurrency(settings.currency);
       setTimeFormat(settings.timeFormat);
       setRounding(settings.roundMode, settings.roundMinutes);
+      setWeekStart(settings.weekStart);
+      setShowWeekends(settings.showWeekends);
     },
     onError: () => toast.error("Failed to save settings"),
   });

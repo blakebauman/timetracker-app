@@ -7,6 +7,8 @@ type Row = {
   time_format: string;
   round_mode: string;
   round_minutes: number;
+  week_start: number;
+  show_weekends: number;
 };
 
 function toSettings(row: Row | null) {
@@ -15,10 +17,12 @@ function toSettings(row: Row | null) {
     timeFormat: (row?.time_format as "24h" | "12h") ?? "24h",
     roundMode: (row?.round_mode as "off" | "nearest" | "up" | "down") ?? "off",
     roundMinutes: row?.round_minutes ?? 15,
+    weekStart: row?.week_start ?? 1,
+    showWeekends: row?.show_weekends === undefined ? true : Boolean(row.show_weekends),
   };
 }
 
-const SELECT = `SELECT currency, time_format, round_mode, round_minutes FROM "user" WHERE id = ?`;
+const SELECT = `SELECT currency, time_format, round_mode, round_minutes, week_start, show_weekends FROM "user" WHERE id = ?`;
 
 // Per-user display settings (currency, time format, report rounding). Stored on
 // the better-auth `user` row so they persist server-side and follow the person
@@ -34,7 +38,8 @@ export const settingsRouter = new Hono<{
   })
   .patch("/", zValidator("json", UpdateSettingsSchema), async (c) => {
     const userId = c.get("userId");
-    const { currency, timeFormat, roundMode, roundMinutes } = c.req.valid("json");
+    const { currency, timeFormat, roundMode, roundMinutes, weekStart, showWeekends } =
+      c.req.valid("json");
 
     const sets: string[] = [];
     const bindings: unknown[] = [];
@@ -53,6 +58,14 @@ export const settingsRouter = new Hono<{
     if (roundMinutes !== undefined) {
       sets.push("round_minutes = ?");
       bindings.push(roundMinutes);
+    }
+    if (weekStart !== undefined) {
+      sets.push("week_start = ?");
+      bindings.push(weekStart);
+    }
+    if (showWeekends !== undefined) {
+      sets.push("show_weekends = ?");
+      bindings.push(showWeekends ? 1 : 0);
     }
 
     if (sets.length > 0) {

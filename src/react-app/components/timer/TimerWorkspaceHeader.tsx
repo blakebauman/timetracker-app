@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Minus,
   ZoomIn,
+  CalendarRange,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -50,12 +51,15 @@ interface TimerWorkspaceHeaderProps {
   slotHeight: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  showWeekends: boolean;
+  onToggleWeekends: () => void;
 }
 
 const CALENDAR_VIEW_LABELS: Record<CalendarViewType, string> = {
   timeGridDay: "Day",
   timeGridFiveDay: "5 days",
   timeGridWeek: "Week",
+  dayGridMonth: "Month",
 };
 
 // Shared header for the unified Timer tab: period navigation, the "logged this
@@ -78,8 +82,11 @@ export function TimerWorkspaceHeader({
   slotHeight,
   onZoomIn,
   onZoomOut,
+  showWeekends,
+  onToggleWeekends,
 }: TimerWorkspaceHeaderProps) {
   const showCalendarControls = view === "calendar" || view === "split";
+  const isMonthView = calendarView === "dayGridMonth";
 
   return (
     <div className="border-b">
@@ -116,36 +123,51 @@ export function TimerWorkspaceHeader({
         <div className="flex flex-wrap items-center gap-2">
           {showCalendarControls && (
             <>
-              {/* Zoom (slot height) */}
-              <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={onZoomOut}
-                  disabled={slotHeight <= CALENDAR_SLOT_HEIGHT_MIN}
-                  aria-label="Zoom out"
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </Button>
-                <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={onZoomIn}
-                  disabled={slotHeight >= CALENDAR_SLOT_HEIGHT_MAX}
-                  aria-label="Zoom in"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              {/* Show/hide weekend columns */}
+              <Button
+                variant={showWeekends ? "outline" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={onToggleWeekends}
+                aria-pressed={showWeekends}
+                title={showWeekends ? "Hide weekends" : "Show weekends"}
+                aria-label={showWeekends ? "Hide weekends" : "Show weekends"}
+              >
+                <CalendarRange className="h-3.5 w-3.5" />
+              </Button>
+
+              {/* Zoom (slot height) — not meaningful in the month grid */}
+              {!isMonthView && (
+                <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={onZoomOut}
+                    disabled={slotHeight <= CALENDAR_SLOT_HEIGHT_MIN}
+                    aria-label="Zoom out"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={onZoomIn}
+                    disabled={slotHeight >= CALENDAR_SLOT_HEIGHT_MAX}
+                    aria-label="Zoom in"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
 
               <Select
                 value={calendarView}
                 onValueChange={(v) => onCalendarViewChange(v as CalendarViewType)}
               >
-                <SelectTrigger className="h-8 w-24 text-xs" aria-label="Calendar day count">
+                <SelectTrigger className="h-8 w-24 text-xs" aria-label="Calendar view">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -154,6 +176,9 @@ export function TimerWorkspaceHeader({
                     {CALENDAR_VIEW_LABELS.timeGridFiveDay}
                   </SelectItem>
                   <SelectItem value="timeGridWeek">{CALENDAR_VIEW_LABELS.timeGridWeek}</SelectItem>
+                  <SelectItem value="dayGridMonth">
+                    {CALENDAR_VIEW_LABELS.dayGridMonth}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </>

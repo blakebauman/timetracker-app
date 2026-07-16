@@ -1,6 +1,13 @@
 import { useMemo, useState, Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
-import { startOfWeek, endOfWeek, addWeeks } from "date-fns";
+import {
+  startOfWeek,
+  endOfWeek,
+  addWeeks,
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+} from "date-fns";
 import { EntryList } from "@/components/entries/EntryList";
 import { TimerWorkspaceHeader } from "@/components/timer/TimerWorkspaceHeader";
 import { AddEntryDialog } from "@/components/entries/AddEntryDialog";
@@ -40,10 +47,24 @@ export function TimerWorkspace() {
   const setCalendarView = useUIStore((s) => s.setCalendarView);
   const slotHeight = useUIStore((s) => s.calendarSlotHeight);
   const setSlotHeight = useUIStore((s) => s.setCalendarSlotHeight);
+  const weekStart = useUIStore((s) => s.weekStart);
+  const showWeekends = useUIStore((s) => s.showWeekends);
+  const setShowWeekends = useUIStore((s) => s.setShowWeekends);
+  const wso = weekStart as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+  // The month view navigates and scopes by calendar month; every other view by week.
+  const isMonthView =
+    (view === "calendar" || view === "split") && calendarView === "dayGridMonth";
 
   const [anchor, setAnchor] = useState(() => new Date());
-  const since = useMemo(() => startOfWeek(anchor, { weekStartsOn: 1 }), [anchor]);
-  const until = useMemo(() => endOfWeek(anchor, { weekStartsOn: 1 }), [anchor]);
+  const since = useMemo(
+    () => (isMonthView ? startOfMonth(anchor) : startOfWeek(anchor, { weekStartsOn: wso })),
+    [anchor, isMonthView, wso]
+  );
+  const until = useMemo(
+    () => (isMonthView ? endOfMonth(anchor) : endOfWeek(anchor, { weekStartsOn: wso })),
+    [anchor, isMonthView, wso]
+  );
 
   const [addEntryOpen, setAddEntryOpen] = useState(false);
   const [aiQuickAddOpen, setAiQuickAddOpen] = useState(false);
@@ -75,7 +96,13 @@ export function TimerWorkspace() {
   }, [entries]);
 
   const calendar = (
-    <CalendarBody weekStart={since} calendarView={calendarView} slotHeight={slotHeight} />
+    <CalendarBody
+      periodStart={since}
+      calendarView={calendarView}
+      slotHeight={slotHeight}
+      weekStartsOn={weekStart}
+      showWeekends={showWeekends}
+    />
   );
   const list = <EntryList since={since} until={until} />;
 
@@ -107,8 +134,8 @@ export function TimerWorkspace() {
         segments={segments}
         view={view}
         onViewChange={setView}
-        onPrev={() => setAnchor((d) => addWeeks(d, -1))}
-        onNext={() => setAnchor((d) => addWeeks(d, 1))}
+        onPrev={() => setAnchor((d) => (isMonthView ? addMonths(d, -1) : addWeeks(d, -1)))}
+        onNext={() => setAnchor((d) => (isMonthView ? addMonths(d, 1) : addWeeks(d, 1)))}
         onToday={() => setAnchor(new Date())}
         onAddEntry={() => setAddEntryOpen(true)}
         onAiQuickAdd={() => setAiQuickAddOpen(true)}
@@ -117,6 +144,8 @@ export function TimerWorkspace() {
         slotHeight={slotHeight}
         onZoomIn={() => setSlotHeight(slotHeight + CALENDAR_SLOT_HEIGHT_STEP)}
         onZoomOut={() => setSlotHeight(slotHeight - CALENDAR_SLOT_HEIGHT_STEP)}
+        showWeekends={showWeekends}
+        onToggleWeekends={() => setShowWeekends(!showWeekends)}
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{body}</div>

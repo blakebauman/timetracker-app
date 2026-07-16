@@ -2,14 +2,21 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import type FullCalendar from "@fullcalendar/react";
 import type { EventClickArg, EventDropArg } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
-import { endOfWeek, isWithinInterval } from "date-fns";
-import { Loader2 } from "lucide-react";
+import {
+  endOfWeek,
+  startOfWeek,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+} from "date-fns";
+import { Loader2, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarView, type CalendarViewType } from "./CalendarView";
 import { CalendarCreateDialog } from "./CalendarCreateDialog";
 import { EntryForm, type EditableEntry } from "@/components/entries/EntryForm";
+import { Button } from "@/components/ui/button";
 import { useEntriesRange, useUpdateEntry } from "@/hooks/useEntries";
-import { useCalendarEvents } from "@/hooks/useCalendarSync";
+import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarSync";
 import { useTimerStore } from "@/stores/timerStore";
 import {
   buildEvents,
@@ -20,35 +27,55 @@ import {
 import "@/styles/fullcalendar.css";
 
 interface CalendarBodyProps {
-  weekStart: Date;
+  // Start of the visible period: a week start for time-grid views, a month
+  // start for the month view.
+  periodStart: Date;
   calendarView: CalendarViewType;
   slotHeight: number;
+  weekStartsOn: number; // 0=Sun … 6=Sat
+  showWeekends: boolean;
 }
 
-// The FullCalendar time grid, externally driven by the shared week + view.
+// The FullCalendar grid, externally driven by the shared period + view.
 // Extracted from the old standalone CalendarPage so it can be embedded in the
 // unified Timer tab (calendar + split views) under one shared header.
-export function CalendarBody({ weekStart, calendarView, slotHeight }: CalendarBodyProps) {
+export function CalendarBody({
+  periodStart,
+  calendarView,
+  slotHeight,
+  weekStartsOn,
+  showWeekends,
+}: CalendarBodyProps) {
+  // date-fns wants a 0–6 literal; the setting is validated to that range.
+  const wso = weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6;
   const calendarRef = useRef<FullCalendar>(null);
   const api = () => calendarRef.current?.getApi();
 
   // Captured once — FullCalendar's initialView/initialDate must be constant;
   // subsequent view/date changes are driven imperatively via the API below.
   const [initialView] = useState<CalendarViewType>(calendarView);
-  const [initialDate] = useState<Date>(weekStart);
+  const [initialDate] = useState<Date>(periodStart);
 
-  // Always fetch the full Mon–Sun week; day/5-day views just show fewer columns.
-  const range = useMemo(
-    () => ({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) }),
-    [weekStart]
-  );
+  // Fetch range: the whole month grid (incl. leading/trailing days) for month
+  // view, otherwise the full week — day/5-day views just show fewer columns.
+  const range = useMemo(() => {
+    if (calendarView === "dayGridMonth") {
+      return {
+        start: startOfWeek(startOfMonth(periodStart), { weekStartsOn: wso }),
+        end: endOfWeek(endOfMonth(periodStart), { weekStartsOn: wso }),
+      };
+    }
+    return { start: periodStart, end: endOfWeek(periodStart, { weekStartsOn: wso }) };
+  }, [periodStart, calendarView, wso]);
 
-  // For day view, focus today when it falls in the week, else the week start.
+  // For day view, focus today when it falls in the period, else the period start.
   const focusDate = useMemo(() => {
-    if (calendarView !== "timeGridDay") return weekStart;
+    if (calendarView !== "timeGridDay") return periodStart;
     const today = new Date();
-    return isWithinInterval(today, { start: range.start, end: range.end }) ? today : weekStart;
-  }, [calendarView, weekStart, range.start, range.end]);
+    return isWithinInterval(today, { start: range.start, end: range.end })
+      ? today
+      : periodStart;
+  }, [calendarView, periodStart, range.start, range.end]);
 
   // Drive FullCalendar imperatively when the shared week or view changes.
   useEffect(() => {
@@ -83,16 +110,22 @@ export function CalendarBody({ weekStart, calendarView, slotHeight }: CalendarBo
     range.end.toISOString()
   );
 
-  const events = useMemo(() => {
+  const { events, ghostCount } = useMemo(() => {
     const real = buildEvents(entries, runningEntry, range, nowIso);
     const confirmed = new Set(
       entries.map((e) => e.calendarEventId).filter(Boolean) as string[]
     );
-    const ghosts = externalEvents
-      .filter((ext) => !confirmed.has(ext.calendarEventId))
-      .map(externalEventToEvent);
-    return [...real, ...ghosts];
+    const unconfirmed = externalEvents.filter((ext) => !confirmed.has(ext.calendarEventId));
+    const ghosts = unconfirmed.map(externalEventToEvent);
+    return { events: [...real, ...ghosts], ghostCount: unconfirmed.length };
   }, [entries, runningEntry, range, nowIso, externalEvents]);
+
+  const convertRange = useConvertCalendarRange();
+  const handleConvertAll = () =>
+    convertRange.mutate({
+      since: range.start.toISOString(),
+      until: range.end.toISOString(),
+    });
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createRange, setCreateRange] = useState<{
@@ -163,11 +196,31 @@ export function CalendarBody({ weekStart, calendarView, slotHeight }: CalendarBo
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       )}
+
+      {ghostCount > 0 && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="absolute right-4 top-3 z-20 gap-1.5 shadow-sm"
+          onClick={handleConvertAll}
+          disabled={convertRange.isPending}
+          title="Add every calendar event in view as a time entry"
+        >
+          {convertRange.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <CalendarPlus className="h-3.5 w-3.5" />
+          )}
+          Convert {ghostCount} {ghostCount === 1 ? "event" : "events"}
+        </Button>
+      )}
       <CalendarView
         ref={calendarRef}
         initialView={initialView}
         initialDate={initialDate}
         slotHeight={slotHeight}
+        firstDay={weekStartsOn}
+        weekends={showWeekends}
         events={events}
         onSelect={handleSelect}
         onDateClick={handleDateClick}

@@ -20,6 +20,7 @@ import { useUpdateSettings } from "@/hooks/useSettings";
 import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { GoogleCalendarCard } from "@/components/settings/GoogleCalendarCard";
+import { ProductivityCard } from "@/components/settings/ProductivityCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { AccountCard } from "@/components/settings/AccountCard";
 import { SessionsCard } from "@/components/settings/SessionsCard";
@@ -45,6 +46,10 @@ export function SettingsPage() {
   const setTimeFormatStore = useUIStore((s) => s.setTimeFormat);
   const currency = useUIStore((s) => s.currency);
   const setCurrencyStore = useUIStore((s) => s.setCurrency);
+  const weekStart = useUIStore((s) => s.weekStart);
+  const setWeekStartStore = useUIStore((s) => s.setWeekStart);
+  const showWeekends = useUIStore((s) => s.showWeekends);
+  const setShowWeekendsStore = useUIStore((s) => s.setShowWeekends);
   const updateSettings = useUpdateSettings();
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -66,6 +71,17 @@ export function SettingsPage() {
   const handleCurrencyChange = (value: string) => {
     setCurrencyStore(value); // optimistic; server confirms via mutation
     updateSettings.mutate({ currency: value });
+  };
+
+  const handleWeekStartChange = (value: string) => {
+    const n = Number(value);
+    setWeekStartStore(n); // optimistic; server confirms via mutation
+    updateSettings.mutate({ weekStart: n });
+  };
+
+  const handleShowWeekendsChange = (checked: boolean) => {
+    setShowWeekendsStore(checked); // optimistic; server confirms via mutation
+    updateSettings.mutate({ showWeekends: checked });
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -220,8 +236,50 @@ export function SettingsPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <Separator />
+
+          {/* Week start */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Week starts on</Label>
+              <p className="text-xs text-muted-foreground">
+                First day of the week in the calendar and timesheet
+              </p>
+            </div>
+            <Select value={String(weekStart)} onValueChange={handleWeekStartChange}>
+              <SelectTrigger className="w-48 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Sunday</SelectItem>
+                <SelectItem value="1">Monday</SelectItem>
+                <SelectItem value="6">Saturday</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          {/* Show weekends */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="pref-weekends">Show weekends</Label>
+              <p className="text-xs text-muted-foreground">
+                Include Saturday and Sunday columns on the calendar
+              </p>
+            </div>
+            <Switch
+              id="pref-weekends"
+              checked={showWeekends}
+              onCheckedChange={handleShowWeekendsChange}
+            />
+          </div>
         </CardContent>
       </Card>
+
+      {/* Productivity */}
+      <ProductivityCard />
 
       {/* Team */}
       <TeamCard />

@@ -8,6 +8,7 @@ import { projectsRouter } from "./routes/projects";
 import { clientsRouter } from "./routes/clients";
 import { tagsRouter } from "./routes/tags";
 import { tasksRouter } from "./routes/tasks";
+import { favoritesRouter } from "./routes/favorites";
 import { reportsRouter } from "./routes/reports";
 import { savedReportsRouter } from "./routes/saved-reports";
 import { settingsRouter } from "./routes/settings";
@@ -16,6 +17,7 @@ import { calendarRouter } from "./routes/calendar";
 import { aiRouter } from "./routes/ai";
 import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
+import { runAutoTrack } from "./lib/calendar-autotrack";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 
 // 10 attempts per minute on auth endpoints
@@ -43,6 +45,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/clients", clientsRouter)
   .route("/api/tags", tagsRouter)
   .route("/api/tasks", tasksRouter)
+  .route("/api/favorites", favoritesRouter)
   .route("/api/reports", reportsRouter)
   .route("/api/saved-reports", savedReportsRouter)
   .route("/api/settings", settingsRouter)
@@ -52,4 +55,11 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/ws", websocketRouter);
 
 export type AppType = typeof app;
-export default app;
+
+export default {
+  fetch: app.fetch,
+  // Cron: materialize finished calendar events for auto-track workspaces.
+  scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runAutoTrack(env));
+  },
+} satisfies ExportedHandler<Env>;
