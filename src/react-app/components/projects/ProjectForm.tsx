@@ -17,9 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateProject, useUpdateProject, useClients } from "@/hooks/useProjects";
+import {
+  useCreateProject,
+  useUpdateProject,
+  useClients,
+  useProjects,
+} from "@/hooks/useProjects";
 import { useIntegrations } from "@/hooks/useIntegrations";
-import { PROJECT_COLORS, PROJECT_COLOR_NAMES } from "@/lib/colorUtils";
+import { useUIStore } from "@/stores/uiStore";
+import { PROJECT_COLORS, PROJECT_COLOR_NAMES, nextProjectColor } from "@/lib/colorUtils";
 import { cn } from "@/lib/utils";
 import type { Project } from "@shared/schemas";
 
@@ -30,8 +36,18 @@ interface ProjectFormProps {
 }
 
 export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
+  const autoAssignColors = useUIStore((s) => s.autoAssignColors);
+  const { data: existingProjects = [] } = useProjects();
   const [name, setName] = useState(project?.name ?? "");
-  const [color, setColor] = useState(project?.color ?? PROJECT_COLORS[9]);
+  // New projects get a distinct color when auto-assign is on; the user can still
+  // override it below. Editing keeps the project's existing color.
+  const [color, setColor] = useState(
+    () =>
+      project?.color ??
+      (autoAssignColors
+        ? nextProjectColor(existingProjects.map((p) => p.color))
+        : PROJECT_COLORS[9])
+  );
   const [clientId, setClientId] = useState<string>(project?.clientId ?? "none");
   const [billable, setBillable] = useState(project?.billable ?? false);
   const [rate, setRate] = useState<string>(project?.rate?.toString() ?? "");

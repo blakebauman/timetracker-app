@@ -102,6 +102,8 @@ export const api = {
       request<unknown>(`/projects/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete: (id: string) =>
       request<unknown>(`/projects/${id}`, { method: "DELETE" }),
+    recolor: () =>
+      request<{ recolored: number }>("/projects/recolor", { method: "POST" }),
   },
 
   // ─── Tasks ────────────────────────────────────────────────────────────────
@@ -244,6 +246,7 @@ export const api = {
           | "roundMinutes"
           | "weekStart"
           | "showWeekends"
+          | "autoAssignColors"
         >
       >
     ) =>

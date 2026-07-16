@@ -12,11 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download } from "lucide-react";
+import { Download, Palette, Loader2 } from "lucide-react";
 import { useEntries } from "@/hooks/useEntries";
 import { exportToCSV } from "@/lib/exportUtils";
 import { useUIStore } from "@/stores/uiStore";
 import { useUpdateSettings } from "@/hooks/useSettings";
+import { useRecolorProjects } from "@/hooks/useProjects";
 import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { GoogleCalendarCard } from "@/components/settings/GoogleCalendarCard";
@@ -51,7 +52,10 @@ export function SettingsPage() {
   const setWeekStartStore = useUIStore((s) => s.setWeekStart);
   const showWeekends = useUIStore((s) => s.showWeekends);
   const setShowWeekendsStore = useUIStore((s) => s.setShowWeekends);
+  const autoAssignColors = useUIStore((s) => s.autoAssignColors);
+  const setAutoAssignColorsStore = useUIStore((s) => s.setAutoAssignColors);
   const updateSettings = useUpdateSettings();
+  const recolorProjects = useRecolorProjects();
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -85,6 +89,11 @@ export function SettingsPage() {
     updateSettings.mutate({ showWeekends: checked });
   };
 
+  const handleAutoAssignColorsChange = (checked: boolean) => {
+    setAutoAssignColorsStore(checked); // optimistic; server confirms via mutation
+    updateSettings.mutate({ autoAssignColors: checked });
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -110,6 +119,41 @@ export function SettingsPage() {
               </p>
             </div>
             <ThemeToggle />
+          </div>
+
+          <Separator />
+
+          {/* Auto-assign colors */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="pr-2">
+              <Label htmlFor="pref-autocolor" className="flex items-center gap-1.5">
+                <Palette className="h-3.5 w-3.5" />
+                Auto-assign colors
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Give new projects a distinct color automatically for a more colorful UI.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => recolorProjects.mutate()}
+                disabled={recolorProjects.isPending}
+                title="Spread distinct colors across your existing projects"
+              >
+                {recolorProjects.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Apply to existing"
+                )}
+              </Button>
+              <Switch
+                id="pref-autocolor"
+                checked={autoAssignColors}
+                onCheckedChange={handleAutoAssignColorsChange}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -41,6 +41,16 @@ export const PROJECT_COLOR_NAMES: Record<string, string> = {
   "#78716c": "Stone",
 };
 
+// Pick a distinct color for a new project: the first palette entry not already
+// used, falling back to stepping through the palette by project count.
+export function nextProjectColor(usedColors: string[]): string {
+  const used = new Set(usedColors);
+  return (
+    PROJECT_COLORS.find((c) => !used.has(c)) ??
+    PROJECT_COLORS[usedColors.length % PROJECT_COLORS.length]
+  );
+}
+
 export function getContrastColor(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);

@@ -22,6 +22,8 @@ export const SettingsSchema = z.object({
   // Sat/Sun columns are shown on the calendar grid.
   weekStart: z.number().int().min(0).max(6),
   showWeekends: z.boolean(),
+  // When on, new projects get a distinct palette color instead of the default.
+  autoAssignColors: z.boolean(),
 });
 
 export const UpdateSettingsSchema = z
@@ -32,6 +34,7 @@ export const UpdateSettingsSchema = z
     roundMinutes: z.coerce.number().int().min(0).max(1440),
     weekStart: z.coerce.number().int().min(0).max(6),
     showWeekends: z.boolean(),
+    autoAssignColors: z.boolean(),
   })
   .partial();
 
