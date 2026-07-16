@@ -16,6 +16,7 @@ export function useHydrateSettings() {
   const setRounding = useUIStore((s) => s.setRounding);
   const setWeekStart = useUIStore((s) => s.setWeekStart);
   const setShowWeekends = useUIStore((s) => s.setShowWeekends);
+  const setAutoAssignColors = useUIStore((s) => s.setAutoAssignColors);
 
   const query = useQuery({
     queryKey: ["settings"],
@@ -23,14 +24,22 @@ export function useHydrateSettings() {
     staleTime: 5 * 60_000,
   });
 
-  const { currency, timeFormat, roundMode, roundMinutes, weekStart, showWeekends } =
-    query.data ?? {};
+  const {
+    currency,
+    timeFormat,
+    roundMode,
+    roundMinutes,
+    weekStart,
+    showWeekends,
+    autoAssignColors,
+  } = query.data ?? {};
   useEffect(() => {
     if (currency) setCurrency(currency);
     if (timeFormat) setTimeFormat(timeFormat);
     if (roundMode) setRounding(roundMode, roundMinutes ?? 15);
     if (weekStart !== undefined) setWeekStart(weekStart);
     if (showWeekends !== undefined) setShowWeekends(showWeekends);
+    if (autoAssignColors !== undefined) setAutoAssignColors(autoAssignColors);
   }, [
     currency,
     timeFormat,
@@ -38,11 +47,13 @@ export function useHydrateSettings() {
     roundMinutes,
     weekStart,
     showWeekends,
+    autoAssignColors,
     setCurrency,
     setTimeFormat,
     setRounding,
     setWeekStart,
     setShowWeekends,
+    setAutoAssignColors,
   ]);
 
   return query;
@@ -55,6 +66,7 @@ export function useUpdateSettings() {
   const setRounding = useUIStore((s) => s.setRounding);
   const setWeekStart = useUIStore((s) => s.setWeekStart);
   const setShowWeekends = useUIStore((s) => s.setShowWeekends);
+  const setAutoAssignColors = useUIStore((s) => s.setAutoAssignColors);
 
   return useMutation({
     mutationFn: (body: UpdateSettings) => api.settings.update(body),
@@ -65,6 +77,7 @@ export function useUpdateSettings() {
       setRounding(settings.roundMode, settings.roundMinutes);
       setWeekStart(settings.weekStart);
       setShowWeekends(settings.showWeekends);
+      setAutoAssignColors(settings.autoAssignColors);
     },
     onError: () => toast.error("Failed to save settings"),
   });

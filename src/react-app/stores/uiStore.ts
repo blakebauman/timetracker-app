@@ -42,6 +42,7 @@ interface UIStore {
   weekStart: number; // 0=Sun … 6=Sat
   showWeekends: boolean;
   showGaps: boolean;
+  autoAssignColors: boolean;
   productivity: ProductivitySettings;
   commandOpen: boolean;
   shortcutsOpen: boolean;
@@ -61,6 +62,7 @@ interface UIStore {
   setWeekStart: (v: number) => void;
   setShowWeekends: (v: boolean) => void;
   setShowGaps: (v: boolean) => void;
+  setAutoAssignColors: (v: boolean) => void;
   setProductivity: (p: Partial<ProductivitySettings>) => void;
   setCommandOpen: (v: boolean) => void;
   openCommand: () => void;
@@ -95,6 +97,7 @@ export const useUIStore = create<UIStore>()(
       weekStart: Number(localStorage.getItem("pref_weekStart") ?? 1),
       showWeekends: localStorage.getItem("pref_showWeekends") !== "false",
       showGaps: localStorage.getItem("pref_showGaps") !== "false",
+      autoAssignColors: localStorage.getItem("pref_autoAssignColors") === "true",
       productivity: DEFAULT_PRODUCTIVITY,
       commandOpen: false,
       shortcutsOpen: false,
@@ -138,6 +141,10 @@ export const useUIStore = create<UIStore>()(
         set({ showGaps: v });
         localStorage.setItem("pref_showGaps", String(v));
       },
+      setAutoAssignColors: (v) => {
+        set({ autoAssignColors: v });
+        localStorage.setItem("pref_autoAssignColors", String(v));
+      },
       setProductivity: (p) =>
         set((s) => ({ productivity: { ...s.productivity, ...p } })),
       setCommandOpen: (v) => set({ commandOpen: v }),
@@ -168,6 +175,7 @@ export const useUIStore = create<UIStore>()(
         weekStart: s.weekStart,
         showWeekends: s.showWeekends,
         showGaps: s.showGaps,
+        autoAssignColors: s.autoAssignColors,
         productivity: s.productivity,
       }),
     }

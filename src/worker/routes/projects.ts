@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { CreateProjectSchema, UpdateProjectSchema } from "@shared/schemas";
+import { TAG_COLORS } from "../lib/colors";
 
 const PROJECT_SELECT = `
   SELECT p.*, c.name AS client_name,
@@ -78,6 +79,26 @@ export const projectsRouter = new Hono<{
     ).bind(id).all<Record<string, unknown>>();
 
     return c.json(formatProject(results[0]), 201);
+  })
+  // Spread distinct palette colors across every active project (stepping through
+  // the palette so adjacent projects differ). Powers "Auto-assign colors".
+  .post("/recolor", async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const { results } = await c.env.DB.prepare(
+      `SELECT id FROM projects WHERE workspace_id = ? AND active = 1 ORDER BY name ASC`
+    ).bind(workspaceId).all<{ id: string }>();
+
+    if (results.length) {
+      const stmt = c.env.DB.prepare(
+        `UPDATE projects SET color = ? WHERE id = ? AND workspace_id = ?`
+      );
+      await c.env.DB.batch(
+        results.map((r, i) =>
+          stmt.bind(TAG_COLORS[i % TAG_COLORS.length], r.id, workspaceId)
+        )
+      );
+    }
+    return c.json({ recolored: results.length });
   })
   .get("/:id", async (c) => {
     const { results } = await c.env.DB.prepare(
