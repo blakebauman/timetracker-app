@@ -48,6 +48,15 @@ export function createAuth(env: Env, baseURL: string) {
     emailAndPassword: {
       enabled: true,
     },
+    session: {
+      // Disable better-auth's "fresh session" gate. It otherwise makes
+      // /list-sessions (the Settings → Active sessions card) 403 with
+      // SESSION_NOT_FRESH once a session is older than freshAge (default 1 day),
+      // breaking the card for every returning user. Only list-sessions uses the
+      // fresh gate here — revoke and other sensitive ops use the non-fresh
+      // middleware — so this just restores anytime session visibility.
+      freshAge: 0,
+    },
     user: {
       // Enables the account self-deletion flow (authClient.deleteUser()).
       deleteUser: {
