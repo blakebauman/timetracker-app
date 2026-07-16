@@ -179,6 +179,7 @@ export function EntryList({ since, until }: EntryListProps) {
           {days.map(({ dateKey, label, groups, totalSeconds }) => (
             <EntryGroup
               key={dateKey}
+              dateKey={dateKey}
               label={label}
               groups={groups}
               totalSeconds={totalSeconds}
