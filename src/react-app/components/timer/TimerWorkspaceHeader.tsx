@@ -7,6 +7,7 @@ import {
   Minus,
   ZoomIn,
   CalendarRange,
+  SquareDashedBottom,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,8 @@ interface TimerWorkspaceHeaderProps {
   onZoomOut: () => void;
   showWeekends: boolean;
   onToggleWeekends: () => void;
+  showGaps: boolean;
+  onToggleGaps: () => void;
 }
 
 const CALENDAR_VIEW_LABELS: Record<CalendarViewType, string> = {
@@ -84,6 +87,8 @@ export function TimerWorkspaceHeader({
   onZoomOut,
   showWeekends,
   onToggleWeekends,
+  showGaps,
+  onToggleGaps,
 }: TimerWorkspaceHeaderProps) {
   const showCalendarControls = view === "calendar" || view === "split";
   const isMonthView = calendarView === "dayGridMonth";
@@ -135,6 +140,21 @@ export function TimerWorkspaceHeader({
               >
                 <CalendarRange className="h-3.5 w-3.5" />
               </Button>
+
+              {/* Show/hide untracked-gap fill markers (time grid only) */}
+              {!isMonthView && (
+                <Button
+                  variant={showGaps ? "outline" : "ghost"}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onToggleGaps}
+                  aria-pressed={showGaps}
+                  title={showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
+                  aria-label={showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
+                >
+                  <SquareDashedBottom className="h-3.5 w-3.5" />
+                </Button>
+              )}
 
               {/* Zoom (slot height) — not meaningful in the month grid */}
               {!isMonthView && (

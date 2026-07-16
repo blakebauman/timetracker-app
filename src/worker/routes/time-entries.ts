@@ -58,7 +58,7 @@ export const timeEntriesRouter = new Hono<{
     if (!data.stop) {
       await c.env.DB.prepare(
         `UPDATE time_entries
-         SET stop = ?, duration = CAST((julianday(?) - julianday(start)) * 86400 AS INTEGER), updated_at = ?
+         SET stop = ?, duration = CAST((julianday(?) - julianday(start)) * 86400 + 0.5 AS INTEGER), updated_at = ?
          WHERE workspace_id = ? AND stop IS NULL`
       ).bind(data.start, data.start, now, workspaceId).run();
     }
@@ -173,7 +173,7 @@ export const timeEntriesRouter = new Hono<{
     if (data.billable !== undefined)    { fields.push("billable = ?");     values.push(data.billable ? 1 : 0); }
     // Recalculate duration whenever start or stop changes
     if (data.start !== undefined || data.stop !== undefined) {
-      fields.push("duration = CAST((julianday(COALESCE(?, stop)) - julianday(COALESCE(?, start))) * 86400 AS INTEGER)");
+      fields.push("duration = CAST((julianday(COALESCE(?, stop)) - julianday(COALESCE(?, start))) * 86400 + 0.5 AS INTEGER)");
       values.push(data.stop ?? null, data.start ?? null);
     }
     fields.push("updated_at = ?");
@@ -211,7 +211,7 @@ export const timeEntriesRouter = new Hono<{
 
     const result = await c.env.DB.prepare(
       `UPDATE time_entries
-       SET stop = ?, duration = CAST((julianday(?) - julianday(start)) * 86400 AS INTEGER), updated_at = ?
+       SET stop = ?, duration = CAST((julianday(?) - julianday(start)) * 86400 + 0.5 AS INTEGER), updated_at = ?
        WHERE id = ? AND workspace_id = ? AND stop IS NULL`
     ).bind(stop, stop, stop, id, workspaceId).run();
 

@@ -95,6 +95,7 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
           eventContent={CalendarEventContent}
           eventClassNames={(arg) => {
             const props = arg.event.extendedProps as CalendarEventExtendedProps;
+            if (props.gap) return ["tt-event-gap"];
             if (props.ghost) return ["tt-event-ghost"];
             return props.running ? ["tt-event-running"] : [];
           }}

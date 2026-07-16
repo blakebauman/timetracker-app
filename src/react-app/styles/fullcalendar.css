@@ -90,6 +90,18 @@
   border-style: solid;
 }
 
+/* Untracked gap: barely-there dashed block that reads as fillable empty time.
+   Sits behind real blocks and brightens on hover. */
+.tt-calendar .fc-event.tt-event-gap {
+  border-style: dashed;
+  cursor: pointer;
+  box-shadow: none;
+}
+.tt-calendar .fc-event.tt-event-gap:hover {
+  background: var(--muted, rgba(148, 163, 184, 0.18)) !important;
+  border-style: solid;
+}
+
 /* Now-indicator line + arrow. */
 .tt-calendar .fc .fc-timegrid-now-indicator-line {
   border-color: var(--primary);

@@ -3,6 +3,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useTimerStore } from "@/stores/timerStore";
+import { useUIStore } from "@/stores/uiStore";
 import { api } from "@/lib/api";
 import { formatSeconds } from "@/lib/dateUtils";
 import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
@@ -154,14 +155,43 @@ export function useTimer() {
     },
   });
 
+  // Optimistically mark the running entry as completed in the entries cache so
+  // the day/Today totals stay continuous across the stop → refetch window instead
+  // of dipping by the just-tracked time for a beat. Read the store directly so we
+  // capture the entry before clearTimer() wipes it.
+  const patchStopInCache = useCallback(
+    (stopIso: string) => {
+      const entry = useTimerStore.getState().runningEntry;
+      if (!entry) return;
+      const duration = Math.max(
+        0,
+        Math.round((new Date(stopIso).getTime() - new Date(entry.start).getTime()) / 1000)
+      );
+      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) => {
+        if (!old) return old;
+        if (old.some((e) => e.id === entry.id)) {
+          return old.map((e) => (e.id === entry.id ? { ...e, stop: stopIso, duration } : e));
+        }
+        // Not in this range's cache — prepend so today's total stays continuous.
+        return [{ ...entry, stop: stopIso, duration }, ...old];
+      });
+    },
+    [queryClient]
+  );
+
   // ─── Stop timer ──────────────────────────────────────────────────────────
   const stopMutation = useMutation({
     mutationFn: (id: string) =>
       api.timeEntries.stop(id) as Promise<TimeEntry>,
-    onMutate: () => clearTimer(),
-    onSuccess: () => {
+    onMutate: () => {
+      patchStopInCache(new Date().toISOString());
+      clearTimer();
+    },
+    onSuccess: (entry) => {
       clearTimerState();
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      // Flash the row it just became so the eye tracks where it landed.
+      if (entry) useUIStore.getState().flashEntry(entry.id);
     },
     onError: () => {
       toast.error("Failed to stop timer — please try again");
@@ -175,10 +205,14 @@ export function useTimer() {
       if (!runningEntry) throw new Error("No running timer");
       return api.timeEntries.update(runningEntry.id, { stop: iso }) as Promise<TimeEntry>;
     },
-    onMutate: () => clearTimer(),
-    onSuccess: () => {
+    onMutate: (iso) => {
+      patchStopInCache(iso);
+      clearTimer();
+    },
+    onSuccess: (entry) => {
       clearTimerState();
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      if (entry) useUIStore.getState().flashEntry(entry.id);
     },
     onError: () => {
       toast.error("Failed to stop timer — please try again");

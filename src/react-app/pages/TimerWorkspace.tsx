@@ -50,6 +50,8 @@ export function TimerWorkspace() {
   const weekStart = useUIStore((s) => s.weekStart);
   const showWeekends = useUIStore((s) => s.showWeekends);
   const setShowWeekends = useUIStore((s) => s.setShowWeekends);
+  const showGaps = useUIStore((s) => s.showGaps);
+  const setShowGaps = useUIStore((s) => s.setShowGaps);
   const wso = weekStart as 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
   // The month view navigates and scopes by calendar month; every other view by week.
@@ -102,6 +104,7 @@ export function TimerWorkspace() {
       slotHeight={slotHeight}
       weekStartsOn={weekStart}
       showWeekends={showWeekends}
+      showGaps={showGaps}
     />
   );
   const list = <EntryList since={since} until={until} />;
@@ -146,6 +149,8 @@ export function TimerWorkspace() {
         onZoomOut={() => setSlotHeight(slotHeight - CALENDAR_SLOT_HEIGHT_STEP)}
         showWeekends={showWeekends}
         onToggleWeekends={() => setShowWeekends(!showWeekends)}
+        showGaps={showGaps}
+        onToggleGaps={() => setShowGaps(!showGaps)}
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{body}</div>

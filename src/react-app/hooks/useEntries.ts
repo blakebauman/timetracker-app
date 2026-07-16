@@ -127,6 +127,43 @@ export function useUpdateEntry() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTimeEntry }) =>
       api.timeEntries.update(id, data as Record<string, unknown>) as Promise<TimeEntry>,
+    // Optimistically patch the cached entry so inline edits (duration, description,
+    // project, billable) land instantly instead of after the round-trip. Duration
+    // is recomputed from start/stop with Math.round to match the server's
+    // `* 86400 + 0.5` rounding, so an exact 30m span never flickers as 29m.
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["time-entries"] });
+      const prev = queryClient.getQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] });
+
+      // Resolve project name/color from the projects cache when reassigning.
+      const projects =
+        data.projectId !== undefined
+          ? queryClient.getQueryData<{ id: string; name: string; color: string | null }[]>(["projects"])
+          : undefined;
+
+      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
+        old?.map((e) => {
+          if (e.id !== id) return e;
+          const merged: TimeEntry = { ...e, ...(data as Partial<TimeEntry>) };
+          if (data.projectId !== undefined) {
+            const proj = projects?.find((p) => p.id === data.projectId);
+            merged.projectName = proj?.name ?? null;
+            merged.projectColor = proj?.color ?? null;
+          }
+          if ((data.start !== undefined || data.stop !== undefined) && merged.start && merged.stop) {
+            merged.duration = Math.round(
+              (new Date(merged.stop).getTime() - new Date(merged.start).getTime()) / 1000
+            );
+          }
+          return merged;
+        }) ?? []
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      toast.error("Failed to update entry");
+    },
     onSuccess: (updated) => {
       // Keep the live timer (bar + sidebar) in sync when the edit targets the
       // currently running entry — e.g. assigning a project from the entries
@@ -138,7 +175,6 @@ export function useUpdateEntry() {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
-    onError: () => toast.error("Failed to update entry"),
   });
 }
 

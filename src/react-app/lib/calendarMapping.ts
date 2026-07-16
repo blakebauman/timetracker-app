@@ -20,9 +20,56 @@ export interface CalendarEventExtendedProps {
   running: boolean;
   ghost?: boolean;
   external?: ExternalEvent;
+  // An untracked gap between two entries the user can click to fill.
+  gap?: boolean;
+  gapRange?: { start: string; stop: string };
 }
 
 const GHOST_COLOR = "#94a3b8"; // slate-400 — muted, project-agnostic
+const GAP_COLOR = "#94a3b8";
+
+// Build clickable "untracked gap" blocks: the empty stretches between two
+// consecutive completed entries on the same day. Surfaces time you likely forgot
+// to track. Only past gaps at least `minGapMs` long are shown.
+export function buildGapEvents(
+  entries: TimeEntry[],
+  nowIso: string,
+  minGapMs = 15 * 60_000
+): EventInput[] {
+  const now = new Date(nowIso).getTime();
+  const done = entries
+    .filter((e) => e.stop != null)
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+  const gaps: EventInput[] = [];
+  for (let i = 0; i < done.length - 1; i++) {
+    const prevStop = new Date(done[i].stop as string);
+    const nextStart = new Date(done[i + 1].start);
+    const gapMs = nextStart.getTime() - prevStop.getTime();
+    if (gapMs < minGapMs) continue; // too small or overlapping
+    if (nextStart.getTime() > now) continue; // don't nag about the future
+    // Same calendar day only — skip overnight/multi-day gaps (pure noise).
+    if (prevStop.toDateString() !== nextStart.toDateString()) continue;
+
+    const start = prevStop.toISOString();
+    const stop = nextStart.toISOString();
+    gaps.push({
+      id: `gap:${start}`,
+      start,
+      end: stop,
+      editable: false,
+      display: "block",
+      backgroundColor: hexToRgba(GAP_COLOR, 0.06),
+      borderColor: hexToRgba(GAP_COLOR, 0.5),
+      extendedProps: {
+        running: false,
+        gap: true,
+        gapRange: { start, stop },
+      } satisfies CalendarEventExtendedProps,
+    });
+  }
+  return gaps;
+}
 
 // Map an external calendar event to a dashed, non-editable ghost block.
 export function externalEventToEvent(ext: ExternalEvent): EventInput {

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EntryForm } from "./EntryForm";
 import { useUpdateEntry, useDeleteEntry, useCreateEntry } from "@/hooks/useEntries";
-import { useProjects } from "@/hooks/useProjects";
+import { useProjects, useTagColors } from "@/hooks/useProjects";
 import { usePushEntries, useIntegrations } from "@/hooks/useIntegrations";
 import { useTimer } from "@/hooks/useTimer";
 import { cn } from "@/lib/utils";
@@ -41,9 +41,11 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const createEntry = useCreateEntry();
   const pushEntries = usePushEntries();
   const { data: projects = [] } = useProjects();
+  const tagColor = useTagColors();
   const { data: integrations = [] } = useIntegrations();
   const { startTimer } = useTimer();
   const timeFormat = useUIStore((s) => s.timeFormat);
+  const highlighted = useUIStore((s) => s.highlightedEntryId === entry.id);
 
   const project = projects.find((p) => p.id === entry.projectId);
   const integration = integrations.find((i) => i.id === project?.integrationId);
@@ -125,7 +127,9 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           "group flex items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/40",
           removing
             ? "pointer-events-none animate-out fade-out slide-out-to-right-4 fill-mode-forwards duration-200 ease-out"
-            : "animate-fade-up",
+            : highlighted
+              ? "animate-stopped"
+              : "animate-fade-up",
           isSelected && "bg-accent/60"
         )}
       >
@@ -193,8 +197,12 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
               <Badge
                 key={tag}
                 variant="outline"
-                className="h-4 px-1 py-0 text-[10px] font-normal"
+                className="h-4 gap-1 px-1 py-0 text-[10px] font-normal"
               >
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: tagColor(tag) }}
+                />
                 {tag}
               </Badge>
             ))}

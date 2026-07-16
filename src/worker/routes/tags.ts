@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { UpdateTagSchema } from "@shared/schemas";
 
 export const tagsRouter = new Hono<{
   Bindings: Env;
@@ -17,8 +19,19 @@ export const tagsRouter = new Hono<{
         id: r.id,
         workspaceId: r.workspace_id,
         name: r.name,
+        color: (r.color as string | null) ?? "#64748b",
       }))
     );
+  })
+  .patch("/:id", zValidator("json", UpdateTagSchema), async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const { color } = c.req.valid("json");
+    await c.env.DB.prepare(
+      `UPDATE tags SET color = ? WHERE id = ? AND workspace_id = ?`
+    )
+      .bind(color, c.req.param("id"), workspaceId)
+      .run();
+    return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
     const workspaceId = c.get("workspaceId");
