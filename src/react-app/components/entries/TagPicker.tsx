@@ -12,7 +12,8 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { useTags } from "@/hooks/useProjects";
+import { useTags, useUpdateTag } from "@/hooks/useProjects";
+import { PROJECT_COLORS, PROJECT_COLOR_NAMES } from "@/lib/colorUtils";
 
 interface TagPickerProps {
   value: string[];
@@ -23,7 +24,13 @@ interface TagPickerProps {
 export function TagPicker({ value, onChange, className }: TagPickerProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  // Tag name currently being recolored via the inline swatch row, if any.
+  const [recoloring, setRecoloring] = useState<string | null>(null);
   const { data: allTags = [] } = useTags();
+  const updateTag = useUpdateTag();
+
+  const byName = new Map(allTags.map((t) => [t.name, t]));
+  const colorOf = (name: string) => byName.get(name)?.color ?? "#64748b";
 
   const query = input.trim();
   const suggestions = allTags
@@ -83,6 +90,23 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                 variant="secondary"
                 className="gap-1 text-xs font-normal"
               >
+                {/* Recolor is only possible once the tag exists server-side (it's
+                    created when the entry saves); before that, show a static dot. */}
+                {byName.has(tag) ? (
+                  <button
+                    type="button"
+                    aria-label={`Recolor ${tag}`}
+                    title="Change color"
+                    onClick={() => setRecoloring((cur) => (cur === tag ? null : tag))}
+                    className="h-2.5 w-2.5 shrink-0 rounded-full ring-offset-1 transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    style={{ backgroundColor: colorOf(tag) }}
+                  />
+                ) : (
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: colorOf(tag) }}
+                  />
+                )}
                 {tag}
                 <button
                   type="button"
@@ -93,6 +117,30 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                   <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Inline recolor palette for the tag whose dot was clicked. */}
+        {recoloring && byName.has(recoloring) && (
+          <div className="flex flex-wrap gap-1.5 border-b p-2">
+            {PROJECT_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={`Set ${recoloring} to ${PROJECT_COLOR_NAMES[c] ?? c}`}
+                title={PROJECT_COLOR_NAMES[c] ?? c}
+                onClick={() => {
+                  const t = byName.get(recoloring);
+                  if (t) updateTag.mutate({ id: t.id, color: c });
+                  setRecoloring(null);
+                }}
+                className={cn(
+                  "h-5 w-5 rounded-full ring-2 ring-offset-1 transition-transform hover:scale-110",
+                  colorOf(recoloring) === c ? "ring-foreground" : "ring-transparent"
+                )}
+                style={{ backgroundColor: c }}
+              />
             ))}
           </div>
         )}
@@ -112,7 +160,10 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
               <CommandGroup>
                 {suggestions.slice(0, 8).map((tag) => (
                   <CommandItem key={tag} value={tag} onSelect={() => addTag(tag)}>
-                    <Tag className="h-3 w-3 text-muted-foreground" />
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: colorOf(tag) }}
+                    />
                     {tag}
                   </CommandItem>
                 ))}

@@ -67,7 +67,7 @@ async function insertEvents(
   const stmt = db.prepare(
     `INSERT INTO time_entries
        (id, workspace_id, project_id, task_id, description, start, stop, duration, billable, calendar_event_id, created_at, updated_at)
-     VALUES (?, ?, NULL, NULL, ?, ?, ?, CAST((julianday(?) - julianday(?)) * 86400 AS INTEGER), 0, ?, ?, ?)`
+     VALUES (?, ?, NULL, NULL, ?, ?, ?, CAST((julianday(?) - julianday(?)) * 86400 + 0.5 AS INTEGER), 0, ?, ?, ?)`
   );
   await db.batch(
     fresh.map((e) =>

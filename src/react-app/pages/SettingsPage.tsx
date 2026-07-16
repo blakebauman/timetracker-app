@@ -21,6 +21,7 @@ import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { GoogleCalendarCard } from "@/components/settings/GoogleCalendarCard";
 import { ProductivityCard } from "@/components/settings/ProductivityCard";
+import { RecurringEntriesCard } from "@/components/settings/RecurringEntriesCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { AccountCard } from "@/components/settings/AccountCard";
 import { SessionsCard } from "@/components/settings/SessionsCard";
@@ -280,6 +281,9 @@ export function SettingsPage() {
 
       {/* Productivity */}
       <ProductivityCard />
+
+      {/* Recurring entries */}
+      <RecurringEntriesCard />
 
       {/* Team */}
       <TeamCard />

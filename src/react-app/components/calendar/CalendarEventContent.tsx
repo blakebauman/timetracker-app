@@ -7,8 +7,18 @@ import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 // Custom renderer for a calendar block. Passed to FullCalendar's `eventContent`.
 // Kept intentionally compact so short (15–30 min) blocks stay legible.
 export function CalendarEventContent(arg: EventContentArg) {
-  const { entry, running, ghost, external } =
+  const { entry, running, ghost, external, gap } =
     arg.event.extendedProps as Partial<CalendarEventExtendedProps>;
+
+  // Untracked gap between two entries — reads as a subtle "fill me" affordance.
+  if (gap) {
+    return (
+      <div className="flex h-full items-center gap-1 overflow-hidden px-1 text-left leading-tight text-muted-foreground">
+        <CalendarPlus className="h-3 w-3 shrink-0" />
+        <span className="truncate text-[11px] font-medium">Track {arg.timeText}</span>
+      </div>
+    );
+  }
 
   // Ghost = an unconfirmed external calendar event. Muted look + a "click to
   // track" affordance so it reads as an action, not a real tracked block.

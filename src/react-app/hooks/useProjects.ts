@@ -136,7 +136,24 @@ export function useTags() {
   return useQuery({
     queryKey: ["tags"],
     queryFn: () =>
-      api.tags.list() as Promise<{ id: string; name: string }[]>,
+      api.tags.list() as Promise<{ id: string; name: string; color: string }[]>,
     staleTime: 60_000,
+  });
+}
+
+// name → color lookup for rendering tag swatches from an entry's tag names.
+export function useTagColors() {
+  const { data: tags = [] } = useTags();
+  const map = new Map(tags.map((t) => [t.name, t.color]));
+  return (name: string) => map.get(name) ?? "#64748b";
+}
+
+export function useUpdateTag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, color }: { id: string; color: string }) =>
+      api.tags.update(id, { color }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tags"] }),
+    onError: () => toast.error("Failed to update tag color"),
   });
 }

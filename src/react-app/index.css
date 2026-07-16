@@ -52,6 +52,13 @@
   /* Running-timer heartbeat — a lub-dub double beat on the round Stop button
      (utility: animate-heartbeat). */
   --animate-heartbeat: heartbeat 1.5s var(--ease-out-quart) infinite;
+
+  /* Just-stopped entry — the row fades up into place while a primary-tinted wash
+     and left rail bloom then recede, so the eye tracks where the timer landed
+     (utility: animate-stopped). */
+  --animate-stopped:
+    fade-up 0.35s var(--ease-out-quart) both,
+    row-flash 1.4s var(--ease-out-quart) both;
 }
 
 @keyframes fade-in {
@@ -65,6 +72,16 @@
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: none; }
+}
+/* Just-stopped row flash — a primary wash blooms then recedes, with a left rail
+   accent that draws attention to the row without shifting layout. */
+@keyframes row-flash {
+  0%   { background-color: color-mix(in oklab, var(--primary) 16%, transparent);
+         box-shadow: inset 3px 0 0 0 var(--primary); }
+  35%  { background-color: color-mix(in oklab, var(--primary) 12%, transparent);
+         box-shadow: inset 3px 0 0 0 var(--primary); }
+  100% { background-color: transparent;
+         box-shadow: inset 3px 0 0 0 transparent; }
 }
 /* Lub-dub heartbeat on the round Stop button — two quick scale bumps early in
    the cycle, then rest, while a red ring expands outward and fades on each beat.

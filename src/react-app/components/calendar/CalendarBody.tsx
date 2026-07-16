@@ -20,6 +20,7 @@ import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarS
 import { useTimerStore } from "@/stores/timerStore";
 import {
   buildEvents,
+  buildGapEvents,
   externalEventToEvent,
   type CalendarEventExtendedProps,
 } from "@/lib/calendarMapping";
@@ -34,6 +35,7 @@ interface CalendarBodyProps {
   slotHeight: number;
   weekStartsOn: number; // 0=Sun … 6=Sat
   showWeekends: boolean;
+  showGaps: boolean;
 }
 
 // The FullCalendar grid, externally driven by the shared period + view.
@@ -45,6 +47,7 @@ export function CalendarBody({
   slotHeight,
   weekStartsOn,
   showWeekends,
+  showGaps,
 }: CalendarBodyProps) {
   // date-fns wants a 0–6 literal; the setting is validated to that range.
   const wso = weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -117,8 +120,11 @@ export function CalendarBody({
     );
     const unconfirmed = externalEvents.filter((ext) => !confirmed.has(ext.calendarEventId));
     const ghosts = unconfirmed.map(externalEventToEvent);
-    return { events: [...real, ...ghosts], ghostCount: unconfirmed.length };
-  }, [entries, runningEntry, range, nowIso, externalEvents]);
+    // Gaps only make sense on the time grid, not the month overview.
+    const gaps =
+      showGaps && calendarView !== "dayGridMonth" ? buildGapEvents(entries, nowIso) : [];
+    return { events: [...gaps, ...real, ...ghosts], ghostCount: unconfirmed.length };
+  }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView]);
 
   const convertRange = useConvertCalendarRange();
   const handleConvertAll = () =>
@@ -176,6 +182,11 @@ export function CalendarBody({
 
   const handleEventClick = (arg: EventClickArg) => {
     const props = arg.event.extendedProps as CalendarEventExtendedProps;
+    if (props.gap && props.gapRange) {
+      setCreateRange({ start: props.gapRange.start, stop: props.gapRange.stop });
+      setCreateOpen(true);
+      return;
+    }
     if (props.ghost && props.external) {
       setCreateRange({
         start: props.external.start,

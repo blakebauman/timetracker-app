@@ -1,3 +1,5 @@
+import { colorForTagName } from "../lib/colors";
+
 // Helper to broadcast events via Durable Object
 export async function broadcast(
   env: Env,
@@ -160,8 +162,8 @@ export async function upsertTags(
   for (const name of tagNames) {
     const tagId = crypto.randomUUID();
     await db
-      .prepare(`INSERT OR IGNORE INTO tags (id, workspace_id, name) VALUES (?, ?, ?)`)
-      .bind(tagId, workspaceId, name)
+      .prepare(`INSERT OR IGNORE INTO tags (id, workspace_id, name, color) VALUES (?, ?, ?, ?)`)
+      .bind(tagId, workspaceId, name, colorForTagName(name))
       .run();
 
     const { results } = await db

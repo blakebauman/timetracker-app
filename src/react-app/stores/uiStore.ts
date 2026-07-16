@@ -41,9 +41,13 @@ interface UIStore {
   // Calendar prefs, hydrated from D1 settings but persisted locally for instant paint.
   weekStart: number; // 0=Sun … 6=Sat
   showWeekends: boolean;
+  showGaps: boolean;
   productivity: ProductivitySettings;
   commandOpen: boolean;
   shortcutsOpen: boolean;
+  // Transient: the entry row to flash-highlight (e.g. the one just stopped so the
+  // eye can track where it landed in the list). Never persisted.
+  highlightedEntryId: string | null;
 
   toggleSidebar: () => void;
   setSidebarCollapsed: (v: boolean) => void;
@@ -56,12 +60,18 @@ interface UIStore {
   setCalendarSlotHeight: (v: number) => void;
   setWeekStart: (v: number) => void;
   setShowWeekends: (v: boolean) => void;
+  setShowGaps: (v: boolean) => void;
   setProductivity: (p: Partial<ProductivitySettings>) => void;
   setCommandOpen: (v: boolean) => void;
   openCommand: () => void;
   setShortcutsOpen: (v: boolean) => void;
   openShortcuts: () => void;
+  flashEntry: (id: string) => void;
 }
+
+// Holds the auto-clear timer for the row highlight so a rapid second stop resets
+// the countdown instead of clearing the first one's flash mid-animation.
+let flashTimeout: ReturnType<typeof setTimeout> | undefined;
 
 // Zoom bounds for the calendar time-grid slot height (px), stepped by the
 // toolbar +/- controls.
@@ -84,9 +94,11 @@ export const useUIStore = create<UIStore>()(
       calendarSlotHeight: CALENDAR_SLOT_HEIGHT_DEFAULT,
       weekStart: Number(localStorage.getItem("pref_weekStart") ?? 1),
       showWeekends: localStorage.getItem("pref_showWeekends") !== "false",
+      showGaps: localStorage.getItem("pref_showGaps") !== "false",
       productivity: DEFAULT_PRODUCTIVITY,
       commandOpen: false,
       shortcutsOpen: false,
+      highlightedEntryId: null,
 
       toggleSidebar: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
@@ -122,12 +134,23 @@ export const useUIStore = create<UIStore>()(
         set({ showWeekends: v });
         localStorage.setItem("pref_showWeekends", String(v));
       },
+      setShowGaps: (v) => {
+        set({ showGaps: v });
+        localStorage.setItem("pref_showGaps", String(v));
+      },
       setProductivity: (p) =>
         set((s) => ({ productivity: { ...s.productivity, ...p } })),
       setCommandOpen: (v) => set({ commandOpen: v }),
       openCommand: () => set({ commandOpen: true }),
       setShortcutsOpen: (v) => set({ shortcutsOpen: v }),
       openShortcuts: () => set({ shortcutsOpen: true }),
+      flashEntry: (id) => {
+        clearTimeout(flashTimeout);
+        set({ highlightedEntryId: id });
+        // Outlast the refetch + the row's highlight keyframe, then release so a
+        // later re-render doesn't re-trigger the flash.
+        flashTimeout = setTimeout(() => set({ highlightedEntryId: null }), 2500);
+      },
     }),
     {
       name: "time-tracker-ui",
@@ -144,6 +167,7 @@ export const useUIStore = create<UIStore>()(
         calendarSlotHeight: s.calendarSlotHeight,
         weekStart: s.weekStart,
         showWeekends: s.showWeekends,
+        showGaps: s.showGaps,
         productivity: s.productivity,
       }),
     }

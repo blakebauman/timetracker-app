@@ -137,6 +137,11 @@ export const TagSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
   name: z.string(),
+  color: z.string(),
+});
+
+export const UpdateTagSchema = z.object({
+  color: z.string().regex(/^#[0-9a-f]{6}$/i),
 });
 
 // ─── Favorites ───────────────────────────────────────────────────────────────
@@ -163,6 +168,45 @@ export const CreateFavoriteSchema = z.object({
   taskId: z.string().nullable().optional(),
   tags: z.array(z.string().max(100)).max(50).default([]),
   billable: z.boolean().default(false),
+});
+
+// ─── Recurring entries ───────────────────────────────────────────────────────
+
+// A template that auto-materializes a completed entry on a weekly schedule.
+// Schedule is stored in UTC (daysOfWeek = UTC weekdays, timeUtcMinutes = minutes
+// since UTC midnight); the client converts to/from the user's local tz.
+export const RecurringEntrySchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  description: z.string(),
+  projectId: z.string().nullable(),
+  projectName: z.string().nullable(),
+  projectColor: z.string().nullable(),
+  taskId: z.string().nullable(),
+  taskName: z.string().nullable(),
+  tags: z.array(z.string()),
+  billable: z.boolean(),
+  durationSeconds: z.number(),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)),
+  timeUtcMinutes: z.number().int().min(0).max(1439),
+  active: z.boolean(),
+  lastMaterialized: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const CreateRecurringEntrySchema = z.object({
+  description: z.string().max(2000).default(""),
+  projectId: z.string().nullable().optional(),
+  taskId: z.string().nullable().optional(),
+  tags: z.array(z.string().max(100)).max(50).default([]),
+  billable: z.boolean().default(false),
+  durationSeconds: z.number().int().min(60).max(86_400),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1),
+  timeUtcMinutes: z.number().int().min(0).max(1439),
+});
+
+export const UpdateRecurringEntrySchema = CreateRecurringEntrySchema.partial().extend({
+  active: z.boolean().optional(),
 });
 
 // ─── Time Entry ──────────────────────────────────────────────────────────────
@@ -421,8 +465,12 @@ export type Client = z.infer<typeof ClientSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
 export type Task = z.infer<typeof TaskSchema>;
 export type Tag = z.infer<typeof TagSchema>;
+export type UpdateTag = z.infer<typeof UpdateTagSchema>;
 export type Favorite = z.infer<typeof FavoriteSchema>;
 export type CreateFavorite = z.infer<typeof CreateFavoriteSchema>;
+export type RecurringEntry = z.infer<typeof RecurringEntrySchema>;
+export type CreateRecurringEntry = z.infer<typeof CreateRecurringEntrySchema>;
+export type UpdateRecurringEntry = z.infer<typeof UpdateRecurringEntrySchema>;
 export type TimeEntry = z.infer<typeof TimeEntrySchema>;
 export type CreateTimeEntry = z.infer<typeof CreateTimeEntrySchema>;
 export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;

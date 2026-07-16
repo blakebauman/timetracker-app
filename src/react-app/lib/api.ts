@@ -148,6 +148,11 @@ export const api = {
   // ─── Tags ─────────────────────────────────────────────────────────────────
   tags: {
     list: () => request<unknown[]>("/tags"),
+    update: (id: string, body: { color: string }) =>
+      request<{ ok: boolean }>(`/tags/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
 
   // ─── Favorites ────────────────────────────────────────────────────────────
@@ -157,6 +162,17 @@ export const api = {
       request<unknown>("/favorites", { method: "POST", body: JSON.stringify(body) }),
     delete: (id: string) =>
       request<unknown>(`/favorites/${id}`, { method: "DELETE" }),
+  },
+
+  // ─── Recurring entries ────────────────────────────────────────────────────
+  recurring: {
+    list: () => request<unknown[]>("/recurring"),
+    create: (body: Record<string, unknown>) =>
+      request<unknown>("/recurring", { method: "POST", body: JSON.stringify(body) }),
+    update: (id: string, body: Record<string, unknown>) =>
+      request<unknown>(`/recurring/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      request<unknown>(`/recurring/${id}`, { method: "DELETE" }),
   },
 
   // ─── Integrations ────────────────────────────────────────────────────────
