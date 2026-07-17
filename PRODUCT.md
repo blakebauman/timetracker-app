@@ -6,7 +6,7 @@ product
 
 ## Users
 
-Professional consultants and knowledge workers who track billable and non-billable time across multiple clients, projects, and tasks throughout the day — the primary observed use case is a consultant logging client-engagement work (standups, reviews, deliverables) against project/engagement codes, then reporting hours weekly. Users are mid-task when they open this: starting or stopping a timer, correcting yesterday's log, or pulling a report before a status update. They expect the tool to be fast, always-available (works offline, syncs across tabs/devices in real time), and to disappear into the workflow rather than demand attention.
+Professional consultants, freelancers, and knowledge workers who track billable and non-billable time across multiple clients, projects, and tasks throughout the day, then report those hours back on a regular cadence. Users are mid-task when they open this: starting or stopping a timer, correcting yesterday's log, or pulling a report before a status update. They expect the tool to be fast, always-available (works offline, syncs across tabs/devices in real time), and to disappear into the workflow rather than demand attention.
 
 ## Product Purpose
 
