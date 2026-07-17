@@ -1,24 +1,60 @@
 {
+  "id": "/",
   "name": "Time Tracker",
   "short_name": "TimeTracker",
   "description": "Track your time, manage projects, and analyze your productivity.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0ea5e9",
+  "background_color": "#fcfbfa",
+  "theme_color": "#fcfbfa",
   "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/logo192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/logo512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Start Timer",
+      "short_name": "Timer",
+      "description": "Jump to the timer and start tracking",
+      "url": "/",
+      "icons": [{ "src": "/shortcut-timer.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Reports",
+      "short_name": "Reports",
+      "description": "View time reports and breakdowns",
+      "url": "/reports",
+      "icons": [{ "src": "/shortcut-reports.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Projects",
+      "short_name": "Projects",
+      "description": "Manage projects and clients",
+      "url": "/projects",
+      "icons": [{ "src": "/shortcut-projects.png", "sizes": "96x96", "type": "image/png" }]
     }
   ]
 }
