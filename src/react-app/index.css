@@ -49,9 +49,9 @@
   --animate-fade-up: fade-up 0.35s var(--ease-out-quart) both;
   --animate-scale-in: scale-in 0.4s var(--ease-out-quart) both;
 
-  /* Running-timer heartbeat — a lub-dub double beat on the round Stop button
-     (utility: animate-heartbeat). */
-  --animate-heartbeat: heartbeat 1.5s var(--ease-out-quart) infinite;
+  /* Running-timer recording pulse — a flat ring breathes outward behind the
+     round Stop button to signal "recording" (utility: animate-recording-pulse). */
+  --animate-recording-pulse: recording-pulse 1.6s var(--ease-out-quart) infinite;
 
   /* Just-stopped entry — the row fades up into place while a primary-tinted wash
      and left rail bloom then recede, so the eye tracks where the timer landed
@@ -83,46 +83,16 @@
   100% { background-color: transparent;
          box-shadow: inset 3px 0 0 0 transparent; }
 }
-/* Lub-dub heartbeat on the round Stop button — two quick scale bumps early in
-   the cycle, then rest, while a red ring expands outward and fades on each beat.
-   The button's own 3D depth (--btn-3d) rides along in every frame so the disc
-   keeps its lit-dome form while it beats. */
-@keyframes heartbeat {
+/* Flat recording pulse behind the round Stop button — a solid ring scales
+   outward and fades while the disc itself stays put, no shadow/gradient. */
+@keyframes recording-pulse {
   0% {
     transform: scale(1);
-    box-shadow:
-      var(--btn-3d),
-      0 0 0 0 color-mix(in oklab, var(--destructive) 45%, transparent);
-  }
-  10% {
-    transform: scale(1.08);
-    box-shadow:
-      var(--btn-3d),
-      0 0 0 3px color-mix(in oklab, var(--destructive) 26%, transparent);
-  }
-  20% {
-    transform: scale(1);
-    box-shadow:
-      var(--btn-3d),
-      0 0 0 6px color-mix(in oklab, var(--destructive) 12%, transparent);
-  }
-  30% {
-    transform: scale(1.05);
-    box-shadow:
-      var(--btn-3d),
-      0 0 0 8px color-mix(in oklab, var(--destructive) 8%, transparent);
-  }
-  45% {
-    transform: scale(1);
-    box-shadow:
-      var(--btn-3d),
-      0 0 0 12px color-mix(in oklab, var(--destructive) 0%, transparent);
+    opacity: 0.45;
   }
   100% {
-    transform: scale(1);
-    box-shadow:
-      var(--btn-3d),
-      0 0 0 0 color-mix(in oklab, var(--destructive) 0%, transparent);
+    transform: scale(1.7);
+    opacity: 0;
   }
 }
 
@@ -131,21 +101,6 @@
   --font-geist-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
   --radius: 0.5rem;
 
-  /* Round timer button depth: a top inner highlight + bottom inner shade make
-     the disc read as a lit dome; the outer drop shadow lifts it off the bar.
-     -hover deepens the lift and adds a brand glow; -press collapses it inward. */
-  --btn-3d:
-    inset 0 1px 0.5px oklch(1 0 0 / 0.22),
-    inset 0 -1px 2px oklch(0 0 0 / 0.12),
-    0 1px 3px -1px oklch(0 0 0 / 0.2);
-  --btn-3d-hover:
-    inset 0 1px 0.5px oklch(1 0 0 / 0.26),
-    inset 0 -1px 2px oklch(0 0 0 / 0.12),
-    0 3px 8px -2px oklch(0 0 0 / 0.28),
-    0 0 14px -3px var(--primary);
-  --btn-3d-press:
-    inset 0 1px 3px oklch(0 0 0 / 0.22),
-    inset 0 1px 1px oklch(0 0 0 / 0.15);
   /* Soft tones: a warm-neutral off-white ground (chroma toward the brand's red
      hue, not the cliché cream) with a slightly darker card so surfaces read
      gently layered instead of stark white-on-white. Ink softened off pure black. */

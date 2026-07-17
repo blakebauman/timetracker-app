@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Play, Square, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimerDisplay } from "./TimerDisplay";
 import { useTimerStore } from "@/stores/timerStore";
 import { useTimer } from "@/hooks/useTimer";
@@ -17,11 +18,11 @@ interface TimerControlProps {
 
 /**
  * Self-contained Start/Stop capsule that combines the live elapsed readout and
- * the action button into a single morphing pill. Idle: a compact round Start
+ * the action button into a single morphing pill. Idle: a flat round Start
  * button. Running: the capsule tints red and reveals the click-to-edit elapsed
- * time next to a Stop button, pulsing like a heartbeat. Reduced-motion users
- * still get the color + Stop icon as the running-state cue (the global
- * prefers-reduced-motion rule stills the heartbeat).
+ * time next to a Stop button, with a soft ring breathing behind it to signal
+ * "recording". Reduced-motion users still get the color + Stop icon as the
+ * running-state cue (the global prefers-reduced-motion rule stills the pulse).
  */
 export function TimerControl({ isRunning, isBusy, onStart, onStop }: TimerControlProps) {
   const { elapsed } = useTimerStore();
@@ -94,35 +95,41 @@ export function TimerControl({ isRunning, isBusy, onStart, onStop }: TimerContro
           </button>
         ))}
 
-      {/* Start / Stop — round button with a lit-dome finish (top-to-bottom tint
-          overlay + inner highlight/shade via --btn-3d). When running, a red
-          heartbeat pulses outward (double-beat scale + expanding ring); when
-          idle, hover deepens the lift and blooms a brand glow, press collapses
-          it inward. */}
-      <Button
-        variant={isRunning ? "destructive" : "default"}
-        size="icon"
-        onClick={isRunning ? onStop : onStart}
-        disabled={isBusy}
-        className={cn(
-          "h-10 w-10 shrink-0 rounded-full bg-linear-to-b from-white/10 to-black/8",
-          "transition-[transform,box-shadow] duration-200 ease-out-quint",
-          "[box-shadow:var(--btn-3d)]",
-          isRunning
-            ? "animate-heartbeat"
-            : "hover:scale-105 active:scale-95 hover:[box-shadow:var(--btn-3d-hover)] active:[box-shadow:var(--btn-3d-press)]"
-        )}
-        title={isRunning ? "Stop timer (Alt+Shift+S)" : "Start timer (Alt+Shift+S)"}
-        aria-label={isRunning ? "Stop timer" : "Start timer"}
-      >
-        {isBusy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isRunning ? (
-          <Square key="stop" className="h-3.5 w-3.5 animate-scale-in fill-current" />
-        ) : (
-          <Play key="play" className="h-4 w-4 translate-x-px animate-scale-in fill-current" />
-        )}
-      </Button>
+      {/* Start / Stop — a flat solid disc, no gradient/inner-shadow depth. When
+          running, a separate ring behind the button breathes outward to read
+          as "recording" while the disc itself stays put. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative shrink-0">
+            {isRunning && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 animate-recording-pulse rounded-full bg-destructive"
+              />
+            )}
+            <Button
+              variant={isRunning ? "destructive" : "default"}
+              size="icon"
+              onClick={isRunning ? onStop : onStart}
+              disabled={isBusy}
+              className="relative h-10 w-10 cursor-pointer rounded-full"
+              aria-label={isRunning ? "Stop timer" : "Start timer"}
+            >
+              {isBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isRunning ? (
+                <Square key="stop" className="h-3.5 w-3.5 animate-scale-in fill-current" />
+              ) : (
+                <Play key="play" className="h-4 w-4 translate-x-px animate-scale-in fill-current" />
+              )}
+            </Button>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isRunning ? "Stop timer" : "Start timer"}
+          <span className="ml-1.5 text-background/60">Alt+Shift+S</span>
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }
