@@ -222,29 +222,35 @@ export function Sidebar() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden h-full flex-col border-r bg-card transition-all duration-200 md:flex",
+          "hidden h-full flex-col overflow-hidden border-r bg-card transition-all duration-200 md:flex",
           sidebarCollapsed ? "w-14" : "w-56"
         )}
       >
         {/* Brand */}
         <div
           className={cn(
-            "relative flex h-14 items-center border-b",
-            sidebarCollapsed ? "justify-center px-0" : "px-4"
+            "relative flex h-14 overflow-hidden border-b",
+            sidebarCollapsed
+              ? "flex-col items-center justify-center gap-0.5 px-0"
+              : "items-center px-4"
           )}
         >
           {!sidebarCollapsed && (
             <>
               <Clock className="h-5 w-5 shrink-0 text-primary" />
-              <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
+              {/* nowrap + clipped so the label doesn't wrap to two lines while the
+                  rail width animates open (was a "Time / Tracker" flash). */}
+              <span className="ml-2 whitespace-nowrap font-semibold tracking-tight">
+                Time Tracker
+              </span>
             </>
           )}
           <Button
             variant="ghost"
             size="icon"
             className={cn(
-              "h-8 w-8 shrink-0 text-muted-foreground",
-              !sidebarCollapsed && "absolute right-2"
+              "shrink-0 text-muted-foreground",
+              sidebarCollapsed ? "h-6 w-6" : "absolute right-2 h-8 w-8"
             )}
             onClick={toggleSidebar}
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -256,6 +262,8 @@ export function Sidebar() {
               <ChevronLeft className="h-3.5 w-3.5" />
             )}
           </Button>
+          {/* Keep the brand mark visible on the collapsed rail (under the arrow). */}
+          {sidebarCollapsed && <Clock className="h-5 w-5 shrink-0 text-primary" aria-hidden />}
         </div>
 
         <SidebarContent collapsed={sidebarCollapsed} />
