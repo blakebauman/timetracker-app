@@ -16,7 +16,7 @@ import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
 import { TimeOfDayInput } from "./TimeOfDayInput";
 import { useUpdateEntry } from "@/hooks/useEntries";
-import { dateDelta, shiftDate, toDateInputValue } from "@/lib/dateUtils";
+import { dateDelta, shiftDate, toDateInputValue, formatSeconds, parseTimeInput } from "@/lib/dateUtils";
 
 // Only the fields the form actually reads — so a full TimeEntry OR a report's
 // DetailedEntry (both structurally provide these) can be edited.
@@ -46,6 +46,31 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
   const [start, setStart] = useState(entry.start);
   const [stop, setStop] = useState<string | null>(entry.stop);
   const updateEntry = useUpdateEntry();
+
+  const computeDurationSeconds = (s: string, e: string | null) =>
+    e ? Math.max(0, Math.round((new Date(e).getTime() - new Date(s).getTime()) / 1000)) : 0;
+
+  const [durationText, setDurationText] = useState(() => formatSeconds(computeDurationSeconds(start, stop)));
+
+  // Resync the editable duration text whenever start/stop change from
+  // elsewhere (Date field, Start/Stop TimeOfDayInputs) — same "adjust during
+  // render" pattern TimeOfDayInput uses, to avoid a frame of stale text.
+  const [syncedRange, setSyncedRange] = useState({ start, stop });
+  if (syncedRange.start !== start || syncedRange.stop !== stop) {
+    setSyncedRange({ start, stop });
+    setDurationText(formatSeconds(computeDurationSeconds(start, stop)));
+  }
+
+  // Editing duration keeps `start` fixed and moves `stop` — same convention
+  // as EntryRow's and TimesheetView's inline duration edit.
+  const commitDuration = () => {
+    const parsed = parseTimeInput(durationText);
+    if (parsed !== null && parsed >= 0 && stop !== null) {
+      setStop(new Date(new Date(start).getTime() + parsed * 1000).toISOString());
+    } else {
+      setDurationText(formatSeconds(computeDurationSeconds(start, stop)));
+    }
+  };
 
   // Moves both start and stop to the new calendar date, preserving each's
   // time-of-day (and so the entry's duration and any overnight span). The
@@ -138,6 +163,22 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
                 fallbackIso={stop ?? entry.start}
                 onChange={setStop}
                 allowClear
+              />
+            </div>
+            <div className="flex-1 space-y-1.5">
+              <Label>Duration</Label>
+              <Input
+                value={durationText}
+                onChange={(e) => setDurationText(e.target.value)}
+                onBlur={commitDuration}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    commitDuration();
+                    e.currentTarget.blur();
+                  }
+                }}
+                disabled={stop === null}
+                placeholder={stop === null ? "—" : undefined}
               />
             </div>
           </div>

@@ -80,7 +80,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
             onKeyDown={handleElapsedKeyDown}
             onBlur={handleSaveElapsed}
             aria-label="Edit elapsed time"
-            className="h-8 w-24 text-right font-mono text-lg font-semibold tabular-nums"
+            className="h-8 w-28 px-2 text-right font-mono text-lg font-semibold tabular-nums md:text-lg"
           />
         ) : (
           <Tooltip>
