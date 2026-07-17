@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Square, Loader2 } from "lucide-react";
+import { Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 
 interface TimerControlProps {
   isRunning: boolean;
-  isBusy: boolean; // isStarting || isStopping
   onStart: () => void;
   onStop: () => void;
 }
@@ -23,8 +22,11 @@ interface TimerControlProps {
  * time next to a Stop button, with a soft ring breathing behind it to signal
  * "recording". Reduced-motion users still get the color + Stop icon as the
  * running-state cue (the global prefers-reduced-motion rule stills the pulse).
+ * Fully optimistic — isRunning flips (and the icon/color swap) the instant the
+ * click fires, before the create/stop request round-trips, so there's no
+ * loading state to show; a failed request reverts itself and toasts.
  */
-export function TimerControl({ isRunning, isBusy, onStart, onStop }: TimerControlProps) {
+export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) {
   const { elapsed } = useTimerStore();
   const { editElapsed } = useTimer();
 
@@ -111,13 +113,10 @@ export function TimerControl({ isRunning, isBusy, onStart, onStop }: TimerContro
               variant={isRunning ? "destructive" : "default"}
               size="icon"
               onClick={isRunning ? onStop : onStart}
-              disabled={isBusy}
               className="relative h-10 w-10 cursor-pointer rounded-full"
               aria-label={isRunning ? "Stop timer" : "Start timer"}
             >
-              {isBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isRunning ? (
+              {isRunning ? (
                 <Square key="stop" className="h-3.5 w-3.5 animate-scale-in fill-current" />
               ) : (
                 <Play key="play" className="h-4 w-4 translate-x-px animate-scale-in fill-current" />

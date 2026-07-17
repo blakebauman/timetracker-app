@@ -322,7 +322,5 @@ export function useTimer() {
     stopTimerAt,
     discardTimer,
     editElapsed,
-    isStarting: startMutation.isPending,
-    isStopping: stopMutation.isPending,
   };
 }

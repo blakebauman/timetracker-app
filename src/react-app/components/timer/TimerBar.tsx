@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 export function TimerBar() {
   const { runningEntry } = useTimerStore();
-  const { startTimer, stopTimer, discardTimer, isStarting, isStopping } = useTimer();
+  const { startTimer, stopTimer, discardTimer } = useTimer();
   const updateEntry = useUpdateEntry();
   // Shared with the Alt+Shift+X hotkey (registered in useTimer) so both the
   // trash-icon button and the keyboard shortcut open the same confirm dialog.
@@ -144,12 +144,7 @@ export function TimerBar() {
       )}
 
       {/* Combined elapsed + Start/Stop capsule */}
-      <TimerControl
-        isRunning={isRunning}
-        isBusy={isStarting || isStopping}
-        onStart={handleStart}
-        onStop={handleStop}
-      />
+      <TimerControl isRunning={isRunning} onStart={handleStart} onStop={handleStop} />
 
       <ThemeToggle />
 
