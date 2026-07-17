@@ -222,14 +222,14 @@ export function Sidebar() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden h-full flex-col border-r bg-card transition-all duration-200 md:flex",
+          "hidden h-full flex-col overflow-hidden border-r bg-card transition-all duration-200 md:flex",
           sidebarCollapsed ? "w-14" : "w-56"
         )}
       >
         {/* Brand */}
         <div
           className={cn(
-            "relative flex h-14 border-b",
+            "relative flex h-14 overflow-hidden border-b",
             sidebarCollapsed
               ? "flex-col items-center justify-center gap-0.5 px-0"
               : "items-center px-4"
@@ -238,7 +238,11 @@ export function Sidebar() {
           {!sidebarCollapsed && (
             <>
               <Clock className="h-5 w-5 shrink-0 text-primary" />
-              <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
+              {/* nowrap + clipped so the label doesn't wrap to two lines while the
+                  rail width animates open (was a "Time / Tracker" flash). */}
+              <span className="ml-2 whitespace-nowrap font-semibold tracking-tight">
+                Time Tracker
+              </span>
             </>
           )}
           <Button
