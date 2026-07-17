@@ -84,7 +84,7 @@ export function GoogleCalendarCard() {
             <div className="flex items-center justify-between rounded-md border p-3">
               <div className="pr-4">
                 <Label htmlFor="auto-track">Auto-track calendar events</Label>
-                <p className="text-xs leading-normal text-muted-foreground">
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
                   Automatically create a time entry when a calendar event ends.
                 </p>
               </div>

@@ -172,7 +172,7 @@ export function TwoFactorCard() {
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                   <img src={qr} alt="Two-factor QR code" className="rounded-md border" width={160} height={160} />
                   {secret && (
-                    <div className="text-xs leading-normal text-muted-foreground">
+                    <div className="mt-1 text-xs leading-normal text-muted-foreground">
                       <p className="mb-1">Or enter this key manually:</p>
                       <code className="rounded bg-muted px-1.5 py-1 font-mono break-all">{secret}</code>
                     </div>

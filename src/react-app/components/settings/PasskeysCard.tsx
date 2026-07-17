@@ -75,7 +75,7 @@ export function PasskeysCard() {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{p.name || "Passkey"}</p>
                     {p.createdAt && (
-                      <p className="text-xs leading-normal text-muted-foreground">
+                      <p className="mt-1 text-xs leading-normal text-muted-foreground">
                         Added {formatShortDate(toIso(p.createdAt))}
                       </p>
                     )}
