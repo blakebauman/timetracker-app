@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Timer, FolderOpen, ListChecks, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, ChevronRight, Menu, ShieldCheck, Search, Keyboard } from "lucide-react";
+import { Timer, FolderOpen, ListChecks, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, Menu, ShieldCheck, Search, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
@@ -230,12 +230,21 @@ export function Sidebar() {
         <div
           className={cn(
             "relative flex h-14 overflow-hidden border-b",
-            sidebarCollapsed
-              ? "flex-col items-center justify-center gap-0.5 px-0"
-              : "items-center px-4"
+            sidebarCollapsed ? "justify-center px-0" : "items-center px-4"
           )}
         >
-          {!sidebarCollapsed && (
+          {sidebarCollapsed ? (
+            // Collapsed: the logo itself is the expand affordance (no arrow).
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+              className="flex h-full w-full items-center justify-center text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            >
+              <Clock className="h-5 w-5 shrink-0" />
+            </button>
+          ) : (
             <>
               <Clock className="h-5 w-5 shrink-0 text-primary" />
               {/* nowrap + clipped so the label doesn't wrap to two lines while the
@@ -243,27 +252,18 @@ export function Sidebar() {
               <span className="ml-2 whitespace-nowrap font-semibold tracking-tight">
                 Time Tracker
               </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 h-8 w-8 shrink-0 text-muted-foreground"
+                onClick={toggleSidebar}
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
             </>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "shrink-0 text-muted-foreground",
-              sidebarCollapsed ? "h-6 w-6" : "absolute right-2 h-8 w-8"
-            )}
-            onClick={toggleSidebar}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-3.5 w-3.5" />
-            )}
-          </Button>
-          {/* Keep the brand mark visible on the collapsed rail (under the arrow). */}
-          {sidebarCollapsed && <Clock className="h-5 w-5 shrink-0 text-primary" aria-hidden />}
         </div>
 
         <SidebarContent collapsed={sidebarCollapsed} />
