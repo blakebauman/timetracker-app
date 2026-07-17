@@ -41,13 +41,23 @@ export const PROJECT_COLOR_NAMES: Record<string, string> = {
   "#78716c": "Stone",
 };
 
-// Pick a distinct color for a new project: the first palette entry not already
-// used, falling back to stepping through the palette by project count.
+// Same palette as PROJECT_COLORS, reordered so stepping through it yields
+// perceptually distinct, alternating warm/cool hues (mirrors the worker's
+// DISTINCT_COLORS). Used for auto-assignment so successive projects don't come
+// out as near-identical warm tones.
+export const DISTINCT_COLORS = [
+  "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#14b8a6",
+  "#ec4899", "#84cc16", "#6366f1", "#f97316", "#06b6d4", "#a855f7",
+  "#f43f5e", "#0ea5e9", "#10b981", "#eab308", "#64748b", "#78716c",
+];
+
+// Pick a distinct color for a new project: the first distinct-palette entry not
+// already used, falling back to stepping through it by project count.
 export function nextProjectColor(usedColors: string[]): string {
   const used = new Set(usedColors);
   return (
-    PROJECT_COLORS.find((c) => !used.has(c)) ??
-    PROJECT_COLORS[usedColors.length % PROJECT_COLORS.length]
+    DISTINCT_COLORS.find((c) => !used.has(c)) ??
+    DISTINCT_COLORS[usedColors.length % DISTINCT_COLORS.length]
   );
 }
 

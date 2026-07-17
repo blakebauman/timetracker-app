@@ -103,7 +103,9 @@ export const api = {
     delete: (id: string) =>
       request<unknown>(`/projects/${id}`, { method: "DELETE" }),
     recolor: () =>
-      request<{ recolored: number }>("/projects/recolor", { method: "POST" }),
+      request<{ recolored: number; usedAI: boolean }>("/projects/recolor", {
+        method: "POST",
+      }),
   },
 
   // ─── Tasks ────────────────────────────────────────────────────────────────
