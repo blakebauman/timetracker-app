@@ -145,8 +145,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete }: TaskRowPr
       <div className="flex items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
         <Button
           variant="ghost"
-          size="icon"
-          className="h-6 w-6"
+          size="icon-xs"
           aria-label="Edit task"
           onClick={() => {
             setName(task.name);
@@ -157,8 +156,8 @@ export function TaskRow({ task, showProject = true, onRequestDelete }: TaskRowPr
         </Button>
         <Button
           variant="ghost"
-          size="icon"
-          className="h-6 w-6 hover:text-destructive"
+          size="icon-xs"
+          className="hover:text-destructive"
           aria-label="Delete task"
           onClick={() => onRequestDelete(task)}
         >

@@ -100,8 +100,7 @@ export function TimerWorkspaceHeader({
           <div className="flex items-center">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              size="icon-sm"
               onClick={onPrev}
               aria-label="Previous week"
             >
@@ -109,8 +108,7 @@ export function TimerWorkspaceHeader({
             </Button>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              size="icon-sm"
               onClick={onNext}
               aria-label="Next week"
             >
@@ -131,8 +129,7 @@ export function TimerWorkspaceHeader({
               {/* Show/hide weekend columns */}
               <Button
                 variant={showWeekends ? "outline" : "ghost"}
-                size="icon"
-                className="h-8 w-8"
+                size="icon-sm"
                 onClick={onToggleWeekends}
                 aria-pressed={showWeekends}
                 title={showWeekends ? "Hide weekends" : "Show weekends"}
@@ -145,8 +142,7 @@ export function TimerWorkspaceHeader({
               {!isMonthView && (
                 <Button
                   variant={showGaps ? "outline" : "ghost"}
-                  size="icon"
-                  className="h-8 w-8"
+                  size="icon-sm"
                   onClick={onToggleGaps}
                   aria-pressed={showGaps}
                   title={showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
@@ -161,8 +157,7 @@ export function TimerWorkspaceHeader({
                 <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
+                    size="icon-sm"
                     onClick={onZoomOut}
                     disabled={slotHeight <= CALENDAR_SLOT_HEIGHT_MIN}
                     aria-label="Zoom out"
@@ -172,8 +167,7 @@ export function TimerWorkspaceHeader({
                   <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
+                    size="icon-sm"
                     onClick={onZoomIn}
                     disabled={slotHeight >= CALENDAR_SLOT_HEIGHT_MAX}
                     aria-label="Zoom in"

@@ -82,8 +82,8 @@ export function RecurringEntriesCard() {
                 />
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground"
+                  size="icon-sm"
+                  className="text-muted-foreground"
                   onClick={() => openEdit(r)}
                   aria-label="Edit recurring entry"
                 >
@@ -91,8 +91,8 @@ export function RecurringEntriesCard() {
                 </Button>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-destructive"
                   onClick={() => deleteRecurring.mutate(r.id)}
                   aria-label="Delete recurring entry"
                 >

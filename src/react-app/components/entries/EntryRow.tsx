@@ -276,8 +276,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-7 w-7"
+            size="icon-sm"
             title="Continue"
             aria-label="Continue timing this entry"
             onClick={handleContinue}
@@ -289,8 +288,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-7 w-7"
+                size="icon-sm"
                 aria-label="Entry actions"
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />

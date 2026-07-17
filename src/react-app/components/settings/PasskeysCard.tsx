@@ -83,8 +83,8 @@ export function PasskeysCard() {
                 </div>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                  size="icon-sm"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
                   aria-label="Remove passkey"
                   onClick={() => remove.mutate(p.id)}
                   disabled={remove.isPending}

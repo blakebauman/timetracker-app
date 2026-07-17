@@ -145,8 +145,8 @@ export function ProjectList() {
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground"
+                      size="icon-sm"
+                      className="text-muted-foreground"
                       title="Show tasks"
                     >
                       <ChevronDown
@@ -160,7 +160,7 @@ export function ProjectList() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Project actions">
+                      <Button variant="ghost" size="icon-sm" aria-label="Project actions">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

@@ -168,8 +168,7 @@ export function TaskList({ projectId }: TaskListProps) {
             <div className="flex items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-6 w-6"
+                size="icon-xs"
                 aria-label="Edit task"
                 onClick={() => handleStartEdit(task)}
               >
@@ -177,8 +176,8 @@ export function TaskList({ projectId }: TaskListProps) {
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-6 w-6 hover:text-destructive"
+                size="icon-xs"
+                className="hover:text-destructive"
                 aria-label="Delete task"
                 onClick={() => setDeleteTarget(task)}
               >
@@ -200,9 +199,9 @@ export function TaskList({ projectId }: TaskListProps) {
           className="h-7 text-xs"
         />
         <Button
-          size="icon"
+          size="icon-sm"
           variant="ghost"
-          className="h-7 w-7 shrink-0"
+          className="shrink-0"
           aria-label="Add task"
           onClick={handleCreate}
           disabled={!newName.trim() || createTask.isPending}

@@ -123,9 +123,8 @@ export function TeamCard() {
                         )}
                         {member.role !== "owner" && (
                           <Button
-                            size="icon"
+                            size="icon-xs"
                             variant="ghost"
-                            className="h-6 w-6"
                             onClick={() => handleRemoveMember(member.id)}
                             title="Remove member"
                           >
@@ -155,9 +154,8 @@ export function TeamCard() {
                           {invitation.email}
                         </span>
                         <Button
-                          size="icon"
+                          size="icon-xs"
                           variant="ghost"
-                          className="h-6 w-6"
                           onClick={() => handleCancelInvite(invitation.id)}
                           title="Cancel invitation"
                         >

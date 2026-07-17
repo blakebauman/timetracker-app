@@ -124,8 +124,8 @@ export function TimerBar() {
       {isRunning && (
         <Button
           variant="ghost"
-          size="icon"
-          className="h-8 w-8 animate-in fade-in text-muted-foreground duration-300 hover:text-destructive"
+          size="icon-sm"
+          className="animate-in fade-in text-muted-foreground duration-300 hover:text-destructive"
           onClick={() => setConfirmDiscard(true)}
           title="Discard timer (Alt+Shift+X)"
           aria-label="Discard timer"
