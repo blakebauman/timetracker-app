@@ -1,5 +1,7 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import { LineChart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   ChartContainer,
   ChartTooltip,
@@ -27,6 +29,25 @@ function formatXLabel(dateStr: string, useDayOfWeek: boolean): string {
 }
 
 export function CumulativeAreaChart({ data }: CumulativeAreaChartProps) {
+  const hasData = data.some((d) => d.totalSeconds > 0);
+  if (!hasData) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Cumulative hours</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmptyState
+            icon={LineChart}
+            title="No tracked time"
+            description="Your running total will appear here once you track time in this range."
+            className="py-12"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
   const useDayOfWeek = data.length > 14;
 
   const chartData = data.map((d, i) => {

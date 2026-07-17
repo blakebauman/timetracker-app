@@ -126,18 +126,22 @@ export function BreakdownCard({
                   ? Math.round((row.totalSeconds / totalSeconds) * 100)
                   : 0;
                 return (
-                  <div key={row.id ?? `none-${i}`} className="flex items-center gap-2">
-                    <ColorDot color={colorFor(row, i)} />
-                    <span className="min-w-0 flex-1 shrink-0 truncate text-sm">
+                  <div key={row.id ?? `none-${i}`} className="flex items-start gap-2">
+                    <ColorDot color={colorFor(row, i)} className="mt-1" />
+                    {/* Long project names wrap to new lines instead of overflowing
+                        the card; the metrics stay pinned top-right. */}
+                    <span className="min-w-0 flex-1 wrap-anywhere text-sm">
                       {row.name}
                     </span>
                     {showAmount && (
-                      <span className="text-xs tabular-nums text-muted-foreground">
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {formatCurrency(row.billableAmount, currency)}
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground">{pct}%</span>
-                    <span className="min-w-12 text-right text-sm font-medium">
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {pct}%
+                    </span>
+                    <span className="min-w-12 shrink-0 text-right text-sm font-medium tabular-nums">
                       {formatDurationShort(row.totalSeconds)}
                     </span>
                   </div>
@@ -145,21 +149,21 @@ export function BreakdownCard({
               })}
 
               {/* Total row */}
-              <div className="mt-2 flex items-center gap-2 border-t pt-2">
-                <span className="h-2.5 w-2.5 shrink-0" />
-                <span className="min-w-0 flex-1 shrink-0 truncate text-sm font-medium">
-                  Total
-                </span>
+              <div className="mt-2 flex items-start gap-2 border-t pt-2">
+                <span className="mt-1 h-2.5 w-2.5 shrink-0" />
+                <span className="min-w-0 flex-1 text-sm font-medium">Total</span>
                 {showAmount && (
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                     {formatCurrency(
                       sorted.reduce((s, r) => s + r.billableAmount, 0),
                       currency
                     )}
                   </span>
                 )}
-                <span className="text-xs text-muted-foreground">100%</span>
-                <span className="min-w-12 text-right text-sm font-semibold">
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  100%
+                </span>
+                <span className="min-w-12 shrink-0 text-right text-sm font-semibold tabular-nums">
                   {formatDurationShort(totalSeconds)}
                 </span>
               </div>

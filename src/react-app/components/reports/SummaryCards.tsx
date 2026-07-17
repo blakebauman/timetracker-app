@@ -8,7 +8,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +37,6 @@ interface Tile {
   icon: LucideIcon;
   label: string;
   value: string;
-  accent: string;
   extra?: React.ReactNode;
 }
 
@@ -95,19 +93,17 @@ export function SummaryCards({
       icon: Clock,
       label: "Total tracked",
       value: formatDurationShort(totalSeconds),
-      accent: "bg-primary/10 text-primary",
     },
     {
       key: "billable",
       icon: DollarSign,
       label: "Billable",
       value: formatDurationShort(billableSeconds),
-      accent: "bg-success/10 text-success",
       extra: (
-        <div className="mt-1.5 flex items-center gap-2">
+        <div className="mt-2 flex items-center gap-2">
           <Progress
             value={billablePercent}
-            className="h-1.5 flex-1 bg-success/20 [&>div]:bg-success"
+            className="h-1.5 flex-1 bg-success/15 [&>div]:bg-success"
           />
           <span className="text-xs tabular-nums text-muted-foreground">
             {billablePercent}%
@@ -120,21 +116,18 @@ export function SummaryCards({
       icon: Wallet,
       label: "Billable amount",
       value: formatCurrency(billableAmount, currency),
-      accent: "bg-success/10 text-success",
     },
     {
       key: "entries",
       icon: Hash,
       label: "Entries",
       value: entryCount.toLocaleString(),
-      accent: "bg-chart-2/10 text-chart-2",
     },
     {
       key: "avg",
       icon: TrendingUp,
       label: "Avg / day",
       value: formatDurationShort(avgSeconds),
-      accent: "bg-warning/10 text-warning",
     },
   ];
 
@@ -171,26 +164,21 @@ export function SummaryCards({
         </DropdownMenu>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {shown.map(({ key, icon: Icon, label, value, accent, extra }, i) => (
-          <Card
-            key={key}
-            className="animate-fade-up"
-            style={{ animationDelay: `${i * 60}ms` }}
-          >
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className={`rounded-md p-2 ${accent}`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-lg font-semibold">{value}</p>
-                  {extra}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* One framed strip divided by 1px gaps (bg-border shows through). Flex-wrap
+          with grow so the last row's tiles stretch to fill — no orphaned cell at
+          any width, for any number of visible metrics. */}
+      <div className="flex animate-fade-up flex-wrap gap-px overflow-hidden rounded-xl border bg-border">
+        {shown.map(({ key, icon: Icon, label, value, extra }) => (
+          <div key={key} className="min-w-37.5 flex-1 bg-card p-4">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{label}</span>
+            </div>
+            <p className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight">
+              {value}
+            </p>
+            {extra}
+          </div>
         ))}
       </div>
     </div>

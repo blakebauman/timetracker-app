@@ -6,7 +6,9 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts";
+import { BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   ChartContainer,
   ChartTooltip,
@@ -34,6 +36,25 @@ function formatXLabel(dateStr: string, useDayOfWeek: boolean): string {
 }
 
 export function DailyBarChart({ data }: DailyBarChartProps) {
+  const hasData = data.some((d) => d.totalSeconds > 0);
+  if (!hasData) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Daily breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmptyState
+            icon={BarChart3}
+            title="No tracked time"
+            description="Track some time in this range to see your daily breakdown."
+            className="py-12"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
   const useDayOfWeek = data.length > 14;
 
   const chartData = data.map((d) => ({
