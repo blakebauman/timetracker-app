@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -15,6 +16,7 @@ import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
 import { TimeOfDayInput } from "./TimeOfDayInput";
 import { useUpdateEntry } from "@/hooks/useEntries";
+import { dateDelta, shiftDate, toDateInputValue } from "@/lib/dateUtils";
 
 // Only the fields the form actually reads — so a full TimeEntry OR a report's
 // DetailedEntry (both structurally provide these) can be edited.
@@ -44,6 +46,19 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
   const [start, setStart] = useState(entry.start);
   const [stop, setStop] = useState<string | null>(entry.stop);
   const updateEntry = useUpdateEntry();
+
+  // Moves both start and stop to the new calendar date, preserving each's
+  // time-of-day (and so the entry's duration and any overnight span). The
+  // delta is computed once from `start` — the field the "Date" label
+  // represents — and applied to both; computing it separately per field
+  // would drift for an overnight entry, since start and stop can sit on
+  // different local calendar days to begin with.
+  const handleDateChange = (newDate: string) => {
+    if (!newDate) return;
+    const deltaDays = dateDelta(start, newDate);
+    setStart((prev) => shiftDate(prev, deltaDays));
+    setStop((prev) => (prev ? shiftDate(prev, deltaDays) : prev));
+  };
 
   const handleSave = () => {
     updateEntry.mutate(
@@ -100,6 +115,15 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
           <div className="space-y-1.5">
             <Label>Tags</Label>
             <TagPicker value={tags} onChange={setTags} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Date</Label>
+            <Input
+              type="date"
+              value={toDateInputValue(start)}
+              onChange={(e) => handleDateChange(e.target.value)}
+            />
           </div>
 
           <div className="flex gap-3">

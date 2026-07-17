@@ -11,8 +11,10 @@ import {
   subDays,
   subWeeks,
   subMonths,
+  addDays,
   parseISO,
   differenceInSeconds,
+  differenceInCalendarDays,
   getISOWeek,
   isSameMonth,
   isSameYear,
@@ -215,6 +217,37 @@ export function applyTimeOfDay(iso: string, hours: number, minutes: number): str
   const d = new Date(iso);
   d.setHours(hours, minutes, 0, 0);
   return d.toISOString();
+}
+
+// Local YYYY-MM-DD for an ISO timestamp — the value shape <input type="date"> wants.
+export function toDateInputValue(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Whole-day difference between an ISO timestamp's local calendar date and a
+// YYYY-MM-DD target — the shift a date-picker edit represents.
+export function dateDelta(iso: string, dateStr: string): number {
+  const current = toDateInputValue(iso);
+  if (current === dateStr) return 0;
+  const [cy, cm, cd] = current.split("-").map(Number);
+  const [ny, nm, nd] = dateStr.split("-").map(Number);
+  return differenceInCalendarDays(new Date(ny, nm - 1, nd), new Date(cy, cm - 1, cd));
+}
+
+// Shift an ISO timestamp by a whole number of calendar days, preserving its
+// time-of-day (via date-fns addDays, so DST transitions don't skew it).
+export function shiftDate(iso: string, deltaDays: number): string {
+  return deltaDays === 0 ? iso : addDays(new Date(iso), deltaDays).toISOString();
+}
+
+// Move an ISO timestamp to a new calendar date (YYYY-MM-DD), preserving its
+// time-of-day. Only correct for a single, standalone timestamp — editing a
+// start/stop PAIR (which may span midnight, landing on different calendar
+// dates) needs one shared delta from dateDelta() + shiftDate() instead, or
+// each field would compute its own delta and drift apart.
+export function applyDate(iso: string, dateStr: string): string {
+  return shiftDate(iso, dateDelta(iso, dateStr));
 }
 
 export {
