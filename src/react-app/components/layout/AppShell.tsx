@@ -18,8 +18,8 @@ export function AppShell() {
   useHydrateSettings();
   const { isOnline } = useOfflineSync();
   const location = useLocation();
-  // useTimer() is called inside TimerBar (always mounted), which registers
-  // the tick loop, IDB restore, and keyboard shortcuts globally.
+  // useTimerLifecycle() is called inside TimerBar (always mounted), which
+  // registers the tick loop, IDB restore, and keyboard shortcuts globally.
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background md:flex-row">

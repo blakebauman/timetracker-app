@@ -17,12 +17,16 @@ export const useTimerStore = create<TimerStore>((set) => ({
   localStartTime: null,
   elapsed: 0,
 
-  setRunningEntry: (entry, localStartTime) =>
-    set({
-      runningEntry: entry,
-      localStartTime: localStartTime ?? (entry ? Date.now() : null),
-      elapsed: 0,
-    }),
+  // Computes elapsed synchronously from `localStartTime` instead of always
+  // zeroing it — a genuinely fresh start (localStartTime = now) still reads
+  // 0, but restoring an already-running entry (on mount, or mid-timer once
+  // an optimistic start's create request resolves) lands on the correct
+  // elapsed in the same update instead of a 0 frame that a later tick fixes.
+  setRunningEntry: (entry, localStartTime) => {
+    const start = localStartTime ?? (entry ? Date.now() : null);
+    const elapsed = entry && start ? Math.max(0, Math.floor((Date.now() - start) / 1000)) : 0;
+    set({ runningEntry: entry, localStartTime: start, elapsed });
+  },
 
   setElapsed: (seconds) => set({ elapsed: seconds }),
 

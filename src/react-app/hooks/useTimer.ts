@@ -10,90 +10,8 @@ import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
 import type { TimeEntry } from "@shared/schemas";
 
 export function useTimer() {
-  const { runningEntry, localStartTime, setElapsed, setRunningEntry, clearTimer } =
-    useTimerStore();
+  const { runningEntry, setRunningEntry, clearTimer } = useTimerStore();
   const queryClient = useQueryClient();
-
-  // ─── Tick loop + tab title ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!runningEntry || !localStartTime) {
-      document.title = "Time Tracker";
-      return;
-    }
-    const tick = () => {
-      const s = Math.floor((Date.now() - localStartTime) / 1000);
-      setElapsed(s);
-      document.title = `${formatSeconds(s)} — Time Tracker`;
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => {
-      clearInterval(id);
-      document.title = "Time Tracker";
-    };
-  }, [runningEntry?.id, localStartTime, setElapsed]);
-
-  // ─── Restore from server (+ IDB fallback) on mount ──────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const saved = await loadTimerState();
-      if (cancelled) return;
-      try {
-        const current = (await api.timeEntries.current()) as TimeEntry | null;
-        if (cancelled) return;
-        if (current) {
-          // Running entry on server — restore regardless of IDB state
-          const localStartTime = saved?.entryId === current.id
-            ? new Date(saved.startedAt).getTime()
-            : new Date(current.start).getTime();
-          setRunningEntry(current, localStartTime);
-          await saveTimerState({
-            entryId: current.id,
-            startedAt: localStartTime,
-            description: current.description,
-            projectId: current.projectId,
-            projectColor: current.projectColor,
-          });
-        } else {
-          // Nothing running on server — clear any stale IDB state
-          await clearTimerState();
-        }
-      } catch {
-        // Offline — fall back to IDB if available
-        if (saved) {
-          setRunningEntry(
-            {
-              id: saved.entryId,
-              description: saved.description,
-              projectId: saved.projectId,
-              projectColor: saved.projectColor,
-              projectName: null,
-              taskId: null,
-              taskName: null,
-              workspaceId: "",
-              start: new Date(saved.startedAt).toISOString(),
-              stop: null,
-              duration: null,
-              billable: false,
-              tags: [],
-              syncStatus: null,
-              externalId: null,
-              syncedAt: null,
-              syncError: null,
-              calendarEventId: null,
-              createdAt: new Date(saved.startedAt).toISOString(),
-              updatedAt: new Date(saved.startedAt).toISOString(),
-            },
-            saved.startedAt
-          );
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [setRunningEntry]);
 
   // Optimistically drop the just-started entry into every cached time-entries
   // range so it appears in the list immediately instead of after the create
@@ -268,9 +186,9 @@ export function useTimer() {
 
   // ─── Edit elapsed ────────────────────────────────────────────────────────
   // Set the running timer's elapsed time to `seconds` by shifting its start
-  // back to `now - seconds`; the timer keeps ticking from the new value. The
-  // display reads only `localStartTime`, so we update the store optimistically
-  // and persist to IDB, then mirror the new start to the server.
+  // back to `now - seconds`; the timer keeps ticking from the new value.
+  // setRunningEntry derives the displayed elapsed from the new start, so no
+  // separate setElapsed call is needed to avoid a flash.
   const editElapsedMutation = useMutation({
     mutationFn: (seconds: number) => {
       if (!runningEntry) throw new Error("No running timer");
@@ -283,7 +201,6 @@ export function useTimer() {
       if (!runningEntry) return;
       const newStart = Date.now() - seconds * 1000;
       setRunningEntry(runningEntry, newStart);
-      setElapsed(seconds); // avoid a 1-frame flash to 00:00:00 before the tick
       await saveTimerState({
         entryId: runningEntry.id,
         startedAt: newStart,
@@ -335,6 +252,110 @@ export function useTimer() {
     [runningEntry, editElapsedMutation]
   );
 
+  return {
+    startTimer,
+    stopTimer,
+    stopTimerAt,
+    discardTimer,
+    editElapsed,
+  };
+}
+
+// The global, once-per-app parts of the timer: the 1s tick loop/tab title,
+// restoring a running entry from the server (+ IDB fallback) on mount, and
+// the Alt+Shift+S/X keyboard shortcuts. useTimer() itself is a plain hook
+// re-instantiated by every component that calls it (EntryRow, FavoritesMenu,
+// CommandPalette, etc. all need its action functions) — mounting these
+// effects there too would fire the mount-restore fetch and register the
+// hotkeys once per consumer, each independently resetting the running
+// entry's elapsed time, which is exactly what produced the visible
+// 00:00:00-flickers-a-few-times bug on a hard refresh. Call this hook
+// exactly once, from TimerBar (always mounted).
+export function useTimerLifecycle() {
+  const { runningEntry, localStartTime, setElapsed, setRunningEntry } = useTimerStore();
+  const { startTimer, stopTimer } = useTimer();
+
+  // ─── Tick loop + tab title ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!runningEntry || !localStartTime) {
+      document.title = "Time Tracker";
+      return;
+    }
+    const tick = () => {
+      const s = Math.floor((Date.now() - localStartTime) / 1000);
+      setElapsed(s);
+      document.title = `${formatSeconds(s)} — Time Tracker`;
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearInterval(id);
+      document.title = "Time Tracker";
+    };
+  }, [runningEntry?.id, localStartTime, setElapsed]);
+
+  // ─── Restore from server (+ IDB fallback) on mount ──────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const saved = await loadTimerState();
+      if (cancelled) return;
+      try {
+        const current = (await api.timeEntries.current()) as TimeEntry | null;
+        if (cancelled) return;
+        if (current) {
+          // Running entry on server — restore regardless of IDB state
+          const localStartTime = saved?.entryId === current.id
+            ? new Date(saved.startedAt).getTime()
+            : new Date(current.start).getTime();
+          setRunningEntry(current, localStartTime);
+          await saveTimerState({
+            entryId: current.id,
+            startedAt: localStartTime,
+            description: current.description,
+            projectId: current.projectId,
+            projectColor: current.projectColor,
+          });
+        } else {
+          // Nothing running on server — clear any stale IDB state
+          await clearTimerState();
+        }
+      } catch {
+        // Offline — fall back to IDB if available
+        if (saved) {
+          setRunningEntry(
+            {
+              id: saved.entryId,
+              description: saved.description,
+              projectId: saved.projectId,
+              projectColor: saved.projectColor,
+              projectName: null,
+              taskId: null,
+              taskName: null,
+              workspaceId: "",
+              start: new Date(saved.startedAt).toISOString(),
+              stop: null,
+              duration: null,
+              billable: false,
+              tags: [],
+              syncStatus: null,
+              externalId: null,
+              syncedAt: null,
+              syncError: null,
+              calendarEventId: null,
+              createdAt: new Date(saved.startedAt).toISOString(),
+              updatedAt: new Date(saved.startedAt).toISOString(),
+            },
+            saved.startedAt
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [setRunningEntry]);
+
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────
   useHotkeys(
     "alt+shift+s",
@@ -353,12 +374,4 @@ export function useTimer() {
     { preventDefault: true },
     [runningEntry]
   );
-
-  return {
-    startTimer,
-    stopTimer,
-    stopTimerAt,
-    discardTimer,
-    editElapsed,
-  };
 }

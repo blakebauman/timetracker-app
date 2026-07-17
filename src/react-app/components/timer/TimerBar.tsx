@@ -10,16 +10,21 @@ import { TaskPicker } from "@/components/entries/TaskPicker";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
-import { useTimer } from "@/hooks/useTimer";
+import { useTimer, useTimerLifecycle } from "@/hooks/useTimer";
 import { useUpdateEntry } from "@/hooks/useEntries";
 import { cn } from "@/lib/utils";
 
 export function TimerBar() {
   const { runningEntry } = useTimerStore();
   const { startTimer, stopTimer, discardTimer } = useTimer();
+  // Owns the tick loop, mount-restore, and Alt+Shift+S/X hotkeys — must be
+  // called exactly once (TimerBar is always mounted), not from every
+  // component that just needs the action functions above.
+  useTimerLifecycle();
   const updateEntry = useUpdateEntry();
-  // Shared with the Alt+Shift+X hotkey (registered in useTimer) so both the
-  // trash-icon button and the keyboard shortcut open the same confirm dialog.
+  // Shared with the Alt+Shift+X hotkey (registered in useTimerLifecycle) so
+  // both the trash-icon button and the keyboard shortcut open the same
+  // confirm dialog.
   const confirmDiscard = useUIStore((s) => s.discardConfirmOpen);
   const setConfirmDiscard = useUIStore((s) => s.setDiscardConfirmOpen);
 
