@@ -50,7 +50,7 @@ export function DangerZoneCard() {
       <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium">Delete account</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs leading-normal text-muted-foreground">
             Permanently deletes your account and all associated data. This cannot be undone.
           </p>
         </div>

@@ -57,12 +57,12 @@ export function PasskeysCard() {
         <CardTitle className="text-base">Passkeys</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm leading-normal text-muted-foreground">
           Sign in with Touch ID, Windows Hello, or a security key — no password needed.
         </p>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm leading-normal text-muted-foreground">Loading…</p>
         ) : passkeys.length > 0 ? (
           <div className="space-y-2">
             {passkeys.map((p) => (
@@ -75,7 +75,7 @@ export function PasskeysCard() {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{p.name || "Passkey"}</p>
                     {p.createdAt && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs leading-normal text-muted-foreground">
                         Added {formatShortDate(toIso(p.createdAt))}
                       </p>
                     )}

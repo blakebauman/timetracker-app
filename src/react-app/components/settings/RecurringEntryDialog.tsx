@@ -157,7 +157,7 @@ export function RecurringEntryDialog({ open, onClose, editing }: RecurringEntryD
           <div className="flex items-center justify-between rounded-md border p-3">
             <div>
               <Label htmlFor="rec-billable">Billable</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 Mark each generated entry as billable.
               </p>
             </div>

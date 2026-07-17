@@ -128,7 +128,7 @@ export function TwoFactorCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         {stage === "idle" && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm leading-normal text-muted-foreground">
             {enabled
               ? "You'll be asked for a code from your authenticator app when you sign in."
               : "Add an authenticator app (TOTP) as a second step when signing in."}
@@ -166,13 +166,13 @@ export function TwoFactorCard() {
           <div className="space-y-4">
             {qr && (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm leading-normal text-muted-foreground">
                   Scan this QR code with your authenticator app, then enter the 6-digit code to finish.
                 </p>
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                   <img src={qr} alt="Two-factor QR code" className="rounded-md border" width={160} height={160} />
                   {secret && (
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs leading-normal text-muted-foreground">
                       <p className="mb-1">Or enter this key manually:</p>
                       <code className="rounded bg-muted px-1.5 py-1 font-mono break-all">{secret}</code>
                     </div>

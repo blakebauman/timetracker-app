@@ -100,7 +100,7 @@ export function SettingsPage() {
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm leading-normal text-muted-foreground">
           App preferences and data management
         </p>
       </div>
@@ -114,7 +114,7 @@ export function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <Label>Theme</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 Choose light, dark, or system default
               </p>
             </div>
@@ -130,7 +130,7 @@ export function SettingsPage() {
                 <Palette className="h-3.5 w-3.5" />
                 Auto-assign colors
               </Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 Give new projects a distinct color automatically. "Apply to existing"
                 uses AI to color your current projects distinctly.
               </p>
@@ -212,7 +212,7 @@ export function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="pref-billable">Default billable</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 New time entries are billable by default
               </p>
             </div>
@@ -229,7 +229,7 @@ export function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <Label>Time display format</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 How times are shown throughout the app
               </p>
             </div>
@@ -265,7 +265,7 @@ export function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <Label>Currency</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 Used for billable amounts in reports
               </p>
             </div>
@@ -289,7 +289,7 @@ export function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <Label>Week starts on</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 First day of the week in the calendar and timesheet
               </p>
             </div>
@@ -311,7 +311,7 @@ export function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="pref-weekends">Show weekends</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-normal text-muted-foreground">
                 Include Saturday and Sunday columns on the calendar
               </p>
             </div>
