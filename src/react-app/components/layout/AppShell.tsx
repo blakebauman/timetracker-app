@@ -27,7 +27,7 @@ export function AppShell() {
         <Sidebar />
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Offline banner */}
         {!isOnline && (
           <Alert variant="destructive" className="rounded-none border-x-0 border-t-0 py-2">
@@ -44,7 +44,7 @@ export function AppShell() {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto">
           <Suspense fallback={<PageFallback />}>
             {/* Keyed by route so each page crossfades in on navigation. */}
             <div key={location.pathname} className="h-full animate-fade-in">

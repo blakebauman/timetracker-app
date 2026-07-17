@@ -161,7 +161,7 @@ export function TaskBoardList() {
           }
         />
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl space-y-6 p-4">
             {sections.map((section) => (
               <div key={section.key}>

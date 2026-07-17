@@ -70,7 +70,7 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
           <SheetTitle>Edit Time Entry</SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
           <div className="space-y-1.5">
             <Label>Description</Label>
             <Textarea

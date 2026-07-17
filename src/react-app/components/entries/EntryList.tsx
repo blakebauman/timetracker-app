@@ -173,7 +173,7 @@ export function EntryList({ since, until }: EntryListProps) {
         </div>
       )}
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
           {days.map(({ dateKey, label, groups, totalSeconds }) => (
             <EntryGroup
