@@ -95,6 +95,40 @@ export function useTimer() {
     };
   }, [setRunningEntry]);
 
+  // Optimistically drop the just-started entry into every cached time-entries
+  // range so it appears in the list immediately instead of after the create
+  // round-trip — mirrors patchStopInCache below, just for the opposite edge.
+  const patchStartInCache = useCallback(
+    (entry: TimeEntry) => {
+      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) => {
+        if (!old || old.some((e) => e.id === entry.id)) return old;
+        return [entry, ...old];
+      });
+    },
+    [queryClient]
+  );
+
+  // Swap the optimistic placeholder for the real server entry once the create
+  // resolves, so the row picks up its real id without waiting on a refetch.
+  const replaceInCache = useCallback(
+    (optimisticId: string, entry: TimeEntry) => {
+      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
+        old?.map((e) => (e.id === optimisticId ? entry : e))
+      );
+    },
+    [queryClient]
+  );
+
+  // Roll back the optimistic row if the create request fails.
+  const removeFromCache = useCallback(
+    (id: string) => {
+      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
+        old?.filter((e) => e.id !== id)
+      );
+    },
+    [queryClient]
+  );
+
   // ─── Start timer ─────────────────────────────────────────────────────────
   const startMutation = useMutation({
     mutationFn: async (partial: {
@@ -138,9 +172,12 @@ export function useTimer() {
         updatedAt: new Date(now).toISOString(),
       };
       setRunningEntry(optimistic, now);
+      patchStartInCache(optimistic);
+      return { optimisticId: optimistic.id };
     },
-    onSuccess: async (entry) => {
+    onSuccess: async (entry, _partial, context) => {
       setRunningEntry(entry, new Date(entry.start).getTime());
+      if (context) replaceInCache(context.optimisticId, entry);
       await saveTimerState({
         entryId: entry.id,
         startedAt: new Date(entry.start).getTime(),
@@ -149,7 +186,8 @@ export function useTimer() {
         projectColor: entry.projectColor,
       });
     },
-    onError: () => {
+    onError: (_err, _partial, context) => {
+      if (context) removeFromCache(context.optimisticId);
       clearTimer();
       toast.error("Failed to start timer");
     },
