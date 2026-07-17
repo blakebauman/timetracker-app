@@ -71,12 +71,12 @@ export function GoogleCalendarCard() {
         {isLoading ? (
           <Skeleton className="h-4 w-64" />
         ) : !status?.configured ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm leading-normal text-muted-foreground">
             Calendar sync isn't configured on this server yet.
           </p>
         ) : status.connected ? (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm leading-normal text-muted-foreground">
               Syncing {status.accountEmail ? <span className="font-medium">{status.accountEmail}</span> : "your calendar"}.
               Your events show up on the <span className="font-medium">Calendar</span> as dashed blocks —
               click one to track it as a time entry.
@@ -84,7 +84,7 @@ export function GoogleCalendarCard() {
             <div className="flex items-center justify-between rounded-md border p-3">
               <div className="pr-4">
                 <Label htmlFor="auto-track">Auto-track calendar events</Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
                   Automatically create a time entry when a calendar event ends.
                 </p>
               </div>
@@ -97,7 +97,7 @@ export function GoogleCalendarCard() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm leading-normal text-muted-foreground">
             Connect your Google Calendar to see your events on the calendar and turn
             them into tracked time with one click. Read-only — we never change your calendar.
           </p>

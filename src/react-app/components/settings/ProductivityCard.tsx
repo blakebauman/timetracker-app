@@ -77,7 +77,7 @@ export function ProductivityCard() {
             <div className="flex items-center justify-between">
               <div className="pr-4">
                 <Label>Browser notifications</Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
                   Required for reminders and pomodoro alerts.
                 </p>
               </div>
@@ -93,7 +93,7 @@ export function ProductivityCard() {
         <div className="flex items-center justify-between gap-3">
           <div className="pr-2">
             <Label htmlFor="pref-idle">Idle detection</Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Prompt to keep or discard time when you step away while tracking.
             </p>
           </div>
@@ -117,7 +117,7 @@ export function ProductivityCard() {
         <div className="flex items-center justify-between gap-3">
           <div className="pr-2">
             <Label htmlFor="pref-reminder">Not-tracking reminders</Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Nudge me when no timer is running.
             </p>
           </div>
@@ -141,7 +141,7 @@ export function ProductivityCard() {
         <div className="flex items-center justify-between gap-3">
           <div className="pr-2">
             <Label htmlFor="pref-pomodoro">Pomodoro</Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Focus / break cycle alerts while a timer runs.
             </p>
           </div>

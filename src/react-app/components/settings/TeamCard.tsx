@@ -136,7 +136,7 @@ export function TeamCard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No members yet.</p>
+                <p className="text-sm leading-normal text-muted-foreground">No members yet.</p>
               )}
             </div>
 

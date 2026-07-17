@@ -53,7 +53,7 @@ export function RecurringEntriesCard() {
       </CardHeader>
       <CardContent className="space-y-2">
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm leading-normal text-muted-foreground">
             Auto-log routine time — a standup, a daily review — on a weekly schedule.
             New occurrences are created automatically at the scheduled time.
           </p>
