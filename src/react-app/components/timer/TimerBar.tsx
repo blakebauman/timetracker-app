@@ -9,6 +9,7 @@ import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useTimerStore } from "@/stores/timerStore";
+import { useUIStore } from "@/stores/uiStore";
 import { useTimer } from "@/hooks/useTimer";
 import { useUpdateEntry } from "@/hooks/useEntries";
 import { cn } from "@/lib/utils";
@@ -17,11 +18,14 @@ export function TimerBar() {
   const { runningEntry } = useTimerStore();
   const { startTimer, stopTimer, discardTimer, isStarting, isStopping } = useTimer();
   const updateEntry = useUpdateEntry();
+  // Shared with the Alt+Shift+X hotkey (registered in useTimer) so both the
+  // trash-icon button and the keyboard shortcut open the same confirm dialog.
+  const confirmDiscard = useUIStore((s) => s.discardConfirmOpen);
+  const setConfirmDiscard = useUIStore((s) => s.setDiscardConfirmOpen);
 
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const descRef = useRef<HTMLInputElement>(null);
 
   const isRunning = Boolean(runningEntry);

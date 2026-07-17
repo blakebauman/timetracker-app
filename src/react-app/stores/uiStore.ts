@@ -46,6 +46,7 @@ interface UIStore {
   productivity: ProductivitySettings;
   commandOpen: boolean;
   shortcutsOpen: boolean;
+  discardConfirmOpen: boolean;
   // Transient: the entry row to flash-highlight (e.g. the one just stopped so the
   // eye can track where it landed in the list). Never persisted.
   highlightedEntryId: string | null;
@@ -68,6 +69,7 @@ interface UIStore {
   openCommand: () => void;
   setShortcutsOpen: (v: boolean) => void;
   openShortcuts: () => void;
+  setDiscardConfirmOpen: (v: boolean) => void;
   flashEntry: (id: string) => void;
 }
 
@@ -101,6 +103,7 @@ export const useUIStore = create<UIStore>()(
       productivity: DEFAULT_PRODUCTIVITY,
       commandOpen: false,
       shortcutsOpen: false,
+      discardConfirmOpen: false,
       highlightedEntryId: null,
 
       toggleSidebar: () =>
@@ -151,6 +154,7 @@ export const useUIStore = create<UIStore>()(
       openCommand: () => set({ commandOpen: true }),
       setShortcutsOpen: (v) => set({ shortcutsOpen: v }),
       openShortcuts: () => set({ shortcutsOpen: true }),
+      setDiscardConfirmOpen: (v) => set({ discardConfirmOpen: v }),
       flashEntry: (id) => {
         clearTimeout(flashTimeout);
         set({ highlightedEntryId: id });

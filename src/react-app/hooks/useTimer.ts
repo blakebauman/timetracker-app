@@ -304,11 +304,16 @@ export function useTimer() {
     { preventDefault: true },
     [runningEntry, stopTimer, startTimer]
   );
+  // Routes through the same confirm dialog as the trash-icon button (owned by
+  // TimerBar, opened via the shared uiStore flag) rather than discarding
+  // straight away — a stray keypress shouldn't silently delete tracked time.
   useHotkeys(
     "alt+shift+x",
-    () => discardTimer(),
+    () => {
+      if (runningEntry) useUIStore.getState().setDiscardConfirmOpen(true);
+    },
     { preventDefault: true },
-    [discardTimer]
+    [runningEntry]
   );
 
   return {
