@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AiQuickEntryRawSchema, type AiQuickEntryRaw } from "@shared/schemas";
+import { DISTINCT_COLORS, PALETTE } from "./colors";
 
 // Small, fast, JSON-mode-capable — good fit for a single-user, low-latency call.
 const QUICK_ENTRY_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
@@ -143,6 +144,62 @@ ${styleInstruction} Do not invent work not listed above. Output only the summary
   const summary = raw.response?.trim();
   if (!summary) throw new AiParseError("AI returned an empty summary");
   return summary;
+}
+
+// ─── Project color assignment ─────────────────────────────────────────────────
+
+const ProjectColorSchema = z.object({
+  assignments: z.array(z.object({ name: z.string(), color: z.string() })),
+});
+
+/**
+ * Ask the model to assign each project a distinct palette color, grouping related
+ * engagements into nearby hues when the names suggest it. Returns a name→hex map
+ * containing only palette-valid colors; the caller enforces distinctness and
+ * fills any gaps deterministically, so a poor AI response can't make things worse.
+ */
+export async function runProjectColorAssignment(
+  ai: Ai,
+  projectNames: string[]
+): Promise<Map<string, string>> {
+  const system = `You assign a display color to each project in a time-tracking app so the UI is colorful and easy to scan.
+
+Rules:
+- Choose each color ONLY from this palette (hex): ${DISTINCT_COLORS.join(", ")}.
+- Make every project's color as visually distinct from the others as you can.
+- If several projects clearly belong to the same client or engagement (a shared code or prefix in the name), you MAY use a related hue family for them, but each project must still get a DIFFERENT hex.
+- Output ONLY JSON of the form { "assignments": [ { "name": "<exact project name>", "color": "<hex from the palette>" } ] }. Use the project names exactly as given.`;
+  const user = `Projects:\n${projectNames.map((n) => `- ${n}`).join("\n")}`;
+
+  let raw: unknown;
+  try {
+    raw = await ai.run(
+      QUICK_ENTRY_MODEL,
+      {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: z.toJSONSchema(ProjectColorSchema),
+        },
+      },
+      { gateway: GATEWAY }
+    );
+  } catch {
+    throw new AiParseError("AI is unavailable right now");
+  }
+
+  const parsed = ProjectColorSchema.safeParse(extractJson(raw));
+  if (!parsed.success) throw new AiParseError("AI returned an unexpected response");
+
+  const map = new Map<string, string>();
+  for (const a of parsed.data.assignments) {
+    const color = a.color.trim().toLowerCase();
+    if (PALETTE.has(color)) map.set(a.name, color);
+  }
+  return map;
 }
 
 // ─── Fuzzy grounding resolution ───────────────────────────────────────────────

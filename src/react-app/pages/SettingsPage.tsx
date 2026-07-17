@@ -131,7 +131,8 @@ export function SettingsPage() {
                 Auto-assign colors
               </Label>
               <p className="text-xs text-muted-foreground">
-                Give new projects a distinct color automatically for a more colorful UI.
+                Give new projects a distinct color automatically. "Apply to existing"
+                uses AI to color your current projects distinctly.
               </p>
             </div>
             <div className="flex items-center gap-2">

@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { CreateProjectSchema, UpdateProjectSchema } from "@shared/schemas";
-import { TAG_COLORS } from "../lib/colors";
+import { DISTINCT_COLORS, spreadColor } from "../lib/colors";
+import { runProjectColorAssignment } from "../lib/ai";
 
 const PROJECT_SELECT = `
   SELECT p.*, c.name AS client_name,
@@ -80,25 +81,57 @@ export const projectsRouter = new Hono<{
 
     return c.json(formatProject(results[0]), 201);
   })
-  // Spread distinct palette colors across every active project (stepping through
-  // the palette so adjacent projects differ). Powers "Auto-assign colors".
+  // Auto-assign colors: ask Workers AI to give each project a distinct, sensibly
+  // grouped palette color, then enforce distinctness + fill gaps with a
+  // deterministic warm/cool spread so a poor/absent AI response never regresses.
   .post("/recolor", async (c) => {
     const workspaceId = c.get("workspaceId");
     const { results } = await c.env.DB.prepare(
-      `SELECT id FROM projects WHERE workspace_id = ? AND active = 1 ORDER BY name ASC`
-    ).bind(workspaceId).all<{ id: string }>();
+      `SELECT id, name FROM projects WHERE workspace_id = ? ORDER BY name ASC`
+    ).bind(workspaceId).all<{ id: string; name: string }>();
 
-    if (results.length) {
-      const stmt = c.env.DB.prepare(
-        `UPDATE projects SET color = ? WHERE id = ? AND workspace_id = ?`
+    if (!results.length) return c.json({ recolored: 0, usedAI: false });
+
+    // AI suggestion (best-effort) keyed by exact project name.
+    let aiColors = new Map<string, string>();
+    let usedAI = false;
+    try {
+      aiColors = await runProjectColorAssignment(
+        c.env.AI,
+        results.map((r) => r.name)
       );
-      await c.env.DB.batch(
-        results.map((r, i) =>
-          stmt.bind(TAG_COLORS[i % TAG_COLORS.length], r.id, workspaceId)
-        )
-      );
+      usedAI = aiColors.size > 0;
+    } catch {
+      // AI unavailable / bad response — fall through to the deterministic spread.
     }
-    return c.json({ recolored: results.length });
+
+    // Assign in order: take the AI color when valid and not already used;
+    // otherwise the next unused deterministic-spread color. Guarantees distinct
+    // colors up to the palette size (18), then cycles.
+    const used = new Set<string>();
+    let spreadIdx = 0;
+    const nextSpread = () => {
+      // Advance to the next spread color not yet taken this run.
+      for (let i = 0; i < DISTINCT_COLORS.length; i++) {
+        const color = spreadColor(spreadIdx++);
+        if (!used.has(color)) return color;
+      }
+      return spreadColor(spreadIdx++); // palette exhausted — allow reuse
+    };
+
+    const assignments = results.map((r) => {
+      const ai = aiColors.get(r.name);
+      const color = ai && !used.has(ai) ? ai : nextSpread();
+      used.add(color);
+      return { id: r.id, color };
+    });
+
+    const stmt = c.env.DB.prepare(
+      `UPDATE projects SET color = ? WHERE id = ? AND workspace_id = ?`
+    );
+    await c.env.DB.batch(assignments.map((a) => stmt.bind(a.color, a.id, workspaceId)));
+
+    return c.json({ recolored: assignments.length, usedAI });
   })
   .get("/:id", async (c) => {
     const { results } = await c.env.DB.prepare(

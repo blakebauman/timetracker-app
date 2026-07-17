@@ -71,18 +71,18 @@ export function useDeleteProject() {
   });
 }
 
-// Spread distinct palette colors across all projects in one shot.
+// Assign distinct palette colors across all projects (AI-assisted, server-side).
 export function useRecolorProjects() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => api.projects.recolor(),
-    onSuccess: ({ recolored }) => {
+    onSuccess: ({ recolored, usedAI }) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
       toast.success(
         recolored > 0
-          ? `Recolored ${recolored} ${recolored === 1 ? "project" : "projects"}`
+          ? `Recolored ${recolored} ${recolored === 1 ? "project" : "projects"}${usedAI ? " with AI" : ""}`
           : "No projects to recolor"
       );
     },
