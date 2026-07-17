@@ -52,9 +52,14 @@ export function AiSummaryDialog({ since, until }: AiSummaryDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          aria-label="Draft summary"
+          title="Draft AI summary"
+        >
           <Sparkles className="h-4 w-4" />
-          Draft summary
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">

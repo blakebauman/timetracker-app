@@ -49,9 +49,14 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="Saved"
+            title="Saved reports"
+          >
             <Bookmark className="h-3.5 w-3.5" />
-            Saved
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">

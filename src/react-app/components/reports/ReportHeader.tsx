@@ -114,9 +114,14 @@ export function ReportHeader({
         {onExport && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Export"
+                title="Export"
+              >
                 <Download className="h-4 w-4" />
-                Export
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

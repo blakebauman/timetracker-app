@@ -208,21 +208,23 @@ export function TimerWorkspaceHeader({
 
           <Button
             variant="outline"
-            size="sm"
-            className="gap-1.5 text-xs"
+            size="icon"
+            className="h-8 w-8"
             onClick={onAddEntry}
+            aria-label="Add entry"
+            title="Add entry"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Add entry
+            <Plus className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
-            size="sm"
-            className="gap-1.5 text-xs"
+            size="icon"
+            className="h-8 w-8"
             onClick={onAiQuickAdd}
+            aria-label="AI quick add"
+            title="AI quick add"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            AI quick add
+            <Sparkles className="h-4 w-4" />
           </Button>
         </div>
       </div>
