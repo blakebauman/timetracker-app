@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Sheet,
   SheetContent,
@@ -144,11 +145,7 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
 
           <div className="space-y-1.5">
             <Label>Date</Label>
-            <Input
-              type="date"
-              value={toDateInputValue(start)}
-              onChange={(e) => handleDateChange(e.target.value)}
-            />
+            <DatePicker value={new Date(start)} onSelect={(date) => handleDateChange(toDateInputValue(date))} />
           </div>
 
           <div className="flex gap-3">

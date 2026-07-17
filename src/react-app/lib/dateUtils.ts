@@ -219,9 +219,10 @@ export function applyTimeOfDay(iso: string, hours: number, minutes: number): str
   return d.toISOString();
 }
 
-// Local YYYY-MM-DD for an ISO timestamp — the value shape <input type="date"> wants.
-export function toDateInputValue(iso: string): string {
-  const d = new Date(iso);
+// Local YYYY-MM-DD for an ISO timestamp (or a Date, e.g. from a Calendar's
+// onSelect) — the value shape <input type="date"> wants.
+export function toDateInputValue(iso: string | Date): string {
+  const d = typeof iso === "string" ? new Date(iso) : iso;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 

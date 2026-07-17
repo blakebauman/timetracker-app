@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -15,23 +15,13 @@ import {
 import { ProjectPicker } from "./ProjectPicker";
 import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
+import { TimeOfDayInput } from "./TimeOfDayInput";
 import { useCreateEntry } from "@/hooks/useEntries";
-import { formatDurationShort } from "@/lib/dateUtils";
+import { formatDurationShort, dateDelta, shiftDate, toDateInputValue } from "@/lib/dateUtils";
 
 interface AddEntryDialogProps {
   open: boolean;
   onClose: () => void;
-}
-
-function toDateInput(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function toIso(dateStr: string, timeStr: string): string | null {
-  if (!dateStr || !timeStr) return null;
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const [h, min] = timeStr.split(":").map(Number);
-  return new Date(y, m - 1, d, h, min, 0, 0).toISOString();
 }
 
 export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
@@ -40,11 +30,20 @@ export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [billable, setBillable] = useState(false);
-  const [date, setDate] = useState(() => toDateInput(new Date()));
-  const [startTime, setStartTime] = useState("");
-  const [stopTime, setStopTime] = useState("");
+  const [date, setDate] = useState(() => new Date());
+  const [start, setStart] = useState<string | null>(null);
+  const [stop, setStop] = useState<string | null>(null);
 
   const createEntry = useCreateEntry();
+
+  // Anchor for Start/Stop's own calendar date before either has a value yet —
+  // noon avoids any DST-transition edge case at midnight.
+  const fallbackIso = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    12
+  ).toISOString();
 
   const reset = () => {
     setDescription("");
@@ -52,9 +51,9 @@ export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
     setTaskId(null);
     setTags([]);
     setBillable(false);
-    setDate(toDateInput(new Date()));
-    setStartTime("");
-    setStopTime("");
+    setDate(new Date());
+    setStart(null);
+    setStop(null);
   };
 
   const handleClose = () => {
@@ -62,8 +61,15 @@ export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
     onClose();
   };
 
-  const start = toIso(date, startTime);
-  const stop = toIso(date, stopTime);
+  // Moves both Start and Stop (if already set) to the new date, preserving
+  // their time-of-day — same convention as EntryForm's Date field.
+  const handleDateSelect = (newDate: Date) => {
+    const deltaDays = dateDelta(date.toISOString(), toDateInputValue(newDate));
+    setDate(newDate);
+    setStart((s) => (s ? shiftDate(s, deltaDays) : s));
+    setStop((s) => (s ? shiftDate(s, deltaDays) : s));
+  };
+
   const durationSeconds =
     start && stop ? Math.round((new Date(stop).getTime() - new Date(start).getTime()) / 1000) : null;
   const hasValidRange = durationSeconds !== null && durationSeconds > 0;
@@ -123,26 +129,21 @@ export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
 
           <div className="space-y-1.5">
             <Label>Date</Label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-            />
+            <DatePicker value={date} onSelect={handleDateSelect} />
           </div>
 
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
               <Label>Start</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <TimeOfDayInput value={start} fallbackIso={fallbackIso} onChange={setStart} allowClear />
             </div>
             <div className="flex-1 space-y-1.5">
               <Label>Stop</Label>
-              <Input type="time" value={stopTime} onChange={(e) => setStopTime(e.target.value)} />
+              <TimeOfDayInput value={stop} fallbackIso={stop ?? fallbackIso} onChange={setStop} allowClear />
             </div>
           </div>
 
-          {startTime && stopTime && !hasValidRange && (
+          {start && stop && !hasValidRange && (
             <p className="text-xs text-destructive">Stop time must be after start time.</p>
           )}
           {hasValidRange && (

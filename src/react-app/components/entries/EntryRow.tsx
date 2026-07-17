@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EntryForm } from "./EntryForm";
+import { TimeRangePopover } from "./TimeRangePopover";
 import { useUpdateEntry, useDeleteEntry, useCreateEntry } from "@/hooks/useEntries";
 import { useProjects, useTagColors } from "@/hooks/useProjects";
 import { usePushEntries, useIntegrations } from "@/hooks/useIntegrations";
@@ -248,12 +249,26 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           </Tooltip>
         )}
 
-        {/* Time range */}
-        <div className="hidden text-xs text-muted-foreground sm:flex items-center gap-1">
-          <span>{formatEntryTime(entry.start, timeFormat)}</span>
-          <span>–</span>
-          <span>{entry.stop ? formatEntryTime(entry.stop, timeFormat) : "..."}</span>
-        </div>
+        {/* Time range — click to edit start/stop + date inline (running
+            entries have no stop yet, so they stay plain text). */}
+        {entry.stop ? (
+          <TimeRangePopover
+            start={entry.start}
+            stop={entry.stop}
+            onChange={({ start, stop }) => updateEntry.mutate({ id: entry.id, data: { start, stop } })}
+            triggerClassName="hidden text-xs text-muted-foreground sm:flex items-center gap-1 px-1"
+          >
+            <span>{formatEntryTime(entry.start, timeFormat)}</span>
+            <span>–</span>
+            <span>{formatEntryTime(entry.stop, timeFormat)}</span>
+          </TimeRangePopover>
+        ) : (
+          <div className="hidden text-xs text-muted-foreground sm:flex items-center gap-1">
+            <span>{formatEntryTime(entry.start, timeFormat)}</span>
+            <span>–</span>
+            <span>...</span>
+          </div>
+        )}
 
         {/* Duration — click to edit */}
         {editingDuration ? (
