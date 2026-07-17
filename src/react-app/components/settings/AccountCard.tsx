@@ -115,10 +115,10 @@ export function AccountCard() {
                   }}
                   autoFocus
                 />
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleSaveName} aria-label="Save name">
+                <Button size="icon-sm" variant="ghost" className="shrink-0" onClick={handleSaveName} aria-label="Save name">
                   <Check className="h-4 w-4 text-success" />
                 </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setEditingName(false)} aria-label="Cancel">
+                <Button size="icon-sm" variant="ghost" className="shrink-0" onClick={() => setEditingName(false)} aria-label="Cancel">
                   <X className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
@@ -126,9 +126,9 @@ export function AccountCard() {
               <div className="flex items-center gap-2">
                 <span className="text-sm">{user?.name ?? "—"}</span>
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
-                  className="h-7 w-7 text-muted-foreground"
+                  className="text-muted-foreground"
                   onClick={() => {
                     setNameValue(user?.name ?? "");
                     setEditingName(true);

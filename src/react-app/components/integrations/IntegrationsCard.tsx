@@ -69,18 +69,18 @@ export function IntegrationsCard() {
                   <p className="truncate text-xs text-muted-foreground">{integration.baseUrl}</p>
                 </div>
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
-                  className="h-7 w-7 shrink-0"
+                  className="shrink-0"
                   onClick={() => openEdit(integration)}
                   title="Edit"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
-                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                  className="shrink-0 text-destructive hover:text-destructive"
                   onClick={() => setDeleteTarget(integration)}
                   disabled={deleteIntegration.isPending}
                   title="Remove"

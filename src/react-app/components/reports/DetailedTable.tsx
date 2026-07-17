@@ -211,7 +211,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
               <Trash2 className="h-3.5 w-3.5" />
               Delete
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={clearSelection} aria-label="Clear selection">
+            <Button variant="ghost" size="icon-sm" onClick={clearSelection} aria-label="Clear selection">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -308,7 +308,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                 <TableCell className="py-2.5 print:hidden">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                      <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

@@ -163,8 +163,7 @@ export function EntryList({ since, until }: EntryListProps) {
             </Button>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+              size="icon-sm"
               aria-label="Clear selection"
               onClick={clearSelection}
             >

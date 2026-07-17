@@ -140,11 +140,12 @@ export function SummaryCards({
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 text-xs text-muted-foreground"
+              size="icon-sm"
+              className="text-muted-foreground"
+              aria-label="Metrics"
+              title="Choose metrics"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              Metrics
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

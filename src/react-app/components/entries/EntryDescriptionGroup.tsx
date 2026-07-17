@@ -147,8 +147,7 @@ export function EntryDescriptionGroup({
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-7 w-7"
+            size="icon-sm"
             title="Continue"
             onClick={handleContinue}
           >
@@ -156,7 +155,7 @@ export function EntryDescriptionGroup({
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Entry group actions">
+              <Button variant="ghost" size="icon-sm" aria-label="Entry group actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>

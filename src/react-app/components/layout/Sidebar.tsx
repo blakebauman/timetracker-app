@@ -155,8 +155,8 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
             )}
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+              size="icon-sm"
+              className="shrink-0 text-muted-foreground hover:text-destructive"
               onClick={handleSignOut}
               title="Sign out"
             >
@@ -254,8 +254,8 @@ export function Sidebar() {
               </span>
               <Button
                 variant="ghost"
-                size="icon"
-                className="absolute right-2 h-8 w-8 shrink-0 text-muted-foreground"
+                size="icon-sm"
+                className="absolute right-2 shrink-0 text-muted-foreground"
                 onClick={toggleSidebar}
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"

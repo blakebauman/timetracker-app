@@ -83,7 +83,7 @@ export function ClientList() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Client actions">
+                <Button variant="ghost" size="icon-sm" aria-label="Client actions">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
