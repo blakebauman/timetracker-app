@@ -208,8 +208,7 @@ export function TimerWorkspaceHeader({
 
           <Button
             variant="outline"
-            size="icon"
-            className="h-8 w-8"
+            size="icon-sm"
             onClick={onAddEntry}
             aria-label="Add entry"
             title="Add entry"
@@ -218,8 +217,7 @@ export function TimerWorkspaceHeader({
           </Button>
           <Button
             variant="outline"
-            size="icon"
-            className="h-8 w-8"
+            size="icon-sm"
             onClick={onAiQuickAdd}
             aria-label="AI quick add"
             title="AI quick add"

@@ -116,8 +116,7 @@ export function ReportHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                size="icon"
-                className="h-8 w-8"
+                size="icon-sm"
                 aria-label="Export"
                 title="Export"
               >

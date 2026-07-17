@@ -51,8 +51,7 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            size="icon"
-            className="h-8 w-8"
+            size="icon-sm"
             aria-label="Saved"
             title="Saved reports"
           >

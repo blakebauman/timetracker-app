@@ -140,8 +140,8 @@ export function SummaryCards({
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground"
+              size="icon-sm"
+              className="text-muted-foreground"
               aria-label="Metrics"
               title="Choose metrics"
             >
