@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -122,14 +123,19 @@ export function TeamCard() {
                           </Select>
                         )}
                         {member.role !== "owner" && (
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            onClick={() => handleRemoveMember(member.id)}
-                            title="Remove member"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon-xs"
+                                variant="ghost"
+                                onClick={() => handleRemoveMember(member.id)}
+                                aria-label="Remove member"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Remove member</TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </div>
@@ -153,14 +159,19 @@ export function TeamCard() {
                           <Mail className="h-3.5 w-3.5" />
                           {invitation.email}
                         </span>
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          onClick={() => handleCancelInvite(invitation.id)}
-                          title="Cancel invitation"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon-xs"
+                              variant="ghost"
+                              onClick={() => handleCancelInvite(invitation.id)}
+                              aria-label="Cancel invitation"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Cancel invitation</TooltipContent>
+                        </Tooltip>
                       </div>
                     ))}
                 </div>

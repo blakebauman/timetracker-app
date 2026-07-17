@@ -8,6 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorDot } from "@/components/ColorDot";
 import { useFavorites, useCreateFavorite, useDeleteFavorite } from "@/hooks/useFavorites";
 import { useTimer } from "@/hooks/useTimer";
@@ -60,20 +61,24 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "h-8 w-8 text-muted-foreground hover:text-foreground",
-            favorites.length > 0 && "text-amber-500 hover:text-amber-500"
-          )}
-          title="Favorites"
-          aria-label="Favorites"
-        >
-          <Star className={cn("h-4 w-4", favorites.length > 0 && "fill-current")} />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-8 w-8 text-muted-foreground hover:text-foreground",
+                favorites.length > 0 && "text-amber-500 hover:text-amber-500"
+              )}
+              aria-label="Favorites"
+            >
+              <Star className={cn("h-4 w-4", favorites.length > 0 && "fill-current")} />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Favorites</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>Favorites</DropdownMenuLabel>
         <DropdownMenuSeparator />

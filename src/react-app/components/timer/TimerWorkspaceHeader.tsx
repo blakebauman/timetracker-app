@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimerViewSwitcher } from "./TimerViewSwitcher";
 import {
   CALENDAR_SLOT_HEIGHT_MIN,
@@ -98,22 +99,22 @@ export function TimerWorkspaceHeader({
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
         <div className="flex items-center gap-2">
           <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onPrev}
-              aria-label="Previous week"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onNext}
-              aria-label="Next week"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" onClick={onPrev} aria-label="Previous week">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Previous week</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" onClick={onNext} aria-label="Next week">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Next week</TooltipContent>
+            </Tooltip>
           </div>
           <Button variant="outline" size="sm" className="h-8" onClick={onToday}>
             Today
@@ -127,53 +128,73 @@ export function TimerWorkspaceHeader({
           {showCalendarControls && (
             <>
               {/* Show/hide weekend columns */}
-              <Button
-                variant={showWeekends ? "outline" : "ghost"}
-                size="icon-sm"
-                onClick={onToggleWeekends}
-                aria-pressed={showWeekends}
-                title={showWeekends ? "Hide weekends" : "Show weekends"}
-                aria-label={showWeekends ? "Hide weekends" : "Show weekends"}
-              >
-                <CalendarRange className="h-3.5 w-3.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showWeekends ? "outline" : "ghost"}
+                    size="icon-sm"
+                    onClick={onToggleWeekends}
+                    aria-pressed={showWeekends}
+                    aria-label={showWeekends ? "Hide weekends" : "Show weekends"}
+                  >
+                    <CalendarRange className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{showWeekends ? "Hide weekends" : "Show weekends"}</TooltipContent>
+              </Tooltip>
 
               {/* Show/hide untracked-gap fill markers (time grid only) */}
               {!isMonthView && (
-                <Button
-                  variant={showGaps ? "outline" : "ghost"}
-                  size="icon-sm"
-                  onClick={onToggleGaps}
-                  aria-pressed={showGaps}
-                  title={showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
-                  aria-label={showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
-                >
-                  <SquareDashedBottom className="h-3.5 w-3.5" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={showGaps ? "outline" : "ghost"}
+                      size="icon-sm"
+                      onClick={onToggleGaps}
+                      aria-pressed={showGaps}
+                      aria-label={showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
+                    >
+                      <SquareDashedBottom className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
+                  </TooltipContent>
+                </Tooltip>
               )}
 
               {/* Zoom (slot height) — not meaningful in the month grid */}
               {!isMonthView && (
                 <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={onZoomOut}
-                    disabled={slotHeight <= CALENDAR_SLOT_HEIGHT_MIN}
-                    aria-label="Zoom out"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={onZoomOut}
+                        disabled={slotHeight <= CALENDAR_SLOT_HEIGHT_MIN}
+                        aria-label="Zoom out"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom out</TooltipContent>
+                  </Tooltip>
                   <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={onZoomIn}
-                    disabled={slotHeight >= CALENDAR_SLOT_HEIGHT_MAX}
-                    aria-label="Zoom in"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={onZoomIn}
+                        disabled={slotHeight >= CALENDAR_SLOT_HEIGHT_MAX}
+                        aria-label="Zoom in"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom in</TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
@@ -200,24 +221,32 @@ export function TimerWorkspaceHeader({
 
           <TimerViewSwitcher view={view} onChange={onViewChange} />
 
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={onAddEntry}
-            aria-label="Add entry"
-            title="Add entry"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={onAiQuickAdd}
-            aria-label="AI quick add"
-            title="AI quick add"
-          >
-            <Sparkles className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={onAddEntry}
+                aria-label="Add entry"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add entry</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={onAiQuickAdd}
+                aria-label="AI quick add"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>AI quick add</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -227,15 +256,24 @@ export function TimerWorkspaceHeader({
         <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-muted">
           {totalSeconds > 0 &&
             segments.map((seg) => (
-              <div
-                key={seg.projectId ?? "none"}
-                className="h-full first:rounded-l-full last:rounded-r-full"
-                style={{
-                  width: `${(seg.seconds / totalSeconds) * 100}%`,
-                  backgroundColor: seg.color,
-                }}
-                title={`${seg.projectName ?? "No project"} · ${formatDurationShort(seg.seconds)}`}
-              />
+              <Tooltip key={seg.projectId ?? "none"}>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full first:rounded-l-full last:rounded-r-full"
+                    style={{
+                      width: `${(seg.seconds / totalSeconds) * 100}%`,
+                      backgroundColor: seg.color,
+                    }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  {seg.projectName ?? "No project"}
+                  <span className="ml-1.5 text-background/60">
+                    {formatDurationShort(seg.seconds)} ·{" "}
+                    {Math.round((seg.seconds / totalSeconds) * 100)}%
+                  </span>
+                </TooltipContent>
+              </Tooltip>
             ))}
         </div>
         <span className="text-xs font-semibold tabular-nums">

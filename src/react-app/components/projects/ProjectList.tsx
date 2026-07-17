@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ProjectForm } from "./ProjectForm";
 import { TaskList } from "./TaskList";
 import { useAllProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
@@ -123,17 +124,22 @@ export function ProjectList() {
                     {/* Budget progress bar */}
                     {budgetPercent !== null && (
                       <div className="mt-1.5 flex items-center gap-2">
-                        <Progress
-                          value={budgetPercent}
-                          className={cn(
-                            "h-1.5 flex-1",
-                            budgetPercent >= 100
-                              ? "bg-destructive/20 [&>div]:bg-destructive"
-                              : budgetPercent >= 80
-                              ? "bg-warning/20 [&>div]:bg-warning"
-                              : undefined
-                          )}
-                        />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Progress
+                              value={budgetPercent}
+                              className={cn(
+                                "h-1.5 flex-1",
+                                budgetPercent >= 100
+                                  ? "bg-destructive/20 [&>div]:bg-destructive"
+                                  : budgetPercent >= 80
+                                  ? "bg-warning/20 [&>div]:bg-warning"
+                                  : undefined
+                              )}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>{Math.round(budgetPercent)}% of budget used</TooltipContent>
+                        </Tooltip>
                         <span className="text-[10px] tabular-nums text-muted-foreground">
                           {formatDurationShort(project.trackedSeconds)} / {project.estimatedHours}h
                         </span>
@@ -142,21 +148,26 @@ export function ProjectList() {
                   </div>
 
                   {/* Tasks toggle */}
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-muted-foreground"
-                      title="Show tasks"
-                    >
-                      <ChevronDown
-                        className={cn(
-                          "h-3.5 w-3.5 transition-transform duration-200",
-                          isExpanded && "rotate-180"
-                        )}
-                      />
-                    </Button>
-                  </CollapsibleTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground"
+                          aria-label={isExpanded ? "Hide tasks" : "Show tasks"}
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "h-3.5 w-3.5 transition-transform duration-200",
+                              isExpanded && "rotate-180"
+                            )}
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{isExpanded ? "Hide tasks" : "Show tasks"}</TooltipContent>
+                  </Tooltip>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

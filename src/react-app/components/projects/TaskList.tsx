@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
 import { formatDurationShort, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import type { Task } from "@shared/schemas";
@@ -137,16 +138,21 @@ export function TaskList({ projectId }: TaskListProps) {
                   />
                 </div>
               ) : progress !== null ? (
-                <button
-                  className="mt-0.5 flex w-full items-center gap-1.5 hover:opacity-70 transition-opacity"
-                  onClick={() => handleStartEditTime(task)}
-                >
-                  <Progress value={progress} className="h-1 flex-1" />
-                  <span className="text-[10px] tabular-nums text-muted-foreground">
-                    {formatDurationShort(task.trackedSeconds)} /{" "}
-                    {formatDurationShort(task.estimatedSeconds!)}
-                  </span>
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="mt-0.5 flex w-full items-center gap-1.5 hover:opacity-70 transition-opacity"
+                      onClick={() => handleStartEditTime(task)}
+                    >
+                      <Progress value={progress} className="h-1 flex-1" />
+                      <span className="text-[10px] tabular-nums text-muted-foreground">
+                        {formatDurationShort(task.trackedSeconds)} /{" "}
+                        {formatDurationShort(task.estimatedSeconds!)}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit estimate — {Math.round(progress)}% used</TooltipContent>
+                </Tooltip>
               ) : task.trackedSeconds > 0 ? (
                 <button
                   className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:opacity-70 transition-opacity"

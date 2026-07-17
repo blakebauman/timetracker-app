@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   useSavedReports,
   useCreateSavedReport,
@@ -48,16 +49,16 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            aria-label="Saved"
-            title="Saved reports"
-          >
-            <Bookmark className="h-3.5 w-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon-sm" aria-label="Saved">
+                <Bookmark className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Saved reports</TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end" className="w-60">
           <DropdownMenuLabel>Saved reports</DropdownMenuLabel>
           <DropdownMenuSeparator />

@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAiSummary } from "@/hooks/useAi";
 
 interface AiSummaryDialogProps {
@@ -51,16 +52,16 @@ export function AiSummaryDialog({ since, until }: AiSummaryDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label="Draft summary"
-          title="Draft AI summary"
-        >
-          <Sparkles className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="icon-sm" aria-label="Draft summary">
+              <Sparkles className="h-4 w-4" />
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Draft AI summary</TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>AI-drafted summary</DialogTitle>

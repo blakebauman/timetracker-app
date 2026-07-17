@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimerControl } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
@@ -131,16 +132,23 @@ export function TimerBar() {
 
       {/* Discard button (only when running) */}
       {isRunning && (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="animate-in fade-in text-muted-foreground duration-300 hover:text-destructive"
-          onClick={() => setConfirmDiscard(true)}
-          title="Discard timer (Alt+Shift+X)"
-          aria-label="Discard timer"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="animate-in fade-in text-muted-foreground duration-300 hover:text-destructive"
+              onClick={() => setConfirmDiscard(true)}
+              aria-label="Discard timer"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Discard timer
+            <span className="ml-1.5 text-background/60">Alt+Shift+X</span>
+          </TooltipContent>
+        </Tooltip>
       )}
 
       {/* Favorites: one-click start from a saved preset */}

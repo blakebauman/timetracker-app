@@ -83,18 +83,22 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
             className="h-8 w-24 text-right font-mono text-lg font-semibold tabular-nums"
           />
         ) : (
-          <button
-            type="button"
-            onClick={handleStartEditElapsed}
-            title="Edit elapsed time"
-            aria-label="Edit elapsed time"
-            className="rounded px-1 transition-colors hover:bg-accent/50"
-          >
-            <TimerDisplay
-              seconds={elapsed}
-              className="min-w-20 animate-in fade-in slide-in-from-right-2 cursor-pointer text-right text-destructive duration-300 ease-out"
-            />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleStartEditElapsed}
+                aria-label="Edit elapsed time"
+                className="rounded px-1 transition-colors hover:bg-accent/50"
+              >
+                <TimerDisplay
+                  seconds={elapsed}
+                  className="min-w-20 animate-in fade-in slide-in-from-right-2 cursor-pointer text-right text-destructive duration-300 ease-out"
+                />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Edit elapsed time</TooltipContent>
+          </Tooltip>
         ))}
 
       {/* Start / Stop — a flat solid disc, no gradient/inner-shadow depth. When

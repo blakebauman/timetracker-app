@@ -3,6 +3,7 @@ import { X, Tag, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Command,
   CommandInput,
@@ -93,14 +94,18 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                 {/* Recolor is only possible once the tag exists server-side (it's
                     created when the entry saves); before that, show a static dot. */}
                 {byName.has(tag) ? (
-                  <button
-                    type="button"
-                    aria-label={`Recolor ${tag}`}
-                    title="Change color"
-                    onClick={() => setRecoloring((cur) => (cur === tag ? null : tag))}
-                    className="h-2.5 w-2.5 shrink-0 rounded-full ring-offset-1 transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    style={{ backgroundColor: colorOf(tag) }}
-                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`Recolor ${tag}`}
+                        onClick={() => setRecoloring((cur) => (cur === tag ? null : tag))}
+                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-offset-1 transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        style={{ backgroundColor: colorOf(tag) }}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>Change color</TooltipContent>
+                  </Tooltip>
                 ) : (
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -125,22 +130,25 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
         {recoloring && byName.has(recoloring) && (
           <div className="flex flex-wrap gap-1.5 border-b p-2">
             {PROJECT_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={`Set ${recoloring} to ${PROJECT_COLOR_NAMES[c] ?? c}`}
-                title={PROJECT_COLOR_NAMES[c] ?? c}
-                onClick={() => {
-                  const t = byName.get(recoloring);
-                  if (t) updateTag.mutate({ id: t.id, color: c });
-                  setRecoloring(null);
-                }}
-                className={cn(
-                  "h-5 w-5 rounded-full ring-2 ring-offset-1 transition-transform hover:scale-110",
-                  colorOf(recoloring) === c ? "ring-foreground" : "ring-transparent"
-                )}
-                style={{ backgroundColor: c }}
-              />
+              <Tooltip key={c}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Set ${recoloring} to ${PROJECT_COLOR_NAMES[c] ?? c}`}
+                    onClick={() => {
+                      const t = byName.get(recoloring);
+                      if (t) updateTag.mutate({ id: t.id, color: c });
+                      setRecoloring(null);
+                    }}
+                    className={cn(
+                      "h-5 w-5 rounded-full ring-2 ring-offset-1 transition-transform hover:scale-110",
+                      colorOf(recoloring) === c ? "ring-foreground" : "ring-transparent"
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>{PROJECT_COLOR_NAMES[c] ?? c}</TooltipContent>
+              </Tooltip>
             ))}
           </div>
         )}

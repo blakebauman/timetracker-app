@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { UserAvatar } from "@/components/layout/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useUIStore } from "@/stores/uiStore";
 
 const navItems = [
@@ -55,26 +56,33 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
     <>
       {/* Command palette trigger — reminds users of the ⌘K shortcut */}
       <div className="px-2 pt-3">
-        <button
-          type="button"
-          onClick={handleOpenCommand}
-          aria-label="Open command palette (Command or Control K)"
-          title="Search and commands — ⌘K"
-          className={cn(
-            "flex w-full items-center rounded-md border bg-background text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5"
-          )}
-        >
-          <Search className="h-3.5 w-3.5 shrink-0" />
-          {!collapsed && (
-            <>
-              <span className="flex-1 text-left">Search…</span>
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
-                ⌘K
-              </kbd>
-            </>
-          )}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleOpenCommand}
+              aria-label="Open command palette (Command or Control K)"
+              className={cn(
+                "flex w-full items-center rounded-md border bg-background text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5"
+              )}
+            >
+              <Search className="h-3.5 w-3.5 shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">Search…</span>
+                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
+                    ⌘K
+                  </kbd>
+                </>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            Search and commands
+            <span className="ml-1.5 text-background/60">⌘K</span>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Running timer indicator. When collapsed the pill is too narrow for the
@@ -88,11 +96,15 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
           )}
         >
           {collapsed ? (
-            <span
-              className="h-2 w-2 rounded-full bg-primary animate-pulse"
-              title={`Running — ${formatSeconds(elapsed)}`}
-              aria-label={`Timer running — ${formatSeconds(elapsed)}`}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="h-2 w-2 rounded-full bg-primary animate-pulse"
+                  aria-label={`Timer running — ${formatSeconds(elapsed)}`}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="right">Running — {formatSeconds(elapsed)}</TooltipContent>
+            </Tooltip>
           ) : (
             <>
               <div className="flex items-center gap-1.5">
@@ -153,38 +165,50 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                 </div>
               </div>
             )}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-muted-foreground hover:text-destructive"
-              onClick={handleSignOut}
-              title="Sign out"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={handleSignOut}
+                  aria-label="Sign out"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Sign out</TooltipContent>
+            </Tooltip>
           </div>
         )}
         {/* Keyboard shortcut reference — opens the full cheat sheet (also “?”) */}
-        <button
-          type="button"
-          onClick={handleOpenShortcuts}
-          aria-label="Keyboard shortcuts"
-          title="Keyboard shortcuts — ?"
-          className={cn(
-            "flex w-full items-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            collapsed ? "justify-center p-2" : "gap-2 px-2 py-1.5"
-          )}
-        >
-          <Keyboard className="h-3.5 w-3.5 shrink-0" />
-          {!collapsed && (
-            <>
-              <span className="flex-1 text-left">Keyboard shortcuts</span>
-              <kbd className="pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border bg-muted px-1 font-mono text-[10px] font-medium">
-                ?
-              </kbd>
-            </>
-          )}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleOpenShortcuts}
+              aria-label="Keyboard shortcuts"
+              className={cn(
+                "flex w-full items-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                collapsed ? "justify-center p-2" : "gap-2 px-2 py-1.5"
+              )}
+            >
+              <Keyboard className="h-3.5 w-3.5 shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">Keyboard shortcuts</span>
+                  <kbd className="pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border bg-muted px-1 font-mono text-[10px] font-medium">
+                    ?
+                  </kbd>
+                </>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            Keyboard shortcuts
+            <span className="ml-1.5 text-background/60">?</span>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </>
   );
@@ -203,11 +227,16 @@ export function Sidebar() {
           <span className="font-semibold tracking-tight">Time Tracker</span>
         </div>
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Open navigation menu">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Open navigation menu</TooltipContent>
+          </Tooltip>
           <SheetContent side="left" className="w-64 gap-0 p-0">
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <div className="flex h-14 items-center border-b px-4">
@@ -235,15 +264,19 @@ export function Sidebar() {
         >
           {sidebarCollapsed ? (
             // Collapsed: the logo itself is the expand affordance (no arrow).
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              title="Expand sidebar"
-              aria-label="Expand sidebar"
-              className="flex h-full w-full items-center justify-center text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-            >
-              <Clock className="h-5 w-5 shrink-0" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  aria-label="Expand sidebar"
+                  className="flex h-full w-full items-center justify-center text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                >
+                  <Clock className="h-5 w-5 shrink-0" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Expand sidebar</TooltipContent>
+            </Tooltip>
           ) : (
             <>
               <Clock className="h-5 w-5 shrink-0 text-primary" />
@@ -252,16 +285,20 @@ export function Sidebar() {
               <span className="ml-2 whitespace-nowrap font-semibold tracking-tight">
                 Time Tracker
               </span>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-2 shrink-0 text-muted-foreground"
-                onClick={toggleSidebar}
-                title="Collapse sidebar"
-                aria-label="Collapse sidebar"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute right-2 shrink-0 text-muted-foreground"
+                    onClick={toggleSidebar}
+                    aria-label="Collapse sidebar"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Collapse sidebar</TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>

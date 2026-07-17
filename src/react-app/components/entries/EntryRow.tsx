@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EntryForm } from "./EntryForm";
 import { useUpdateEntry, useDeleteEntry, useCreateEntry } from "@/hooks/useEntries";
 import { useProjects, useTagColors } from "@/hooks/useProjects";
@@ -211,36 +212,40 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
 
         {/* Integration sync status — persistent indicator, only once it's meaningful */}
         {integration && (isPushing || entry.syncStatus === "synced" || entry.syncStatus === "error") && (
-          <span
-            title={pushTitle}
-            aria-label={pushTitle}
-            className={cn(
-              "flex h-5 w-5 shrink-0 items-center justify-center",
-              entry.syncStatus === "synced"
-                ? "text-success"
-                : entry.syncStatus === "error"
-                  ? "text-destructive"
-                  : "text-muted-foreground"
-            )}
-          >
-            {isPushing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : entry.syncStatus === "synced" ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <AlertTriangle className="h-3.5 w-3.5" />
-            )}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                aria-label={pushTitle}
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center",
+                  entry.syncStatus === "synced"
+                    ? "text-success"
+                    : entry.syncStatus === "error"
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                )}
+              >
+                {isPushing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : entry.syncStatus === "synced" ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                )}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{pushTitle}</TooltipContent>
+          </Tooltip>
         )}
 
         {/* Billable indicator */}
         {entry.billable && (
-          <span
-            className="text-[10px] font-semibold text-primary"
-            title="Billable"
-          >
-            $
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[10px] font-semibold text-primary">$</span>
+            </TooltipTrigger>
+            <TooltipContent>Billable</TooltipContent>
+          </Tooltip>
         )}
 
         {/* Time range */}
@@ -274,15 +279,19 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
 
         {/* Actions (visible on hover) */}
         <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Continue"
-            aria-label="Continue timing this entry"
-            onClick={handleContinue}
-          >
-            <Play className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Continue timing this entry"
+                onClick={handleContinue}
+              >
+                <Play className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Continue</TooltipContent>
+          </Tooltip>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

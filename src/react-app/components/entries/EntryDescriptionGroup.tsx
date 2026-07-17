@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EntryRow } from "./EntryRow";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { useTimer } from "@/hooks/useTimer";
@@ -128,9 +129,12 @@ export function EntryDescriptionGroup({
 
         {/* Billable indicator */}
         {group.billable && (
-          <span className="text-[10px] font-semibold text-primary" title="Billable">
-            $
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[10px] font-semibold text-primary">$</span>
+            </TooltipTrigger>
+            <TooltipContent>Billable</TooltipContent>
+          </Tooltip>
         )}
 
         {/* Count badge */}
@@ -145,14 +149,19 @@ export function EntryDescriptionGroup({
 
         {/* Actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Continue"
-            onClick={handleContinue}
-          >
-            <Play className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Continue timing this entry"
+                onClick={handleContinue}
+              >
+                <Play className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Continue</TooltipContent>
+          </Tooltip>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Entry group actions">

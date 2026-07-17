@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
@@ -137,17 +138,21 @@ export function SummaryCards({
     <div className="space-y-2">
       <div className="flex justify-end">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
-              aria-label="Metrics"
-              title="Choose metrics"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground"
+                  aria-label="Metrics"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Choose metrics</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Summary metrics</DropdownMenuLabel>
             <DropdownMenuSeparator />
