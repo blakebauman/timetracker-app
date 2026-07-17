@@ -53,7 +53,7 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
           <EmptyState
             icon={BarChart3}
             title="No tracked time"
-            description="Track some time in this range to see your weekly breakdown."
+            description="Track time in this range to see it by weekday."
             className="py-12"
           />
         </CardContent>

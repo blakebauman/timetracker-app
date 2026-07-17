@@ -74,6 +74,17 @@ test.describe("reports charts", () => {
   });
 
   test("charts render in dark mode", async ({ page }) => {
+    // Seed an entry so the charts have data to plot (empty ranges now show an
+    // empty state, not an empty chart).
+    await page.getByRole("button", { name: "Add entry" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("textarea").fill("Dark mode entry");
+    const [start, stop] = await dialog.locator('input[type="time"]').all();
+    await start.fill("09:00");
+    await stop.fill("11:00");
+    await dialog.getByRole("button", { name: "Add entry" }).click();
+    await expect(dialog).not.toBeVisible();
+
     await page.goto("/reports");
     // next-themes stores the choice in localStorage and toggles the .dark class.
     await page.evaluate(() => {
@@ -81,7 +92,7 @@ test.describe("reports charts", () => {
       document.documentElement.classList.add("dark");
     });
     await page.reload();
-    await expect(page.getByText("Daily breakdown")).toBeVisible();
+    await expect(page.getByText("Daily breakdown", { exact: true })).toBeVisible();
     await expect(page.locator("html.dark")).toBeVisible();
     await expect(page.locator('[data-slot="chart"]').first()).toBeVisible();
   });

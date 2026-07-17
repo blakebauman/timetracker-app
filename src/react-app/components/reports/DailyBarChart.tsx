@@ -47,7 +47,7 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
           <EmptyState
             icon={BarChart3}
             title="No tracked time"
-            description="Track some time in this range to see your daily breakdown."
+            description="Track time in this range and your days will chart here."
             className="py-12"
           />
         </CardContent>
