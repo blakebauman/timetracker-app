@@ -42,7 +42,8 @@ function toHours(seconds: number): number {
 }
 
 export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
-  if (!data.length) {
+  const hasData = data.some((w) => w.days.some((d) => d.totalSeconds > 0));
+  if (!hasData) {
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -51,8 +52,9 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
         <CardContent>
           <EmptyState
             icon={BarChart3}
-            title="No data for this period"
-            description="Track some time to see your weekly breakdown."
+            title="No tracked time"
+            description="Track time in this range to see it by weekday."
+            className="py-12"
           />
         </CardContent>
       </Card>
