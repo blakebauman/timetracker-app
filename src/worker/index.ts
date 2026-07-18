@@ -17,6 +17,7 @@ import { integrationsRouter } from "./routes/integrations";
 import { calendarRouter } from "./routes/calendar";
 import { aiRouter } from "./routes/ai";
 import { assistantRouter } from "./routes/assistant";
+import { adminRouter } from "./routes/admin";
 import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
 import { runAutoTrack } from "./lib/calendar-autotrack";
@@ -69,6 +70,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/calendar", calendarRouter)
   .route("/api/ai", aiRouter)
   .route("/api/assistant", assistantRouter)
+  .route("/api/admin", adminRouter)
   .route("/api/ws", websocketRouter);
 
 export type AppType = typeof app;
