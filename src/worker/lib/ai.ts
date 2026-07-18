@@ -2,8 +2,11 @@ import { z } from "zod";
 import { AiQuickEntryRawSchema, type AiQuickEntryRaw } from "@shared/schemas";
 import { DISTINCT_COLORS, PALETTE } from "./colors";
 
-// Small, fast, JSON-mode-capable — good fit for a single-user, low-latency call.
-const QUICK_ENTRY_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+// Used for every json_schema-mode call (quick entry, project recolor, event→
+// project inference). Was llama-3.1-8b-instruct-fp8 until Workers AI dropped
+// JSON-schema support from it (error 5025, ~July 2026) — if structured AI
+// features all start failing again, test this model's JSON mode first.
+const QUICK_ENTRY_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 const SUMMARY_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 const GATEWAY = { id: "default" };
 
