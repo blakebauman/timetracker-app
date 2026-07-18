@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUIStore } from "@/stores/uiStore";
+import { useAssistantStore } from "@/stores/assistantStore";
 import {
   requestNotifyPermission,
   notificationsSupported,
@@ -55,6 +56,8 @@ function MinuteSelect({
 export function ProductivityCard() {
   const p = useUIStore((s) => s.productivity);
   const setProductivity = useUIStore((s) => s.setProductivity);
+  const alertsEnabled = useAssistantStore((s) => s.alertsEnabled);
+  const setAlertsEnabled = useAssistantStore((s) => s.setAlertsEnabled);
   const [granted, setGranted] = useState(canNotify());
 
   const enableNotifications = async () => {
@@ -78,7 +81,8 @@ export function ProductivityCard() {
               <div className="pr-4">
                 <Label>Browser notifications</Label>
                 <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                  Required for reminders and pomodoro alerts.
+                  Required for reminders, pomodoro, and Aski alerts when the tab
+                  is in the background.
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={enableNotifications}>
@@ -133,6 +137,24 @@ export function ProductivityCard() {
               onCheckedChange={(v) => setProductivity({ reminderEnabled: v })}
             />
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Aski nudge alerts */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="pr-2">
+            <Label htmlFor="pref-aski-alerts">Aski nudge alerts</Label>
+            <p className="mt-1 text-xs leading-normal text-muted-foreground">
+              Toast when Aski notices something new — untracked meetings,
+              long-running timers. Each nudge alerts once.
+            </p>
+          </div>
+          <Switch
+            id="pref-aski-alerts"
+            checked={alertsEnabled}
+            onCheckedChange={setAlertsEnabled}
+          />
         </div>
 
         <Separator />
