@@ -59,6 +59,10 @@
   --animate-stopped:
     fade-up 0.35s var(--ease-out-quart) both,
     row-flash 1.4s var(--ease-out-quart) both;
+
+  /* Aski "thinking" — a soft highlight sweeps across muted text while the
+     assistant streams (utility: animate-shimmer, pair with the shimmer bg). */
+  --animate-shimmer: shimmer 1.6s linear infinite;
 }
 
 @keyframes fade-in {
@@ -72,6 +76,12 @@
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: none; }
+}
+/* Shimmer sweep for the assistant's streaming/thinking text. Used with a
+   clipped background-image gradient (see Shimmer component). */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 /* Just-stopped row flash — a primary wash blooms then recedes, with a left rail
    accent that draws attention to the row without shifting layout. */

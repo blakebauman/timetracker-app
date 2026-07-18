@@ -22,7 +22,9 @@ import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
 import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
+import { routeAgentRequest } from "agents";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
+export { ChatAgent } from "./durable-objects/ChatAgent";
 
 // 10 attempts per minute on auth endpoints. Relaxed in the Vite dev server
 // (which is what `pnpm dev` and the CI e2e run use) so the Playwright suite's
@@ -51,9 +53,8 @@ const app = new Hono<{ Bindings: Env }>()
   })
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
-  // Aski chat + track-event hit Workers AI; nudge polling is capped well above
-  // its 5-min cadence.
-  .use("/api/assistant/chat", aiRateLimit)
+  // track-event hits Workers AI (project inference); nudge polling is capped well
+  // above its 5-min cadence. (Aski chat streams via the ChatAgent DO, not here.)
   .use("/api/assistant/track-event", aiRateLimit)
   .use("/api/assistant/nudges", nudgesRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
@@ -75,8 +76,56 @@ const app = new Hono<{ Bindings: Env }>()
 
 export type AppType = typeof app;
 
+/**
+ * Resolve the caller's workspace id from their session (cookie or bearer), the
+ * same way workspaceMiddleware does. Returns null when unauthenticated.
+ */
+async function resolveWorkspaceId(request: Request, env: Env): Promise<string | null> {
+  const origin = new URL(request.url).origin;
+  const auth = createAuth(env, origin);
+  const result = await auth.api.getSession({ headers: request.headers });
+  if (!result) return null;
+  let workspaceId = result.session.activeOrganizationId;
+  if (!workspaceId) {
+    const orgs = await auth.api.listOrganizations({ headers: request.headers });
+    if (orgs.length === 0) return null;
+    workspaceId = orgs[0].id;
+    await auth.api.setActiveOrganization({
+      body: { organizationId: workspaceId },
+      headers: request.headers,
+    });
+  }
+  return workspaceId;
+}
+
+/**
+ * Gate the Agents SDK routes. The client connects to /agents/chat-agent/<any>;
+ * we authenticate, then FORCE the instance name to the caller's workspace id so
+ * a client can never reach another workspace's ChatAgent — the same server-side
+ * routing guarantee as the timer WebSocket (routes/websocket.ts).
+ */
+async function handleAgentRequest(request: Request, env: Env): Promise<Response> {
+  const workspaceId = await resolveWorkspaceId(request, env);
+  if (!workspaceId) return new Response("Unauthorized", { status: 401 });
+
+  const url = new URL(request.url);
+  // /agents/<kebab-class>/<instance>[/subpath] → pin <instance> to the workspace.
+  const segments = url.pathname.split("/"); // ["", "agents", "chat-agent", "<instance>", ...]
+  if (segments.length >= 4) {
+    segments[3] = workspaceId;
+    url.pathname = segments.join("/");
+  }
+  const rewritten = new Request(url, request);
+  return (await routeAgentRequest(rewritten, env)) ?? new Response("Not found", { status: 404 });
+}
+
 export default {
-  fetch: app.fetch,
+  fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
+    if (new URL(request.url).pathname.startsWith("/agents/")) {
+      return handleAgentRequest(request, env);
+    }
+    return app.fetch(request, env, ctx);
+  },
   // Cron (*/5): materialize finished calendar events for auto-track workspaces
   // and any due recurring-entry occurrences.
   scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {

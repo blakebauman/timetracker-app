@@ -241,8 +241,8 @@ export const api = {
       request<unknown[]>(
         `/assistant/nudges?timezoneOffsetMinutes=${timezoneOffsetMinutes}`
       ),
-    chat: (body: Record<string, unknown>) =>
-      request<unknown>("/assistant/chat", { method: "POST", body: JSON.stringify(body) }),
+    // Chat moved to the ChatAgent Durable Object (streaming over WebSocket via
+    // useAgentChat); there's no longer a REST chat endpoint.
     trackEvent: (body: Record<string, unknown>) =>
       request<unknown>("/assistant/track-event", {
         method: "POST",
