@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAssistantStore } from "@/stores/assistantStore";
 import type {
+  AssistantMemory,
   AssistantNudge,
   AssistantTrackEventRequest,
   AssistantTrackEventResult,
@@ -48,6 +49,27 @@ export function useTrackNudgeEvent() {
       );
     },
     onError: () => toast.error("Couldn't add that meeting — try again."),
+  });
+}
+
+/** Facts Aski has remembered about the user, for the Settings management card. */
+export function useAssistantMemory() {
+  return useQuery({
+    queryKey: ["assistant-memory"],
+    queryFn: () => api.assistant.memory() as Promise<AssistantMemory[]>,
+    staleTime: 60_000,
+  });
+}
+
+export function useDeleteAssistantMemory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string | null) =>
+      key === null ? api.assistant.clearMemory() : api.assistant.deleteMemory(key),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assistant-memory"] });
+    },
+    onError: () => toast.error("Couldn't update the assistant's memory — try again."),
   });
 }
 

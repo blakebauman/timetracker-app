@@ -22,6 +22,7 @@ import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { GoogleCalendarCard } from "@/components/settings/GoogleCalendarCard";
 import { ProductivityCard } from "@/components/settings/ProductivityCard";
+import { AskiMemoryCard } from "@/components/settings/AskiMemoryCard";
 import { RecurringEntriesCard } from "@/components/settings/RecurringEntriesCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { AccountCard } from "@/components/settings/AccountCard";
@@ -326,6 +327,9 @@ export function SettingsPage() {
 
       {/* Productivity */}
       <ProductivityCard />
+
+      {/* Aski's memory */}
+      <AskiMemoryCard />
 
       {/* Recurring entries */}
       <RecurringEntriesCard />

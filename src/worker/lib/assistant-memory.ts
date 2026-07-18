@@ -12,6 +12,10 @@ export interface Memory {
   content: string;
 }
 
+export interface StoredMemory extends Memory {
+  updatedAt: string;
+}
+
 function slugify(key: string): string {
   return key
     .trim()
@@ -97,6 +101,39 @@ export async function searchMemories(
     .bind(workspaceId, ...terms.map((t) => `%${t}%`), RECALL_LIMIT)
     .all<Memory>();
   return results;
+}
+
+/** All stored facts (newest first) for the Settings management card. */
+export async function listMemories(
+  db: D1Database,
+  workspaceId: string
+): Promise<StoredMemory[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT key, content, updated_at AS updatedAt FROM assistant_memory
+       WHERE workspace_id = ? ORDER BY updated_at DESC LIMIT ?`
+    )
+    .bind(workspaceId, MAX_MEMORIES)
+    .all<StoredMemory>();
+  return results;
+}
+
+/** Delete one fact by key. Returns whether a row was removed. */
+export async function deleteMemory(
+  db: D1Database,
+  workspaceId: string,
+  key: string
+): Promise<boolean> {
+  const res = await db
+    .prepare(`DELETE FROM assistant_memory WHERE workspace_id = ? AND key = ?`)
+    .bind(workspaceId, key)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+/** Forget everything for a workspace. */
+export async function clearMemories(db: D1Database, workspaceId: string): Promise<void> {
+  await db.prepare(`DELETE FROM assistant_memory WHERE workspace_id = ?`).bind(workspaceId).run();
 }
 
 /** Plain-text block of known facts for the chat system prompt (empty if none). */

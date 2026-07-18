@@ -489,19 +489,16 @@ export const AssistantNudgeSchema = z.object({
     .default(null),
 });
 
-export const AssistantChatMessageSchema = z.object({
-  role: z.enum(["user", "assistant"]),
-  content: z.string().min(1).max(4000),
-});
+// Aski's chat itself now streams through the ChatAgent Durable Object
+// (useAgentChat over WebSocket), so there's no request/response schema for it
+// here. What remains are the deterministic nudge action + the memory the
+// assistant accumulates about the user.
 
-export const AssistantChatRequestSchema = z.object({
-  // Rolling window of the conversation — the server only keeps the tail.
-  messages: z.array(AssistantChatMessageSchema).min(1).max(30),
-  timezoneOffsetMinutes: z.number(),
-});
-
-export const AssistantChatResultSchema = z.object({
-  reply: z.string(),
+// A durable fact Aski has remembered, surfaced in Settings for review/removal.
+export const AssistantMemorySchema = z.object({
+  key: z.string(),
+  content: z.string(),
+  updatedAt: z.string(),
 });
 
 // One-click "Add to timesheet" on an untracked-meeting nudge. Server-side so
@@ -561,8 +558,6 @@ export type AiQuickEntryResult = z.infer<typeof AiQuickEntryResultSchema>;
 export type AiSummaryRequest = z.infer<typeof AiSummaryRequestSchema>;
 export type AiSummaryResult = z.infer<typeof AiSummaryResultSchema>;
 export type AssistantNudge = z.infer<typeof AssistantNudgeSchema>;
-export type AssistantChatMessage = z.infer<typeof AssistantChatMessageSchema>;
-export type AssistantChatRequest = z.infer<typeof AssistantChatRequestSchema>;
-export type AssistantChatResult = z.infer<typeof AssistantChatResultSchema>;
+export type AssistantMemory = z.infer<typeof AssistantMemorySchema>;
 export type AssistantTrackEventRequest = z.infer<typeof AssistantTrackEventRequestSchema>;
 export type AssistantTrackEventResult = z.infer<typeof AssistantTrackEventResultSchema>;

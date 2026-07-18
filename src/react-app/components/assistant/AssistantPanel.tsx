@@ -189,7 +189,7 @@ export function AssistantPanel() {
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            Aski
+            AI Assistant
           </SheetTitle>
           <SheetDescription>
             Keeps an eye on your calendar and timesheet so billable time doesn't slip.
@@ -300,8 +300,8 @@ export function AssistantPanel() {
             onKeyDown={(e) => {
               if (e.key === "Enter") send(input);
             }}
-            placeholder="Ask Aski…"
-            aria-label="Message Aski"
+            placeholder="Ask the assistant…"
+            aria-label="Message the AI Assistant"
           />
           {busy ? (
             <Button
