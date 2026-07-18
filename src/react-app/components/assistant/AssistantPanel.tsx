@@ -26,7 +26,7 @@ import {
   useTrackNudgeEvent,
 } from "@/hooks/useAssistant";
 import { useTimer } from "@/hooks/useTimer";
-import type { AssistantNudge } from "@shared/schemas";
+import type { AssistantNudge, AssistantChatMessage } from "@shared/schemas";
 
 const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
   untracked_meeting: CalendarClock,
@@ -128,9 +128,10 @@ export function AssistantPanel() {
     if (!content || chat.isPending) return;
     setInput("");
     addMessage({ role: "user", content });
+    const outgoing: AssistantChatMessage[] = [...messages, { role: "user", content }];
     chat.mutate(
       {
-        messages: [...messages, { role: "user", content }].slice(-12),
+        messages: outgoing.slice(-12),
         timezoneOffsetMinutes: new Date().getTimezoneOffset(),
       },
       { onSuccess: ({ reply }) => addMessage({ role: "assistant", content: reply }) }

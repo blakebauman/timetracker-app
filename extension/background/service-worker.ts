@@ -21,8 +21,51 @@ function resolveBase(apiUrl?: string): string {
 }
 
 async function clearAuth(): Promise<void> {
-  await chrome.storage.local.remove(["authToken", "timerState"]);
+  await chrome.storage.local.remove(["authToken", "timerState", "nudgeIds", "dismissedNudges"]);
   chrome.action.setBadgeText({ text: "" });
+}
+
+// ─── Badge ───────────────────────────────────────────────────────────────────
+
+// Running-timer red (matches the web app's live-indicator use of the brand
+// red). Nudge counts use the warning amber so the two states never read alike.
+const TIMER_BADGE_COLOR = "#e5291a";
+const NUDGE_BADGE_COLOR = "#d97706";
+
+/**
+ * Single source of truth for the badge: a running timer's elapsed time wins;
+ * otherwise the count of active (non-dismissed) Aski nudges; otherwise empty.
+ */
+async function paintBadge(timerState?: TimerState | null): Promise<void> {
+  if (timerState === undefined) {
+    const stored = (await chrome.storage.local.get("timerState")) as {
+      timerState?: TimerState;
+    };
+    timerState = stored.timerState ?? null;
+  }
+  if (timerState?.running) {
+    const elapsed = Math.floor((Date.now() - timerState.startedAt) / 1000);
+    chrome.action.setBadgeText({ text: formatBadge(elapsed) });
+    chrome.action.setBadgeBackgroundColor({ color: TIMER_BADGE_COLOR });
+    return;
+  }
+  const count = await activeNudgeCount();
+  if (count > 0) {
+    chrome.action.setBadgeText({ text: count > 9 ? "9+" : String(count) });
+    chrome.action.setBadgeBackgroundColor({ color: NUDGE_BADGE_COLOR });
+  } else {
+    chrome.action.setBadgeText({ text: "" });
+  }
+}
+
+async function activeNudgeCount(): Promise<number> {
+  const { nudgeIds, dismissedNudges } = (await chrome.storage.local.get([
+    "nudgeIds",
+    "dismissedNudges",
+  ])) as { nudgeIds?: string[]; dismissedNudges?: string[] };
+  if (!Array.isArray(nudgeIds) || nudgeIds.length === 0) return 0;
+  const dismissed = new Set(Array.isArray(dismissedNudges) ? dismissedNudges : []);
+  return nudgeIds.filter((id) => !dismissed.has(id)).length;
 }
 
 // Centralized authenticated fetch: attaches the bearer header and, on a 401,
@@ -72,6 +115,11 @@ chrome.alarms.create("timer-tick", { periodInMinutes: 1 / 60 });
 // catches drift while no timetracker tab exists.
 const POLL_INTERVAL_MS = 30_000;
 
+// Aski nudges change on the server's 5-minute cron cadence, and each poll reads
+// through to Google Calendar — matching the web app's 5-minute polling keeps
+// the extension from multiplying that load.
+const NUDGE_POLL_INTERVAL_MS = 5 * 60_000;
+
 // Stamp in chrome.storage.session: survives SW restarts within a browser
 // session (a restart at most costs one early poll), resets on browser launch.
 async function shouldPollNow(): Promise<boolean> {
@@ -83,6 +131,40 @@ async function shouldPollNow(): Promise<boolean> {
   }
   await chrome.storage.session.set({ lastPollAt: Date.now() });
   return true;
+}
+
+async function shouldPollNudgesNow(): Promise<boolean> {
+  const { lastNudgePollAt } = (await chrome.storage.session.get("lastNudgePollAt")) as {
+    lastNudgePollAt?: number;
+  };
+  if (
+    typeof lastNudgePollAt === "number" &&
+    Date.now() - lastNudgePollAt < NUDGE_POLL_INTERVAL_MS
+  ) {
+    return false;
+  }
+  await chrome.storage.session.set({ lastNudgePollAt: Date.now() });
+  return true;
+}
+
+/** Refresh the active-nudge id list from the server (5-min gated). */
+async function pollNudges(base: string, authToken: string): Promise<void> {
+  if (!(await shouldPollNudgesNow())) return;
+  try {
+    const res = await authedFetch(
+      base,
+      `/api/assistant/nudges?timezoneOffsetMinutes=${new Date().getTimezoneOffset()}`,
+      authToken,
+    );
+    if (!res || !res.ok) return;
+    const nudges = (await res.json()) as Array<{ id: string }>;
+    const ids = Array.isArray(nudges)
+      ? nudges.map((n) => n.id).filter((id) => typeof id === "string")
+      : [];
+    await chrome.storage.local.set({ nudgeIds: ids.slice(0, 50) });
+  } catch {
+    // Offline — keep the cached list.
+  }
 }
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -100,6 +182,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   let { timerState } = stored;
   const { apiUrl, authToken } = stored;
+
+  if (authToken) {
+    await pollNudges(resolveBase(apiUrl), authToken);
+  }
 
   if (authToken && (await shouldPollNow())) {
     const base = resolveBase(apiUrl);
@@ -142,13 +228,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     }
   }
 
-  if (!timerState?.running) {
-    chrome.action.setBadgeText({ text: "" });
-    return;
-  }
-  const elapsed = Math.floor((Date.now() - timerState.startedAt) / 1000);
-  chrome.action.setBadgeText({ text: formatBadge(elapsed) });
-  chrome.action.setBadgeBackgroundColor({ color: "#e5291a" });
+  await paintBadge(timerState ?? null);
 });
 
 function formatBadge(seconds: number): string {
@@ -259,18 +339,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             projectId: string | null;
           };
           const startedAt = new Date(entry.start).getTime();
-          await chrome.storage.local.set({
-            timerState: {
-              running: true,
-              entryId: entry.id,
-              startedAt,
-              description: entry.description,
-              projectId: entry.projectId,
-            } as TimerState,
-          });
+          const started: TimerState = {
+            running: true,
+            entryId: entry.id,
+            startedAt,
+            description: entry.description,
+            projectId: entry.projectId,
+          };
+          await chrome.storage.local.set({ timerState: started });
           // Update badge immediately — don't wait for the next alarm tick
-          chrome.action.setBadgeText({ text: formatBadge(Math.floor((Date.now() - startedAt) / 1000)) });
-          chrome.action.setBadgeBackgroundColor({ color: "#e5291a" });
+          await paintBadge(started);
           sendResponse({ ok: true, entry });
         } catch (err) {
           sendResponse({ ok: false, error: String(err) });
@@ -305,7 +383,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const running = entries.find((e) => !e.stop);
           if (!running) {
             await chrome.storage.local.remove("timerState");
-            chrome.action.setBadgeText({ text: "" });
+            await paintBadge(null);
             sendResponse({ ok: false, error: "No running timer" });
             break;
           }
@@ -321,7 +399,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }
           const entry = await res.json();
           await chrome.storage.local.remove("timerState");
-          chrome.action.setBadgeText({ text: "" });
+          await paintBadge(null);
           sendResponse({ ok: true, entry });
         } catch (err) {
           sendResponse({ ok: false, error: String(err) });
@@ -338,23 +416,40 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
         if (msg.state.running) {
-          const startedAt = new Date(msg.state.startedAt).getTime();
-          await chrome.storage.local.set({
-            timerState: {
-              running: true,
-              entryId: msg.state.entryId,
-              startedAt,
-              description: msg.state.description ?? "",
-              projectId: msg.state.projectId ?? null,
-            } as TimerState,
-          });
+          const synced: TimerState = {
+            running: true,
+            entryId: msg.state.entryId!,
+            startedAt: new Date(msg.state.startedAt!).getTime(),
+            description: msg.state.description ?? "",
+            projectId: msg.state.projectId ?? null,
+          };
+          await chrome.storage.local.set({ timerState: synced });
           // Update badge immediately — don't wait for the next alarm tick
-          chrome.action.setBadgeText({ text: formatBadge(Math.floor((Date.now() - startedAt) / 1000)) });
-          chrome.action.setBadgeBackgroundColor({ color: "#e5291a" });
+          await paintBadge(synced);
         } else {
           await chrome.storage.local.remove("timerState");
-          chrome.action.setBadgeText({ text: "" });
+          await paintBadge(null);
         }
+        sendResponse({ ok: true });
+        break;
+      }
+
+      case "ASSISTANT_DISMISSED": {
+        // Dismissed nudge ids relayed from the web app (content script, own
+        // origins only). Persisted so the polled count keeps excluding them
+        // after the tab closes. Validate shape — same trust posture as
+        // TIMER_STATE_CHANGED.
+        const ids = Array.isArray(msg.dismissed)
+          ? (msg.dismissed as unknown[])
+              .filter((id): id is string => typeof id === "string" && id.length <= 200)
+              .slice(0, 200)
+          : null;
+        if (!ids) {
+          sendResponse({ ok: false, error: "Invalid state" });
+          break;
+        }
+        await chrome.storage.local.set({ dismissedNudges: ids });
+        await paintBadge();
         sendResponse({ ok: true });
         break;
       }
