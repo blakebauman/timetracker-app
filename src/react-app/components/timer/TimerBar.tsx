@@ -9,6 +9,7 @@ import { FavoritesMenu } from "./FavoritesMenu";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { AssistantButton } from "@/components/assistant/AssistantButton";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useTimer, useTimerLifecycle } from "@/hooks/useTimer";
@@ -158,6 +159,8 @@ export function TimerBar() {
 
       {/* Combined elapsed + Start/Stop capsule */}
       <TimerControl isRunning={isRunning} onStart={handleStart} onStop={handleStop} />
+
+      <AssistantButton />
 
       <ThemeToggle />
 

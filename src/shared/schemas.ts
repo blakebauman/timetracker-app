@@ -461,6 +461,49 @@ export const AiSummaryResultSchema = z.object({
   totalSeconds: z.number(),
 });
 
+// ─── Assistant (Aski) ────────────────────────────────────────────────────────
+
+// A proactive prompt computed server-side from calendar events, today's
+// entries, and the running timer. `id` is stable per underlying fact (same
+// event → same id) so the client can persist dismissals across polls.
+export const AssistantNudgeSchema = z.object({
+  id: z.string(),
+  kind: z.enum([
+    "untracked_meeting", // a calendar event ended and isn't on the timesheet
+    "meeting_now", // an event is happening now but no timer is running
+    "meeting_soon", // an event starts within the lookahead window
+    "long_timer", // the running timer has been going suspiciously long
+    "nothing_tracked", // late morning on a weekday with an empty timesheet
+  ]),
+  title: z.string(),
+  body: z.string(),
+  // Present when the nudge maps to a one-click action on a calendar event.
+  event: z
+    .object({
+      calendarEventId: z.string(),
+      title: z.string(),
+      start: z.string(),
+      stop: z.string(),
+    })
+    .nullable()
+    .default(null),
+});
+
+export const AssistantChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(4000),
+});
+
+export const AssistantChatRequestSchema = z.object({
+  // Rolling window of the conversation — the server only keeps the tail.
+  messages: z.array(AssistantChatMessageSchema).min(1).max(30),
+  timezoneOffsetMinutes: z.number(),
+});
+
+export const AssistantChatResultSchema = z.object({
+  reply: z.string(),
+});
+
 // ─── Inferred types ──────────────────────────────────────────────────────────
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;
@@ -496,3 +539,7 @@ export type AiQuickEntryRaw = z.infer<typeof AiQuickEntryRawSchema>;
 export type AiQuickEntryResult = z.infer<typeof AiQuickEntryResultSchema>;
 export type AiSummaryRequest = z.infer<typeof AiSummaryRequestSchema>;
 export type AiSummaryResult = z.infer<typeof AiSummaryResultSchema>;
+export type AssistantNudge = z.infer<typeof AssistantNudgeSchema>;
+export type AssistantChatMessage = z.infer<typeof AssistantChatMessageSchema>;
+export type AssistantChatRequest = z.infer<typeof AssistantChatRequestSchema>;
+export type AssistantChatResult = z.infer<typeof AssistantChatResultSchema>;

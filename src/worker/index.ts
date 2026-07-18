@@ -16,6 +16,7 @@ import { settingsRouter } from "./routes/settings";
 import { integrationsRouter } from "./routes/integrations";
 import { calendarRouter } from "./routes/calendar";
 import { aiRouter } from "./routes/ai";
+import { assistantRouter } from "./routes/assistant";
 import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
 import { runAutoTrack } from "./lib/calendar-autotrack";
@@ -42,6 +43,8 @@ const app = new Hono<{ Bindings: Env }>()
   })
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
+  // Aski chat hits Workers AI; nudge polling is deterministic and stays uncapped.
+  .use("/api/assistant/chat", aiRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)
   .route("/api/clients", clientsRouter)
@@ -55,6 +58,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/integrations", integrationsRouter)
   .route("/api/calendar", calendarRouter)
   .route("/api/ai", aiRouter)
+  .route("/api/assistant", assistantRouter)
   .route("/api/ws", websocketRouter);
 
 export type AppType = typeof app;
