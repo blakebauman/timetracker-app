@@ -113,11 +113,18 @@ export function AssistantPanel() {
   const setOpen = useAssistantStore((s) => s.setOpen);
   const messages = useAssistantStore((s) => s.messages);
   const addMessage = useAssistantStore((s) => s.addMessage);
+  const markSeen = useAssistantStore((s) => s.markSeen);
   const { nudges } = useAssistantNudges();
   const chat = useAssistantChat();
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Viewing the panel counts as seeing every nudge in it — pending toast/
+  // notification alerts for them are silenced (the notifier keys off `seen`).
+  useEffect(() => {
+    if (open && nudges.length) markSeen(nudges.map((n) => n.id));
+  }, [open, nudges, markSeen]);
 
   // Keep the latest message (or the thinking indicator) in view.
   useEffect(() => {
