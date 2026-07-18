@@ -29,6 +29,11 @@ export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 const authRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 10, 60_000);
 // AI calls have real latency/cost — cap per-workspace request rate
 const aiRateLimit = rateLimit(20, 60_000);
+// Nudges are deterministic but read through to Google Calendar. The client
+// polls at 5-minute intervals, so 6/min is pure headroom — this only guards
+// against a runaway poller re-introducing a tight refetch loop. Relaxed in
+// dev for the same Playwright reason as authRateLimit.
+const nudgesRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 6, 60_000);
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
@@ -45,8 +50,9 @@ const app = new Hono<{ Bindings: Env }>()
   })
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
-  // Aski chat hits Workers AI; nudge polling is deterministic and stays uncapped.
+  // Aski chat hits Workers AI; nudge polling is capped well above its 5-min cadence.
   .use("/api/assistant/chat", aiRateLimit)
+  .use("/api/assistant/nudges", nudgesRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)
   .route("/api/clients", clientsRouter)

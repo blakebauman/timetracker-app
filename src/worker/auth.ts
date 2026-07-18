@@ -56,6 +56,14 @@ export function createAuth(env: Env, baseURL: string) {
       // fresh gate here — revoke and other sensitive ops use the non-fresh
       // middleware — so this just restores anytime session visibility.
       freshAge: 0,
+      // Serve getSession() from a signed cookie for 5 minutes instead of a D1
+      // lookup on every /api/* request (workspaceMiddleware). Bearer-token
+      // requests (extension) bypass this and still validate against D1.
+      // Revocations can lag by up to maxAge; sign-out clears the cookie itself.
+      cookieCache: {
+        enabled: true,
+        maxAge: 300,
+      },
     },
     user: {
       // Enables the account self-deletion flow (authClient.deleteUser()).

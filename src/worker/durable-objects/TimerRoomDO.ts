@@ -1,7 +1,11 @@
 import { DurableObject } from "cloudflare:workers";
 
 export class TimerRoomDO extends DurableObject<Env> {
-  private sessions: Set<WebSocket> = new Set();
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Answer the client's "ping" without waking a hibernated object.
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -13,19 +17,10 @@ export class TimerRoomDO extends DurableObject<Env> {
         WebSocket,
         WebSocket,
       ];
-      server.accept();
-      this.sessions.add(server);
-      server.addEventListener("close", () => this.sessions.delete(server));
-      server.addEventListener("error", () => this.sessions.delete(server));
-      server.addEventListener("message", (event) => {
-        if (event.data === "ping") {
-          try {
-            server.send("pong");
-          } catch {
-            this.sessions.delete(server);
-          }
-        }
-      });
+      // Hibernation API: the runtime tracks the socket and can evict this
+      // object between events instead of pinning it in memory (and billing
+      // duration) for the lifetime of every open tab, as server.accept() did.
+      this.ctx.acceptWebSocket(server);
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -36,12 +31,12 @@ export class TimerRoomDO extends DurableObject<Env> {
       };
       const msg = JSON.stringify({ event, data, ts: Date.now() });
       let sent = 0;
-      for (const ws of [...this.sessions]) {
+      for (const ws of this.ctx.getWebSockets()) {
         try {
           ws.send(msg);
           sent++;
         } catch {
-          this.sessions.delete(ws);
+          // Dead socket — the runtime reaps it; nothing to clean up here.
         }
       }
       return new Response(JSON.stringify({ sent }), {
@@ -50,5 +45,27 @@ export class TimerRoomDO extends DurableObject<Env> {
     }
 
     return new Response("Not found", { status: 404 });
+  }
+
+  webSocketMessage(): void {
+    // Clients are receive-only; "ping" is handled by the auto-response pair.
+  }
+
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    // Compat date < 2026-04-07: we must complete the close handshake ourselves
+    // or the client sees a 1006 abnormal closure.
+    try {
+      ws.close(code, reason);
+    } catch {
+      // Already closed, or a code (e.g. 1005) that close() rejects.
+    }
+  }
+
+  webSocketError(ws: WebSocket): void {
+    try {
+      ws.close(1011, "error");
+    } catch {
+      // Already closed.
+    }
   }
 }

@@ -13,7 +13,7 @@ export function useProjects() {
   return useQuery({
     queryKey: ["projects"],
     queryFn: () => api.projects.list() as Promise<Project[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -22,7 +22,7 @@ export function useAllProjects() {
     queryKey: ["projects", "all"],
     queryFn: () =>
       api.projects.list({ includeArchived: "true" }) as Promise<Project[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -94,7 +94,7 @@ export function useClients() {
   return useQuery({
     queryKey: ["clients"],
     queryFn: () => api.clients.list() as Promise<Client[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -103,7 +103,7 @@ export function useAllClients() {
     queryKey: ["clients", "all"],
     queryFn: () =>
       api.clients.list({ includeArchived: "true" }) as Promise<Client[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -156,7 +156,7 @@ export function useTags() {
     queryKey: ["tags"],
     queryFn: () =>
       api.tags.list() as Promise<{ id: string; name: string; color: string }[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 

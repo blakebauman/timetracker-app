@@ -11,7 +11,7 @@ export function useRecurringEntries() {
   return useQuery({
     queryKey: ["recurring"],
     queryFn: () => api.recurring.list() as Promise<RecurringEntry[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 

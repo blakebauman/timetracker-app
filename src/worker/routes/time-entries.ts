@@ -87,7 +87,7 @@ export const timeEntriesRouter = new Hono<{
     }
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
-    await broadcast(c.env, workspaceId, data.stop ? "entries:changed" : "timer:start", entry);
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, data.stop ? "entries:changed" : "timer:start", entry));
     return c.json(entry, 201);
   })
   // ─── Current running entry ─────────────────────────────────────────────
@@ -133,7 +133,7 @@ export const timeEntriesRouter = new Hono<{
       }
     }
 
-    await broadcast(c.env, workspaceId, "entries:changed", null);
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null));
     return c.json({ ok: true, updated: ids.length });
   })
   // ─── Bulk delete ──────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ export const timeEntriesRouter = new Hono<{
       `DELETE FROM time_entries WHERE workspace_id = ? AND id IN (${placeholders})`
     ).bind(workspaceId, ...ids).run();
 
-    await broadcast(c.env, workspaceId, "entries:changed", null);
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null));
     return c.json({ ok: true, deleted: ids.length });
   })
   // ─── Get by ID ────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ export const timeEntriesRouter = new Hono<{
     }
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
-    await broadcast(c.env, workspaceId, "entries:changed", entry);
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", entry));
     return c.json(entry);
   })
   // ─── Delete ───────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ export const timeEntriesRouter = new Hono<{
     await c.env.DB.prepare(
       `DELETE FROM time_entries WHERE id = ? AND workspace_id = ?`
     ).bind(c.req.param("id"), workspaceId).run();
-    await broadcast(c.env, workspaceId, "entries:changed", null);
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null));
     return c.json({ ok: true });
   })
   // ─── Stop running ─────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ export const timeEntriesRouter = new Hono<{
     // Only broadcast if the entry was actually running — prevents false timer:stop
     // events when the extension tries to stop an already-stopped (stale) entry
     if (result.meta.changes > 0) {
-      await broadcast(c.env, workspaceId, "timer:stop", entry);
+      c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "timer:stop", entry));
     }
     return c.json(entry);
   });

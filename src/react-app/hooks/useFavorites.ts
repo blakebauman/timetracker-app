@@ -7,7 +7,7 @@ export function useFavorites() {
   return useQuery({
     queryKey: ["favorites"],
     queryFn: () => api.favorites.list() as Promise<Favorite[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
