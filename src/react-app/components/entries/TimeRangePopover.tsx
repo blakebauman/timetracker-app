@@ -67,6 +67,7 @@ export function TimeRangePopover({ start, stop, onChange, children, triggerClass
               fallbackIso={start}
               onChange={handleStartChange}
               className="h-8 w-24"
+              ariaLabel="Start time"
             />
           </div>
           <div className="space-y-1">
@@ -76,6 +77,7 @@ export function TimeRangePopover({ start, stop, onChange, children, triggerClass
               fallbackIso={stop}
               onChange={handleStopChange}
               className="h-8 w-24"
+              ariaLabel="Stop time"
             />
           </div>
         </div>

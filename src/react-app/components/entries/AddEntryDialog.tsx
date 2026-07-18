@@ -135,11 +135,11 @@ export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
               <Label>Start</Label>
-              <TimeOfDayInput value={start} fallbackIso={fallbackIso} onChange={setStart} allowClear />
+              <TimeOfDayInput value={start} fallbackIso={fallbackIso} onChange={setStart} allowClear ariaLabel="Start time" />
             </div>
             <div className="flex-1 space-y-1.5">
               <Label>Stop</Label>
-              <TimeOfDayInput value={stop} fallbackIso={stop ?? fallbackIso} onChange={setStop} allowClear />
+              <TimeOfDayInput value={stop} fallbackIso={stop ?? fallbackIso} onChange={setStop} allowClear ariaLabel="Stop time" />
             </div>
           </div>
 

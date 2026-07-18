@@ -23,8 +23,10 @@ import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
 export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
 
-// 10 attempts per minute on auth endpoints
-const authRateLimit = rateLimit(10, 60_000);
+// 10 attempts per minute on auth endpoints. Relaxed in the Vite dev server
+// (which is what `pnpm dev` and the CI e2e run use) so the Playwright suite's
+// one-signup-per-test pattern can't trip it — production builds keep 10/min.
+const authRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 10, 60_000);
 // AI calls have real latency/cost — cap per-workspace request rate
 const aiRateLimit = rateLimit(20, 60_000);
 
