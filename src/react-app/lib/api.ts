@@ -250,6 +250,15 @@ export const api = {
       }),
   },
 
+  // ─── Admin ────────────────────────────────────────────────────────────────
+  admin: {
+    removeUser: (id: string) =>
+      request<{ ok: boolean; purgedWorkspaces: number }>(
+        `/admin/users/${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      ),
+  },
+
   // ─── Settings ─────────────────────────────────────────────────────────────
   settings: {
     get: () => request<Settings>("/settings"),
