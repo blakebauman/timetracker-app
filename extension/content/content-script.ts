@@ -22,6 +22,15 @@ if (APP_ORIGINS.has(window.location.origin)) {
     // (e.g. extension reloading mid-session) to avoid uncaught promise rejections.
     chrome.runtime.sendMessage({ type: "TIMER_STATE_CHANGED", state: detail }).catch(() => {});
   });
+
+  // Aski nudge dismissals — relayed so the badge's nudge count (computed from
+  // a server poll that knows nothing of dismissals) can exclude them.
+  window.addEventListener("timetracker:assistant", (e: Event) => {
+    const { detail } = e as CustomEvent;
+    chrome.runtime
+      .sendMessage({ type: "ASSISTANT_DISMISSED", dismissed: detail?.dismissed })
+      .catch(() => {});
+  });
 }
 
 function detectContext(): string | null {

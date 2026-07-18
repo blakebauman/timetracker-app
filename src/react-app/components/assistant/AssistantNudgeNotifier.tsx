@@ -19,8 +19,20 @@ export function AssistantNudgeNotifier() {
   const alertsEnabled = useAssistantStore((s) => s.alertsEnabled);
   const open = useAssistantStore((s) => s.open);
   const seen = useAssistantStore((s) => s.seen);
+  const dismissed = useAssistantStore((s) => s.dismissed);
   const markSeen = useAssistantStore((s) => s.markSeen);
   const setOpen = useAssistantStore((s) => s.setOpen);
+
+  // Relay dismissals to the browser extension (content script → service
+  // worker) so its badge count excludes nudges dismissed in the app — the
+  // extension polls the server, which knows nothing about dismissals.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("timetracker:assistant", {
+        detail: { dismissed: Object.keys(dismissed) },
+      })
+    );
+  }, [dismissed]);
 
   useEffect(() => {
     if (!alertsEnabled || open) return;
