@@ -47,6 +47,9 @@ interface UIStore {
   commandOpen: boolean;
   shortcutsOpen: boolean;
   discardConfirmOpen: boolean;
+  // AI Quick Add dialog — global so it can be opened from the Timer header and
+  // the AI Assistant panel (which is mounted app-wide). Transient, never persisted.
+  quickAddOpen: boolean;
   // Transient: the entry row to flash-highlight (e.g. the one just stopped so the
   // eye can track where it landed in the list). Never persisted.
   highlightedEntryId: string | null;
@@ -70,6 +73,8 @@ interface UIStore {
   setShortcutsOpen: (v: boolean) => void;
   openShortcuts: () => void;
   setDiscardConfirmOpen: (v: boolean) => void;
+  setQuickAddOpen: (v: boolean) => void;
+  openQuickAdd: () => void;
   flashEntry: (id: string) => void;
 }
 
@@ -104,6 +109,7 @@ export const useUIStore = create<UIStore>()(
       commandOpen: false,
       shortcutsOpen: false,
       discardConfirmOpen: false,
+      quickAddOpen: false,
       highlightedEntryId: null,
 
       toggleSidebar: () =>
@@ -155,6 +161,8 @@ export const useUIStore = create<UIStore>()(
       setShortcutsOpen: (v) => set({ shortcutsOpen: v }),
       openShortcuts: () => set({ shortcutsOpen: true }),
       setDiscardConfirmOpen: (v) => set({ discardConfirmOpen: v }),
+      setQuickAddOpen: (v) => set({ quickAddOpen: v }),
+      openQuickAdd: () => set({ quickAddOpen: true }),
       flashEntry: (id) => {
         clearTimeout(flashTimeout);
         set({ highlightedEntryId: id });

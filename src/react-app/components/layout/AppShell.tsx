@@ -6,6 +6,7 @@ import { TimerBar } from "@/components/timer/TimerBar";
 import { ProductivityManager } from "@/components/timer/ProductivityManager";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { AssistantNudgeNotifier } from "@/components/assistant/AssistantNudgeNotifier";
+import { AiQuickAddDialog } from "@/components/entries/AiQuickAddDialog";
 import { CommandPalette } from "./CommandPalette";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { PageFallback } from "./PageFallback";
@@ -14,12 +15,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useHydrateSettings } from "@/hooks/useSettings";
+import { useUIStore } from "@/stores/uiStore";
 
 export function AppShell() {
   useWebSocket();
   useHydrateSettings();
   const { isOnline } = useOfflineSync();
   const location = useLocation();
+  const quickAddOpen = useUIStore((s) => s.quickAddOpen);
+  const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
   // useTimerLifecycle() is called inside TimerBar (always mounted), which
   // registers the tick loop, IDB restore, and keyboard shortcuts globally.
 
@@ -60,6 +64,7 @@ export function AppShell() {
       <KeyboardShortcuts />
       <AssistantPanel />
       <AssistantNudgeNotifier />
+      <AiQuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       <ProductivityManager />
       <Toaster richColors position="bottom-right" />
     </div>
