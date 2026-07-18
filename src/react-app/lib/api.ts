@@ -1,5 +1,5 @@
 import { addPendingMutation } from "@/lib/idb";
-import type { Settings } from "@shared/schemas";
+import type { Settings, AssistantMemory } from "@shared/schemas";
 
 const API_BASE = "/api";
 
@@ -248,6 +248,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    // What Aski has remembered about the user (Settings management card).
+    memory: () => request<AssistantMemory[]>("/assistant/memory"),
+    deleteMemory: (key: string) =>
+      request<void>(`/assistant/memory/${encodeURIComponent(key)}`, { method: "DELETE" }),
+    clearMemory: () => request<void>("/assistant/memory", { method: "DELETE" }),
   },
 
   // ─── Admin ────────────────────────────────────────────────────────────────

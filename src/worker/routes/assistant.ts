@@ -7,6 +7,7 @@ import {
 } from "@shared/schemas";
 import { computeNudges } from "../lib/assistant";
 import { inferEventProjects } from "../lib/ai";
+import { listMemories, deleteMemory, clearMemories } from "../lib/assistant-memory";
 import { broadcast } from "../db/queries";
 
 // Clamp to sane UTC offsets so a bad client can't shift day-bound queries
@@ -89,4 +90,17 @@ export const assistantRouter = new Hono<{
       projectName: match?.projectName ?? null,
       billable: Boolean(match?.billable),
     } satisfies AssistantTrackEventResult);
+  })
+  // ─── Memory management (what Aski has remembered about the user) ─────────────
+  .get("/memory", async (c) => {
+    const memories = await listMemories(c.env.DB, c.get("workspaceId"));
+    return c.json(memories);
+  })
+  .delete("/memory", async (c) => {
+    await clearMemories(c.env.DB, c.get("workspaceId"));
+    return c.body(null, 204);
+  })
+  .delete("/memory/:key", async (c) => {
+    const deleted = await deleteMemory(c.env.DB, c.get("workspaceId"), c.req.param("key"));
+    return deleted ? c.body(null, 204) : c.json({ error: "Not found" }, 404);
   });
