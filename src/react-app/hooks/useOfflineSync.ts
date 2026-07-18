@@ -52,7 +52,10 @@ export function useOnlineStatus(): boolean {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      queryClient.invalidateQueries();
+      // Only the data that can drift while offline — a keyless invalidate here
+      // refetched every cached query on each network flap.
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["assistant-nudges"] });
     };
     const handleOffline = () => setIsOnline(false);
 

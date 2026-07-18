@@ -25,7 +25,7 @@ export function useSavedReports() {
   return useQuery({
     queryKey: ["saved-reports"],
     queryFn: () => api.savedReports.list() as Promise<SavedReport[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 

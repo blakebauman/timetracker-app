@@ -11,7 +11,7 @@ export function useIntegrations() {
   return useQuery({
     queryKey: ["integrations"],
     queryFn: () => api.integrations.list() as Promise<Integration[]>,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 

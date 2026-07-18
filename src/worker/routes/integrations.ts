@@ -209,6 +209,6 @@ export const integrationsRouter = new Hono<{
       }
     }
 
-    if (anyChanged) await broadcast(c.env, workspaceId, "entries:changed", null);
+    if (anyChanged) c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null));
     return c.json({ results });
   });

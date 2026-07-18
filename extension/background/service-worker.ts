@@ -61,7 +61,29 @@ function isValidTimerSync(state: unknown): state is {
 
 // ─── Alarm tick ──────────────────────────────────────────────────────────────
 
-chrome.alarms.create("timer-tick", { periodInMinutes: 1 / 60 }); // ~1s
+// The 1s period only drives the LOCAL badge repaint. Chrome clamps alarms for
+// packed installs (so they tick ~1/min), but the clamp is NOT enforced for
+// unpacked dev installs — this alarm really fires every second there, so the
+// network poll below must be time-gated independently of the tick rate.
+chrome.alarms.create("timer-tick", { periodInMinutes: 1 / 60 });
+
+// Minimum gap between server polls. Real-time accuracy while the web app is
+// open comes from the TIMER_STATE_CHANGED push relay, not this poll — it only
+// catches drift while no timetracker tab exists.
+const POLL_INTERVAL_MS = 30_000;
+
+// Stamp in chrome.storage.session: survives SW restarts within a browser
+// session (a restart at most costs one early poll), resets on browser launch.
+async function shouldPollNow(): Promise<boolean> {
+  const { lastPollAt } = (await chrome.storage.session.get("lastPollAt")) as {
+    lastPollAt?: number;
+  };
+  if (typeof lastPollAt === "number" && Date.now() - lastPollAt < POLL_INTERVAL_MS) {
+    return false;
+  }
+  await chrome.storage.session.set({ lastPollAt: Date.now() });
+  return true;
+}
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "timer-tick") return;
@@ -79,11 +101,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   let { timerState } = stored;
   const { apiUrl, authToken } = stored;
 
-  // Poll server on every tick to catch changes made from the web app.
-  // Chrome clamps alarms to ~1 minute in production (1/60 is treated as 1 min),
-  // so polling every tick is fine and avoids the 5-minute stale state window
-  // that the old tickCount % 5 throttle caused.
-  if (authToken) {
+  if (authToken && (await shouldPollNow())) {
     const base = resolveBase(apiUrl);
     try {
       const res = await authedFetch(
@@ -165,8 +183,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           authToken: stored.authToken ?? null,
         });
 
-        // Fire-and-forget: refresh timer state from server in background
+        // Fire-and-forget: refresh timer state from server in background.
+        // Counts as a poll so the next alarm tick doesn't immediately re-fetch.
         if (stored.authToken) {
+          chrome.storage.session.set({ lastPollAt: Date.now() }).catch(() => {});
           const base = resolveBase(stored.apiUrl);
           authedFetch(
             base,
