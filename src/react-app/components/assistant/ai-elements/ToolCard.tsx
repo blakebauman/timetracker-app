@@ -123,7 +123,7 @@ function ApprovalPrompt({
   return (
     <div className="mt-2 space-y-2 pl-5.5">
       <p className="text-muted-foreground">
-        Aski wants to run <span className="font-medium text-foreground">{name}</span>
+        The assistant wants to run <span className="font-medium text-foreground">{name}</span>
         {input?.id ? ` on entry ${String(input.id).slice(0, 8)}…` : ""}. Approve?
       </p>
       <div className="flex gap-2">

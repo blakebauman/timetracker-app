@@ -81,7 +81,7 @@ export function ProductivityCard() {
               <div className="pr-4">
                 <Label>Browser notifications</Label>
                 <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                  Required for reminders, pomodoro, and Aski alerts when the tab
+                  Required for reminders, pomodoro, and assistant alerts when the tab
                   is in the background.
                 </p>
               </div>
@@ -144,9 +144,9 @@ export function ProductivityCard() {
         {/* Aski nudge alerts */}
         <div className="flex items-center justify-between gap-3">
           <div className="pr-2">
-            <Label htmlFor="pref-aski-alerts">Aski nudge alerts</Label>
+            <Label htmlFor="pref-aski-alerts">Assistant nudge alerts</Label>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
-              Toast when Aski notices something new — untracked meetings,
+              Toast when the assistant notices something new — untracked meetings,
               long-running timers. Each nudge alerts once.
             </p>
           </div>

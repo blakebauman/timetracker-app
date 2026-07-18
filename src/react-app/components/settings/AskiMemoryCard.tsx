@@ -19,7 +19,7 @@ export function AskiMemoryCard() {
       <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          Aski's memory
+          AI Assistant memory
         </CardTitle>
         {memories.length > 0 && (
           <Button
@@ -35,8 +35,8 @@ export function AskiMemoryCard() {
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-sm text-muted-foreground">
-          Facts Aski keeps between conversations to personalize its help — like billing
-          defaults or how you like to work. Remove anything it shouldn't hold onto.
+          Facts the assistant keeps between conversations to personalize its help — like
+          billing defaults or how you like to work. Remove anything it shouldn't hold onto.
         </p>
 
         {isLoading ? (
@@ -45,8 +45,8 @@ export function AskiMemoryCard() {
           </div>
         ) : memories.length === 0 ? (
           <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-            Aski hasn't remembered anything yet. Tell it a preference in chat (e.g. “always
-            mark Acme non-billable”) and it'll show up here.
+            The assistant hasn't remembered anything yet. Tell it a preference in chat (e.g.
+            “always mark Acme non-billable”) and it'll show up here.
           </p>
         ) : (
           <ul className="divide-y rounded-lg border">
@@ -74,7 +74,7 @@ export function AskiMemoryCard() {
         open={confirmClear}
         onOpenChange={setConfirmClear}
         title="Forget everything?"
-        description="Aski will lose all remembered facts about you. This can't be undone."
+        description="The assistant will lose all remembered facts about you. This can't be undone."
         confirmLabel="Forget all"
         onConfirm={() => {
           del.mutate(null);

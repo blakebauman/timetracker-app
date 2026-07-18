@@ -69,7 +69,7 @@ export function useDeleteAssistantMemory() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assistant-memory"] });
     },
-    onError: () => toast.error("Couldn't update Aski's memory — try again."),
+    onError: () => toast.error("Couldn't update the assistant's memory — try again."),
   });
 }
 

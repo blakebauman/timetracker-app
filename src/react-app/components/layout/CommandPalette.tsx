@@ -153,7 +153,7 @@ export function CommandPalette() {
             }}
           >
             <Sparkles className="h-4 w-4" />
-            Ask Aski
+            Ask AI Assistant
           </CommandItem>
         </CommandGroup>
 

@@ -23,8 +23,8 @@ export function AssistantButton() {
           onClick={toggleOpen}
           aria-label={
             nudges.length > 0
-              ? `Open Aski — ${nudges.length} ${nudges.length === 1 ? "nudge" : "nudges"}`
-              : "Open Aski"
+              ? `Open AI Assistant — ${nudges.length} ${nudges.length === 1 ? "nudge" : "nudges"}`
+              : "Open AI Assistant"
           }
         >
           <Sparkles className="h-4 w-4" />
@@ -38,7 +38,7 @@ export function AssistantButton() {
           )}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>Aski — your tracking assistant</TooltipContent>
+      <TooltipContent>AI Assistant — your tracking helper</TooltipContent>
     </Tooltip>
   );
 }
