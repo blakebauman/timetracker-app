@@ -3,8 +3,6 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAssistantStore } from "@/stores/assistantStore";
 import type {
-  AssistantChatRequest,
-  AssistantChatResult,
   AssistantNudge,
   AssistantTrackEventRequest,
   AssistantTrackEventResult,
@@ -26,14 +24,6 @@ export function useAssistantNudges() {
   });
   const nudges = (query.data ?? []).filter((n) => !(n.id in dismissed));
   return { ...query, nudges };
-}
-
-export function useAssistantChat() {
-  return useMutation({
-    mutationFn: (body: AssistantChatRequest) =>
-      api.assistant.chat(body as unknown as Record<string, unknown>) as Promise<AssistantChatResult>,
-    onError: () => toast.error("Aski is unavailable right now — try again shortly."),
-  });
 }
 
 /**

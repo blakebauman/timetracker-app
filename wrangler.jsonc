@@ -20,7 +20,7 @@
     // Top-level navigations (Sec-Fetch-Mode: navigate) to non-asset paths get the
     // SPA index.html unless the path is routed to the worker here. The Google OAuth
     // callback is a navigation, so without this it never reaches Better Auth.
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/agents/*"]
   },
   "d1_databases": [
     {
@@ -34,6 +34,12 @@
       {
         "name": "TIMER_ROOM",
         "class_name": "TimerRoomDO"
+      },
+      // Aski chat: one AIChatAgent instance per workspace. Persists conversation
+      // history + resumable streams in its own SQLite (hence new_sqlite_classes).
+      {
+        "name": "CHAT_AGENT",
+        "class_name": "ChatAgent"
       }
     ]
   },
@@ -50,6 +56,10 @@
     {
       "tag": "v1",
       "new_classes": ["TimerRoomDO"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["ChatAgent"]
     }
   ],
   "routes": [

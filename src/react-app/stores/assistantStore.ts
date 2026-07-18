@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { AssistantChatMessage } from "@shared/schemas";
 
 // Entries older than this stop mattering: the nudges they refer to are all
 // same-day facts, so prune to keep the maps small.
 const NUDGE_ID_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
+// The conversation itself is no longer kept here — it's persisted server-side in
+// the per-workspace ChatAgent Durable Object and read via useAgentChat. This
+// store only holds the nudge/alert UI state that has no server home.
 interface AssistantStore {
   open: boolean;
   // Nudge id → dismissal timestamp (ms). Persisted so a dismissed nudge stays
@@ -16,16 +18,12 @@ interface AssistantStore {
   seen: Record<string, number>;
   // Toast + browser-notification alerts for new nudges (Settings toggle).
   alertsEnabled: boolean;
-  // Session-only conversation with Aski — deliberately not persisted.
-  messages: AssistantChatMessage[];
 
   setOpen: (v: boolean) => void;
   toggleOpen: () => void;
   dismissNudge: (id: string) => void;
   markSeen: (ids: string[]) => void;
   setAlertsEnabled: (v: boolean) => void;
-  addMessage: (m: AssistantChatMessage) => void;
-  clearMessages: () => void;
 }
 
 function pruneOld(map: Record<string, number>): Record<string, number> {
@@ -40,7 +38,6 @@ export const useAssistantStore = create<AssistantStore>()(
       dismissed: {},
       seen: {},
       alertsEnabled: true,
-      messages: [],
 
       setOpen: (v) => set({ open: v }),
       toggleOpen: () => set((s) => ({ open: !s.open })),
@@ -54,8 +51,6 @@ export const useAssistantStore = create<AssistantStore>()(
           return { seen };
         }),
       setAlertsEnabled: (v) => set({ alertsEnabled: v }),
-      addMessage: (m) => set((s) => ({ messages: [...s.messages, m] })),
-      clearMessages: () => set({ messages: [] }),
     }),
     {
       name: "time-tracker-assistant",

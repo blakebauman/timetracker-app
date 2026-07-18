@@ -2,13 +2,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import {
-  AssistantChatRequestSchema,
   AssistantTrackEventRequestSchema,
-  type AssistantChatResult,
   type AssistantTrackEventResult,
 } from "@shared/schemas";
-import { computeNudges, buildAssistantContext } from "../lib/assistant";
-import { runAssistantChat, inferEventProjects, AiParseError } from "../lib/ai";
+import { computeNudges } from "../lib/assistant";
+import { inferEventProjects } from "../lib/ai";
 import { broadcast } from "../db/queries";
 
 // Clamp to sane UTC offsets so a bad client can't shift day-bound queries
@@ -91,19 +89,4 @@ export const assistantRouter = new Hono<{
       projectName: match?.projectName ?? null,
       billable: Boolean(match?.billable),
     } satisfies AssistantTrackEventResult);
-  })
-  .post("/chat", zValidator("json", AssistantChatRequestSchema), async (c) => {
-    const { messages, timezoneOffsetMinutes } = c.req.valid("json");
-    const offset = Math.max(-14 * 60, Math.min(14 * 60, timezoneOffsetMinutes));
-
-    const context = await buildAssistantContext(c.env, c.get("workspaceId"), offset);
-
-    try {
-      // Keep only the conversation tail — the grounding context carries the state.
-      const reply = await runAssistantChat(c.env.AI, context, messages.slice(-12));
-      return c.json({ reply } satisfies AssistantChatResult);
-    } catch (err) {
-      const message = err instanceof AiParseError ? err.message : "AI is unavailable right now";
-      return c.json({ error: message }, 502);
-    }
   });
