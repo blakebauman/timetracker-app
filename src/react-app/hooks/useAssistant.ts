@@ -2,7 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAssistantStore } from "@/stores/assistantStore";
-import type { AssistantChatRequest, AssistantChatResult, AssistantNudge } from "@shared/schemas";
+import type {
+  AssistantChatRequest,
+  AssistantChatResult,
+  AssistantNudge,
+  AssistantTrackEventRequest,
+  AssistantTrackEventResult,
+} from "@shared/schemas";
 
 /**
  * Aski's proactive nudges, minus the ones the user dismissed. Polled on a slow
@@ -30,13 +36,28 @@ export function useAssistantChat() {
   });
 }
 
-/** Invalidate everything a nudge action can change, incl. the nudge list itself. */
-export function useInvalidateAfterNudgeAction() {
+/**
+ * "Add to timesheet" on an untracked-meeting nudge. Server-side create with
+ * grounded AI project inference; the toast names the matched project so a
+ * wrong guess is noticed immediately.
+ */
+export function useTrackNudgeEvent() {
   const queryClient = useQueryClient();
-  return () => {
-    queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-    queryClient.invalidateQueries({ queryKey: ["reports"] });
-    queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-    queryClient.invalidateQueries({ queryKey: ["assistant-nudges"] });
-  };
+  return useMutation({
+    mutationFn: (body: AssistantTrackEventRequest) =>
+      api.assistant.trackEvent(
+        body as unknown as Record<string, unknown>
+      ) as Promise<AssistantTrackEventResult>,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+      queryClient.invalidateQueries({ queryKey: ["assistant-nudges"] });
+      toast.success(
+        data.projectName ? `Added to timesheet · ${data.projectName}` : "Added to timesheet"
+      );
+    },
+    onError: () => toast.error("Couldn't add that meeting — try again."),
+  });
 }
+

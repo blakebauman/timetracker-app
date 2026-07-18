@@ -504,6 +504,27 @@ export const AssistantChatResultSchema = z.object({
   reply: z.string(),
 });
 
+// One-click "Add to timesheet" on an untracked-meeting nudge. Server-side so
+// the entry gets AI project inference (grounded, best-effort) before insert.
+export const AssistantTrackEventRequestSchema = z
+  .object({
+    calendarEventId: z.string().min(1).max(500),
+    title: z.string().max(500),
+    start: z.string(),
+    stop: z.string(),
+  })
+  .refine((d) => new Date(d.stop) > new Date(d.start), {
+    message: "Stop time must be after start time",
+    path: ["stop"],
+  });
+
+export const AssistantTrackEventResultSchema = z.object({
+  created: z.boolean(), // false when the event was already tracked (idempotent)
+  projectId: z.string().nullable(),
+  projectName: z.string().nullable(),
+  billable: z.boolean(),
+});
+
 // ─── Inferred types ──────────────────────────────────────────────────────────
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;
@@ -543,3 +564,5 @@ export type AssistantNudge = z.infer<typeof AssistantNudgeSchema>;
 export type AssistantChatMessage = z.infer<typeof AssistantChatMessageSchema>;
 export type AssistantChatRequest = z.infer<typeof AssistantChatRequestSchema>;
 export type AssistantChatResult = z.infer<typeof AssistantChatResultSchema>;
+export type AssistantTrackEventRequest = z.infer<typeof AssistantTrackEventRequestSchema>;
+export type AssistantTrackEventResult = z.infer<typeof AssistantTrackEventResultSchema>;

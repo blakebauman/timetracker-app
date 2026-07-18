@@ -10,44 +10,10 @@ import {
   runQuickEntryParse,
   runSummaryGeneration,
   resolveGrounding,
+  loadGroundingProjects,
   AiParseError,
-  type ProjectGrounding,
   type SummaryEntryInput,
 } from "../lib/ai";
-
-async function loadGroundingProjects(
-  db: D1Database,
-  workspaceId: string
-): Promise<ProjectGrounding[]> {
-  const { results } = await db
-    .prepare(
-      `SELECT p.id AS project_id, p.name AS project_name, p.billable AS project_billable,
-              tk.id AS task_id, tk.name AS task_name
-       FROM projects p
-       LEFT JOIN tasks tk ON tk.project_id = p.id AND tk.active = 1
-       WHERE p.workspace_id = ? AND p.active = 1
-       ORDER BY p.name ASC`
-    )
-    .bind(workspaceId)
-    .all<Record<string, unknown>>();
-
-  const byId = new Map<string, ProjectGrounding>();
-  for (const row of results) {
-    const id = row.project_id as string;
-    if (!byId.has(id)) {
-      byId.set(id, {
-        id,
-        name: row.project_name as string,
-        billable: Boolean(row.project_billable),
-        tasks: [],
-      });
-    }
-    if (row.task_id) {
-      byId.get(id)!.tasks.push({ id: row.task_id as string, name: row.task_name as string });
-    }
-  }
-  return [...byId.values()];
-}
 
 export const aiRouter = new Hono<{
   Bindings: Env;

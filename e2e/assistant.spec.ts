@@ -65,3 +65,24 @@ test("Aski surfaces a long-running-timer nudge and dismisses it", async ({ page 
   await expect(reopened.getByText("Timer still running")).toBeHidden();
   await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
 });
+
+// AI project inference is best-effort and unavailable in CI — this exercises
+// the fallback path: the entry must still materialize, just uncategorized.
+test("track-event materializes a meeting idempotently", async ({ page }) => {
+  await signUp(page);
+
+  const start = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const stop = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const body = { calendarEventId: "evt-e2e-track", title: "Design sync", start, stop };
+
+  const first = await page.request.post("/api/assistant/track-event", { data: body });
+  expect(first.ok()).toBeTruthy();
+  expect((await first.json()).created).toBe(true);
+
+  // Same event again (double-click / auto-track race) must not duplicate.
+  const second = await page.request.post("/api/assistant/track-event", { data: body });
+  expect((await second.json()).created).toBe(false);
+
+  await page.reload();
+  await expect(page.getByText("Design sync")).toBeVisible();
+});

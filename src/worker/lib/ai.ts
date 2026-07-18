@@ -146,6 +146,127 @@ ${styleInstruction} Do not invent work not listed above. Output only the summary
   return summary;
 }
 
+/** Active projects (+tasks) shaped for AI grounding. Shared by the AI routes,
+ *  calendar materialization, and Aski's track-event action. */
+export async function loadGroundingProjects(
+  db: D1Database,
+  workspaceId: string
+): Promise<ProjectGrounding[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT p.id AS project_id, p.name AS project_name, p.billable AS project_billable,
+              tk.id AS task_id, tk.name AS task_name
+       FROM projects p
+       LEFT JOIN tasks tk ON tk.project_id = p.id AND tk.active = 1
+       WHERE p.workspace_id = ? AND p.active = 1
+       ORDER BY p.name ASC`
+    )
+    .bind(workspaceId)
+    .all<Record<string, unknown>>();
+
+  const byId = new Map<string, ProjectGrounding>();
+  for (const row of results) {
+    const id = row.project_id as string;
+    if (!byId.has(id)) {
+      byId.set(id, {
+        id,
+        name: row.project_name as string,
+        billable: Boolean(row.project_billable),
+        tasks: [],
+      });
+    }
+    if (row.task_id) {
+      byId.get(id)!.tasks.push({ id: row.task_id as string, name: row.task_name as string });
+    }
+  }
+  return [...byId.values()];
+}
+
+// ─── Calendar-event → project inference ──────────────────────────────────────
+
+const EventProjectSchema = z.object({
+  assignments: z.array(
+    z.object({ title: z.string(), projectName: z.string().nullable() })
+  ),
+});
+
+export interface InferredEventProject {
+  projectId: string;
+  projectName: string;
+  billable: boolean;
+}
+
+/**
+ * Best-effort: match calendar event titles to known projects so materialized
+ * entries land pre-categorized with the project's billable default. Grounded
+ * the same way as quick-entry (model may only pick listed names, fuzzy-resolved
+ * with the same ambiguity guards). Any failure or non-match yields no entry in
+ * the map — callers create the entry without a project, never block on AI.
+ */
+export async function inferEventProjects(
+  db: D1Database,
+  ai: Ai,
+  workspaceId: string,
+  titles: string[]
+): Promise<Map<string, InferredEventProject>> {
+  const resolved = new Map<string, InferredEventProject>();
+  const unique = [...new Set(titles.map((t) => t.trim()).filter(Boolean))].slice(0, 50);
+  if (!unique.length) return resolved;
+
+  const projects = await loadGroundingProjects(db, workspaceId);
+  if (!projects.length) return resolved;
+
+  const system = `You match calendar event titles to a consultant's known projects in a time-tracking app, so meetings land on the right client engagement.
+
+Rules:
+- For each event title, pick the ONE project it clearly belongs to, choosing ONLY an exact name from the list below — or null.
+- A match must be evident from the title (client name, project name, engagement code, or an obvious abbreviation of one). Generic meetings ("1:1", "Standup", "Lunch", "Weekly sync") with no project signal are null.
+- When unsure, always prefer null over a guess — a wrong project is worse than none.
+- Output ONLY JSON of the form { "assignments": [ { "title": "<exact event title>", "projectName": "<exact project name or null>" } ] }.
+
+Known active projects:
+${projects.map((p) => `- "${p.name}"`).join("\n")}`;
+  const user = `Event titles:\n${unique.map((t) => `- ${t}`).join("\n")}`;
+
+  let raw: unknown;
+  try {
+    raw = await ai.run(
+      QUICK_ENTRY_MODEL,
+      {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: z.toJSONSchema(EventProjectSchema),
+        },
+      },
+      { gateway: GATEWAY }
+    );
+  } catch {
+    return resolved;
+  }
+
+  const parsed = EventProjectSchema.safeParse(extractJson(raw));
+  if (!parsed.success) return resolved;
+
+  const byTitle = new Map(unique.map((t) => [normalize(t), t]));
+  for (const a of parsed.data.assignments) {
+    const title = byTitle.get(normalize(a.title));
+    if (!title || !a.projectName || resolved.has(title)) continue;
+    const project = bestMatch(a.projectName, projects, (p) => p.name);
+    if (project) {
+      resolved.set(title, {
+        projectId: project.id,
+        projectName: project.name,
+        billable: project.billable,
+      });
+    }
+  }
+  return resolved;
+}
+
 // ─── Aski chat ────────────────────────────────────────────────────────────────
 
 const ASSISTANT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
