@@ -9,6 +9,9 @@ interface TimeOfDayInputProps {
   onChange: (iso: string | null) => void;
   allowClear?: boolean;
   className?: string;
+  // The visible <Label> next to these inputs isn't htmlFor-associated, so give
+  // the input its own accessible name ("Start time" / "Stop time").
+  ariaLabel?: string;
 }
 
 // Editable time-of-day field. Displays/parses per the app's 24h/12h preference,
@@ -20,6 +23,7 @@ export function TimeOfDayInput({
   onChange,
   allowClear = false,
   className,
+  ariaLabel,
 }: TimeOfDayInputProps) {
   const timeFormat = useUIStore((s) => s.timeFormat);
   const display = (iso: string | null) => (iso ? formatEntryTime(iso, timeFormat) : "");
@@ -64,6 +68,7 @@ export function TimeOfDayInput({
         }
       }}
       placeholder={timeFormat === "12h" ? "2:30 PM" : "14:30"}
+      aria-label={ariaLabel}
       className={className}
     />
   );

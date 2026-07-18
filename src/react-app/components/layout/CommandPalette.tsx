@@ -14,6 +14,7 @@ import { useTimer } from "@/hooks/useTimer";
 import { useGroupedEntries } from "@/hooks/useEntries";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useAssistantStore } from "@/stores/assistantStore";
 import {
   Timer,
   FolderOpen,
@@ -22,6 +23,7 @@ import {
   Settings,
   Play,
   Square,
+  Sparkles,
 } from "lucide-react";
 import { ColorDot } from "@/components/ColorDot";
 import type { TimeEntry } from "@shared/schemas";
@@ -33,6 +35,7 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const { startTimer, stopTimer } = useTimer();
   const { runningEntry } = useTimerStore();
+  const openAssistant = useAssistantStore((s) => s.setOpen);
   const { entries } = useGroupedEntries(30);
 
   useHotkeys(
@@ -143,6 +146,15 @@ export function CommandPalette() {
               )}
             </CommandItem>
           )}
+          <CommandItem
+            onSelect={() => {
+              openAssistant(true);
+              close();
+            }}
+          >
+            <Sparkles className="h-4 w-4" />
+            Ask Aski
+          </CommandItem>
         </CommandGroup>
 
         {/* Recent entries */}

@@ -50,12 +50,13 @@ Full-stack TypeScript time tracker (Toggl-like) running entirely on Cloudflare's
 - `index.ts` — Hono app entry; mounts all route groups and auth middleware. Also exports the worker's `scheduled()` handler (see Cron below) alongside `fetch`.
 - `auth.ts` — Better Auth config (email/password + bearer tokens; DB hook auto-creates workspace on user signup). `session.freshAge` is explicitly `0` — Better Auth's `list-sessions` endpoint 403s (`SESSION_NOT_FRESH`) once a session passes the default 1-day freshness window otherwise, which broke the Settings → Active Sessions card for every returning user.
 - `middleware/workspace.ts` — Extracts workspace context from every authenticated request; all route handlers expect `c.get('workspace')`
-- `routes/` — One file per resource: `time-entries`, `projects` (includes `POST /recolor`, AI-assisted), `clients`, `tasks`, `tags` (includes color), `favorites`, `recurring`, `reports`, `calendar` (Google sync + auto-track), `websocket`
+- `routes/` — One file per resource: `time-entries`, `projects` (includes `POST /recolor`, AI-assisted), `clients`, `tasks`, `tags` (includes color), `favorites`, `recurring`, `reports`, `calendar` (Google sync + auto-track), `assistant` (Aski: `GET /nudges` deterministic, `POST /chat` AI), `websocket`
 - `db/queries.ts` — Direct SQL helpers for D1; `ENTRY_SELECT` is the canonical JOIN for time entries; `broadcast()` sends WebSocket events via Durable Object; `upsertTags()` auto-assigns a deterministic color to new tags
 - `durable-objects/TimerRoomDO.ts` — Stateful WebSocket server; one DO per workspace, syncs timer state across browser tabs
 - `lib/colors.ts` — Shared swatch palette. `DISTINCT_COLORS` is hue-alternated (not simply hue-ordered) so auto-assigned colors read as visually distinct even for 2-3 items; `TAG_COLORS` is the same set in hue order for the manual picker grid.
 - `lib/ai.ts` — Workers AI calls (`@cf/meta/llama-3.1-8b-instruct-fp8`, `json_schema` response mode): quick-entry NL parsing, AI summary drafting, and `runProjectColorAssignment` (color-by-project-name, palette-validated, always falls back to the deterministic spread on a bad/missing AI response — AI assist is a best-effort enhancement, never the only path).
 - `lib/calendar-autotrack.ts` / `lib/recurring.ts` — Cron-driven materializers (see below).
+- `lib/assistant.ts` — Aski, the assistant: deterministic nudge computation (untracked/current/upcoming calendar meetings via the same Google read-through as `routes/calendar.ts`, long-running timer, empty weekday timesheet) plus the grounding-context builder for its chat. Nudge dismissals live client-side (`stores/assistantStore.ts`, persisted); the global UI (launcher in `TimerBar`, right-side sheet in `AppShell`) is `react-app/components/assistant/`.
 
 ### Cron (`scheduled()` handler, `*/5 * * * *`)
 

@@ -151,7 +151,7 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
               <Label>Start</Label>
-              <TimeOfDayInput value={start} fallbackIso={entry.start} onChange={(iso) => setStart(iso ?? start)} />
+              <TimeOfDayInput value={start} fallbackIso={entry.start} onChange={(iso) => setStart(iso ?? start)} ariaLabel="Start time" />
             </div>
             <div className="flex-1 space-y-1.5">
               <Label>Stop</Label>
@@ -160,6 +160,7 @@ export function EntryForm({ entry, open, onClose }: EntryFormProps) {
                 fallbackIso={stop ?? entry.start}
                 onChange={setStop}
                 allowClear
+                ariaLabel="Stop time"
               />
             </div>
             <div className="flex-1 space-y-1.5">

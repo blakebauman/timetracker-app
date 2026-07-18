@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { signUp } from "./auth";
+import { addManualEntry } from "./entry-helpers";
 
 test.describe("reports charts", () => {
   test.beforeEach(async ({ page }) => {
@@ -8,14 +9,7 @@ test.describe("reports charts", () => {
 
   test("renders summary + weekly charts with a tracked entry", async ({ page }) => {
     // Seed a tracked entry so the daily chart has data to plot.
-    await page.getByRole("button", { name: "Add entry" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.locator("textarea").fill("Reports smoke entry");
-    const [start, stop] = await dialog.locator('input[type="time"]').all();
-    await start.fill("09:00");
-    await stop.fill("11:00");
-    await dialog.getByRole("button", { name: "Add entry" }).click();
-    await expect(dialog).not.toBeVisible();
+    await addManualEntry(page, { description: "Reports smoke entry", start: "09:00", stop: "11:00" });
 
     await page.goto("/reports");
 
@@ -36,14 +30,7 @@ test.describe("reports charts", () => {
 
   test("detailed report: row selection reveals the bulk action bar", async ({ page }) => {
     // Seed an entry so the detailed table has a row to select.
-    await page.getByRole("button", { name: "Add entry" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.locator("textarea").fill("Billable review call");
-    const [start, stop] = await dialog.locator('input[type="time"]').all();
-    await start.fill("09:00");
-    await stop.fill("10:00");
-    await dialog.getByRole("button", { name: "Add entry" }).click();
-    await expect(dialog).not.toBeVisible();
+    await addManualEntry(page, { description: "Billable review call", start: "09:00", stop: "10:00" });
 
     await page.goto("/reports");
     await page.getByRole("tab", { name: "Detailed" }).click();
@@ -76,14 +63,7 @@ test.describe("reports charts", () => {
   test("charts render in dark mode", async ({ page }) => {
     // Seed an entry so the charts have data to plot (empty ranges now show an
     // empty state, not an empty chart).
-    await page.getByRole("button", { name: "Add entry" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.locator("textarea").fill("Dark mode entry");
-    const [start, stop] = await dialog.locator('input[type="time"]').all();
-    await start.fill("09:00");
-    await stop.fill("11:00");
-    await dialog.getByRole("button", { name: "Add entry" }).click();
-    await expect(dialog).not.toBeVisible();
+    await addManualEntry(page, { description: "Dark mode entry", start: "09:00", stop: "11:00" });
 
     await page.goto("/reports");
     // next-themes stores the choice in localStorage and toggles the .dark class.

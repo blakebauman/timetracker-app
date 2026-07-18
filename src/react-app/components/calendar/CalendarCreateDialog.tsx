@@ -130,6 +130,7 @@ export function CalendarCreateDialog({
                   value={start}
                   fallbackIso={startIso}
                   onChange={(iso) => setStart(iso ?? start)}
+                  ariaLabel="Start time"
                 />
               </div>
               <div className="flex-1 space-y-1.5">
@@ -138,6 +139,7 @@ export function CalendarCreateDialog({
                   value={stop}
                   fallbackIso={stopIso}
                   onChange={(iso) => setStop(iso ?? stop)}
+                  ariaLabel="Stop time"
                 />
               </div>
             </div>

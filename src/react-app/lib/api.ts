@@ -235,6 +235,16 @@ export const api = {
       request<unknown>("/ai/summary", { method: "POST", body: JSON.stringify(body) }),
   },
 
+  // ─── Assistant (Aski) ─────────────────────────────────────────────────────
+  assistant: {
+    nudges: (timezoneOffsetMinutes: number) =>
+      request<unknown[]>(
+        `/assistant/nudges?timezoneOffsetMinutes=${timezoneOffsetMinutes}`
+      ),
+    chat: (body: Record<string, unknown>) =>
+      request<unknown>("/assistant/chat", { method: "POST", body: JSON.stringify(body) }),
+  },
+
   // ─── Settings ─────────────────────────────────────────────────────────────
   settings: {
     get: () => request<Settings>("/settings"),

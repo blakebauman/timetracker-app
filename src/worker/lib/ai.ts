@@ -146,6 +146,46 @@ ${styleInstruction} Do not invent work not listed above. Output only the summary
   return summary;
 }
 
+// ─── Aski chat ────────────────────────────────────────────────────────────────
+
+const ASSISTANT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+
+/**
+ * One grounded chat turn with Aski. `context` is the fact block from
+ * buildAssistantContext; `messages` is the rolling conversation tail.
+ */
+export async function runAssistantChat(
+  ai: Ai,
+  context: string,
+  messages: { role: "user" | "assistant"; content: string }[]
+): Promise<string> {
+  const system = `You are Aski, the built-in assistant of a time-tracking app used by consultants who bill clients for their hours. Your job is to help the user keep an accurate timesheet: point out untracked meetings, answer questions about what they've tracked today, and nudge them to log gaps.
+
+Rules:
+- Ground every answer ONLY in the facts below. Never invent entries, meetings, or numbers.
+- You cannot modify data yourself. When a change is needed, tell the user what to do in the app (e.g. "use the Track button on that nudge", "start the timer", "add a manual entry").
+- Be concise and friendly — a couple of sentences, plain text, no markdown headings.
+- Times in the facts are the user's local time.
+
+Current facts:
+${context}`;
+
+  let raw: { response?: string };
+  try {
+    raw = (await ai.run(
+      ASSISTANT_MODEL,
+      { messages: [{ role: "system", content: system }, ...messages] },
+      { gateway: GATEWAY }
+    )) as { response?: string };
+  } catch {
+    throw new AiParseError("AI is unavailable right now");
+  }
+
+  const reply = raw.response?.trim();
+  if (!reply) throw new AiParseError("AI returned an empty reply");
+  return reply;
+}
+
 // ─── Project color assignment ─────────────────────────────────────────────────
 
 const ProjectColorSchema = z.object({
