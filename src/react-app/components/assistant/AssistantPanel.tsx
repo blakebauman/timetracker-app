@@ -25,6 +25,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useAssistantStore } from "@/stores/assistantStore";
+import { useUIStore } from "@/stores/uiStore";
 import { useAssistantNudges, useTrackNudgeEvent } from "@/hooks/useAssistant";
 import { useTimer } from "@/hooks/useTimer";
 import type { AssistantNudge } from "@shared/schemas";
@@ -117,7 +118,15 @@ export function AssistantPanel() {
   const open = useAssistantStore((s) => s.open);
   const setOpen = useAssistantStore((s) => s.setOpen);
   const markSeen = useAssistantStore((s) => s.markSeen);
+  const openQuickAdd = useUIStore((s) => s.openQuickAdd);
   const { nudges } = useAssistantNudges();
+
+  // The structured, review-before-save path. Close the sheet first so the two
+  // modals (sheet + dialog) don't stack their focus traps.
+  const logTime = () => {
+    setOpen(false);
+    openQuickAdd();
+  };
 
   const [input, setInput] = useState("");
   const [atBottom, setAtBottom] = useState(true);
@@ -212,15 +221,17 @@ export function AssistantPanel() {
 
             {/* Conversation */}
             <div className="mt-4 space-y-3">
-              {messages.length === 0 ? (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Ask about your day, or tell me to start a timer, log time, or track a meeting.
-                  </p>
-                  <SuggestionChips suggestions={SUGGESTIONS} onSelect={send} disabled={busy} />
-                </div>
-              ) : (
-                <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-2">
+                {/* Shortcut to the structured, review-before-save entry form. */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 rounded-full text-xs"
+                  onClick={logTime}
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Log time…
+                </Button>
+                {messages.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -230,6 +241,16 @@ export function AssistantPanel() {
                   >
                     <Eraser className="h-3.5 w-3.5" /> Clear chat
                   </Button>
+                )}
+              </div>
+
+              {messages.length === 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Ask about your day, or tell me to start a timer or track a meeting — or use
+                    “Log time…” for a reviewable entry form.
+                  </p>
+                  <SuggestionChips suggestions={SUGGESTIONS} onSelect={send} disabled={busy} />
                 </div>
               )}
 

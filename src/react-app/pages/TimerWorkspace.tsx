@@ -11,7 +11,6 @@ import {
 import { EntryList } from "@/components/entries/EntryList";
 import { TimerWorkspaceHeader } from "@/components/timer/TimerWorkspaceHeader";
 import { AddEntryDialog } from "@/components/entries/AddEntryDialog";
-import { AiQuickAddDialog } from "@/components/entries/AiQuickAddDialog";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { useEntriesRange } from "@/hooks/useEntries";
 import {
@@ -52,6 +51,7 @@ export function TimerWorkspace() {
   const setShowWeekends = useUIStore((s) => s.setShowWeekends);
   const showGaps = useUIStore((s) => s.showGaps);
   const setShowGaps = useUIStore((s) => s.setShowGaps);
+  const openQuickAdd = useUIStore((s) => s.openQuickAdd);
   const wso = weekStart as 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
   // The month view navigates and scopes by calendar month; every other view by week.
@@ -69,7 +69,6 @@ export function TimerWorkspace() {
   );
 
   const [addEntryOpen, setAddEntryOpen] = useState(false);
-  const [aiQuickAddOpen, setAiQuickAddOpen] = useState(false);
 
   // Week entries drive the "Logged" bar. Shares the ["time-entries", since, until]
   // query key with the body views, so this is deduped, not a second fetch.
@@ -141,7 +140,7 @@ export function TimerWorkspace() {
         onNext={() => setAnchor((d) => (isMonthView ? addMonths(d, 1) : addWeeks(d, 1)))}
         onToday={() => setAnchor(new Date())}
         onAddEntry={() => setAddEntryOpen(true)}
-        onAiQuickAdd={() => setAiQuickAddOpen(true)}
+        onAiQuickAdd={openQuickAdd}
         calendarView={calendarView}
         onCalendarViewChange={setCalendarView}
         slotHeight={slotHeight}
@@ -156,7 +155,6 @@ export function TimerWorkspace() {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{body}</div>
 
       <AddEntryDialog open={addEntryOpen} onClose={() => setAddEntryOpen(false)} />
-      <AiQuickAddDialog open={aiQuickAddOpen} onClose={() => setAiQuickAddOpen(false)} />
     </div>
   );
 }
