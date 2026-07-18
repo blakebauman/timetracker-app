@@ -1,9 +1,15 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { AssistantChatRequestSchema, type AssistantChatResult } from "@shared/schemas";
+import {
+  AssistantChatRequestSchema,
+  AssistantTrackEventRequestSchema,
+  type AssistantChatResult,
+  type AssistantTrackEventResult,
+} from "@shared/schemas";
 import { computeNudges, buildAssistantContext } from "../lib/assistant";
-import { runAssistantChat, AiParseError } from "../lib/ai";
+import { runAssistantChat, inferEventProjects, AiParseError } from "../lib/ai";
+import { broadcast } from "../db/queries";
 
 // Clamp to sane UTC offsets so a bad client can't shift day-bound queries
 // arbitrarily far. Same JS getTimezoneOffset() convention as the AI routes.
@@ -20,6 +26,71 @@ export const assistantRouter = new Hono<{
     const { timezoneOffsetMinutes } = c.req.valid("query");
     const nudges = await computeNudges(c.env, c.get("workspaceId"), timezoneOffsetMinutes);
     return c.json(nudges);
+  })
+  // One-click "Add to timesheet" from an untracked-meeting nudge. Server-side
+  // so the entry can be pre-categorized via grounded AI project inference —
+  // inference failure still creates the entry, just without a project.
+  .post("/track-event", zValidator("json", AssistantTrackEventRequestSchema), async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const { calendarEventId, title, start, stop } = c.req.valid("json");
+
+    // Idempotent: the nudge may race auto-track or a double-click.
+    const existing = await c.env.DB.prepare(
+      `SELECT id FROM time_entries WHERE workspace_id = ? AND calendar_event_id = ? LIMIT 1`
+    )
+      .bind(workspaceId, calendarEventId)
+      .first<{ id: string }>();
+    if (existing) {
+      return c.json({
+        created: false,
+        projectId: null,
+        projectName: null,
+        billable: false,
+      } satisfies AssistantTrackEventResult);
+    }
+
+    let match = null;
+    try {
+      match =
+        (await inferEventProjects(c.env.DB, c.env.AI, workspaceId, [title])).get(title.trim()) ??
+        null;
+    } catch {
+      // Best-effort only.
+    }
+
+    const now = new Date().toISOString();
+    const duration = Math.round(
+      (new Date(stop).getTime() - new Date(start).getTime()) / 1000
+    );
+    await c.env.DB.prepare(
+      `INSERT INTO time_entries
+         (id, workspace_id, project_id, task_id, description, start, stop, duration, billable, calendar_event_id, created_at, updated_at)
+       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        crypto.randomUUID(),
+        workspaceId,
+        match?.projectId ?? null,
+        title,
+        start,
+        stop,
+        duration,
+        match?.billable ? 1 : 0,
+        calendarEventId,
+        now,
+        now
+      )
+      .run();
+    c.executionCtx.waitUntil(
+      broadcast(c.env, workspaceId, "entries:changed", { source: "assistant" })
+    );
+
+    return c.json({
+      created: true,
+      projectId: match?.projectId ?? null,
+      projectName: match?.projectName ?? null,
+      billable: Boolean(match?.billable),
+    } satisfies AssistantTrackEventResult);
   })
   .post("/chat", zValidator("json", AssistantChatRequestSchema), async (c) => {
     const { messages, timezoneOffsetMinutes } = c.req.valid("json");

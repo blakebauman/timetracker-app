@@ -10,6 +10,7 @@ import {
   type ExternalEvent,
 } from "./google-calendar";
 import { broadcast } from "../db/queries";
+import { inferEventProjects, type InferredEventProject } from "./ai";
 
 interface GoogleConnection {
   id: string;
@@ -42,12 +43,13 @@ export async function loadGoogleConnection(
 
 /** Insert entries for events not already confirmed in [since, until]. Returns count. */
 async function insertEvents(
-  db: D1Database,
+  env: Env,
   workspaceId: string,
   since: string,
   until: string,
   events: ExternalEvent[]
 ): Promise<number> {
+  const db = env.DB;
   if (!events.length) return 0;
 
   const { results } = await db
@@ -63,27 +65,39 @@ async function insertEvents(
   const fresh = events.filter((e) => !confirmed.has(e.calendarEventId));
   if (!fresh.length) return 0;
 
+  // Best-effort project match from the event title, so meetings land on the
+  // right engagement with its billable default. Unmatched → no project, 0.
+  let inferred = new Map<string, InferredEventProject>();
+  try {
+    inferred = await inferEventProjects(db, env.AI, workspaceId, fresh.map((e) => e.title));
+  } catch {
+    // AI unavailable — entries still materialize, just uncategorized.
+  }
+
   const now = new Date().toISOString();
   const stmt = db.prepare(
     `INSERT INTO time_entries
        (id, workspace_id, project_id, task_id, description, start, stop, duration, billable, calendar_event_id, created_at, updated_at)
-     VALUES (?, ?, NULL, NULL, ?, ?, ?, CAST((julianday(?) - julianday(?)) * 86400 + 0.5 AS INTEGER), 0, ?, ?, ?)`
+     VALUES (?, ?, ?, NULL, ?, ?, ?, CAST((julianday(?) - julianday(?)) * 86400 + 0.5 AS INTEGER), ?, ?, ?, ?)`
   );
   await db.batch(
-    fresh.map((e) =>
-      stmt.bind(
+    fresh.map((e) => {
+      const match = inferred.get(e.title.trim());
+      return stmt.bind(
         crypto.randomUUID(),
         workspaceId,
+        match?.projectId ?? null,
         e.title,
         e.start,
         e.stop,
         e.stop,
         e.start,
+        match ? (match.billable ? 1 : 0) : 0,
         e.calendarEventId,
         now,
         now
-      )
-    )
+      );
+    })
   );
   return fresh.length;
 }
@@ -122,7 +136,7 @@ export async function convertRange(
     events = events.filter((e) => new Date(e.stop).getTime() <= nowMs);
   }
 
-  const created = await insertEvents(env.DB, workspaceId, since, until, events);
+  const created = await insertEvents(env, workspaceId, since, until, events);
   if (created > 0) await broadcast(env, workspaceId, "entries:changed", { source: "calendar" });
   return created;
 }

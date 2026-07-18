@@ -23,9 +23,8 @@ import { useAssistantStore } from "@/stores/assistantStore";
 import {
   useAssistantNudges,
   useAssistantChat,
-  useInvalidateAfterNudgeAction,
+  useTrackNudgeEvent,
 } from "@/hooks/useAssistant";
-import { useCreateEntry } from "@/hooks/useEntries";
 import { useTimer } from "@/hooks/useTimer";
 import type { AssistantNudge } from "@shared/schemas";
 
@@ -39,27 +38,20 @@ const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
 
 function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   const dismissNudge = useAssistantStore((s) => s.dismissNudge);
-  const createEntry = useCreateEntry();
+  const trackNudgeEvent = useTrackNudgeEvent();
   const { startTimer } = useTimer();
-  const invalidate = useInvalidateAfterNudgeAction();
   const Icon = NUDGE_ICONS[nudge.kind];
 
   const trackEvent = () => {
     if (!nudge.event) return;
-    createEntry.mutate(
+    trackNudgeEvent.mutate(
       {
-        description: nudge.event.title,
+        calendarEventId: nudge.event.calendarEventId,
+        title: nudge.event.title,
         start: nudge.event.start,
         stop: nudge.event.stop,
-        billable: false,
-        calendarEventId: nudge.event.calendarEventId,
       },
-      {
-        onSuccess: () => {
-          dismissNudge(nudge.id);
-          invalidate();
-        },
-      }
+      { onSuccess: () => dismissNudge(nudge.id) }
     );
   };
 
@@ -81,9 +73,9 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
                 variant="outline"
                 size="sm"
                 onClick={trackEvent}
-                disabled={createEntry.isPending}
+                disabled={trackNudgeEvent.isPending}
               >
-                Add to timesheet
+                {trackNudgeEvent.isPending ? "Adding…" : "Add to timesheet"}
               </Button>
             ) : (
               <Button variant="outline" size="sm" onClick={startFromEvent}>

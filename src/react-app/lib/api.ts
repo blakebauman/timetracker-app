@@ -243,6 +243,11 @@ export const api = {
       ),
     chat: (body: Record<string, unknown>) =>
       request<unknown>("/assistant/chat", { method: "POST", body: JSON.stringify(body) }),
+    trackEvent: (body: Record<string, unknown>) =>
+      request<unknown>("/assistant/track-event", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   },
 
   // ─── Settings ─────────────────────────────────────────────────────────────

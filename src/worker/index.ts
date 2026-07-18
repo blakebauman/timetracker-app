@@ -50,8 +50,10 @@ const app = new Hono<{ Bindings: Env }>()
   })
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
-  // Aski chat hits Workers AI; nudge polling is capped well above its 5-min cadence.
+  // Aski chat + track-event hit Workers AI; nudge polling is capped well above
+  // its 5-min cadence.
   .use("/api/assistant/chat", aiRateLimit)
+  .use("/api/assistant/track-event", aiRateLimit)
   .use("/api/assistant/nudges", nudgesRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)
