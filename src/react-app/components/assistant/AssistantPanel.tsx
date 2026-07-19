@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Sparkles,
   CalendarClock,
@@ -6,17 +6,13 @@ import {
   Play,
   Hourglass,
   Coffee,
-  Send,
-  Square,
   X,
   CheckCircle2,
-  ArrowDown,
   Eraser,
 } from "lucide-react";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -34,6 +30,12 @@ import { SuggestionChips } from "./ai-elements/SuggestionChips";
 import { ToolCard } from "./ai-elements/ToolCard";
 import { AskiMarkdown } from "./ai-elements/AskiMarkdown";
 import { MessageActions } from "./ai-elements/MessageActions";
+import { PromptInput } from "./ai-elements/PromptInput";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "./ai-elements/Conversation";
 
 const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
   untracked_meeting: CalendarClock,
@@ -129,8 +131,6 @@ export function AssistantPanel() {
   };
 
   const [input, setInput] = useState("");
-  const [atBottom, setAtBottom] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   // One ChatAgent per workspace; the worker pins the instance to the caller's
   // workspace server-side, so a fixed name here is safe (see worker/index.ts).
@@ -156,13 +156,6 @@ export function AssistantPanel() {
     [messages]
   );
 
-  const onScroll = () => {
-    const el = scrollRef.current;
-    if (el) setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
-  };
-  const scrollToBottom = () =>
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-
   // The assistant is "thinking" when a turn is in flight but no assistant text
   // has streamed in yet (covers the pre-first-token and tool round-trip gaps).
   const showThinking = useMemo(() => {
@@ -176,12 +169,6 @@ export function AssistantPanel() {
   useEffect(() => {
     if (open && nudges.length) markSeen(nudges.map((n) => n.id));
   }, [open, nudges, markSeen]);
-
-  // Follow the latest message while pinned to the bottom; if the user has
-  // scrolled up to read, don't yank them back down (the jump button handles it).
-  useEffect(() => {
-    if (atBottom) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages, showThinking, open, atBottom]);
 
   const send = (content: string) => {
     const text = content.trim();
@@ -205,8 +192,8 @@ export function AssistantPanel() {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="relative min-h-0 flex-1">
-          <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto p-4">
+        <Conversation className="min-h-0 flex-1">
+          <ConversationContent className="p-4">
             {/* Nudges */}
             <div className="space-y-2">
               {nudges.length > 0 ? (
@@ -298,55 +285,19 @@ export function AssistantPanel() {
                 </div>
               )}
             </div>
-          </div>
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
 
-          {!atBottom && (
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full shadow-md"
-              onClick={scrollToBottom}
-              aria-label="Scroll to latest"
-              title="Scroll to latest"
-            >
-              <ArrowDown className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 border-t p-3">
-          <Input
+        <div className="border-t p-3">
+          <PromptInput
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") send(input);
-            }}
-            placeholder="Ask the assistant…"
-            aria-label="Message the AI Assistant"
+            onChange={setInput}
+            onSubmit={send}
+            onStop={() => stop()}
+            busy={busy}
+            status={status}
           />
-          {busy ? (
-            <Button
-              size="icon-sm"
-              variant="outline"
-              className="shrink-0"
-              onClick={() => stop()}
-              aria-label="Stop"
-              title="Stop"
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              size="icon-sm"
-              className="shrink-0"
-              onClick={() => send(input)}
-              disabled={!input.trim()}
-              aria-label="Send message"
-              title="Send"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </SheetContent>
     </Sheet>
