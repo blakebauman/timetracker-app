@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { ListRangeKey } from "@/lib/dateUtils";
 
 type RoundMode = "off" | "nearest" | "up" | "down";
 
@@ -38,6 +39,13 @@ interface UIStore {
   timerView: TimerView;
   calendarView: string;
   calendarSlotHeight: number;
+  // Date scope for the Timer *list* view. The calendar/timesheet views navigate
+  // week-by-week; the list instead honours an explicit range so a sparse week
+  // doesn't read as an empty timesheet. `listRangeSince`/`listRangeUntil` are
+  // bare "YYYY-MM-DD" strings and only meaningful when the key is "custom".
+  listRangeKey: ListRangeKey;
+  listRangeSince: string | null;
+  listRangeUntil: string | null;
   // Calendar prefs, hydrated from D1 settings but persisted locally for instant paint.
   weekStart: number; // 0=Sun … 6=Sat
   showWeekends: boolean;
@@ -63,6 +71,7 @@ interface UIStore {
   setTimerView: (v: TimerView) => void;
   setCalendarView: (v: string) => void;
   setCalendarSlotHeight: (v: number) => void;
+  setListRange: (key: ListRangeKey, since?: string | null, until?: string | null) => void;
   setWeekStart: (v: number) => void;
   setShowWeekends: (v: boolean) => void;
   setShowGaps: (v: boolean) => void;
@@ -101,6 +110,9 @@ export const useUIStore = create<UIStore>()(
       timerView: "list",
       calendarView: "timeGridWeek",
       calendarSlotHeight: CALENDAR_SLOT_HEIGHT_DEFAULT,
+      listRangeKey: "last30days",
+      listRangeSince: null,
+      listRangeUntil: null,
       weekStart: Number(localStorage.getItem("pref_weekStart") ?? 1),
       showWeekends: localStorage.getItem("pref_showWeekends") !== "false",
       showGaps: localStorage.getItem("pref_showGaps") !== "false",
@@ -138,6 +150,14 @@ export const useUIStore = create<UIStore>()(
             Math.min(CALENDAR_SLOT_HEIGHT_MAX, v)
           ),
         }),
+      // Preset keys carry no bounds of their own — they resolve against "now" on
+      // every read, so only the custom range persists explicit dates.
+      setListRange: (key, since = null, until = null) =>
+        set(
+          key === "custom"
+            ? { listRangeKey: key, listRangeSince: since, listRangeUntil: until }
+            : { listRangeKey: key }
+        ),
       setWeekStart: (v) => {
         set({ weekStart: v });
         localStorage.setItem("pref_weekStart", String(v));
@@ -184,6 +204,9 @@ export const useUIStore = create<UIStore>()(
         timerView: s.timerView,
         calendarView: s.calendarView,
         calendarSlotHeight: s.calendarSlotHeight,
+        listRangeKey: s.listRangeKey,
+        listRangeSince: s.listRangeSince,
+        listRangeUntil: s.listRangeUntil,
         weekStart: s.weekStart,
         showWeekends: s.showWeekends,
         showGaps: s.showGaps,

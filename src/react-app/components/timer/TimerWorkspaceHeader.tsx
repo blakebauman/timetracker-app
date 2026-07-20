@@ -20,13 +20,19 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimerViewSwitcher } from "./TimerViewSwitcher";
+import { ListRangePicker } from "./ListRangePicker";
 import {
   CALENDAR_SLOT_HEIGHT_MIN,
   CALENDAR_SLOT_HEIGHT_MAX,
   type TimerView,
 } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
-import { formatPeriodLabel, formatDurationShort } from "@/lib/dateUtils";
+import {
+  formatPeriodLabel,
+  formatDurationShort,
+  formatListRangeLabel,
+  type ListRangeKey,
+} from "@/lib/dateUtils";
 
 export interface LoggedSegment {
   projectId: string | null;
@@ -57,6 +63,11 @@ interface TimerWorkspaceHeaderProps {
   onToggleWeekends: () => void;
   showGaps: boolean;
   onToggleGaps: () => void;
+  // List-view date scope — replaces the week nav when the list view is active.
+  listRangeKey: ListRangeKey;
+  listRangeSince: string | null;
+  listRangeUntil: string | null;
+  onListRangeChange: (key: ListRangeKey, since?: string | null, until?: string | null) => void;
 }
 
 const CALENDAR_VIEW_LABELS: Record<CalendarViewType, string> = {
@@ -90,37 +101,68 @@ export function TimerWorkspaceHeader({
   onToggleWeekends,
   showGaps,
   onToggleGaps,
+  listRangeKey,
+  listRangeSince,
+  listRangeUntil,
+  onListRangeChange,
 }: TimerWorkspaceHeaderProps) {
   const showCalendarControls = view === "calendar" || view === "split";
   const isMonthView = calendarView === "dayGridMonth";
+  // The list view scopes by an explicit range instead of stepping week-by-week,
+  // so it swaps the prev/next/Today nav for the range picker.
+  const isListView = view === "list";
+  const periodNoun = isMonthView ? "month" : "week";
 
   return (
     <div className="border-b">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
         <div className="flex items-center gap-2">
-          <div className="flex items-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" onClick={onPrev} aria-label="Previous week">
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Previous week</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" onClick={onNext} aria-label="Next week">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Next week</TooltipContent>
-            </Tooltip>
-          </div>
-          <Button variant="outline" size="sm" className="h-8" onClick={onToday}>
-            Today
-          </Button>
+          {isListView ? (
+            <ListRangePicker
+              value={listRangeKey}
+              customSince={listRangeSince}
+              customUntil={listRangeUntil}
+              onChange={onListRangeChange}
+            />
+          ) : (
+            <>
+              <div className="flex items-center">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={onPrev}
+                      aria-label={`Previous ${periodNoun}`}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Previous {periodNoun}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={onNext}
+                      aria-label={`Next ${periodNoun}`}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Next {periodNoun}</TooltipContent>
+                </Tooltip>
+              </div>
+              <Button variant="outline" size="sm" className="h-8" onClick={onToday}>
+                Today
+              </Button>
+            </>
+          )}
           <h1 className="ml-1 text-sm font-semibold tracking-tight tabular-nums">
-            {formatPeriodLabel(since, until)}
+            {isListView
+              ? formatListRangeLabel(listRangeKey, since, until)
+              : formatPeriodLabel(since, until)}
           </h1>
         </div>
 

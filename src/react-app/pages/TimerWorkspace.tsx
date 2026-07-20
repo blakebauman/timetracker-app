@@ -13,6 +13,7 @@ import { TimerWorkspaceHeader } from "@/components/timer/TimerWorkspaceHeader";
 import { AddEntryDialog } from "@/components/entries/AddEntryDialog";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { useEntriesRange } from "@/hooks/useEntries";
+import { resolveListRange } from "@/lib/dateUtils";
 import {
   useUIStore,
   CALENDAR_SLOT_HEIGHT_STEP,
@@ -52,6 +53,10 @@ export function TimerWorkspace() {
   const showGaps = useUIStore((s) => s.showGaps);
   const setShowGaps = useUIStore((s) => s.setShowGaps);
   const openQuickAdd = useUIStore((s) => s.openQuickAdd);
+  const listRangeKey = useUIStore((s) => s.listRangeKey);
+  const listRangeSince = useUIStore((s) => s.listRangeSince);
+  const listRangeUntil = useUIStore((s) => s.listRangeUntil);
+  const setListRange = useUIStore((s) => s.setListRange);
   const wso = weekStart as 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
   // The month view navigates and scopes by calendar month; every other view by week.
@@ -59,14 +64,23 @@ export function TimerWorkspace() {
     (view === "calendar" || view === "split") && calendarView === "dayGridMonth";
 
   const [anchor, setAnchor] = useState(() => new Date());
-  const since = useMemo(
-    () => (isMonthView ? startOfMonth(anchor) : startOfWeek(anchor, { weekStartsOn: wso })),
-    [anchor, isMonthView, wso]
-  );
-  const until = useMemo(
-    () => (isMonthView ? endOfMonth(anchor) : endOfWeek(anchor, { weekStartsOn: wso })),
-    [anchor, isMonthView, wso]
-  );
+
+  // The list view scopes by the user's chosen range (persisted); every other
+  // view — including the list pane *inside* split, which must stay aligned with
+  // the calendar beside it — scopes by the navigable week/month.
+  const isListView = view === "list";
+  const { since, until } = useMemo(() => {
+    if (isListView) {
+      const r = resolveListRange(listRangeKey, listRangeSince, listRangeUntil, wso);
+      return { since: r.since, until: r.until };
+    }
+    return isMonthView
+      ? { since: startOfMonth(anchor), until: endOfMonth(anchor) }
+      : {
+          since: startOfWeek(anchor, { weekStartsOn: wso }),
+          until: endOfWeek(anchor, { weekStartsOn: wso }),
+        };
+  }, [anchor, isMonthView, isListView, listRangeKey, listRangeSince, listRangeUntil, wso]);
 
   const [addEntryOpen, setAddEntryOpen] = useState(false);
 
@@ -150,6 +164,10 @@ export function TimerWorkspace() {
         onToggleWeekends={() => setShowWeekends(!showWeekends)}
         showGaps={showGaps}
         onToggleGaps={() => setShowGaps(!showGaps)}
+        listRangeKey={listRangeKey}
+        listRangeSince={listRangeSince}
+        listRangeUntil={listRangeUntil}
+        onListRangeChange={setListRange}
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{body}</div>

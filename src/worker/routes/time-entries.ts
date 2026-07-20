@@ -5,7 +5,14 @@ import {
   UpdateTimeEntrySchema,
   BulkUpdateTimeEntriesSchema,
   BulkDeleteTimeEntriesSchema,
+  ENTRY_LIST_LIMIT,
 } from "@shared/schemas";
+
+// Autocomplete draws on the last quarter of work — long enough to cover
+// recurring monthly tasks, short enough that retired descriptions age out.
+const SUGGESTION_LOOKBACK_DAYS = 90;
+// Fetched once and filtered client-side, so this is the whole candidate set.
+const SUGGESTION_LIMIT = 200;
 import {
   broadcast,
   formatEntry,
@@ -40,12 +47,76 @@ export const timeEntriesRouter = new Hono<{
     const { results } = await c.env.DB.prepare(
       `${ENTRY_SELECT}
        WHERE te.workspace_id = ? AND te.start >= ? AND te.start < ?
-       GROUP BY te.id ORDER BY te.start DESC LIMIT 500`
+       GROUP BY te.id ORDER BY te.start DESC LIMIT ${ENTRY_LIST_LIMIT}`
     )
       .bind(workspaceId, since ?? defaultSince, until ?? defaultUntil)
       .all<Record<string, unknown>>();
 
     return c.json(results.map(formatEntry));
+  })
+  // ─── Description suggestions (autocomplete) ───────────────────────────────
+  // Distinct past descriptions plus the project/task/billable combo each was
+  // most often logged against, so selecting one refills the whole timer bar.
+  // Declared before `/:id` so the literal path isn't swallowed as an entry id.
+  .get("/suggestions", async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const since = new Date(
+      Date.now() - SUGGESTION_LOOKBACK_DAYS * 86_400_000
+    ).toISOString();
+
+    // `combos` counts each description × project × task × billable pairing;
+    // `ranked` picks the dominant pairing per description; `totals` carries the
+    // description's overall usage. A plain GROUP BY on description alone would
+    // have to pick project/task arbitrarily.
+    const { results } = await c.env.DB.prepare(
+      `WITH recent AS (
+         SELECT description, project_id, task_id, billable, start
+         FROM time_entries
+         WHERE workspace_id = ?1 AND start >= ?2 AND TRIM(description) <> ''
+       ),
+       combos AS (
+         SELECT description, project_id, task_id, billable,
+                COUNT(*) AS n, MAX(start) AS combo_last
+         FROM recent
+         GROUP BY description, project_id, task_id, billable
+       ),
+       ranked AS (
+         SELECT *, ROW_NUMBER() OVER (
+                     PARTITION BY description ORDER BY n DESC, combo_last DESC
+                   ) AS rn
+         FROM combos
+       ),
+       totals AS (
+         SELECT description, COUNT(*) AS uses, MAX(start) AS last_used
+         FROM recent GROUP BY description
+       )
+       SELECT t.description, t.uses, t.last_used,
+              r.project_id, r.task_id, r.billable,
+              p.name AS project_name, p.color AS project_color,
+              tk.name AS task_name
+       FROM totals t
+       JOIN ranked r ON r.description = t.description AND r.rn = 1
+       LEFT JOIN projects p ON p.id = r.project_id
+       LEFT JOIN tasks   tk ON tk.id = r.task_id
+       ORDER BY t.last_used DESC
+       LIMIT ${SUGGESTION_LIMIT}`
+    )
+      .bind(workspaceId, since)
+      .all<Record<string, unknown>>();
+
+    return c.json(
+      results.map((r) => ({
+        description: r.description as string,
+        projectId: (r.project_id as string) ?? null,
+        projectName: (r.project_name as string) ?? null,
+        projectColor: (r.project_color as string) ?? null,
+        taskId: (r.task_id as string) ?? null,
+        taskName: (r.task_name as string) ?? null,
+        billable: Boolean(r.billable),
+        uses: Number(r.uses),
+        lastUsed: r.last_used as string,
+      }))
+    );
   })
   // ─── Create ───────────────────────────────────────────────────────────────
   .post("/", zValidator("json", CreateTimeEntrySchema), async (c) => {

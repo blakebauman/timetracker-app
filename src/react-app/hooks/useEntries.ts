@@ -3,7 +3,12 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatDayHeader } from "@/lib/dateUtils";
-import type { TimeEntry, CreateTimeEntry, UpdateTimeEntry } from "@shared/schemas";
+import type {
+  TimeEntry,
+  CreateTimeEntry,
+  UpdateTimeEntry,
+  EntrySuggestion,
+} from "@shared/schemas";
 import { startOfDay, subDays, endOfDay } from "date-fns";
 
 export function useEntries(days = 30) {
@@ -26,6 +31,18 @@ export function useEntriesRange(sinceIso: string, untilIso: string) {
     queryKey: ["time-entries", sinceIso, untilIso],
     queryFn: () =>
       api.timeEntries.list({ since: sinceIso, until: untilIso }) as Promise<TimeEntry[]>,
+  });
+}
+
+// Autocomplete candidates for the timer bar's description input. Deliberately
+// keyed outside the ["time-entries", …] prefix: the running timer saves its
+// description on an 800 ms debounce, and sharing the prefix would refetch the
+// whole suggestion set on every few keystrokes.
+export function useEntrySuggestions() {
+  return useQuery({
+    queryKey: ["entry-suggestions"],
+    queryFn: () => api.timeEntries.suggestions() as Promise<EntrySuggestion[]>,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
