@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimerControl } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
+import { DescriptionAutocomplete } from "./DescriptionAutocomplete";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -15,6 +15,7 @@ import { useUIStore } from "@/stores/uiStore";
 import { useTimer, useTimerLifecycle } from "@/hooks/useTimer";
 import { useUpdateEntry } from "@/hooks/useEntries";
 import { cn } from "@/lib/utils";
+import type { EntrySuggestion } from "@shared/schemas";
 
 export function TimerBar() {
   const { runningEntry } = useTimerStore();
@@ -84,21 +85,37 @@ export function TimerBar() {
 
   const handleStart = () => startTimer({ description, projectId, taskId });
   const handleStop = () => stopTimer();
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "Enter") return;
+  const handleSubmit = () => {
     if (isRunning) handleStop();
     else handleStart();
   };
 
+  // Picking a suggestion restores the whole combo it was usually logged against,
+  // not just the text — mirroring FavoritesMenu. While a timer is running the
+  // project/task have to be pushed to the server too, exactly as the pickers
+  // below do; the description rides along on the existing debounced save.
+  const handleSuggestion = (s: EntrySuggestion) => {
+    setDescription(s.description);
+    setProjectId(s.projectId);
+    setTaskId(s.taskId);
+    if (runningEntry) {
+      updateEntry.mutate({
+        id: runningEntry.id,
+        data: { description: s.description, projectId: s.projectId, taskId: s.taskId },
+      });
+    }
+    descRef.current?.focus();
+  };
+
   return (
     <header className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm md:h-14 md:flex-nowrap md:gap-3 md:py-0">
-      {/* Description input */}
-      <Input
-        ref={descRef}
+      {/* Description input, with autocomplete over the last 90 days of entries */}
+      <DescriptionAutocomplete
+        inputRef={descRef}
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="What are you working on?"
+        onChange={setDescription}
+        onSelect={handleSuggestion}
+        onSubmit={handleSubmit}
         className={cn(
           "basis-full border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground md:flex-1 md:basis-auto",
           isRunning && "font-medium"

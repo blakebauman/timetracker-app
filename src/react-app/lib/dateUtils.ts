@@ -18,6 +18,7 @@ import {
   getISOWeek,
   isSameMonth,
   isSameYear,
+  isSameDay,
 } from "date-fns";
 
 export function formatSeconds(seconds: number): string {
@@ -179,6 +180,137 @@ export function getDateRangePresets() {
       until: endOfDay(now).toISOString(),
     },
   };
+}
+
+// ─── List-view date ranges ───────────────────────────────────────────────────
+// The Timer *list* view scopes by an explicit user-chosen range rather than the
+// navigable week the calendar/timesheet views use — a short or half-empty week
+// otherwise reads as "no data" when the entries are simply a few days back.
+// Unlike `getDateRangePresets` (Reports, hardcoded to Monday) these honour the
+// workspace's `weekStart` preference.
+
+export type ListRangeKey =
+  | "all"
+  | "today"
+  | "yesterday"
+  | "thisWeek"
+  | "lastWeek"
+  | "last7days"
+  | "last30days"
+  | "thisMonth"
+  | "lastMonth"
+  | "custom";
+
+export interface ResolvedListRange {
+  since: Date;
+  until: Date;
+  label: string;
+}
+
+// Lower bound for "All dates". An unbounded floor would make the period label
+// meaningless and buys nothing — no entry predates the app.
+const ALL_DATES_FLOOR = new Date(2000, 0, 1);
+
+export const LIST_RANGE_LABELS: Record<ListRangeKey, string> = {
+  all: "All dates",
+  today: "Today",
+  yesterday: "Yesterday",
+  thisWeek: "This week",
+  lastWeek: "Last week",
+  last7days: "Last 7 days",
+  last30days: "Last 30 days",
+  thisMonth: "This month",
+  lastMonth: "Last month",
+  custom: "Custom range",
+};
+
+// Presets in the order they appear in the dropdown. `custom` is excluded — it is
+// rendered as its own section with the two date inputs.
+export const LIST_RANGE_PRESETS: ListRangeKey[] = [
+  "all",
+  "today",
+  "yesterday",
+  "thisWeek",
+  "lastWeek",
+  "last7days",
+  "last30days",
+  "thisMonth",
+  "lastMonth",
+];
+
+// Resolve a stored range selection into concrete [since, until] bounds.
+// `customSince`/`customUntil` are bare "YYYY-MM-DD" strings and only consulted
+// for the `custom` key; a half-filled custom range falls back to today's bound
+// on the missing side so the list never queries an inverted window.
+export function resolveListRange(
+  key: ListRangeKey,
+  customSince: string | null,
+  customUntil: string | null,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
+): ResolvedListRange {
+  const now = new Date();
+  const label = LIST_RANGE_LABELS[key];
+
+  switch (key) {
+    case "all":
+      return { since: ALL_DATES_FLOOR, until: endOfDay(now), label };
+    case "today":
+      return { since: startOfDay(now), until: endOfDay(now), label };
+    case "yesterday":
+      return {
+        since: startOfDay(subDays(now, 1)),
+        until: endOfDay(subDays(now, 1)),
+        label,
+      };
+    case "thisWeek":
+      return {
+        since: startOfWeek(now, { weekStartsOn }),
+        until: endOfWeek(now, { weekStartsOn }),
+        label,
+      };
+    case "lastWeek":
+      return {
+        since: startOfWeek(subWeeks(now, 1), { weekStartsOn }),
+        until: endOfWeek(subWeeks(now, 1), { weekStartsOn }),
+        label,
+      };
+    case "last7days":
+      return { since: startOfDay(subDays(now, 6)), until: endOfDay(now), label };
+    case "last30days":
+      return { since: startOfDay(subDays(now, 29)), until: endOfDay(now), label };
+    case "thisMonth":
+      return { since: startOfMonth(now), until: endOfMonth(now), label };
+    case "lastMonth":
+      return {
+        since: startOfMonth(subMonths(now, 1)),
+        until: endOfMonth(subMonths(now, 1)),
+        label,
+      };
+    case "custom": {
+      const since = customSince
+        ? startOfDay(parseISO(`${customSince}T12:00:00`))
+        : startOfDay(now);
+      const until = customUntil
+        ? endOfDay(parseISO(`${customUntil}T12:00:00`))
+        : endOfDay(now);
+      // Guard against an inverted window (user picked an end before the start).
+      if (since > until) return { since: startOfDay(until), until: endOfDay(since), label };
+      return { since, until, label };
+    }
+  }
+}
+
+// Human label for a resolved range, shown next to the picker. "All dates" has no
+// meaningful span, and a single-day range reads better as "Today"/"Yesterday"
+// than as a degenerate "Jul 20 – 20" span.
+export function formatListRangeLabel(
+  key: ListRangeKey,
+  since: Date,
+  until: Date
+): string {
+  if (key === "all") return "All dates";
+  if (isSameDay(since, until)) return formatDayHeader(since.toISOString());
+  return formatPeriodLabel(since, until);
 }
 
 export function getElapsedSeconds(startIso: string): number {

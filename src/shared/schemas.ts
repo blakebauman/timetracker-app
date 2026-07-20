@@ -237,6 +237,28 @@ export const TimeEntrySchema = z.object({
   updatedAt: z.string(),
 });
 
+// Max rows `GET /time_entries` returns (newest first). Shared so the list view
+// can tell the user when a wide range like "All dates" has been truncated
+// rather than silently dropping the oldest entries.
+export const ENTRY_LIST_LIMIT = 500;
+
+// ─── Description autocomplete ────────────────────────────────────────────────
+// One suggestion per distinct past description, carrying the project/task combo
+// it was most often logged against so picking it refills the whole timer bar.
+export const EntrySuggestionSchema = z.object({
+  description: z.string(),
+  projectId: z.string().nullable(),
+  projectName: z.string().nullable(),
+  projectColor: z.string().nullable(),
+  taskId: z.string().nullable(),
+  taskName: z.string().nullable(),
+  billable: z.boolean(),
+  // Total times this description was logged in the lookback window, and when it
+  // was last used — the client ranks on both.
+  uses: z.number(),
+  lastUsed: z.string(),
+});
+
 export const CreateTimeEntrySchema = z
   .object({
     description: z.string().max(2000).default(""),
@@ -536,6 +558,7 @@ export type RecurringEntry = z.infer<typeof RecurringEntrySchema>;
 export type CreateRecurringEntry = z.infer<typeof CreateRecurringEntrySchema>;
 export type UpdateRecurringEntry = z.infer<typeof UpdateRecurringEntrySchema>;
 export type TimeEntry = z.infer<typeof TimeEntrySchema>;
+export type EntrySuggestion = z.infer<typeof EntrySuggestionSchema>;
 export type CreateTimeEntry = z.infer<typeof CreateTimeEntrySchema>;
 export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;
 export type CreateProject = z.infer<typeof CreateProjectSchema>;

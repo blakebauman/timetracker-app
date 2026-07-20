@@ -15,6 +15,7 @@ import {
 import { useIntegrations, usePushEntries } from "@/hooks/useIntegrations";
 import { useTimerStore } from "@/stores/timerStore";
 import { toCreatePayload } from "@/lib/entryUtils";
+import { ENTRY_LIST_LIMIT } from "@shared/schemas";
 
 interface EntryListProps {
   since: Date;
@@ -103,8 +104,8 @@ export function EntryList({ since, until }: EntryListProps) {
     return (
       <EmptyState
         icon={Clock}
-        title="No entries this week"
-        description="Start the timer, add an entry, or navigate to another week"
+        title="No entries in this period"
+        description="Start the timer, add an entry, or choose a different date range"
         className="py-24"
       />
     );
@@ -187,6 +188,15 @@ export function EntryList({ since, until }: EntryListProps) {
             />
           ))}
         </div>
+        {/* The list endpoint caps at ENTRY_LIST_LIMIT rows (newest first). Wide
+            ranges like "All dates" can hit it, so say so rather than letting the
+            oldest entries vanish silently. */}
+        {entries.length >= ENTRY_LIST_LIMIT && (
+          <p className="border-t px-4 py-3 text-center text-xs text-muted-foreground">
+            Showing the {ENTRY_LIST_LIMIT} most recent entries. Narrow the date range to
+            see older ones.
+          </p>
+        )}
       </ScrollArea>
     </div>
   );
