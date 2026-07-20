@@ -142,7 +142,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete }: TaskRowPr
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+      <div className="tt-reveal flex items-center gap-0.5">
         <Button
           variant="ghost"
           size="icon-xs"

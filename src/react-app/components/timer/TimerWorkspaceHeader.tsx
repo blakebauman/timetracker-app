@@ -4,33 +4,28 @@ import {
   Plus,
   Sparkles,
   ArrowRight,
-  Minus,
-  ZoomIn,
-  CalendarRange,
-  SquareDashedBottom,
+  ChevronDown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { TimerViewSwitcher } from "./TimerViewSwitcher";
-import { ListRangePicker } from "./ListRangePicker";
 import {
-  CALENDAR_SLOT_HEIGHT_MIN,
-  CALENDAR_SLOT_HEIGHT_MAX,
-  type TimerView,
-} from "@/stores/uiStore";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { TimerViewSwitcher } from "./TimerViewSwitcher";
+import { CalendarViewOptions } from "./CalendarViewOptions";
+import { ListRangePicker } from "./ListRangePicker";
+import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 import {
   formatPeriodLabel,
   formatDurationShort,
   formatListRangeLabel,
+  summarizePeriod,
   type ListRangeKey,
 } from "@/lib/dateUtils";
 
@@ -48,13 +43,20 @@ interface TimerWorkspaceHeaderProps {
   segments: LoggedSegment[];
   view: TimerView;
   onViewChange: (view: TimerView) => void;
+  /** Split needs two columns; below lg the tab is withdrawn entirely. */
+  allowSplit: boolean;
   onPrev: () => void;
   onNext: () => void;
+  /** What one press of prev/next moves by, for the label and the a11y name. */
+  periodNoun: "day" | "week" | "month";
+  /** Week start (0=Sun..6=Sat), for naming week-shaped periods. */
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   onToday: () => void;
   onAddEntry: () => void;
   onAiQuickAdd: () => void;
   // Calendar sub-controls — only rendered for calendar/split views.
   calendarView: CalendarViewType;
+  showCalendarViewSelect: boolean;
   onCalendarViewChange: (v: CalendarViewType) => void;
   slotHeight: number;
   onZoomIn: () => void;
@@ -70,13 +72,6 @@ interface TimerWorkspaceHeaderProps {
   onListRangeChange: (key: ListRangeKey, since?: string | null, until?: string | null) => void;
 }
 
-const CALENDAR_VIEW_LABELS: Record<CalendarViewType, string> = {
-  timeGridDay: "Day",
-  timeGridFiveDay: "5 days",
-  timeGridWeek: "Week",
-  dayGridMonth: "Month",
-};
-
 // Shared header for the unified Timer tab: period navigation, the "logged this
 // period" bar, the 4-view switcher, and (for calendar/split) the day-count +
 // zoom controls.
@@ -87,12 +82,16 @@ export function TimerWorkspaceHeader({
   segments,
   view,
   onViewChange,
+  allowSplit,
   onPrev,
   onNext,
+  periodNoun,
+  weekStartsOn: wso,
   onToday,
   onAddEntry,
   onAiQuickAdd,
   calendarView,
+  showCalendarViewSelect,
   onCalendarViewChange,
   slotHeight,
   onZoomIn,
@@ -107,11 +106,16 @@ export function TimerWorkspaceHeader({
   onListRangeChange,
 }: TimerWorkspaceHeaderProps) {
   const showCalendarControls = view === "calendar" || view === "split";
-  const isMonthView = calendarView === "dayGridMonth";
+  // A single-day grid has no week number to stamp on its label.
+  const isDayView = calendarView === "timeGridDay";
   // The list view scopes by an explicit range instead of stepping week-by-week,
   // so it swaps the prev/next/Today nav for the range picker.
   const isListView = view === "list";
-  const periodNoun = isMonthView ? "month" : "week";
+
+  // Short, spoken-language name for the active period, e.g. "this week",
+  // "last week", "Jul 14 – 20", "Jun 2025". Deliberately lowercase: it reads as
+  // the tail of the sentence "Logged this week".
+  const periodSummary = summarizePeriod(since, until, wso);
 
   return (
     <div className="border-b">
@@ -161,141 +165,89 @@ export function TimerWorkspaceHeader({
           )}
           <h1 className="ml-1 text-sm font-semibold tracking-tight tabular-nums">
             {isListView
-              ? formatListRangeLabel(listRangeKey, since, until)
-              : formatPeriodLabel(since, until)}
+              ? formatListRangeLabel(listRangeKey, since, until, wso)
+              : formatPeriodLabel(since, until, { weekStamp: !isDayView })}
           </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {showCalendarControls && (
-            <>
-              {/* Show/hide weekend columns */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={showWeekends ? "outline" : "ghost"}
-                    size="icon-sm"
-                    onClick={onToggleWeekends}
-                    aria-pressed={showWeekends}
-                    aria-label={showWeekends ? "Hide weekends" : "Show weekends"}
-                  >
-                    <CalendarRange className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{showWeekends ? "Hide weekends" : "Show weekends"}</TooltipContent>
-              </Tooltip>
-
-              {/* Show/hide untracked-gap fill markers (time grid only) */}
-              {!isMonthView && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={showGaps ? "outline" : "ghost"}
-                      size="icon-sm"
-                      onClick={onToggleGaps}
-                      aria-pressed={showGaps}
-                      aria-label={showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
-                    >
-                      <SquareDashedBottom className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {showGaps ? "Hide untracked gaps" : "Show untracked gaps"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {/* Zoom (slot height) — not meaningful in the month grid */}
-              {!isMonthView && (
-                <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={onZoomOut}
-                        disabled={slotHeight <= CALENDAR_SLOT_HEIGHT_MIN}
-                        aria-label="Zoom out"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Zoom out</TooltipContent>
-                  </Tooltip>
-                  <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={onZoomIn}
-                        disabled={slotHeight >= CALENDAR_SLOT_HEIGHT_MAX}
-                        aria-label="Zoom in"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Zoom in</TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-
-              <Select
-                value={calendarView}
-                onValueChange={(v) => onCalendarViewChange(v as CalendarViewType)}
-              >
-                <SelectTrigger className="h-8 w-24 text-xs" aria-label="Calendar view">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="timeGridDay">{CALENDAR_VIEW_LABELS.timeGridDay}</SelectItem>
-                  <SelectItem value="timeGridFiveDay">
-                    {CALENDAR_VIEW_LABELS.timeGridFiveDay}
-                  </SelectItem>
-                  <SelectItem value="timeGridWeek">{CALENDAR_VIEW_LABELS.timeGridWeek}</SelectItem>
-                  <SelectItem value="dayGridMonth">
-                    {CALENDAR_VIEW_LABELS.dayGridMonth}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </>
+            <CalendarViewOptions
+              calendarView={calendarView}
+              onCalendarViewChange={onCalendarViewChange}
+              showViewChoice={showCalendarViewSelect}
+              slotHeight={slotHeight}
+              onZoomIn={onZoomIn}
+              onZoomOut={onZoomOut}
+              showWeekends={showWeekends}
+              onToggleWeekends={onToggleWeekends}
+              showGaps={showGaps}
+              onToggleGaps={onToggleGaps}
+            />
           )}
 
-          <TimerViewSwitcher view={view} onChange={onViewChange} />
+          <TimerViewSwitcher view={view} onChange={onViewChange} allowSplit={allowSplit} />
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={onAddEntry}
-                aria-label="Add entry"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Add entry</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={onAiQuickAdd}
-                aria-label="AI quick add"
-              >
-                <Sparkles className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>AI quick add</TooltipContent>
-          </Tooltip>
+          {/* Split control: Add entry stays a single click (it's the primary
+              action here); AI quick-add moves behind the caret rather than
+              sitting at equal weight beside it. */}
+          <div className="flex items-center rounded-md border">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-r-none"
+                  onClick={onAddEntry}
+                  aria-label="Add entry"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add entry</TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                {/* Same icon-sm token as its sibling: a shorter caret left gaps
+                    inside the shared border and needed an arbitrary divider. The
+                    separator is the button's own left border. */}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="w-6 rounded-l-none border-l"
+                  aria-label="More ways to add"
+                >
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={onAiQuickAdd}>
+                  <Sparkles className="mr-2 h-3.5 w-3.5" />
+                  Add with AI…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
       {/* Logged-this-period bar */}
       <div className="flex items-center gap-3 px-4 pb-2">
-        <span className="text-xs font-medium text-muted-foreground">Logged</span>
-        <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-muted">
+        {/* Name the period the number covers. "Logged" alone meant a different
+            span in each view, so the total appeared to contradict itself when
+            you switched tabs. */}
+        <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+          Logged <span className="text-foreground">{periodSummary}</span>
+        </span>
+        {/* At 0m the bar was a full-width empty grey track — a chart of nothing.
+            Collapse to a hairline rule so the row keeps its rhythm without
+            implying there's a value to read. */}
+        <div
+          className={cn(
+            "flex flex-1 overflow-hidden rounded-full bg-muted transition-all",
+            totalSeconds > 0 ? "h-2" : "h-px"
+          )}
+        >
           {totalSeconds > 0 &&
             segments.map((seg) => (
               <Tooltip key={seg.projectId ?? "none"}>

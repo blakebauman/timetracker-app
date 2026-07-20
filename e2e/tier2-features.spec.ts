@@ -47,7 +47,8 @@ test("recurring entries: create a template in settings", async ({ page }) => {
 test("calendar: gaps toggle present on the time grid", async ({ page }) => {
   await signUp(page);
   await page.getByRole("tab", { name: "Calendar" }).click();
-  await expect(page.getByRole("button", { name: /untracked gaps/i })).toBeVisible();
+  await page.getByRole("button", { name: "View options" }).click();
+  await expect(page.getByRole("switch", { name: /untracked gaps/i })).toBeVisible();
 });
 
 test("timer stop: day total stays put (optimistic), entry lands with duration", async ({ page }) => {

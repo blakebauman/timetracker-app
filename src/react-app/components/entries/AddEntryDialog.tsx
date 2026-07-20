@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { format } from "date-fns";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,9 +24,18 @@ import { formatDurationShort, dateDelta, shiftDate, toDateInputValue } from "@/l
 interface AddEntryDialogProps {
   open: boolean;
   onClose: () => void;
+  /** The period currently on screen, so a save that lands outside it can say so. */
+  visibleRange?: { since: Date; until: Date };
+  /** Move the workspace to show the day an out-of-range entry landed on. */
+  onRevealDate?: (date: Date) => void;
 }
 
-export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
+export function AddEntryDialog({
+  open,
+  onClose,
+  visibleRange,
+  onRevealDate,
+}: AddEntryDialogProps) {
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -76,9 +87,28 @@ export function AddEntryDialog({ open, onClose }: AddEntryDialogProps) {
 
   const handleSave = () => {
     if (!start || !stop || !hasValidRange) return;
+    const startedAt = new Date(start);
     createEntry.mutate(
       { description, projectId, taskId, tags, billable, start, stop },
-      { onSuccess: handleClose }
+      {
+        onSuccess: () => {
+          // An entry dated outside the period on screen would otherwise just not
+          // appear — indistinguishable from a save that failed. Say where it went
+          // and offer to go there.
+          const outside =
+            visibleRange &&
+            (startedAt < visibleRange.since || startedAt > visibleRange.until);
+          if (outside) {
+            toast.success(`Entry added on ${format(startedAt, "EEE, MMM d")}`, {
+              description: "That date is outside the period you're viewing.",
+              action: onRevealDate
+                ? { label: "Show it", onClick: () => onRevealDate(startedAt) }
+                : undefined,
+            });
+          }
+          handleClose();
+        },
+      }
     );
   };
 

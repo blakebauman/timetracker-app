@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
+import { useUIStore } from "@/stores/uiStore";
 import { formatDayHeader } from "@/lib/dateUtils";
 import type {
   TimeEntry,
@@ -67,7 +68,11 @@ export interface DayGroup {
 // Pure grouping: buckets entries by day (desc), then sub-groups each day by
 // description + projectId. Shared by the anchored-to-today `useGroupedEntries`
 // and the range-scoped `useGroupedEntriesRange`.
-export function groupEntriesByDay(entries: TimeEntry[]): DayGroup[] {
+export function groupEntriesByDay(
+  entries: TimeEntry[],
+  /** Sorted to the top of its day group so a just-stopped entry is findable. */
+  pinnedEntryId?: string | null
+): DayGroup[] {
   const grouped = entries.reduce(
     (acc, entry) => {
       const dayKey = entry.start.slice(0, 10);
@@ -103,7 +108,16 @@ export function groupEntriesByDay(entries: TimeEntry[]): DayGroup[] {
           totalSeconds: grpEntries.reduce((s, e) => s + (e.duration ?? 0), 0),
           billable: grpEntries.some((e) => e.billable),
         }))
-        .sort((a, b) => b.entries[0].start.localeCompare(a.entries[0].start));
+        .sort((a, b) => {
+          // The just-stopped entry floats to the top of its day; everything else
+          // stays in reverse-chronological order.
+          if (pinnedEntryId) {
+            const aPinned = a.entries.some((e) => e.id === pinnedEntryId);
+            const bPinned = b.entries.some((e) => e.id === pinnedEntryId);
+            if (aPinned !== bPinned) return aPinned ? -1 : 1;
+          }
+          return b.entries[0].start.localeCompare(a.entries[0].start);
+        });
 
       return {
         dateKey,
@@ -122,7 +136,8 @@ export function useGroupedEntries(days = 30) {
 // Range-scoped variant used by the period-navigable timer list.
 export function useGroupedEntriesRange(sinceIso: string, untilIso: string) {
   const { data: entries = [], ...rest } = useEntriesRange(sinceIso, untilIso);
-  return { days: groupEntriesByDay(entries), entries, ...rest };
+  const pinnedEntryId = useUIStore((s) => s.pinnedEntryId);
+  return { days: groupEntriesByDay(entries, pinnedEntryId), entries, ...rest };
 }
 
 export function useCreateEntry() {

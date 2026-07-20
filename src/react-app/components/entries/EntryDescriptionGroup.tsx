@@ -85,7 +85,7 @@ export function EntryDescriptionGroup({
                 ? "border-primary bg-primary text-primary-foreground"
                 : someSelected
                 ? "border-primary bg-primary/40"
-                : "border-muted-foreground/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:border-primary"
+                : "border-muted-foreground/40 tt-reveal hover:border-primary"
             )}
           >
             {(allSelected || someSelected) && (
@@ -148,7 +148,7 @@ export function EntryDescriptionGroup({
         </span>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="tt-reveal flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

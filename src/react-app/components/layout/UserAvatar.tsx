@@ -24,7 +24,7 @@ export function UserAvatar({ name, email, image, className }: UserAvatarProps) {
   return (
     <span
       className={cn(
-        "inline-flex h-8 w-8 shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-medium text-primary",
+        "inline-flex h-8 w-8 shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-medium text-primary-ink",
         className
       )}
       aria-hidden="true"

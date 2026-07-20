@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { api } from "@/lib/api";
-import { formatSeconds } from "@/lib/dateUtils";
+import { formatSeconds, formatDurationShort } from "@/lib/dateUtils";
 import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
 import type { TimeEntry } from "@shared/schemas";
 
@@ -135,6 +135,24 @@ export function useTimer() {
     [queryClient]
   );
 
+
+  // Stop is silent on success: the row flashes and floats to the top of its day,
+  // which is enough closure for the common case. The one thing worth interrupting
+  // for is an entry that landed with no project — for a consultant that's an
+  // unbillable hour, and nothing else in the UI would ever point it out.
+  const announceStopped = useCallback((entry: TimeEntry | undefined) => {
+    if (!entry) return;
+    useUIStore.getState().flashEntry(entry.id);
+    if (entry.projectId) return;
+    toast.warning(`Stopped ${formatDurationShort(entry.duration ?? 0)} with no project`, {
+      description: "Time without a project can't be billed.",
+      action: {
+        label: "Assign project",
+        onClick: () => useUIStore.getState().openEntryEditor(entry.id),
+      },
+    });
+  }, []);
+
   // ─── Stop timer ──────────────────────────────────────────────────────────
   const stopMutation = useMutation({
     mutationFn: (id: string) =>
@@ -146,8 +164,7 @@ export function useTimer() {
     onSuccess: (entry) => {
       clearTimerState();
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      // Flash the row it just became so the eye tracks where it landed.
-      if (entry) useUIStore.getState().flashEntry(entry.id);
+      announceStopped(entry);
     },
     onError: () => {
       toast.error("Failed to stop timer — please try again");
@@ -168,7 +185,7 @@ export function useTimer() {
     onSuccess: (entry) => {
       clearTimerState();
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      if (entry) useUIStore.getState().flashEntry(entry.id);
+      announceStopped(entry);
     },
     onError: () => {
       toast.error("Failed to stop timer — please try again");

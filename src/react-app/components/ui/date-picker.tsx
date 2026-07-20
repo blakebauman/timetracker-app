@@ -25,10 +25,17 @@ export function DatePicker({ value, onSelect, className }: DatePickerProps) {
         <Button
           type="button"
           variant="outline"
+          // The visible text is the value, not the field's purpose. Without this
+          // a screen reader announces only "July 20th" with no hint it's a date
+          // control, and tests have to locate it by "the button with a year".
+          aria-label={`Date: ${format(value, "EEE, MMM d, yyyy")}`}
           className={cn("w-full justify-start gap-2 font-normal", className)}
         >
           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-          {format(value, "PPP")}
+          {/* One date vocabulary app-wide — "PPP" ("July 20th, 2026") was a third
+              style alongside the header's "Jul 14 – 20" and the day groups'
+              "Saturday, Jul 18". */}
+          {format(value, "EEE, MMM d, yyyy")}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

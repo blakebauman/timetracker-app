@@ -9,12 +9,13 @@ import {
   endOfMonth,
   isWithinInterval,
 } from "date-fns";
-import { Loader2, CalendarPlus } from "lucide-react";
+import { Loader2, CalendarPlus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarView, type CalendarViewType } from "./CalendarView";
 import { CalendarCreateDialog } from "./CalendarCreateDialog";
 import { EntryForm, type EditableEntry } from "@/components/entries/EntryForm";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useEntriesRange, useUpdateEntry } from "@/hooks/useEntries";
 import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarSync";
 import { useTimerStore } from "@/stores/timerStore";
@@ -99,11 +100,8 @@ export function CalendarBody({
     data: entries = [],
     isLoading: entriesLoading,
     isError: entriesError,
+    refetch: refetchEntries,
   } = useEntriesRange(range.start.toISOString(), range.end.toISOString());
-
-  useEffect(() => {
-    if (entriesError) toast.error("Couldn't load calendar entries");
-  }, [entriesError]);
 
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const updateEntry = useUpdateEntry();
@@ -205,6 +203,40 @@ export function CalendarBody({
       {entriesLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {/* A failed fetch used to render as an ordinary empty grid — visually
+          identical to a week with nothing tracked. Overlay rather than replace,
+          so the dates stay on screen as context. */}
+      {entriesError && !entriesLoading && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/85 p-4 backdrop-blur-[1px]">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load this period"
+            description="The request didn't get through. Your tracked time is safe."
+            action={
+              <Button variant="outline" size="sm" onClick={() => refetchEntries()}>
+                Try again
+              </Button>
+            }
+            className="py-0"
+          />
+        </div>
+      )}
+
+      {/* Nothing tracked: the grid alone gives no hint that it's empty *because
+          you haven't logged anything*, versus still loading or broken. */}
+      {!entriesLoading && !entriesError && events.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
+          <div className="pointer-events-auto">
+            <EmptyState
+              icon={CalendarPlus}
+              title="Nothing tracked in this period"
+              description="Click any empty slot to log time, or start the timer to track as you work."
+              className="rounded-xl border bg-background/95 px-8 py-8 shadow-sm"
+            />
+          </div>
         </div>
       )}
 

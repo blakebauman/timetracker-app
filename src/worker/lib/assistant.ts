@@ -29,6 +29,8 @@ interface TodayFacts {
   entryCount: number;
   totalSeconds: number;
   confirmedEventIds: Set<string>;
+  /** False for a workspace that has never had a single entry. */
+  hasEverTracked: boolean;
 }
 
 /** Local-day UTC bounds for a JS `Date.getTimezoneOffset()`-style offset. */
@@ -64,7 +66,7 @@ async function loadTodayFacts(
   dayStartIso: string,
   dayEndIso: string
 ): Promise<TodayFacts> {
-  const [running, totals, confirmed] = await Promise.all([
+  const [running, totals, confirmed, everTracked] = await Promise.all([
     db
       .prepare(
         `SELECT id, description, start FROM time_entries
@@ -87,6 +89,13 @@ async function loadTodayFacts(
       )
       .bind(workspaceId, dayStartIso, dayEndIso)
       .all<{ calendar_event_id: string }>(),
+    // Distinguishes "hasn't started today" from "brand-new workspace" — the
+    // nothing-tracked nudge is a reminder for the former and a scolding for the
+    // latter, whose first-run experience should be the app's own empty state.
+    db
+      .prepare(`SELECT 1 AS n FROM time_entries WHERE workspace_id = ? LIMIT 1`)
+      .bind(workspaceId)
+      .first<{ n: number }>(),
   ]);
 
   return {
@@ -94,6 +103,7 @@ async function loadTodayFacts(
     entryCount: totals?.n ?? 0,
     totalSeconds: totals?.total ?? 0,
     confirmedEventIds: new Set(confirmed.results.map((r) => r.calendar_event_id)),
+    hasEverTracked: Boolean(everTracked),
   };
 }
 
@@ -197,7 +207,17 @@ export function buildNudges(
   }
 
   const isWeekday = localWeekday >= 1 && localWeekday <= 5;
-  if (isWeekday && localHour >= NOTHING_TRACKED_HOUR && facts.entryCount === 0 && !facts.running) {
+  // Deliberately skipped on a workspace that has never tracked anything: the
+  // first thing a new account saw was "Nothing tracked yet" plus a chatbot CTA,
+  // before it had been shown how to start a timer. Let the list's own empty
+  // state do the teaching; the nudge is for people with an established habit.
+  if (
+    isWeekday &&
+    localHour >= NOTHING_TRACKED_HOUR &&
+    facts.entryCount === 0 &&
+    !facts.running &&
+    facts.hasEverTracked
+  ) {
     nudges.push({
       id: `nothing_tracked:${localDate}`,
       kind: "nothing_tracked",

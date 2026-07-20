@@ -71,7 +71,9 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
               {!collapsed && (
                 <>
                   <span className="flex-1 text-left">Search…</span>
-                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
+                  {/* text-foreground, not muted: 10px muted-on-muted measured
+                      4.38:1. A keycap is a label, not secondary text. */}
+                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-foreground">
                     ⌘K
                   </kbd>
                 </>
@@ -109,7 +111,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
             <>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
-                <span className="font-mono font-medium text-primary">
+                <span className="font-mono font-medium text-primary-ink">
                   {formatSeconds(elapsed)}
                 </span>
               </div>
@@ -135,7 +137,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                 "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 collapsed ? "justify-center gap-0" : "gap-3",
                 isActive
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary/10 text-primary-ink"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )
             }

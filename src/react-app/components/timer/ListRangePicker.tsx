@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   LIST_RANGE_LABELS,
-  LIST_RANGE_PRESETS,
+  LIST_RANGE_GROUPS,
   type ListRangeKey,
 } from "@/lib/dateUtils";
 import { format } from "date-fns";
@@ -57,11 +57,19 @@ export function ListRangePicker({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
-        {LIST_RANGE_PRESETS.map((key) => (
-          <DropdownMenuItem key={key} onSelect={() => selectPreset(key)}>
-            {LIST_RANGE_LABELS[key]}
-            {value === key && <Check className="ml-auto h-3.5 w-3.5" />}
-          </DropdownMenuItem>
+        {LIST_RANGE_GROUPS.map((group, i) => (
+          <div key={group.label}>
+            {i > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground">
+              {group.label}
+            </DropdownMenuLabel>
+            {group.keys.map((key) => (
+              <DropdownMenuItem key={key} onSelect={() => selectPreset(key)}>
+                {LIST_RANGE_LABELS[key]}
+                {value === key && <Check className="ml-auto h-3.5 w-3.5" />}
+              </DropdownMenuItem>
+            ))}
+          </div>
         ))}
 
         <DropdownMenuSeparator />

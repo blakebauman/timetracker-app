@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { EventContentArg } from "@fullcalendar/core";
 import { CalendarPlus } from "lucide-react";
 import { formatDurationShort } from "@/lib/dateUtils";
@@ -13,7 +14,7 @@ export function CalendarEventContent(arg: EventContentArg) {
   // Untracked gap between two entries — reads as a subtle "fill me" affordance.
   if (gap) {
     return (
-      <div className="flex h-full items-center gap-1 overflow-hidden px-1 text-left leading-tight text-muted-foreground">
+      <div className="tt-on-tint-muted flex h-full items-center gap-1 overflow-hidden px-1 text-left leading-tight">
         <CalendarPlus className="h-3 w-3 shrink-0" />
         <span className="truncate text-[11px] font-medium">Track {arg.timeText}</span>
       </div>
@@ -26,10 +27,10 @@ export function CalendarEventContent(arg: EventContentArg) {
     return (
       <div className="flex h-full flex-col gap-0.5 overflow-hidden text-left leading-tight opacity-90">
         <div className="flex items-center gap-1">
-          <CalendarPlus className="h-3 w-3 shrink-0 text-muted-foreground" />
+          <CalendarPlus className="tt-on-tint-muted h-3 w-3 shrink-0" />
           <span className="truncate text-xs font-medium">{external?.title ?? "(no title)"}</span>
         </div>
-        <span className="truncate text-[11px] text-muted-foreground">
+        <span className="tt-on-tint-muted truncate text-[11px]">
           {arg.timeText} · click to track
         </span>
       </div>
@@ -58,13 +59,22 @@ export function CalendarEventContent(arg: EventContentArg) {
           {entry.description || "(no description)"}
         </span>
       </div>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      {/* Class hooks let the block drop detail as its own width shrinks —
+          see the @container rules in styles/fullcalendar.css. */}
+      <div className="tt-event-meta tt-on-tint-muted flex items-center gap-1.5 whitespace-nowrap text-[11px]">
         <span className="font-mono">{arg.timeText}</span>
-        <span aria-hidden>·</span>
-        <span>{running ? "running" : formatDurationShort(entry.duration ?? 0)}</span>
+        <span className="tt-event-sep" aria-hidden>
+          ·
+        </span>
+        <span className="tt-event-dur">
+          {running ? "running" : formatDurationShort(entry.duration ?? 0)}
+        </span>
       </div>
       {entry.projectName && (
-        <span className="truncate text-[11px] font-medium" style={{ color }}>
+        <span
+          className="tt-swatch-ink truncate text-[11px] font-medium"
+          style={{ "--swatch": color } as CSSProperties}
+        >
           {entry.projectName}
         </span>
       )}
