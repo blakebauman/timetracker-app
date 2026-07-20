@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useEntriesRange, useUpdateEntry } from "@/hooks/useEntries";
 import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarSync";
 import { useTimerStore } from "@/stores/timerStore";
+import { useUIStore } from "@/stores/uiStore";
 import {
   buildEvents,
   buildGapEvents,
@@ -103,6 +104,7 @@ export function CalendarBody({
     refetch: refetchEntries,
   } = useEntriesRange(range.start.toISOString(), range.end.toISOString());
 
+  const timeFormat = useUIStore((s) => s.timeFormat);
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const updateEntry = useUpdateEntry();
 
@@ -264,6 +266,7 @@ export function CalendarBody({
         slotHeight={slotHeight}
         firstDay={weekStartsOn}
         weekends={showWeekends}
+        timeFormat={timeFormat}
         events={events}
         onSelect={handleSelect}
         onDateClick={handleDateClick}

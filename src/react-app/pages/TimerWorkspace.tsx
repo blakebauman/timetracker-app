@@ -135,7 +135,7 @@ export function TimerWorkspace() {
 
     if (leavingList) {
       setAnchor(since);
-    } else if (enteringList) {
+    } else if (enteringList && !belowMd) {
       // Name the period if it's one the picker can express, else keep the exact
       // dates as a custom range.
       const wk = resolveListRange("thisWeek", null, null, wso);
@@ -148,6 +148,11 @@ export function TimerWorkspace() {
         setListRange("custom", format(since, "yyyy-MM-dd"), format(until, "yyyy-MM-dd"));
       }
     }
+    // Below md the calendar is forced to a single day by *layout*, not by the
+    // user asking for a day. Writing that back into the list range turned every
+    // phone view-switch into "Custom range / Logged today", dropping the total
+    // from a week to a day — reintroducing on phones exactly the drift this
+    // function exists to prevent. The user's own list range is left intact.
     setView(next);
   };
 

@@ -67,7 +67,7 @@ export function EntryDescriptionGroup({
     <Collapsible open={open} onOpenChange={setOpen}>
       <div
         className={cn(
-          "group flex animate-fade-up items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/40",
+          "group flex animate-fade-up items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors hover:bg-accent/40",
           someSelected && "bg-accent/60"
         )}
       >
@@ -80,7 +80,10 @@ export function EntryDescriptionGroup({
             aria-label="Select all entries in group"
             onClick={handleGroupSelect}
             className={cn(
-              "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              // Matches EntryRow: the 16x16 box fails WCAG 2.2 AA's 24px floor
+              // (SC 2.5.8), so ::before expands the hit target to 28x28 without
+              // changing the checkbox's visual weight.
+              "relative flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               allSelected
                 ? "border-primary bg-primary text-primary-foreground"
                 : someSelected
@@ -131,7 +134,10 @@ export function EntryDescriptionGroup({
         {group.billable && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-[10px] font-semibold text-primary">$</span>
+              <span className="text-[11px] font-semibold text-primary-ink">
+                <span aria-hidden>$</span>
+                <span className="sr-only">Billable</span>
+              </span>
             </TooltipTrigger>
             <TooltipContent>Billable</TooltipContent>
           </Tooltip>
@@ -187,7 +193,7 @@ export function EntryDescriptionGroup({
       </div>
 
       <CollapsibleContent>
-        <div className="border-l-2 ml-7 border-muted">
+        <div className="border-l ml-7 border-muted">
           {group.entries.map((entry) => (
             <EntryRow
               key={entry.id}

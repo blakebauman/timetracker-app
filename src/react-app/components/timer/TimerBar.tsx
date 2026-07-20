@@ -117,7 +117,12 @@ export function TimerBar() {
         onSelect={handleSuggestion}
         onSubmit={handleSubmit}
         className={cn(
-          "basis-full border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground md:flex-1 md:basis-auto",
+          // `focus-visible:ring-0` left the app's most-used control with no
+          // focus indicator at all (WCAG 2.4.7) — and axe doesn't catch it,
+          // because the element is focusable and labelled, just invisible when
+          // focused. An inset ring keeps the borderless look in the bar while
+          // still marking focus.
+          "basis-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:flex-1 md:basis-auto",
           isRunning && "font-medium"
         )}
       />
