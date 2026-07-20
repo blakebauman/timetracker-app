@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { formatSeconds, formatDurationShort, formatShortDate, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { useUIStore } from "@/stores/uiStore";
+import { useSavedFlash } from "@/hooks/useSavedFlash";
+import { SavedTick } from "./SavedTick";
 import { ColorDot } from "@/components/ColorDot";
 import { ProjectBadge } from "@/components/ProjectBadge";
 import type { TimeEntry } from "@shared/schemas";
@@ -48,6 +50,10 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const { startTimer } = useTimer();
   const timeFormat = useUIStore((s) => s.timeFormat);
   const highlighted = useUIStore((s) => s.highlightedEntryId === entry.id);
+  // Inline commits acknowledge themselves; see useSavedFlash.
+  const savedDesc = useSavedFlash();
+  const savedDuration = useSavedFlash();
+  const savedRange = useSavedFlash();
   // A toast elsewhere (e.g. "Stopped 2h 30m with no project") can request this
   // row's editor; treat that as equivalent to opening it from the row menu.
   const editRequested = useUIStore((s) => s.editEntryId === entry.id);
@@ -87,7 +93,10 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const handleDescBlur = () => {
     setEditingDesc(false);
     if (desc !== entry.description) {
-      updateEntry.mutate({ id: entry.id, data: { description: desc } });
+      updateEntry.mutate(
+        { id: entry.id, data: { description: desc } },
+        { onSuccess: savedDesc.flash }
+      );
     }
   };
 
@@ -101,7 +110,10 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     const parsed = parseTimeInput(durationInput);
     if (parsed !== null && parsed > 0 && entry.start) {
       const newStop = new Date(new Date(entry.start).getTime() + parsed * 1000).toISOString();
-      updateEntry.mutate({ id: entry.id, data: { stop: newStop } });
+      updateEntry.mutate(
+        { id: entry.id, data: { stop: newStop } },
+        { onSuccess: savedDuration.flash }
+      );
     }
   };
 
@@ -174,7 +186,8 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         <ColorDot color={entry.projectColor} className="h-3 w-3" />
 
         {/* Description */}
-        <div className="min-w-0 flex-1">
+        <div className="relative min-w-0 flex-1">
+          <SavedTick saved={savedDesc.saved} className="-right-3" />
           {editingDesc ? (
             <input
               autoFocus
@@ -276,16 +289,24 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         {/* Time range — click to edit start/stop + date inline (running
             entries have no stop yet, so they stay plain text). */}
         {entry.stop ? (
+          <span className="relative hidden sm:inline-flex">
+          <SavedTick saved={savedRange.saved} />
           <TimeRangePopover
             start={entry.start}
             stop={entry.stop}
-            onChange={({ start, stop }) => updateEntry.mutate({ id: entry.id, data: { start, stop } })}
+            onChange={({ start, stop }) =>
+              updateEntry.mutate(
+                { id: entry.id, data: { start, stop } },
+                { onSuccess: savedRange.flash }
+              )
+            }
             triggerClassName="hidden text-xs text-muted-foreground sm:flex items-center gap-1 px-1"
           >
             <span>{formatEntryTime(entry.start, timeFormat)}</span>
             <span>–</span>
             <span>{formatEntryTime(entry.stop, timeFormat)}</span>
           </TimeRangePopover>
+          </span>
         ) : (
           <div className="hidden text-xs text-muted-foreground sm:flex items-center gap-1">
             <span>{formatEntryTime(entry.start, timeFormat)}</span>
@@ -308,12 +329,15 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             className="w-16 bg-transparent text-right font-mono text-sm tabular-nums outline-none ring-0 border-b border-primary"
           />
         ) : (
-          <button
-            onClick={handleStartEditDuration}
-            className="min-w-16 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {entry.duration ? formatDurationShort(entry.duration) : "–"}
-          </button>
+          <span className="relative">
+            <SavedTick saved={savedDuration.saved} />
+            <button
+              onClick={handleStartEditDuration}
+              className="min-w-16 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {entry.duration ? formatDurationShort(entry.duration) : "–"}
+            </button>
+          </span>
         )}
 
         {/* Actions (visible on hover) */}

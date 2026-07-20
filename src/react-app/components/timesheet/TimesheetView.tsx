@@ -20,6 +20,7 @@ import {
   parseTimeInput,
 } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
+import { toCreatePayload } from "@/lib/entryUtils";
 import { AddTimesheetRowDialog } from "./AddTimesheetRowDialog";
 import type { TimeEntry } from "@shared/schemas";
 
@@ -146,7 +147,15 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
     if (cell.entries.length === 1) {
       const entry = cell.entries[0];
       if (seconds <= 0) {
+        // Clearing a cell deletes real tracked time. The app's convention for
+        // destructive actions is undo rather than a confirm dialog (see
+        // EntryRow/EntryList delete), so match it instead of adding a modal to
+        // the fastest reconstruction path.
+        const payload = toCreatePayload(entry);
         deleteEntry.mutate(entry.id);
+        toast.success("Entry cleared", {
+          action: { label: "Undo", onClick: () => createEntry.mutate(payload) },
+        });
       } else {
         const start = new Date(entry.start);
         const stop = new Date(start.getTime() + seconds * 1000);
@@ -185,7 +194,10 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
         toast.info("No entries to copy from last week");
         return;
       }
-      await Promise.all(
+      // Keep the created ids so a mis-click doesn't leave 20+ entries to delete
+      // by hand. Single and bulk delete both offer Undo; a one-click bulk *write*
+      // was the only mutation of this size without it.
+      const created = (await Promise.all(
         completed.map((e) =>
           api.timeEntries.create({
             description: e.description,
@@ -197,10 +209,22 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
             tags: e.tags ?? [],
           } as unknown as Record<string, unknown>)
         )
-      );
+      )) as TimeEntry[];
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
-      toast.success(`Copied ${completed.length} ${completed.length === 1 ? "entry" : "entries"} from last week`);
+      toast.success(
+        `Copied ${completed.length} ${completed.length === 1 ? "entry" : "entries"} from last week`,
+        {
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              await Promise.all(created.map((c) => api.timeEntries.delete(c.id)));
+              queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+              queryClient.invalidateQueries({ queryKey: ["reports"] });
+            },
+          },
+        }
+      );
     } catch {
       toast.error("Couldn't copy last week");
     } finally {
