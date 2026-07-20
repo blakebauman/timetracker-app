@@ -25,6 +25,8 @@ import {
   CALENDAR_SLOT_HEIGHT_STEP,
 } from "@/stores/uiStore";
 import { useMediaQuery, BELOW_MD, BELOW_LG } from "@/hooks/useMediaQuery";
+import { useElementWidth } from "@/hooks/useElementWidth";
+import { resolveCalendarDensity } from "@/lib/calendarDensity";
 import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 import type { LoggedSegment } from "@/components/timer/TimerWorkspaceHeader";
@@ -67,20 +69,25 @@ export function TimerWorkspace() {
   const setListRange = useUIStore((s) => s.setListRange);
   const wso = weekStart as 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-  // Two view-level responsive decisions, made here rather than in CSS because
-  // they change *what is rendered*, not just how it's laid out:
-  //
-  // - Split cannot work in one column. Below lg it collapsed to a bare row of
-  //   day-number headers with no grid body, orphaned above the list.
-  // - A 7-column time grid on a phone gives each day ~45px, which truncates
-  //   event text mid-digit ("10:3"). Below md we show a single day instead.
+  // Split cannot work in one column: below lg it collapsed to a bare row of
+  // day-number headers with no grid body, orphaned above the list.
   const belowLg = useMediaQuery(BELOW_LG);
   const belowMd = useMediaQuery(BELOW_MD);
 
   const effectiveView: TimerView = view === "split" && belowLg ? "list" : view;
   const isCalendarish = effectiveView === "calendar" || effectiveView === "split";
-  const effectiveCalendarView: CalendarViewType =
-    isCalendarish && belowMd ? "timeGridDay" : calendarView;
+
+  // Grid density comes from the calendar pane's own width, not the viewport.
+  // Split halves the pane while leaving the viewport untouched, so a
+  // viewport-based rule left Split at 1280 rendering 50px columns. See
+  // resolveCalendarDensity. Until the first measurement lands, fall back to a
+  // viewport guess so the first paint isn't chosen from a width of nothing.
+  const { ref: calendarPaneRef, width: paneWidth } = useElementWidth<HTMLDivElement>();
+  const effectiveCalendarView: CalendarViewType = resolveCalendarDensity(
+    calendarView,
+    paneWidth,
+    belowMd ? 1 : 7
+  );
 
   // The month view navigates and scopes by calendar month; the forced day view
   // by day; everything else by week.
@@ -198,7 +205,13 @@ export function TimerWorkspace() {
 
   let body: React.ReactNode;
   if (effectiveView === "calendar")
-    body = <Suspense fallback={<BodyFallback />}>{calendar}</Suspense>;
+    body = (
+      <Suspense fallback={<BodyFallback />}>
+        <div ref={calendarPaneRef} className="flex min-h-0 flex-1 flex-col">
+          {calendar}
+        </div>
+      </Suspense>
+    );
   else if (effectiveView === "timesheet")
     body = (
       <Suspense fallback={<BodyFallback />}>
@@ -210,7 +223,9 @@ export function TimerWorkspace() {
     body = (
       <Suspense fallback={<BodyFallback />}>
         <div className="grid min-h-0 flex-1 grid-cols-1 divide-x lg:grid-cols-2">
-          <div className="flex min-h-0 flex-col">{calendar}</div>
+          <div ref={calendarPaneRef} className="flex min-h-0 flex-col">
+            {calendar}
+          </div>
           <div className="flex min-h-0 flex-col overflow-hidden">{list}</div>
         </div>
       </Suspense>
@@ -252,9 +267,7 @@ export function TimerWorkspace() {
         onAddEntry={() => setAddEntryOpen(true)}
         onAiQuickAdd={openQuickAdd}
         calendarView={effectiveCalendarView}
-        // Below md the grid is forced to a single day, so offering the
-        // Day/5-day/Week/Month select would be a control that lies.
-        showCalendarViewSelect={!belowMd}
+        requestedCalendarView={calendarView}
         onCalendarViewChange={setCalendarView}
         slotHeight={slotHeight}
         onZoomIn={() => setSlotHeight(slotHeight + CALENDAR_SLOT_HEIGHT_STEP)}

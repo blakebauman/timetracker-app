@@ -56,7 +56,8 @@ interface TimerWorkspaceHeaderProps {
   onAiQuickAdd: () => void;
   // Calendar sub-controls — only rendered for calendar/split views.
   calendarView: CalendarViewType;
-  showCalendarViewSelect: boolean;
+  /** What the user picked; the pane may be rendering something narrower. */
+  requestedCalendarView: CalendarViewType;
   onCalendarViewChange: (v: CalendarViewType) => void;
   slotHeight: number;
   onZoomIn: () => void;
@@ -91,7 +92,7 @@ export function TimerWorkspaceHeader({
   onAddEntry,
   onAiQuickAdd,
   calendarView,
-  showCalendarViewSelect,
+  requestedCalendarView,
   onCalendarViewChange,
   slotHeight,
   onZoomIn,
@@ -116,6 +117,8 @@ export function TimerWorkspaceHeader({
   // "last week", "Jul 14 – 20", "Jun 2025". Deliberately lowercase: it reads as
   // the tail of the sentence "Logged this week".
   const periodSummary = summarizePeriod(since, until, wso);
+  const now = new Date();
+  const periodIncludesToday = now >= since && now <= until;
 
   return (
     <div className="border-b">
@@ -158,7 +161,17 @@ export function TimerWorkspaceHeader({
                   <TooltipContent>Next {periodNoun}</TooltipContent>
                 </Tooltip>
               </div>
-              <Button variant="outline" size="sm" className="h-8" onClick={onToday}>
+              {/* Redundant once the visible period already contains now — and
+                  in the forced day view it rendered as the literal "Today Today"
+                  beside the period label. Disabled rather than hidden so the
+                  toolbar doesn't reflow as you step through weeks. */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={onToday}
+                disabled={periodIncludesToday}
+              >
                 Today
               </Button>
             </>
@@ -174,8 +187,8 @@ export function TimerWorkspaceHeader({
           {showCalendarControls && (
             <CalendarViewOptions
               calendarView={calendarView}
+              requestedCalendarView={requestedCalendarView}
               onCalendarViewChange={onCalendarViewChange}
-              showViewChoice={showCalendarViewSelect}
               slotHeight={slotHeight}
               onZoomIn={onZoomIn}
               onZoomOut={onZoomOut}
