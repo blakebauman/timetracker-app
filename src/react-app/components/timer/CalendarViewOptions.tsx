@@ -11,6 +11,13 @@ import {
 } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 
+const VIEW_LABELS: Record<CalendarViewType, string> = {
+  timeGridDay: "Day",
+  timeGridFiveDay: "5 days",
+  timeGridWeek: "Week",
+  dayGridMonth: "Month",
+};
+
 const VIEW_OPTIONS: { value: CalendarViewType; label: string }[] = [
   { value: "timeGridDay", label: "Day" },
   { value: "timeGridFiveDay", label: "5 days" },
@@ -19,9 +26,11 @@ const VIEW_OPTIONS: { value: CalendarViewType; label: string }[] = [
 ];
 
 interface CalendarViewOptionsProps {
+  /** What the pane is actually rendering, after the density rule. */
   calendarView: CalendarViewType;
+  /** What the user asked for; differs when the pane is too narrow. */
+  requestedCalendarView: CalendarViewType;
   onCalendarViewChange: (v: CalendarViewType) => void;
-  showViewChoice: boolean;
   slotHeight: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -42,8 +51,8 @@ interface CalendarViewOptionsProps {
  */
 export function CalendarViewOptions({
   calendarView,
+  requestedCalendarView,
   onCalendarViewChange,
-  showViewChoice,
   slotHeight,
   onZoomIn,
   onZoomOut,
@@ -54,6 +63,9 @@ export function CalendarViewOptions({
 }: CalendarViewOptionsProps) {
   const isMonthView = calendarView === "dayGridMonth";
   const isDayView = calendarView === "timeGridDay";
+  // The pane can be too narrow for the chosen span. Say so rather than letting
+  // the selected segment silently disagree with what's on screen.
+  const reduced = calendarView !== requestedCalendarView;
 
   return (
     <Popover>
@@ -70,9 +82,8 @@ export function CalendarViewOptions({
 
       <PopoverContent align="end" className="w-60 p-3">
         <div className="space-y-4">
-          {showViewChoice && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Show</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Show</Label>
               <div
                 role="radiogroup"
                 aria-label="Calendar view"
@@ -83,11 +94,11 @@ export function CalendarViewOptions({
                     key={value}
                     type="button"
                     role="radio"
-                    aria-checked={calendarView === value}
+                    aria-checked={requestedCalendarView === value}
                     onClick={() => onCalendarViewChange(value)}
                     className={cn(
                       "rounded px-1 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      calendarView === value
+                      requestedCalendarView === value
                         ? "bg-background font-medium text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     )}
@@ -95,9 +106,14 @@ export function CalendarViewOptions({
                     {label}
                   </button>
                 ))}
-              </div>
             </div>
-          )}
+            {reduced && (
+              <p className="text-xs text-muted-foreground">
+                Showing {VIEW_LABELS[calendarView]} — the pane is too narrow for{" "}
+                {VIEW_LABELS[requestedCalendarView]}.
+              </p>
+            )}
+          </div>
 
           {!isDayView && (
             <div className="flex items-center justify-between gap-3">
