@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
-import path from "path";
+import { appAliases } from "@timetracker/vite-config";
 
 export default defineConfig({
   // In CI there's no Cloudflare login, so the remote-only AI binding can't start
@@ -14,9 +14,6 @@ export default defineConfig({
     cloudflare({ remoteBindings: !process.env.CI }),
   ],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src/react-app"),
-      "@shared": path.resolve(__dirname, "./src/shared"),
-    },
+    alias: appAliases(__dirname),
   },
 });

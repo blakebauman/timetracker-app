@@ -1,0 +1,20 @@
+{
+	"name": "@timetracker/eslint-config",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Shared ESLint flat config (TypeScript + React hooks/refresh).",
+	"type": "module",
+	"exports": {
+		".": "./base.js"
+	},
+	"dependencies": {
+		"@eslint/js": "10.0.1",
+		"eslint-plugin-react-hooks": "7.1.1",
+		"eslint-plugin-react-refresh": "0.5.3",
+		"globals": "17.7.0",
+		"typescript-eslint": "8.64.0"
+	},
+	"peerDependencies": {
+		"eslint": ">=9"
+	}
+}

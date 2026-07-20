@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { appAliases } from "@timetracker/vite-config";
 
 // Separate Vite build for the Chrome extension (MV3)
 export default defineConfig({
@@ -28,8 +29,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      "@": resolve(__dirname, "../src/react-app"),
-    },
+    alias: appAliases(resolve(__dirname, "..")),
   },
 });

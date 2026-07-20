@@ -1,0 +1,14 @@
+{
+	"name": "@timetracker/vite-config",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Shared Vite path aliases for the app + extension builds.",
+	"type": "module",
+	"types": "./index.d.ts",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"default": "./index.js"
+		}
+	}
+}
