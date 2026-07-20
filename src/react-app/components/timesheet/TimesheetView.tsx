@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
-import { Plus, Copy, Loader2 } from "lucide-react";
+import { Plus, Copy, Loader2, AlertTriangle, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ColorDot } from "@/components/ColorDot";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   useEntriesRange,
   useCreateEntry,
@@ -57,10 +58,14 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
   );
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
 
-  const { data: entries = [], isLoading } = useEntriesRange(
-    weekStart.toISOString(),
-    weekEnd.toISOString()
-  );
+  const {
+    data: entries = [],
+    isLoading,
+    // Previously undestructured — a failed fetch rendered as an ordinary empty
+    // grid, indistinguishable from a week with nothing tracked.
+    isError,
+    refetch,
+  } = useEntriesRange(weekStart.toISOString(), weekEnd.toISOString());
 
   const createEntry = useCreateEntry();
   const updateEntry = useUpdateEntry();
@@ -205,15 +210,23 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
 
   return (
     <div className="flex h-full flex-col overflow-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead className="sticky top-0 z-10 bg-background">
+      {/* min-w forces a horizontal scroller instead of letting seven day columns
+          squeeze below legibility; the Task/Project pair stays pinned so a
+          narrow screen never loses track of which row it's scrolling. */}
+      <table className="w-full min-w-[760px] border-collapse text-sm">
+        <thead className="sticky top-0 z-20 bg-background">
           <tr className="border-b text-xs text-muted-foreground">
-            <th className="px-3 py-2 text-left font-medium">Task</th>
-            <th className="px-3 py-2 text-left font-medium">Project</th>
+            <th className="sticky left-0 z-10 w-[132px] min-w-[132px] bg-background px-3 py-2 text-left font-medium">
+              Task
+            </th>
+            <th className="sticky left-[132px] z-10 w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
+              Project
+            </th>
             {days.map((d, i) => (
               <th key={i} className="px-2 py-2 text-center font-medium">
                 <div className="uppercase">{format(d, "EEE")}</div>
-                <div className="text-[10px] text-muted-foreground/70">{format(d, "MM/dd")}</div>
+                {/* Full-strength muted: the old /70 opacity measured 4.26:1 in dark. */}
+                <div className="text-[11px] text-muted-foreground">{format(d, "MMM d")}</div>
               </th>
             ))}
             <th className="px-3 py-2 text-right font-medium">Total</th>
@@ -226,10 +239,46 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                 <Loader2 className="mx-auto h-5 w-5 animate-spin" />
               </td>
             </tr>
+          ) : isError ? (
+            <tr>
+              <td colSpan={10} className="py-10">
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Couldn't load this week"
+                  description="The request didn't get through. Your tracked time is safe."
+                  action={
+                    <Button variant="outline" size="sm" onClick={() => refetch()}>
+                      Try again
+                    </Button>
+                  }
+                  className="py-0"
+                />
+              </td>
+            </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={10} className="py-16 text-center text-sm text-muted-foreground">
-                No time this week. Add a row or copy last week to get started.
+              <td colSpan={10} className="py-10">
+                <EmptyState
+                  icon={Table2}
+                  title="Nothing tracked this week"
+                  description="Add a row to fill in hours by project and task, or copy last week's rows as a starting point."
+                  action={
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+                        Add row
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopyLastWeek}
+                        disabled={copying}
+                      >
+                        Copy last week
+                      </Button>
+                    </div>
+                  }
+                  className="py-0"
+                />
               </td>
             </tr>
           ) : (
@@ -237,11 +286,14 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
               const rowCells = cells.get(row.key)!;
               const rowTotal = rowCells.reduce((s, c) => s + c.seconds, 0);
               return (
-                <tr key={row.key} className="border-b hover:bg-muted/30">
-                  <td className="px-3 py-2">
+                <tr
+                  key={row.key}
+                  className="group/row border-b border-border-strong hover:bg-muted/30"
+                >
+                  <td className="sticky left-0 z-10 w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
                     {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="sticky left-[132px] z-10 w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
                     <span className="flex items-center gap-1.5">
                       <ColorDot color={row.projectColor} />
                       <span className={cn(!row.projectName && "text-muted-foreground")}>
@@ -300,7 +352,10 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
         {rows.length > 0 && (
           <tfoot>
             <tr className="border-t-2 font-medium">
-              <td className="px-3 py-2 text-muted-foreground" colSpan={2}>
+              <td
+                className="sticky left-0 z-10 w-[280px] min-w-[280px] border-r border-border-strong bg-background px-3 py-2 text-muted-foreground"
+                colSpan={2}
+              >
                 Total
               </td>
               {dayTotals.map((t, i) => (

@@ -97,7 +97,8 @@ The system explicitly rejects the generic SaaS-cream dashboard: no near-white cr
 The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue, not a generic warm/cream default) with one saturated primary and a hue-alternated set of secondary colors for projects and tags.
 
 ### Primary
-- **Ledger Red** (`oklch(0.588 0.207 27.33)` light / `oklch(0.65 0.207 27.33)` dark): primary buttons, the running-timer indicator and pulse, active nav item, focus ring, links. Used sparingly — most screens show it in one or two places, never as a background fill.
+- **Ledger Red** (`oklch(0.588 0.207 27.33)` light / `oklch(0.65 0.207 27.33)` dark): primary buttons, the running-timer indicator and pulse, active nav item, links. Used sparingly — most screens show it in one or two places, never as a background fill.
+- **Ledger Red as text** (`--primary-ink`, `oklch(0.5 0.19 27.33)` light / `oklch(0.76 0.19 27.33)` dark): the same brand red retuned for small text. `--primary` is calibrated as a *fill* behind white and fails WCAG AA as 11–12px type (3.59:1 on its own `/10` tint in light, 4.27:1 in dark). `--primary-ink` holds the hue and chroma and moves only lightness. Use it for the active nav label, the running-timer elapsed readout, and the billable indicator — anywhere the brand red is the text rather than the ground.
 
 ### Secondary
 - **Project & Tag Palette** (18-color hue-alternated set, `worker/lib/colors.ts` `DISTINCT_COLORS` / `react-app/lib/colorUtils.ts`): red, blue, green, amber, violet, teal, pink, lime, indigo, orange, cyan, purple, rose, sky, emerald, yellow, slate, stone — deliberately ordered so consecutive auto-assigned colors alternate warm/cool instead of drifting through a single hue family. Applied to project swatches, tag dots, calendar event blocks (translucent fill + solid left border), and report breakdown legends.
@@ -110,7 +111,8 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 - **Surface** (`oklch(0.995 0.001 30)` light / `oklch(0.228 0.007 265)` dark): cards, popovers, dropdowns — one step lighter (light mode) or one step lighter-than-ground (dark mode) so surfaces read as gently layered.
 - **Ink** (`oklch(0.22 0.006 30)` light / `oklch(0.96 0.003 265)` dark): body text, eased off pure black/white for a softer read.
 - **Muted** (`oklch(0.965 0.003 30)` light / `oklch(0.28 0.008 265)` dark): secondary surfaces (sidebar, toolbars — a second neutral layer, per product-register convention), disabled fills.
-- **Border** (`oklch(0.912 0.004 30)` light / `10% white` dark): dividers, input outlines, card edges — always subtle, never a structural color.
+- **Border** (`oklch(0.912 0.004 30)` light / `9% white` dark): input outlines, card edges — always subtle, never a structural color.
+- **Border-strong** (`oklch(0.78 0.004 30)` light / `22% white` dark): row dividers in the dense surfaces only (entry list, timesheet grid). The card hairline measures 1.26:1 against the ground, which effectively vanishes across a 30-row list at low vision. This sits at ~2:1 — deliberately short of the 3:1 non-text target, because a 3:1 divider reads as a structural rule and breaks the quiet-ledger feel. Never use it for cards, panels, or inputs.
 
 ### Named Rules
 **The One Accent Rule.** The brand red appears in at most one or two places on any given screen — the running state and the primary action. It is never used as a large background fill or decoration.
@@ -170,7 +172,7 @@ The system is flat-by-default with tonal layering, not shadow-driven. Depth is c
 
 ### Inputs / Fields
 - **Style:** 1px border, `bg-background`, `rounded-md`, `shadow-xs`.
-- **Focus:** border shifts to the ring color plus a 3px ring at 50% opacity — no glow, no scale change.
+- **Focus:** border shifts to the ring color plus a 3px ring at 50% opacity — no glow, no scale change. **The focus ring is not the brand red.** `--ring` (`oklch(0.55 0.14 265)` light / `oklch(0.7 0.14 265)` dark) is deliberately a different hue from both `--primary` and `--destructive`: when they shared a value, a focused input read as a validation error and "Save changes" was the same color as "Discard". Hue 265 is the system's own cool tint from the dark ramp, not a stock blue. One focus vocabulary everywhere — no bare-underline substitutes.
 - **Error:** border and ring shift to the destructive color at reduced opacity.
 
 ### Navigation

@@ -12,6 +12,7 @@ import {
   subWeeks,
   subMonths,
   addDays,
+  addWeeks,
   parseISO,
   differenceInSeconds,
   differenceInCalendarDays,
@@ -102,13 +103,44 @@ export function formatDayHeader(isoString: string): string {
   return format(date, "EEEE, MMM d");
 }
 
-// Compact label for a navigable period, e.g. "Jul 14 – 20 · W29" (same month),
-// "Jun 30 – Jul 6 · W27" (spans months), or with the year when the range does
-// not fall in the current calendar year. The week number is the ISO week of the
-// period start.
-export function formatPeriodLabel(since: Date, until: Date): string {
+/**
+ * True when [since, until] is exactly one calendar week for the given week start.
+ * The ISO week number is only meaningful for such a range — stamping "· W29" on
+ * "Last 30 days" or a rolling 7-day window says something that isn't true.
+ */
+export function isCalendarWeek(
+  since: Date,
+  until: Date,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
+): boolean {
+  return (
+    isSameDay(since, startOfWeek(since, { weekStartsOn })) &&
+    isSameDay(until, endOfWeek(since, { weekStartsOn }))
+  );
+}
+
+/**
+ * Compact label for a navigable period: "Jul 14 – 20 · W29" (same month),
+ * "Jun 30 – Jul 6 · W27" (spans months), plus the year when the range is not in
+ * the current calendar year. A single day renders as itself, not as a range.
+ *
+ * `weekStamp` appends the ISO week number; pass false for any period that is not
+ * exactly one calendar week (see isCalendarWeek).
+ */
+export function formatPeriodLabel(
+  since: Date,
+  until: Date,
+  opts: { weekStamp?: boolean } = {}
+): string {
+  const { weekStamp = true } = opts;
   const week = getISOWeek(since);
   const startFmt = "MMM d";
+  // A single day is its own period (the phone-width calendar). "Jul 20 – 20 · W30"
+  // is a range label describing something that isn't a range.
+  if (isSameDay(since, until)) {
+    const day = isToday(since) ? "Today" : format(since, "EEE, MMM d");
+    return isSameYear(since, new Date()) ? day : `${day}, ${format(since, "yyyy")}`;
+  }
   let range: string;
   if (isSameMonth(since, until)) {
     range = `${format(since, startFmt)} – ${format(until, "d")}`;
@@ -118,11 +150,17 @@ export function formatPeriodLabel(since: Date, until: Date): string {
   if (!isSameYear(since, new Date())) {
     range += `, ${format(until, "yyyy")}`;
   }
-  return `${range} · W${week}`;
+  return weekStamp ? `${range} · W${week}` : range;
 }
 
+// One date vocabulary across the app: "Mon, Jul 20". The ordinal-and-comma
+// style ("July 20th, 2026") read as a third format alongside the header's
+// "Jul 14 – 20" and the timesheet's day columns.
 export function formatFullDate(isoString: string): string {
-  return format(parseISO(isoString), "PPP");
+  const d = parseISO(isoString);
+  return isSameYear(d, new Date())
+    ? format(d, "EEE, MMM d")
+    : format(d, "EEE, MMM d, yyyy");
 }
 
 export function formatShortDate(isoString: string): string {
@@ -224,19 +262,27 @@ export const LIST_RANGE_LABELS: Record<ListRangeKey, string> = {
   custom: "Custom range",
 };
 
-// Presets in the order they appear in the dropdown. `custom` is excluded — it is
-// rendered as its own section with the two date inputs.
-export const LIST_RANGE_PRESETS: ListRangeKey[] = [
-  "all",
-  "today",
-  "yesterday",
-  "thisWeek",
-  "lastWeek",
-  "last7days",
-  "last30days",
-  "thisMonth",
-  "lastMonth",
+/**
+ * Presets grouped by the unit they describe, in the order they appear in the
+ * dropdown. Nine ungrouped options exceeded working memory and led with "All
+ * dates" — the widest possible scope — as the first thing the eye landed on.
+ *
+ * Weeks come first because a week is the unit this product bills in, and "Last
+ * week" sits directly under "This week" so the Monday-morning case (this week is
+ * one day old) is one click away rather than six items down.
+ *
+ * `custom` is excluded — it renders as its own section with the two date inputs.
+ */
+export const LIST_RANGE_GROUPS: { label: string; keys: ListRangeKey[] }[] = [
+  { label: "Weeks", keys: ["thisWeek", "lastWeek"] },
+  { label: "Days", keys: ["today", "yesterday"] },
+  { label: "Months", keys: ["thisMonth", "lastMonth"] },
+  { label: "Rolling", keys: ["last7days", "last30days", "all"] },
 ];
+
+export const LIST_RANGE_PRESETS: ListRangeKey[] = LIST_RANGE_GROUPS.flatMap(
+  (g) => g.keys
+);
 
 // Resolve a stored range selection into concrete [since, until] bounds.
 // `customSince`/`customUntil` are bare "YYYY-MM-DD" strings and only consulted
@@ -306,11 +352,61 @@ export function resolveListRange(
 export function formatListRangeLabel(
   key: ListRangeKey,
   since: Date,
-  until: Date
+  until: Date,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1
 ): string {
   if (key === "all") return "All dates";
   if (isSameDay(since, until)) return formatDayHeader(since.toISOString());
-  return formatPeriodLabel(since, until);
+  // Only a real calendar week earns the "· W29" stamp.
+  return formatPeriodLabel(since, until, {
+    weekStamp: isCalendarWeek(since, until, weekStartsOn),
+  });
+}
+
+/**
+ * A short, spoken-language name for a period, for use mid-sentence:
+ * "Logged this week" / "Logged Jul 14 – 20" / "Logged in June".
+ *
+ * Relative names ("today", "this week") are preferred when they apply, because
+ * they are what a user would say out loud; anything else falls back to explicit
+ * dates rather than inventing a relative name that might be off by one.
+ */
+export function summarizePeriod(
+  since: Date,
+  until: Date,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
+): string {
+  const now = new Date();
+
+  if (isSameDay(since, until)) {
+    if (isToday(since)) return "today";
+    if (isYesterday(since)) return "yesterday";
+    return format(since, "EEE, MMM d");
+  }
+
+  if (isCalendarWeek(since, until, weekStartsOn)) {
+    const thisWeek = startOfWeek(now, { weekStartsOn });
+    if (isSameDay(since, thisWeek)) return "this week";
+    if (isSameDay(since, startOfWeek(subWeeks(now, 1), { weekStartsOn })))
+      return "last week";
+    if (isSameDay(since, startOfWeek(addWeeks(now, 1), { weekStartsOn })))
+      return "next week";
+    return formatPeriodLabel(since, until, { weekStamp: false });
+  }
+
+  // Whole calendar month.
+  if (
+    isSameDay(since, startOfMonth(since)) &&
+    isSameDay(until, endOfMonth(since))
+  ) {
+    if (isSameMonth(since, now)) return "this month";
+    if (isSameMonth(since, subMonths(now, 1))) return "last month";
+    return isSameYear(since, now)
+      ? `in ${format(since, "MMMM")}`
+      : `in ${format(since, "MMMM yyyy")}`;
+  }
+
+  return formatPeriodLabel(since, until, { weekStamp: false });
 }
 
 export function getElapsedSeconds(startIso: string): number {

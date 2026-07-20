@@ -13,6 +13,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { useTags, useUpdateTag } from "@/hooks/useProjects";
 import { PROJECT_COLORS, PROJECT_COLOR_NAMES } from "@/lib/colorUtils";
 
@@ -31,7 +32,9 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
   const updateTag = useUpdateTag();
 
   const byName = new Map(allTags.map((t) => [t.name, t]));
-  const colorOf = (name: string) => byName.get(name)?.color ?? "#64748b";
+  // Untinted tags fall back to the shared swatch default rather than a
+  // one-off hex, so the neutral reads the same as an untinted project dot.
+  const colorOf = (name: string) => byName.get(name)?.color ?? DEFAULT_PROJECT_COLOR;
 
   const query = input.trim();
   const suggestions = allTags
@@ -66,6 +69,9 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
         <Button
           variant="ghost"
           size="sm"
+          // The visible label counts tags without naming them ("2 tags"), which
+          // tells a screen-reader user nothing about what's applied.
+          aria-label={value.length > 0 ? `Tags: ${value.join(", ")}` : "Add tags"}
           className={cn(
             "h-7 gap-1.5 px-2 text-sm text-muted-foreground",
             value.length > 0 && "text-foreground",

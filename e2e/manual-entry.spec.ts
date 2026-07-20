@@ -46,19 +46,24 @@ test.describe("manual one-off time entry", () => {
     // Scoped by name: the DatePicker popover used below also has role=dialog.
     const dialog = page.getByRole("dialog", { name: "Add entry" });
     await dialog.locator("textarea").fill("Yesterday's work");
-    // The Date field is a popover DatePicker now — its trigger shows the
-    // formatted current date (the only button in the dialog with a year in it).
+    // The Date field is a popover DatePicker; locate it by its accessible name
+    // rather than by "the button whose label happens to contain a year".
     await pickDate(
       page,
-      dialog.getByRole("button", { name: /\d{4}/ }),
+      dialog.getByRole("button", { name: /^Date:/ }),
       new Date(Date.now() - 86_400_000)
     );
     await fillTimeRange(dialog, "09:00", "10:00");
     await dialog.getByRole("button", { name: "Add entry" }).click();
     await expect(dialog).not.toBeVisible();
 
-    // The entry landed on yesterday, so it's outside the Today list — the day
-    // header for yesterday should now show it.
+    // The entry is dated yesterday, which may fall outside the period on screen
+    // (on a Monday, "this week" starts today). Rather than the row silently not
+    // appearing, the save reports where it landed and offers to go there.
+    const outOfRange = page.getByText("That date is outside the period you're viewing.");
+    if (await outOfRange.isVisible().catch(() => false)) {
+      await page.getByRole("button", { name: "Show it" }).click();
+    }
     await expect(page.getByText("Yesterday's work")).toBeVisible();
     // Running timer should still be running, untouched by the one-off entry.
     await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Trash2, X, DollarSign, Upload, Clock } from "lucide-react";
+import { Trash2, X, DollarSign, Upload, Clock, AlertTriangle } from "lucide-react";
 import { EntryGroup } from "./EntryGroup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,13 +20,15 @@ import { ENTRY_LIST_LIMIT } from "@shared/schemas";
 interface EntryListProps {
   since: Date;
   until: Date;
+  /** Opens the Add-entry dialog from the empty state's primary action. */
+  onAddEntry?: () => void;
 }
 
 // The day-grouped entry list body for a single period. Period navigation, the
 // logged bar, and the add buttons live in the shared TimerWorkspace header — this
 // component only renders the list + bulk actions for [since, until].
-export function EntryList({ since, until }: EntryListProps) {
-  const { days, entries, isLoading, error } = useGroupedEntriesRange(
+export function EntryList({ since, until, onAddEntry }: EntryListProps) {
+  const { days, entries, isLoading, error, refetch } = useGroupedEntriesRange(
     since.toISOString(),
     until.toISOString()
   );
@@ -91,12 +93,17 @@ export function EntryList({ since, until }: EntryListProps) {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-sm text-destructive">Failed to load entries</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Check your connection and try again
-        </p>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Couldn't load your entries"
+        description="The request didn't get through. Your tracked time is safe."
+        action={
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Try again
+          </Button>
+        }
+        className="py-20"
+      />
     );
   }
 
@@ -104,8 +111,13 @@ export function EntryList({ since, until }: EntryListProps) {
     return (
       <EmptyState
         icon={Clock}
-        title="No entries in this period"
-        description="Start the timer, add an entry, or choose a different date range"
+        title="Nothing tracked in this period"
+        description="Start the timer to track as you work, or add an entry for time you've already spent."
+        action={
+          <Button variant="outline" size="sm" onClick={onAddEntry}>
+            Add an entry
+          </Button>
+        }
         className="py-24"
       />
     );
@@ -175,7 +187,7 @@ export function EntryList({ since, until }: EntryListProps) {
       )}
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="divide-y">
+        <div className="divide-y divide-border-strong">
           {days.map(({ dateKey, label, groups, totalSeconds }) => (
             <EntryGroup
               key={dateKey}

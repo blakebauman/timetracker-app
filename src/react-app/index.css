@@ -12,6 +12,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-ink: var(--primary-ink);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -25,6 +26,7 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -135,8 +137,31 @@
   --warning: oklch(0.666 0.179 58.318);
   --warning-foreground: oklch(0.985 0 0);
   --border: oklch(0.912 0.004 30);
+  /* Dense row dividers only (entry list, timesheet). --border is tuned as a
+     card hairline and measures 1.26:1, which effectively disappears across a
+     30-row list for a low-vision user. This is ~2:1 — deliberately short of the
+     3:1 non-text target, because a 3:1 divider reads as a structural rule and
+     DESIGN.md keeps borders subtle. Card and input edges still use --border. */
+  --border-strong: oklch(0.78 0.004 30);
   --input: oklch(0.912 0.004 30);
-  --ring: oklch(0.588 0.207 27.33);
+  /* Focus gets its own hue. This used to be byte-identical to --primary and
+     0.011 lightness from --destructive, so a focused field read as a validation
+     error and "Save changes" was the same red as "Discard". Hue 265 is the
+     system's own cool tint (see the dark ramp), not a stock blue; L is set per
+     theme so the ring clears 3:1 (WCAG 1.4.11) on background/card/muted/accent —
+     measured 4.44:1 here, 5.01:1 dark. */
+  --ring: oklch(0.55 0.14 265);
+  /* How much of a project/tag swatch survives in text drawn ON that swatch's own
+     tint (the rest is mixed toward --foreground). Ceiling measured across all 18
+     DISTINCT_COLORS over background/card/muted/accent: 52% light, 60% dark — these
+     sit under it with margin. See .tt-swatch-tint. */
+  --swatch-ink-mix: 46%;
+  /* Brand red used as TEXT (active nav item, running pill, the billable "$").
+     --primary is tuned as a fill behind white, and fails AA as small text: 3.59:1
+     on its own /10 tint in light, 4.27:1 in dark, 4.45:1 for the billable glyph.
+     This holds the brand hue and chroma and moves only lightness — down toward
+     ink in light, up in dark. Measured ceilings: light L ≤ 0.52, dark L ≥ 0.74. */
+  --primary-ink: oklch(0.5 0.19 27.33);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -170,8 +195,12 @@
   --warning: oklch(0.769 0.188 70.08);
   --warning-foreground: oklch(0.16 0.006 265);
   --border: oklch(1 0 0 / 9%);
+  --border-strong: oklch(1 0 0 / 22%);
   --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.65 0.1 265);
+  --ring: oklch(0.7 0.14 265);
+  /* Dark ink is light, so more of the swatch survives before contrast suffers. */
+  --swatch-ink-mix: 55%;
+  --primary-ink: oklch(0.76 0.19 27.33);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -186,6 +215,59 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+}
+
+/* ─── Swatch tints ──────────────────────────────────────────────────────────
+   Project and tag colors are arbitrary palette hexes, so any label drawn on a
+   tint of its own swatch has to be derived, not copied. Setting `color` to the
+   raw swatch (the old ProjectBadge/calendar-event approach) makes legibility a
+   lottery on the hue's luminance — amber landed at 1.88:1 in light mode.
+
+   Mixing the swatch toward --foreground fixes both themes with one expression:
+   light ink is dark so the label darkens, dark ink is light so it lightens.
+   `--swatch-ink-mix` is the measured ceiling per theme; consumers set --swatch. */
+/* Text only — for labels already sitting on a swatch-tinted surface painted by
+   something else (FullCalendar paints the event block itself). */
+.tt-swatch-ink {
+  color: color-mix(in oklab, var(--swatch) var(--swatch-ink-mix), var(--foreground));
+}
+
+/* Text plus its own tint fill. */
+.tt-swatch-tint {
+  background-color: color-mix(in oklab, var(--swatch) 13%, transparent);
+  color: color-mix(in oklab, var(--swatch) var(--swatch-ink-mix), var(--foreground));
+}
+
+/* ─── Reveal-on-hover ───────────────────────────────────────────────────────
+   Row actions that fade in with the pointer. The gate must be hover CAPABILITY,
+   not viewport width: the old `sm:opacity-0 sm:group-hover:opacity-100` hid the
+   control on every touch device wider than 640px — i.e. every tablet — where
+   `group-hover` can never fire, so Continue and the row menu were unreachable.
+
+   Default is visible; only a device that can actually hover opts into hiding.
+   focus-within/focus-visible keep it reachable by keyboard. */
+.tt-reveal {
+  opacity: 1;
+  transition: opacity 150ms var(--ease-out-quart);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tt-reveal {
+    opacity: 0;
+  }
+  .group:hover .tt-reveal,
+  .group:focus-within .tt-reveal,
+  .tt-reveal:hover,
+  .tt-reveal:focus-within,
+  .tt-reveal:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* Secondary text sitting on a swatch tint. --muted-foreground is tuned against
+   the flat background and washes out over a colored fill (3.81:1 worst case),
+   so step it toward ink. Measured ceiling 80% in both themes. */
+.tt-on-tint-muted {
+  color: color-mix(in oklab, var(--muted-foreground) 70%, var(--foreground));
 }
 
 /* Print: let the fixed app shell expand so the whole report flows onto pages. */

@@ -23,8 +23,10 @@ test("calendar: month view renders", async ({ page }) => {
   await signUp(page);
 
   await page.getByRole("tab", { name: "Calendar" }).click();
-  await page.getByRole("combobox", { name: "Calendar view" }).click();
-  await page.getByRole("option", { name: "Month" }).click();
+  // Day/5-day/Week/Month moved into the "View options" popover alongside the
+  // other persisted display preferences.
+  await page.getByRole("button", { name: "View options" }).click();
+  await page.getByRole("radio", { name: "Month" }).click();
 
   await expect(page.locator(".fc-daygrid")).toBeVisible();
 });

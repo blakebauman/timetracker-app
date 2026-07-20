@@ -61,6 +61,30 @@
 .tt-calendar .fc .fc-timegrid-event .fc-event-main {
   padding: 2px 6px;
   color: var(--foreground);
+  /* Event labels degrade by how much room THIS block has, not by viewport width:
+     a week grid on a tablet and a day grid on a phone give wildly different
+     column widths at similar viewports. Without this, the meta line wraps into
+     "9:00 –" / "10:30" / "1h" / "30m" — four lines of shrapnel. */
+  container-type: inline-size;
+}
+
+/* "9:00 – 10:30 · 1h 30m" needs ~145px at 11px mono. Narrower than that and the
+   duration would be silently clipped by the block's overflow, so drop it
+   deliberately and keep the times. (Measured: a week column is 132px at 1280px
+   viewport, 176px at 1600px.) */
+@container (max-width: 144px) {
+  .tt-event-dur,
+  .tt-event-sep {
+    display: none;
+  }
+}
+
+/* Below ~85px even the times get clipped — and the block's position and height
+   already encode when and how long. Title plus project only. */
+@container (max-width: 84px) {
+  .tt-event-meta {
+    display: none;
+  }
 }
 
 .tt-calendar .fc .fc-timegrid-event:hover {

@@ -61,6 +61,23 @@ interface UIStore {
   // Transient: the entry row to flash-highlight (e.g. the one just stopped so the
   // eye can track where it landed in the list). Never persisted.
   highlightedEntryId: string | null;
+  /**
+   * The entry a timer most recently stopped into. Sorted to the top of its day
+   * group so it's findable immediately, unlike `highlightedEntryId` which
+   * releases after the flash. Held until the period/view changes or another
+   * timer stops — a row that silently re-sorts itself two seconds later is
+   * worse than one that never moved.
+   */
+  pinnedEntryId: string | null;
+  clearPinnedEntry: () => void;
+  /**
+   * Entry whose edit dialog should open. Lets a toast fired from the timer hook
+   * ("Stopped 2h 30m with no project") hand the user straight to the editor,
+   * without EntryRow having to expose its local dialog state upward.
+   */
+  editEntryId: string | null;
+  openEntryEditor: (id: string) => void;
+  closeEntryEditor: () => void;
 
   toggleSidebar: () => void;
   setSidebarCollapsed: (v: boolean) => void;
@@ -110,10 +127,15 @@ export const useUIStore = create<UIStore>()(
       timerView: "list",
       calendarView: "timeGridWeek",
       calendarSlotHeight: CALENDAR_SLOT_HEIGHT_DEFAULT,
-      // Rolling 7-day window rather than "This week": a calendar week collapses
-      // to a single day on Monday mornings, which is the empty-list problem the
-      // range picker exists to solve.
-      listRangeKey: "last7days",
+      // "This week" — a discrete billing period, matching what the calendar and
+      // timesheet show, so the header total means the same thing in every view.
+      //
+      // A rolling "last 7 days" avoids the thin-Monday-morning list, but it does
+      // so by straddling the week boundary: on Monday it mixes one day of this
+      // week with last week's tail, which is exactly the wrong answer for someone
+      // reconciling a week before invoicing. The Monday case is handled by
+      // promoting "Last week" in the picker instead.
+      listRangeKey: "thisWeek",
       listRangeSince: null,
       listRangeUntil: null,
       weekStart: Number(localStorage.getItem("pref_weekStart") ?? 1),
@@ -126,6 +148,8 @@ export const useUIStore = create<UIStore>()(
       discardConfirmOpen: false,
       quickAddOpen: false,
       highlightedEntryId: null,
+      pinnedEntryId: null,
+      editEntryId: null,
 
       toggleSidebar: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
@@ -186,9 +210,12 @@ export const useUIStore = create<UIStore>()(
       setDiscardConfirmOpen: (v) => set({ discardConfirmOpen: v }),
       setQuickAddOpen: (v) => set({ quickAddOpen: v }),
       openQuickAdd: () => set({ quickAddOpen: true }),
+      clearPinnedEntry: () => set({ pinnedEntryId: null }),
+      openEntryEditor: (id) => set({ editEntryId: id }),
+      closeEntryEditor: () => set({ editEntryId: null }),
       flashEntry: (id) => {
         clearTimeout(flashTimeout);
-        set({ highlightedEntryId: id });
+        set({ highlightedEntryId: id, pinnedEntryId: id });
         // Outlast the refetch + the row's highlight keyframe, then release so a
         // later re-render doesn't re-trigger the flash.
         flashTimeout = setTimeout(() => set({ highlightedEntryId: null }), 2500);

@@ -171,7 +171,7 @@ export function TaskList({ projectId }: TaskListProps) {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+            <div className="tt-reveal flex items-center gap-0.5">
               <Button
                 variant="ghost"
                 size="icon-xs"

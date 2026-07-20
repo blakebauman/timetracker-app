@@ -48,6 +48,16 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const { startTimer } = useTimer();
   const timeFormat = useUIStore((s) => s.timeFormat);
   const highlighted = useUIStore((s) => s.highlightedEntryId === entry.id);
+  // A toast elsewhere (e.g. "Stopped 2h 30m with no project") can request this
+  // row's editor; treat that as equivalent to opening it from the row menu.
+  const editRequested = useUIStore((s) => s.editEntryId === entry.id);
+  const closeEntryEditor = useUIStore((s) => s.closeEntryEditor);
+  const editorOpen = showEditDialog || editRequested;
+
+  const closeEditor = () => {
+    setShowEditDialog(false);
+    if (editRequested) closeEntryEditor();
+  };
 
   const project = projects.find((p) => p.id === entry.projectId);
   const integration = integrations.find((i) => i.id === project?.integrationId);
@@ -126,7 +136,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           if (removing && e.target === e.currentTarget) finalizeDelete();
         }}
         className={cn(
-          "group flex items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/40",
+          "group flex items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors hover:bg-accent/40",
           removing
             ? "pointer-events-none animate-out fade-out slide-out-to-right-4 fill-mode-forwards duration-200 ease-out"
             : highlighted
@@ -143,10 +153,13 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             aria-checked={isSelected}
             aria-label="Select entry"
             onClick={() => onToggleSelect(entry.id)}
-            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+            // The 16×16 box is the only control here that failed even WCAG 2.2
+            // AA's 24px floor (SC 2.5.8). The ::before expands the hit target to
+            // 28×28 without changing the visual weight of the checkbox itself.
+            className={`relative flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
               isSelected
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-muted-foreground/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:border-primary"
+                : "border-muted-foreground/40 tt-reveal hover:border-primary"
             }`}
           >
             {isSelected && (
@@ -179,7 +192,10 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             />
           ) : (
             <button
-              className="rounded-sm text-left text-sm transition-colors hover:text-primary focus-visible:text-primary focus-visible:underline focus-visible:outline-none"
+              // Use the system focus ring rather than a bare underline: a third
+              // focus vocabulary in one page means keyboard users have to relearn
+              // "where am I" per control.
+              className="rounded-sm text-left text-sm transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setEditingDesc(true)}
             >
               {entry.description || (
@@ -243,7 +259,15 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         {entry.billable && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-[10px] font-semibold text-primary">$</span>
+              {/* Was a bare <span> whose only "Billable" text lived in a mouse-only
+                  tooltip, so the state was invisible to screen readers. An sr-only
+                  label announces it in reading order — better than making it
+                  focusable, which would add a tab stop per row to an already
+                  tab-stop-heavy list for something that isn't an action. */}
+              <span className="text-[11px] font-semibold text-primary-ink">
+                <span aria-hidden>$</span>
+                <span className="sr-only">Billable</span>
+              </span>
             </TooltipTrigger>
             <TooltipContent>Billable</TooltipContent>
           </Tooltip>
@@ -286,14 +310,14 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         ) : (
           <button
             onClick={handleStartEditDuration}
-            className="min-w-16 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary focus-visible:text-primary focus-visible:underline focus-visible:outline-none"
+            className="min-w-16 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {entry.duration ? formatDurationShort(entry.duration) : "–"}
           </button>
         )}
 
         {/* Actions (visible on hover) */}
-        <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+        <div className="tt-reveal flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -353,12 +377,8 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         </div>
       </div>
 
-      {showEditDialog && (
-        <EntryForm
-          entry={entry}
-          open={showEditDialog}
-          onClose={() => setShowEditDialog(false)}
-        />
+      {editorOpen && (
+        <EntryForm entry={entry} open={editorOpen} onClose={closeEditor} />
       )}
     </>
   );

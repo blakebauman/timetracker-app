@@ -47,6 +47,10 @@ export function ProjectPicker({
         <Button
           variant="ghost"
           size={compact ? "sm" : "default"}
+          // Compact + unselected renders icons only, so the button would have no
+          // accessible name at all. Label it unconditionally: even when the name
+          // is visible, "ERP Migration" alone doesn't say it's a project picker.
+          aria-label={selected ? `Project: ${selected.name}` : "Select project"}
           className={cn(
             "gap-1.5 text-sm",
             !selected && "text-muted-foreground",

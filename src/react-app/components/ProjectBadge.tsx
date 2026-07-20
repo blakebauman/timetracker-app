@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 
@@ -13,10 +14,10 @@ export function ProjectBadge({ name, color, className }: ProjectBadgeProps) {
   return (
     <span
       className={cn(
-        "rounded-sm px-1.5 py-0.5 text-xs font-medium",
+        "tt-swatch-tint rounded-sm px-1.5 py-0.5 text-xs font-medium",
         className
       )}
-      style={{ backgroundColor: `${c}22`, color: c }}
+      style={{ "--swatch": c } as CSSProperties}
     >
       {name}
     </span>

@@ -51,6 +51,7 @@ export function TaskPicker({
         <Button
           variant="ghost"
           size={compact ? "sm" : "default"}
+          aria-label={selected ? `Task: ${selected.name}` : "Select task"}
           className={cn(
             "gap-1.5 text-sm",
             !selected && "text-muted-foreground",
