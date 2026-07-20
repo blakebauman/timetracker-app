@@ -110,7 +110,10 @@ export const useUIStore = create<UIStore>()(
       timerView: "list",
       calendarView: "timeGridWeek",
       calendarSlotHeight: CALENDAR_SLOT_HEIGHT_DEFAULT,
-      listRangeKey: "last30days",
+      // Rolling 7-day window rather than "This week": a calendar week collapses
+      // to a single day on Monday mornings, which is the empty-list problem the
+      // range picker exists to solve.
+      listRangeKey: "last7days",
       listRangeSince: null,
       listRangeUntil: null,
       weekStart: Number(localStorage.getItem("pref_weekStart") ?? 1),
