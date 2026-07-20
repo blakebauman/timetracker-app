@@ -41,9 +41,12 @@ Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
 
 - Description input: `getByPlaceholder("What are you working on?")`.
 - Start/Stop: `getByRole("button", { name: "Start" | "Stop" })`.
-- **Project/Task picker trigger** has no accessible name — locate it by its
-  chevron: `.locator("header button").filter({ has: page.locator("svg.lucide-chevron-down") })`.
+- **Project/Task/Tag picker triggers** are named: `getByRole("button", { name: /^Project:/ })`
+  when one is selected, `"Select project"` when not (same shape for task and tags).
   Picker options are cmdk items: `getByRole("option", { name: /Alpha/ })`.
+- **Date fields**: `getByRole("button", { name: /^Date:/ })`.
+- **Calendar display preferences** (Day/5-day/Week/Month, weekends, gaps, row
+  height) live behind `getByRole("button", { name: "View options" })`.
 - The **running entry appears as an editable row** in the Today list. Edit its
   project via: row hover → `getByRole("button", { name: "Entry actions" })` →
   `getByRole("menuitem", { name: "Edit" })` → dialog picker → `Save changes`.
@@ -75,6 +78,29 @@ Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
 - Event blocks: `.fc-event` (running entry adds `.tt-event-running`). Custom
   content renders description + `HH:MM–HH:MM · dur` + project label.
 
+## Preferences are server-backed — don't poke localStorage
+
+`timeFormat`, `currency`, `weekStart` and friends live in the zustand-persisted
+`time-tracker-ui` blob **and** are rehydrated from D1 by `useSettings` on load.
+Writing `localStorage` (either the legacy `pref_*` keys or the persisted blob)
+is silently overwritten on the next render, so a test that sets it will appear to
+pass while measuring the *old* value. Drive the real control instead:
+
+```ts
+await page.goto("/settings");
+await page.getByRole("button", { name: "12h", exact: true }).click();
+```
+
+## Theme: toggle via next-themes, never the class
+
+`main.tsx` mounts `next-themes` with `attribute="class"`, which re-syncs
+`documentElement.classList`. Calling `classList.toggle("dark")` directly leaves
+the DOM in a mixed state — light tokens over dark surfaces — for long enough that
+**axe-core reports phantom `color-contrast` violations** that don't exist in the
+real app. This cost a full false-positive triage once. Set the theme through the
+UI (or `localStorage.theme` + a reload) and assert
+`documentElement.className` is exactly `light`/`dark` before measuring.
+
 ## Gotchas
 
 - To exercise WS cross-tab sync, the second tab must be open **before** the
@@ -84,6 +110,16 @@ Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
 - **FullCalendar `initialView` must be a constant** — binding it to changing
   state re-initializes the calendar and silently stops declarative `events`
   updates after a view switch. Drive view changes through `getApi().changeView()`.
+- **React sets `value` as a property, not an attribute** — `input[value='1h 30m']`
+  never matches. Locate inline edit inputs by their container instead
+  (`page.locator(".group").first().locator("input")`).
+- **Viewport size alone doesn't emulate touch.** `setViewportSize` leaves
+  `pointer: fine` / `hover: hover`, so hover-revealed controls (`.tt-reveal`)
+  stay hidden and any conclusion about touch reachability is wrong. Use
+  `test.use({ hasTouch: true, isMobile: true })`.
+- **Calendar grid density follows the *pane*, not the viewport** (see
+  `lib/calendarDensity.ts`). Split at 1280 renders a single day column, not a
+  week — assert on `.fc-col-header-cell` counts rather than assuming.
 - **`eventContent` must tolerate events with no `extendedProps.entry`** (selection
   mirrors / drag placeholders) — a throw there breaks FC's whole React subtree, so
   newly created entries stop rendering until a full reload.
