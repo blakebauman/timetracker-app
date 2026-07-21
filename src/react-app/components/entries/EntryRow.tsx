@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EntryForm } from "./EntryForm";
+import { AssignProjectChip } from "./ProjectPicker";
 import { TimeRangePopover } from "./TimeRangePopover";
 import { useUpdateEntry, useDeleteEntry, useCreateEntry } from "@/hooks/useEntries";
 import { useProjects, useTagColors } from "@/hooks/useProjects";
@@ -221,8 +222,14 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
 
           {/* Project + tags row */}
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
-            {entry.projectName && (
+            {entry.projectName ? (
               <ProjectBadge name={entry.projectName} color={entry.projectColor} />
+            ) : (
+              <AssignProjectChip
+                onAssign={(projectId) =>
+                  updateEntry.mutate({ id: entry.id, data: { projectId } })
+                }
+              />
             )}
             {entry.tags.map((tag) => (
               <Badge
