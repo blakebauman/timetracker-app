@@ -1,6 +1,7 @@
 {
   "extends": "@timetracker/typescript-config/base.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo",
     "types": ["vite/client", "./worker-configuration.d.ts"],
     "baseUrl": ".",
