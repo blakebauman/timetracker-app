@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Check, Pencil } from "lucide-react";
+import { Trash2, Check, Pencil, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -13,12 +13,14 @@ interface TaskRowProps {
   /** Show the project pill on the row (hidden when the list is grouped by project). */
   showProject?: boolean;
   onRequestDelete: (task: Task) => void;
+  /** Open the "log time to task" sheet; the list owns the sheet instance. */
+  onLogTime: (task: Task) => void;
 }
 
 // Self-contained task row: done toggle, inline-edit name, click-to-edit estimate
 // with a tracked/estimate progress bar. Mirrors the in-project TaskList row but
 // owns its own edit state so it can be dropped into the standalone Tasks page.
-export function TaskRow({ task, showProject = true, onRequestDelete }: TaskRowProps) {
+export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }: TaskRowProps) {
   const updateTask = useUpdateTask();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(task.name);
@@ -121,15 +123,21 @@ export function TaskRow({ task, showProject = true, onRequestDelete }: TaskRowPr
           </button>
         ) : task.trackedSeconds > 0 ? (
           <button
-            className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground transition-opacity hover:opacity-70"
+            // gap-1.5, not gap-1: the trailing space in the text node is swallowed
+            // at the flex-item boundary, so the dashed underline started hard
+            // against the "·" and read tighter than the spaces around it.
+            className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground transition-opacity hover:opacity-70"
             onClick={startEditTime}
           >
-            {formatDurationShort(task.trackedSeconds)} tracked ·{" "}
+            <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
             <span className="underline decoration-dashed">add estimate</span>
           </button>
         ) : (
           <button
-            className="mt-0.5 text-[10px] text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50 hover:text-muted-foreground!"
+            // `block`: a bare <button> is inline-block, so this ran onto the same
+            // line as the task name ("Data mappingadd estimate"). The other two
+            // states are flex and already drop below; mt-0.5 shows this meant to.
+            className="mt-0.5 block text-[10px] text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50 hover:text-muted-foreground!"
             onClick={startEditTime}
           >
             add estimate
@@ -143,6 +151,15 @@ export function TaskRow({ task, showProject = true, onRequestDelete }: TaskRowPr
 
       {/* Actions */}
       <div className="tt-reveal flex items-center gap-0.5">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`Log time to ${task.name}`}
+          title="Log time to this task"
+          onClick={() => onLogTime(task)}
+        >
+          <Clock className="h-3 w-3" />
+        </Button>
         <Button
           variant="ghost"
           size="icon-xs"

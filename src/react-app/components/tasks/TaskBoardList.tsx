@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ColorDot } from "@/components/ColorDot";
 import { TaskRow } from "./TaskRow";
+import { LogTaskTimeSheet } from "./LogTaskTimeSheet";
 import { AddTaskDialog } from "./AddTaskDialog";
 import { useAllTasks, useDeleteTask } from "@/hooks/useTasks";
 import { formatDurationShort } from "@/lib/dateUtils";
@@ -46,6 +47,7 @@ export function TaskBoardList() {
   const [sortBy, setSortBy] = useState<SortBy>("recent");
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const [logTarget, setLogTarget] = useState<Task | null>(null);
 
   const sections = useMemo<Section[]>(() => {
     const filtered = tasks.filter((t) =>
@@ -186,6 +188,7 @@ export function TaskBoardList() {
                       task={task}
                       showProject={groupBy !== "project"}
                       onRequestDelete={setDeleteTarget}
+                      onLogTime={setLogTarget}
                     />
                   ))}
                 </div>
@@ -196,6 +199,12 @@ export function TaskBoardList() {
       )}
 
       <AddTaskDialog open={addOpen} onClose={() => setAddOpen(false)} />
+
+      <LogTaskTimeSheet
+        task={logTarget}
+        open={!!logTarget}
+        onClose={() => setLogTarget(null)}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Check, Pencil } from "lucide-react";
+import { Plus, Trash2, Check, Pencil, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
+import { LogTaskTimeSheet } from "@/components/tasks/LogTaskTimeSheet";
 import { formatDurationShort, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import type { Task } from "@shared/schemas";
 
@@ -26,6 +27,7 @@ export function TaskList({ projectId }: TaskListProps) {
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editEstimated, setEditEstimated] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const [logTarget, setLogTarget] = useState<Task | null>(null);
 
   const handleCreate = () => {
     const name = newName.trim();
@@ -72,9 +74,16 @@ export function TaskList({ projectId }: TaskListProps) {
     );
   }
 
+  // Done tasks are fetched here too (they weren't before), and this list has no
+  // status filter of its own — so sink them below the active ones rather than
+  // letting a long-lived project bury its open work under finished work.
+  const ordered = [...tasks].sort(
+    (a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name)
+  );
+
   return (
     <div className="mt-3 space-y-1">
-      {tasks.map((task) => {
+      {ordered.map((task) => {
         const progress = task.estimatedSeconds
           ? Math.min(100, Math.round((task.trackedSeconds / task.estimatedSeconds) * 100))
           : null;
@@ -155,14 +164,18 @@ export function TaskList({ projectId }: TaskListProps) {
                 </Tooltip>
               ) : task.trackedSeconds > 0 ? (
                 <button
-                  className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:opacity-70 transition-opacity"
+                  // gap-1.5 so the dashed underline isn't flush against the "·".
+                  className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground hover:opacity-70 transition-opacity"
                   onClick={() => handleStartEditTime(task)}
                 >
-                  {formatDurationShort(task.trackedSeconds)} tracked · <span className="underline decoration-dashed">add estimate</span>
+                  <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
+                  <span className="underline decoration-dashed">add estimate</span>
                 </button>
               ) : (
                 <button
-                  className="mt-0.5 text-[10px] text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors hover:text-muted-foreground!"
+                  // `block`: a bare <button> is inline-block and ran onto the task
+                  // name's line. The other two states are flex and drop below.
+                  className="mt-0.5 block text-[10px] text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors hover:text-muted-foreground!"
                   onClick={() => handleStartEditTime(task)}
                 >
                   add estimate
@@ -172,6 +185,15 @@ export function TaskList({ projectId }: TaskListProps) {
 
             {/* Actions */}
             <div className="tt-reveal flex items-center gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Log time to ${task.name}`}
+                title="Log time to this task"
+                onClick={() => setLogTarget(task)}
+              >
+                <Clock className="h-3 w-3" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon-xs"
@@ -215,6 +237,12 @@ export function TaskList({ projectId }: TaskListProps) {
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      <LogTaskTimeSheet
+        task={logTarget}
+        open={!!logTarget}
+        onClose={() => setLogTarget(null)}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}
