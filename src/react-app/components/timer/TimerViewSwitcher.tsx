@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { CalendarDays, Columns2, List, Table2 } from "lucide-react";
+import { CalendarDays, CalendarRange, Columns2, List, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TimerView } from "@/stores/uiStore";
 import { TIMER_PANEL_ID, timerTabId } from "./timerTabs";
@@ -9,6 +9,7 @@ const VIEWS: { value: TimerView; label: string; icon: typeof List }[] = [
   { value: "split", label: "Split", icon: Columns2 },
   { value: "list", label: "List", icon: List },
   { value: "timesheet", label: "Timesheet", icon: Table2 },
+  { value: "planner", label: "Planner", icon: CalendarRange },
 ];
 
 interface TimerViewSwitcherProps {
@@ -18,7 +19,7 @@ interface TimerViewSwitcherProps {
   allowSplit?: boolean;
 }
 
-// Icon-only segmented control that swaps between the four views the Timer tab
+// Icon-only segmented control that swaps between the views the Timer tab
 // hosts. Purely in-page state — no routing.
 //
 // Implements the full tab pattern, not just the roles: a single tab stop with

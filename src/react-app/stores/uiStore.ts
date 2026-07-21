@@ -5,7 +5,7 @@ import type { ListRangeKey } from "@/lib/dateUtils";
 type RoundMode = "off" | "nearest" | "up" | "down";
 
 // The four interchangeable views hosted by the unified Timer tab.
-export type TimerView = "calendar" | "split" | "list" | "timesheet";
+export type TimerView = "calendar" | "split" | "list" | "timesheet" | "planner";
 
 // Device-local productivity preferences (idle detection, tracking reminders,
 // pomodoro). Kept client-side since they're per-device behaviors.

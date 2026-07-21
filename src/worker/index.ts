@@ -13,6 +13,7 @@ import { favoritesRouter } from "./routes/favorites";
 import { recurringRouter } from "./routes/recurring";
 import { reportsRouter } from "./routes/reports";
 import { savedReportsRouter } from "./routes/saved-reports";
+import { plannerRouter } from "./routes/planner";
 import { settingsRouter } from "./routes/settings";
 import { integrationsRouter } from "./routes/integrations";
 import { calendarRouter } from "./routes/calendar";
@@ -78,6 +79,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/recurring", recurringRouter)
   .route("/api/reports", reportsRouter)
   .route("/api/saved-reports", savedReportsRouter)
+  .route("/api/planner", plannerRouter)
   .route("/api/settings", settingsRouter)
   .route("/api/integrations", integrationsRouter)
   .route("/api/calendar", calendarRouter)
