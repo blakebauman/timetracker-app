@@ -13,10 +13,11 @@ extension accesses, why, and how it is handled.
 
 ## What the extension accesses
 
-- **Account credentials.** When you sign in through the popup, your email and
-  password are sent directly to the Time Tracker API (`https://timetracker.run`
-  or a URL you configure) to authenticate you. The extension does **not** store
-  your password.
+- **Account credentials.** When you sign in through the popup, your email
+  address and the one-time code we email you are sent directly to the Time
+  Tracker API (`https://timetracker.run` or a URL you configure) to
+  authenticate you. There is no password, and the extension stores neither
+  your email nor the code.
 - **Session token.** On successful sign-in, a session (bearer) token is stored
   locally in the browser (`chrome.storage.local`) and sent with API requests to
   keep you signed in. It is removed on sign-out or when it expires.

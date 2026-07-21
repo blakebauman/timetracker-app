@@ -43,43 +43,78 @@ export function SignupPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const redirect = params.get("redirect") || "/";
-  const { user, signUp } = useAuth();
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isPending, setIsPending] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode] = useState("");
+  const [linkSent, setLinkSent] = useState(false);
 
   // Navigate only once the shared session store has actually caught up —
-  // navigating right after signUp() resolves races AuthGuard's useSession(),
+  // navigating right after sign-in resolves races AuthGuard's useSession(),
   // which can still read the stale "logged out" cache for a tick.
   useEffect(() => {
     if (user) navigate(redirect);
   }, [user, redirect, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validate = () => {
+    if (!name.trim() || !email.trim()) {
+      setError("Please fill in your name and email");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSendCode = async () => {
     setError("");
-    if (!name.trim() || !email.trim() || !password) {
-      setError("Please fill in all fields");
+    if (!validate()) return;
+    setPending(true);
+    const { error: sendError } = await authClient.emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    });
+    setPending(false);
+    if (sendError) {
+      setError(sendError.message ?? "Failed to send code");
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    setCodeSent(true);
+  };
+
+  const handleVerifyCode = async () => {
+    if (!code.trim()) return;
+    setError("");
+    setPending(true);
+    const { error: verifyError } = await authClient.signIn.emailOtp({ email, otp: code });
+    if (verifyError) {
+      setPending(false);
+      setError(verifyError.message ?? "Invalid or expired code");
       return;
     }
-    setIsPending(true);
-    try {
-      const result = await signUp({ name, email, password });
-      if (result?.error) {
-        setError(result.error.message ?? "Failed to create account");
-        setIsPending(false);
-      }
-      // On success, the useEffect above navigates once `user` updates.
-    } catch {
-      setError("Something went wrong. Please try again.");
-      setIsPending(false);
+    // OTP sign-in creates the account without a name — set it now, while the
+    // session is brand new (the fresh-session gate on update-user passes).
+    await authClient.updateUser({ name: name.trim() });
+    setPending(false);
+    // The useEffect above navigates once `user` updates.
+  };
+
+  const handleSendMagicLink = async () => {
+    setError("");
+    if (!validate()) return;
+    setPending(true);
+    const { error: sendError } = await authClient.signIn.magicLink({
+      email,
+      name: name.trim(),
+      callbackURL: redirect,
+    });
+    setPending(false);
+    if (sendError) {
+      setError(sendError.message ?? "Failed to send magic link");
+      return;
     }
+    setLinkSent(true);
   };
 
   return (
@@ -125,7 +160,14 @@ export function SignupPage() {
             </div>
           </CardContent>
 
-          <form onSubmit={handleSubmit} noValidate>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (codeSent) handleVerifyCode();
+              else handleSendCode();
+            }}
+          >
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Name</Label>
@@ -146,36 +188,70 @@ export function SignupPage() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setCodeSent(false);
+                    setLinkSent(false);
+                    setCode("");
+                  }}
                   placeholder="you@example.com"
                   required
                   autoComplete="email"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 8 characters"
-                  required
-                  autoComplete="new-password"
-                />
-              </div>
+
+              {codeSent ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="otp">6-digit code</Label>
+                  <Input
+                    id="otp"
+                    inputMode="numeric"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="123456"
+                    autoComplete="one-time-code"
+                    autoFocus
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    We emailed a code to {email}.
+                  </p>
+                </div>
+              ) : null}
+
               {error && (
                 <p className="text-sm text-destructive">{error}</p>
+              )}
+              {linkSent && (
+                <p className="text-sm text-muted-foreground">
+                  Magic link deployed. Check your inbox to finish creating your
+                  account — no password required.
+                </p>
               )}
             </CardContent>
 
             <CardFooter className="flex flex-col gap-3 pt-2">
+              {codeSent ? (
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={pending || !code.trim()}
+                >
+                  {pending ? "Starting the clock…" : "Verify code & create account"}
+                </Button>
+              ) : (
+                <Button type="submit" className="w-full" disabled={pending}>
+                  {pending ? "Sending…" : "Email me a sign-up code"}
+                </Button>
+              )}
               <Button
-                type="submit"
-                className="w-full"
-                disabled={isPending}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                disabled={pending}
+                onClick={handleSendMagicLink}
               >
-                {isPending ? "Starting the clock…" : "Create account"}
+                Or send me a magic link instead
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 Already clocking in with us?{" "}

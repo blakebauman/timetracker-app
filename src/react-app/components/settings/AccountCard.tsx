@@ -28,11 +28,6 @@ export function AccountCard() {
   const [otp, setOtp] = useState("");
   const [verifyPending, setVerifyPending] = useState(false);
 
-  // — Password
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [passwordPending, setPasswordPending] = useState(false);
-
   const emailVerified = Boolean(user?.emailVerified);
 
   const handleSaveName = async () => {
@@ -75,21 +70,6 @@ export function AccountCard() {
     toast.success("Email verified");
     setVerifyStage("idle");
     setOtp("");
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword) return;
-    setPasswordPending(true);
-    const { error } = await authClient.changePassword({
-      currentPassword,
-      newPassword,
-      revokeOtherSessions: false,
-    });
-    setPasswordPending(false);
-    if (error) return toast.error(error.message ?? "Failed to change password");
-    toast.success("Password changed");
-    setCurrentPassword("");
-    setNewPassword("");
   };
 
   return (
@@ -219,41 +199,6 @@ export function AccountCard() {
             </div>
           )}
         </div>
-
-        <Separator />
-
-        {/* Change password */}
-        <form
-          className="space-y-3"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleChangePassword();
-          }}
-        >
-          <Label>Change password</Label>
-          <div className="space-y-2">
-            <Input
-              type="password"
-              placeholder="Current password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              className="h-8 text-sm"
-            />
-            <Input
-              type="password"
-              placeholder="New password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              className="h-8 text-sm"
-            />
-          </div>
-          <Button type="submit" size="sm" variant="outline" disabled={passwordPending || !currentPassword || !newPassword}>
-            {passwordPending ? "Saving…" : "Change password"}
-          </Button>
-        </form>
       </CardContent>
     </Card>
   );

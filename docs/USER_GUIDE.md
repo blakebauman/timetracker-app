@@ -25,11 +25,11 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 
 ## Getting started
 
-1. **Sign up** with email + password (or Google). A personal workspace is created for you automatically.
+1. **Sign up** with your email — we send a one-time code or magic link, no password to invent (or use Google). A personal workspace is created for you automatically.
 2. **Add a client and a project** under **Clients** and **Projects** (a project can have a billing rate — that's what turns hours into amounts in Reports).
 3. **Start a timer** from the top bar: type a description, pick a project, hit the red start button.
 
-You can also sign in with a **magic link** or **email code** instead of a password, and add **two-factor auth (TOTP)** or **passkeys** later under Settings → Security.
+Sign-in is passwordless: a **6-digit email code**, a **magic link**, **Google**, or a **passkey** (add one under Settings → Security for Touch ID / security-key sign-in).
 
 ## Tracking time
 
@@ -177,9 +177,8 @@ The command palette is the fastest path to almost everything — try it first.
 
 Under **Settings → Account / Security / Danger zone**:
 
-- **Profile & password** — change name, email, password.
-- **Two-factor auth (TOTP)** — authenticator-app codes.
-- **Passkeys** — sign in with Touch ID / security keys instead of a password.
+- **Profile** — change name, photo, verify email.
+- **Passkeys** — sign in with Touch ID / security keys.
 - **Connected accounts** — link/unlink Google sign-in.
 - **Active sessions** — see and revoke every signed-in session.
 - **Delete account** — permanent, removes your data.
@@ -198,8 +197,8 @@ Under **Settings → Account / Security / Danger zone**:
 | Team | Members, roles, invites | Workspace |
 | Calendar sync | Google connect/disconnect, auto-track | Workspace |
 | Integrations | Workfront / Dynamics | Workspace |
-| Account | Profile, password | Account |
-| Security | 2FA, passkeys, connected accounts, sessions | Account |
+| Account | Profile, email verification | Account |
+| Security | Passkeys, connected accounts, sessions | Account |
 | Danger zone | Delete account | — |
 
 "Account" settings follow you across devices; "device" settings are per-browser.

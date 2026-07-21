@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth";
-import { bearer, organization, admin, emailOTP, magicLink, twoFactor } from "better-auth/plugins";
+import { bearer, organization, admin, emailOTP, magicLink } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
@@ -46,7 +46,11 @@ export function createAuth(env: Env, baseURL: string) {
       "chrome-extension://nogikmhdpnnedmfldanickgpikmifcje",
     ],
     emailAndPassword: {
-      enabled: true,
+      // Passwords are retired in production — sign-in is email OTP, magic link,
+      // Google, or passkey. The flag (set in .dev.vars and CI only, never as a
+      // deployed var) keeps the sign-up/sign-in endpoints alive for the e2e
+      // suite and the local dev seed login.
+      enabled: env.ENABLE_PASSWORD_AUTH === "true",
     },
     session: {
       // Disable better-auth's global "fresh session" gate so /list-sessions (the
@@ -83,11 +87,14 @@ export function createAuth(env: Env, baseURL: string) {
       user: {
         create: {
           // Auto-create a workspace (organization) for every new user, regardless
-          // of how they signed up (email/password, Google, OTP, or magic link).
+          // of how they signed up (Google, OTP, or magic link). OTP signups have
+          // no name yet (it's set right after verification), so fall back to the
+          // email local-part.
           after: async (user) => {
+            const displayName = user.name?.trim() || user.email.split("@")[0];
             await auth.api.createOrganization({
               body: {
-                name: `${user.name}'s Workspace`,
+                name: `${displayName}'s Workspace`,
                 slug: randomSlug(),
                 userId: user.id,
               },
@@ -127,9 +134,6 @@ export function createAuth(env: Env, baseURL: string) {
           const html = `<p>Click below to sign in to timetracker.run:</p><p><a href="${url}">${url}</a></p>`;
           await sendEmail(env, email, "Sign in to timetracker.run", text, html);
         },
-      }),
-      twoFactor({
-        issuer: "Time Tracker",
       }),
       passkey({
         rpID: rpURL.hostname,

@@ -28,7 +28,6 @@ import { TeamCard } from "@/components/settings/TeamCard";
 import { AccountCard } from "@/components/settings/AccountCard";
 import { SessionsCard } from "@/components/settings/SessionsCard";
 import { ConnectedAccountsCard } from "@/components/settings/ConnectedAccountsCard";
-import { TwoFactorCard } from "@/components/settings/TwoFactorCard";
 import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { DangerZoneCard } from "@/components/settings/DangerZoneCard";
 
@@ -347,7 +346,6 @@ export function SettingsPage() {
       <AccountCard />
 
       {/* Security */}
-      <TwoFactorCard />
       <PasskeysCard />
       <ConnectedAccountsCard />
       <SessionsCard />

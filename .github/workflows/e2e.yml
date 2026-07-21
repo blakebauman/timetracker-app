@@ -36,6 +36,7 @@ jobs:
           cat > .dev.vars <<'EOF'
           AUTH_SECRET=ci-test-secret-at-least-32-characters-long
           BETTER_AUTH_URL=http://localhost:8787
+          ENABLE_PASSWORD_AUTH=true
           EOF
 
       - name: Apply local D1 migrations

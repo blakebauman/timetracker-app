@@ -43,7 +43,8 @@ export function Popup() {
   const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
   const clientRef = useRef<ExtAuthClient | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginCode, setLoginCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -101,25 +102,43 @@ export function Popup() {
     return () => clearInterval(id);
   }, [timerState?.running, timerState?.startedAt]);
 
-  const handleSignIn = async () => {
+  const handleSendCode = async () => {
     const client = clientRef.current;
-    if (!client) return;
+    if (!client || !loginEmail.trim()) return;
+    setLoginLoading(true);
+    setLoginError(null);
+    const { error } = await client.emailOtp.sendVerificationOtp({
+      email: loginEmail,
+      type: "sign-in",
+    });
+    setLoginLoading(false);
+    if (error) {
+      setLoginError(error.message ?? "Failed to send code");
+      return;
+    }
+    setCodeSent(true);
+  };
+
+  const handleVerifyCode = async () => {
+    const client = clientRef.current;
+    if (!client || !loginCode.trim()) return;
     setLoginLoading(true);
     setLoginError(null);
     // Standard better-auth client. The bearer() plugin returns the token in the
     // `set-auth-token` header, which the client's onSuccess persists to
     // chrome.storage.local for the service worker to reuse.
-    const { data, error } = await client.signIn.email({
+    const { data, error } = await client.signIn.emailOtp({
       email: loginEmail,
-      password: loginPassword,
+      otp: loginCode,
     });
     setLoginLoading(false);
     if (error || !data) {
-      setLoginError(error?.message ?? "Sign in failed");
+      setLoginError(error?.message ?? "Invalid or expired code");
       return;
     }
     setUser({ email: data.user.email, name: data.user.name });
-    setLoginPassword("");
+    setLoginCode("");
+    setCodeSent(false);
     // Now that a token is stored, nudge the worker to refresh the badge/timer.
     chrome.runtime.sendMessage({ type: "GET_STATE" }, (state) => {
       if (state?.timerState) {
@@ -262,26 +281,48 @@ export function Popup() {
           <input
             type="email"
             value={loginEmail}
-            onChange={(e) => setLoginEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+            onChange={(e) => {
+              setLoginEmail(e.target.value);
+              setCodeSent(false);
+              setLoginCode("");
+            }}
+            onKeyDown={(e) => e.key === "Enter" && (codeSent ? handleVerifyCode() : handleSendCode())}
             placeholder="you@example.com"
             style={{ ...inputStyle, marginBottom: 8 }}
           />
-          <label style={{ fontSize: 12, color: c.fgMuted, display: "block", marginBottom: 3 }}>Password</label>
-          <input
-            type="password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-            placeholder="••••••••"
-            style={{ ...inputStyle, marginBottom: 10 }}
-          />
+          {codeSent && (
+            <>
+              <label style={{ fontSize: 12, color: c.fgMuted, display: "block", marginBottom: 3 }}>
+                6-digit code (check your email)
+              </label>
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={loginCode}
+                onChange={(e) => setLoginCode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
+                placeholder="123456"
+                autoFocus
+                style={{ ...inputStyle, marginBottom: 10 }}
+              />
+            </>
+          )}
           {loginError && (
             <p style={{ fontSize: 12, color: c.brand, marginBottom: 8 }}>{loginError}</p>
           )}
-          <button onClick={handleSignIn} disabled={loginLoading} style={btnPrimary(loginLoading)}>
-            {loginLoading ? "Signing in..." : "Sign in"}
-          </button>
+          {codeSent ? (
+            <button
+              onClick={handleVerifyCode}
+              disabled={loginLoading || !loginCode.trim()}
+              style={btnPrimary(loginLoading || !loginCode.trim())}
+            >
+              {loginLoading ? "Verifying..." : "Verify code"}
+            </button>
+          ) : (
+            <button onClick={handleSendCode} disabled={loginLoading} style={btnPrimary(loginLoading)}>
+              {loginLoading ? "Sending..." : "Email me a code"}
+            </button>
+          )}
         </div>
       </div>
     );
