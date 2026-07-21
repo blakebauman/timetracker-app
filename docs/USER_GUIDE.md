@@ -129,7 +129,7 @@ Amounts come from each project's billing rate; the display currency is set under
 
 All under **Settings → Productivity**, all device-local, all off by default:
 
-- **Idle detection** — if you go idle with a timer running, the app asks whether to keep, trim, or discard the idle time.
+- **Idle detection** — if you go idle with a timer running, the app asks whether to keep, trim, or discard the idle time. Activity in any of your open sessions counts (other tabs, the PWA, another computer), and only the tab you're looking at will prompt — so working on one device won't trigger idle prompts on another.
 - **Not-tracking reminders** — periodic nudge when nothing is running during your workday.
 - **Pomodoro** — work/break interval timers layered on top of your tracking.
 - **Browser notifications** — used by the above and by the Assistant's nudge alerts (needs one-time permission).

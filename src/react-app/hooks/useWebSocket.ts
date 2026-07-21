@@ -1,7 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTimerStore } from "@/stores/timerStore";
+import { ACTIVITY_EVENTS, recordRemoteActivity } from "@/lib/activitySync";
 import type { TimeEntry } from "@shared/schemas";
+
+// Local activity is relayed to the user's other sessions (for idle detection)
+// at most once per this interval, and only while a timer is running.
+const ACTIVITY_HEARTBEAT_MS = 30_000;
 
 interface WSMessage {
   event: string;
@@ -81,6 +86,12 @@ export function useWebSocket() {
           queryClient.invalidateQueries({ queryKey: ["time-entries"] });
           break;
         }
+        case "user_activity": {
+          // Another session of THIS user was active (TimerRoomDO only relays
+          // to same-user sockets). Stamp with our own clock — see activitySync.
+          recordRemoteActivity();
+          break;
+        }
         case "entries:changed": {
           // If another tab edited the entry we're currently tracking (e.g.
           // reassigned its project), fold the change into the running timer so
@@ -98,8 +109,27 @@ export function useWebSocket() {
 
     connect();
 
+    // Heartbeat out: on local input, tell the user's other sessions we're
+    // active so their idle detection defers to us. Activity-driven (never a
+    // blind interval — an untouched tab must NOT look active) and throttled
+    // so DO wake-ups stay negligible.
+    let lastSent = 0;
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - lastSent < ACTIVITY_HEARTBEAT_MS) return;
+      if (!useTimerStore.getState().runningEntry) return;
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      lastSent = now;
+      ws.send(JSON.stringify({ type: "activity" }));
+    };
+    ACTIVITY_EVENTS.forEach((e) =>
+      window.addEventListener(e, onActivity, { passive: true })
+    );
+
     return () => {
       destroyed = true;
+      ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, onActivity));
       if (retryRef.current) clearTimeout(retryRef.current);
       wsRef.current?.close();
     };

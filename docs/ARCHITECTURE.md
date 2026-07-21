@@ -60,7 +60,7 @@ Notable decisions:
 
 ## Durable Objects
 
-**`TimerRoomDO`** (`durable-objects/TimerRoomDO.ts`) — one per workspace, keyed `idFromName(workspaceId)`. Plain WebSocket room: tabs and the extension connect via `/api/ws`; REST mutations call `broadcast()` so every client sees `timer_update`/entry events live. No persistent storage of consequence — D1 is the source of truth; the DO is fan-out.
+**`TimerRoomDO`** (`durable-objects/TimerRoomDO.ts`) — one per workspace, keyed `idFromName(workspaceId)`. Plain WebSocket room: tabs and the extension connect via `/api/ws`; REST mutations call `broadcast()` so every client sees `timer_update`/entry events live. Each socket is tagged with its authenticated `userId` (`serializeAttachment`, forwarded by `routes/websocket.ts` as `X-User-Id`); the one client→server message is a throttled `{type:"activity"}` heartbeat, relayed as `user_activity` to the same user's *other* sockets so idle detection on their open sessions knows they're active elsewhere (`react-app/lib/activitySync.ts`). No persistent storage of consequence — D1 is the source of truth; the DO is fan-out.
 
 **`ChatAgent`** (`durable-objects/ChatAgent.ts`) — the Assistant's chat brain, one per workspace, built on the Agents SDK (`agents` + `@cloudflare/ai-chat`, `AIChatAgent` base class). Persists conversation history (capped at 100 messages) and resumable streams in its own DO SQLite. Runs `streamText` over Workers AI (`@cf/meta/llama-4-scout-17b-16e-instruct` via `workers-ai-provider`), max 5 tool steps, 800 output tokens, 4k char input cap, 15 msg/min per-workspace rate limit.
 
