@@ -48,7 +48,10 @@ export const calendarRouter = new Hono<{
       return c.redirect("/settings?calendar=not_configured");
     }
     const state = crypto.randomUUID();
-    setCookie(c, STATE_COOKIE, state, {
+    // Bind the initiating workspace into the httpOnly state cookie so the callback
+    // can't land the connection in a different workspace if the user switches
+    // their active workspace mid-flow (the OAuth `state` param stays the raw token).
+    setCookie(c, STATE_COOKIE, `${state}.${c.get("workspaceId")}`, {
       httpOnly: true,
       secure: new URL(c.req.url).protocol === "https:",
       sameSite: "Lax",
@@ -70,7 +73,12 @@ export const calendarRouter = new Hono<{
     const expected = getCookie(c, STATE_COOKIE);
     deleteCookie(c, STATE_COOKIE, { path: "/" });
 
-    if (error || !code || !state || state !== expected) {
+    // Cookie is "<state>.<initiating workspace>". Verify the state token matches
+    // AND the flow completes in the same workspace it began in.
+    const dot = (expected ?? "").indexOf(".");
+    const expectedState = dot >= 0 ? expected!.slice(0, dot) : "";
+    const expectedWorkspace = dot >= 0 ? expected!.slice(dot + 1) : "";
+    if (error || !code || !state || state !== expectedState || expectedWorkspace !== workspaceId) {
       return c.redirect("/settings?calendar=error");
     }
 

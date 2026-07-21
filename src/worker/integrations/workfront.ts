@@ -5,24 +5,25 @@ import {
   type IntegrationAdapter,
   type PushContext,
 } from "./types";
+import { safeIntegrationOrigin } from "./url-guard";
 
 const API_VERSION = "v15.0";
 
-// Normalise a stored base_url (domain or full URL) into the REST API root,
-// e.g. "acme.my.workfront.com" -> "https://acme.my.workfront.com/attask/api/v15.0".
+// Normalise a stored base_url (domain or full URL) into the REST API root, after
+// SSRF-validating the host, e.g.
+// "acme.my.workfront.com" -> "https://acme.my.workfront.com/attask/api/v15.0".
 function apiRoot(baseUrl: string): string {
-  let url = baseUrl.trim().replace(/\/+$/, "");
-  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-  const origin = new URL(url).origin;
-  return `${origin}/attask/api/${API_VERSION}`;
+  return `${safeIntegrationOrigin(baseUrl, "workfront")}/attask/api/${API_VERSION}`;
 }
 
 function creds(connection: Connection): WorkfrontCredentials {
   return connection.credentials as WorkfrontCredentials;
 }
 
+// Cap the surfaced upstream body: it reaches the client, so don't let it echo an
+// arbitrary/large response back as an oracle.
 async function readError(res: Response): Promise<string> {
-  const text = await res.text().catch(() => "");
+  const text = (await res.text().catch(() => "")).slice(0, 200);
   try {
     const json = JSON.parse(text);
     return json?.error?.message ?? json?.message ?? text ?? res.statusText;

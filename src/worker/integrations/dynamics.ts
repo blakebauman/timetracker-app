@@ -5,13 +5,13 @@ import {
   type IntegrationAdapter,
   type PushContext,
 } from "./types";
+import { safeIntegrationOrigin } from "./url-guard";
 
 const API_VERSION = "v9.2";
 
 function orgOrigin(baseUrl: string): string {
-  let url = baseUrl.trim().replace(/\/+$/, "");
-  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-  return new URL(url).origin; // e.g. https://org.crm.dynamics.com
+  // SSRF-validate + pin to *.dynamics.com, e.g. https://org.crm.dynamics.com.
+  return safeIntegrationOrigin(baseUrl, "dynamics");
 }
 
 function creds(connection: Connection): DynamicsCredentials {
@@ -64,7 +64,9 @@ async function getAccessToken(connection: Connection): Promise<string> {
 }
 
 async function readError(res: Response): Promise<string> {
-  const text = await res.text().catch(() => "");
+  // Cap the surfaced upstream body — it reaches the client; don't echo an
+  // arbitrary/large response back as an oracle.
+  const text = (await res.text().catch(() => "")).slice(0, 200);
   try {
     const json = JSON.parse(text);
     return json?.error?.message ?? text ?? res.statusText;

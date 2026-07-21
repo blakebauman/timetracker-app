@@ -11,6 +11,7 @@ import {
 import { encryptJSON, decryptJSON } from "../lib/crypto";
 import { broadcast } from "../db/queries";
 import { getAdapter, IntegrationError, type Connection } from "../integrations";
+import { safeIntegrationOrigin } from "../integrations/url-guard";
 
 function formatIntegration(row: Record<string, unknown>) {
   return {
@@ -57,6 +58,14 @@ export const integrationsRouter = new Hono<{
   .post("/", zValidator("json", CreateIntegrationSchema), async (c) => {
     const workspaceId = c.get("workspaceId");
     const data = c.req.valid("json");
+
+    // Reject an SSRF-unsafe base URL up front (also enforced at fetch time).
+    try {
+      safeIntegrationOrigin(data.baseUrl, data.type);
+    } catch (err) {
+      return c.json({ error: err instanceof IntegrationError ? err.message : "Invalid base URL" }, 400);
+    }
+
     const id = crypto.randomUUID();
     const credentials = await encryptJSON(c.env.AUTH_SECRET, data.credentials);
 
@@ -78,7 +87,16 @@ export const integrationsRouter = new Hono<{
     const fields: string[] = [];
     const values: unknown[] = [];
     if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
-    if (data.baseUrl !== undefined) { fields.push("base_url = ?"); values.push(data.baseUrl); }
+    if (data.baseUrl !== undefined) {
+      // Generic SSRF validation here (type is immutable on update, and the
+      // adapter re-validates the provider-specific host at fetch time).
+      try {
+        safeIntegrationOrigin(data.baseUrl);
+      } catch (err) {
+        return c.json({ error: err instanceof IntegrationError ? err.message : "Invalid base URL" }, 400);
+      }
+      fields.push("base_url = ?"); values.push(data.baseUrl);
+    }
     if (data.credentials !== undefined) {
       fields.push("credentials = ?");
       values.push(await encryptJSON(c.env.AUTH_SECRET, data.credentials));

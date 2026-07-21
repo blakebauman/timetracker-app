@@ -460,8 +460,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: false, error: "Unsupported API URL" });
           break;
         }
+        const { apiUrl: prev } = (await chrome.storage.local.get("apiUrl")) as { apiUrl?: string };
+        const prevBase = resolveBase(prev);
+        // The bearer token was minted for the previous origin — if the origin
+        // changes, drop it (and per-origin cached state) so it can never be sent
+        // to the new one. The popup then falls back to its login form.
+        const reauth = normalized !== prevBase;
+        if (reauth) await clearAuth();
         await chrome.storage.local.set({ apiUrl: normalized });
-        sendResponse({ ok: true, url: normalized });
+        sendResponse({ ok: true, url: normalized, reauth });
         break;
       }
 
