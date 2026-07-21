@@ -67,10 +67,12 @@ export const timeEntriesRouter = new Hono<{
     // `combos` counts each description × project × task × billable pairing;
     // `ranked` picks the dominant pairing per description; `totals` carries the
     // description's overall usage. A plain GROUP BY on description alone would
-    // have to pick project/task arbitrarily.
+    // have to pick project/task arbitrarily. Tags come from the description's
+    // most recent entry (`latest`/`latest_tags`) rather than its dominant
+    // combo — "make it like last time" is the intuition for tag carry-over.
     const { results } = await c.env.DB.prepare(
       `WITH recent AS (
-         SELECT description, project_id, task_id, billable, start
+         SELECT id, description, project_id, task_id, billable, start
          FROM time_entries
          WHERE workspace_id = ?1 AND start >= ?2 AND TRIM(description) <> ''
        ),
@@ -89,13 +91,29 @@ export const timeEntriesRouter = new Hono<{
        totals AS (
          SELECT description, COUNT(*) AS uses, MAX(start) AS last_used
          FROM recent GROUP BY description
+       ),
+       latest AS (
+         SELECT description, id,
+                ROW_NUMBER() OVER (
+                  PARTITION BY description ORDER BY start DESC
+                ) AS rn
+         FROM recent
+       ),
+       latest_tags AS (
+         SELECT l.description, GROUP_CONCAT(tg.name) AS tag_names
+         FROM latest l
+         JOIN time_entry_tags tet ON tet.time_entry_id = l.id
+         JOIN tags tg ON tg.id = tet.tag_id
+         WHERE l.rn = 1
+         GROUP BY l.description
        )
        SELECT t.description, t.uses, t.last_used,
               r.project_id, r.task_id, r.billable,
               p.name AS project_name, p.color AS project_color,
-              tk.name AS task_name
+              tk.name AS task_name, lt.tag_names
        FROM totals t
        JOIN ranked r ON r.description = t.description AND r.rn = 1
+       LEFT JOIN latest_tags lt ON lt.description = t.description
        LEFT JOIN projects p ON p.id = r.project_id
        LEFT JOIN tasks   tk ON tk.id = r.task_id
        ORDER BY t.last_used DESC
@@ -113,6 +131,9 @@ export const timeEntriesRouter = new Hono<{
         taskId: (r.task_id as string) ?? null,
         taskName: (r.task_name as string) ?? null,
         billable: Boolean(r.billable),
+        tags: r.tag_names
+          ? String(r.tag_names).split(",").filter(Boolean)
+          : [],
         uses: Number(r.uses),
         lastUsed: r.last_used as string,
       }))
