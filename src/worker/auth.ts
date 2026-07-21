@@ -3,6 +3,11 @@ import { bearer, organization, admin, emailOTP, magicLink } from "better-auth/pl
 import { passkey } from "@better-auth/passkey";
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
+import { render, toPlainText } from "react-email";
+import type { ReactElement } from "react";
+import { WorkspaceInvitationEmail } from "./emails/workspace-invitation";
+import { VerificationOtpEmail } from "./emails/verification-otp";
+import { MagicLinkEmail } from "./emails/magic-link";
 
 const FROM_ADDRESS = "noreply@timetracker.run";
 
@@ -13,7 +18,9 @@ function randomSlug(): string {
 // The EMAIL binding's simulated builder overload isn't reliable in local dev
 // (Miniflare expects a raw MIME message), so build one directly — this works
 // identically in local dev and production.
-async function sendEmail(env: Env, to: string, subject: string, text: string, html: string) {
+async function sendEmail(env: Env, to: string, subject: string, email: ReactElement) {
+  const html = await render(email);
+  const text = toPlainText(html);
   const msg = createMimeMessage();
   msg.setSender({ addr: FROM_ADDRESS });
   msg.setRecipient(to);
@@ -116,23 +123,27 @@ export function createAuth(env: Env, baseURL: string) {
         },
         async sendInvitationEmail(data) {
           const url = `${baseURL}/accept-invite?id=${data.id}`;
-          const text = `${data.inviter.user.name} invited you to join "${data.organization.name}" on timetracker.run: ${url}`;
-          const html = `<p>${data.inviter.user.name} invited you to join <strong>${data.organization.name}</strong> on timetracker.run.</p><p><a href="${url}">${url}</a></p>`;
-          await sendEmail(env, data.email, "You've been invited to a timetracker.run workspace", text, html);
+          await sendEmail(
+            env,
+            data.email,
+            "You've been invited to a timetracker.run workspace",
+            WorkspaceInvitationEmail({
+              inviterName: data.inviter.user.name,
+              workspaceName: data.organization.name,
+              url,
+            }),
+          );
         },
       }),
       admin(),
       emailOTP({
         async sendVerificationOTP({ email, otp }) {
-          const text = `Your verification code is ${otp}. It expires in 5 minutes.`;
-          await sendEmail(env, email, "Your timetracker.run verification code", text, `<p>${text}</p>`);
+          await sendEmail(env, email, "Your timetracker.run verification code", VerificationOtpEmail({ otp }));
         },
       }),
       magicLink({
         async sendMagicLink({ email, url }) {
-          const text = `Sign in to timetracker.run: ${url}`;
-          const html = `<p>Click below to sign in to timetracker.run:</p><p><a href="${url}">${url}</a></p>`;
-          await sendEmail(env, email, "Sign in to timetracker.run", text, html);
+          await sendEmail(env, email, "Sign in to timetracker.run", MagicLinkEmail({ url }));
         },
       }),
       passkey({

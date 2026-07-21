@@ -42,6 +42,7 @@
 		"react": "19.2.7",
 		"react-day-picker": "^10.0.1",
 		"react-dom": "19.2.7",
+		"react-email": "^6.9.0",
 		"react-hotkeys-hook": "^5.3.3",
 		"react-router-dom": "^7.18.1",
 		"recharts": "^3.9.2",
@@ -56,6 +57,7 @@
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "1.44.0",
 		"@playwright/test": "^1.61.1",
+		"@react-email/ui": "^6.9.0",
 		"@tailwindcss/vite": "^4.3.2",
 		"@timetracker/eslint-config": "workspace:*",
 		"@timetracker/typescript-config": "workspace:*",
@@ -87,6 +89,7 @@
 		"check": "tsc -b && vite build && wrangler deploy --dry-run",
 		"deploy": "wrangler deploy",
 		"dev": "vite",
+		"email:dev": "email dev --dir src/worker/emails --port 3333",
 		"lint": "eslint .",
 		"preview": "pnpm run build && vite preview",
 		"test:e2e": "playwright test"

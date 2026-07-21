@@ -55,7 +55,7 @@ Notable decisions:
 - `session.freshAge = 0` — otherwise Better Auth's `list-sessions` 403s (`SESSION_NOT_FRESH`) after a day and breaks the Settings sessions card. Freshness is re-imposed selectively on sensitive ops (`update-user`, `unlink-account`).
 - A DB hook auto-creates a personal workspace on signup.
 - `trustedOrigins` includes the pinned `chrome-extension://<id>` origin — the extension is trusted by origin, CSRF stays on for the cookie web app (see `extension/SECURITY_AUDIT.md`).
-- **Email** goes out through the `EMAIL` send_email binding (MIME built with `mimetext`, from `noreply@timetracker.run`): invites, OTP codes, magic links.
+- **Email** goes out through the `EMAIL` send_email binding (MIME built with `mimetext`, from `noreply@timetracker.run`): invites, OTP codes, magic links. Bodies are React Email templates (`src/worker/emails/*.tsx`) rendered on the worker with `render`/`toPlainText` from `react-email`; the plain-text MIME part is derived from the HTML, and `pnpm email:dev` serves a local template preview.
 - Better Auth tables use camelCase columns; everything else is snake_case.
 
 ## Durable Objects
