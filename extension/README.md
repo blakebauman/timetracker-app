@@ -36,10 +36,12 @@ extension/
   (`chrome-extension://<id>`) in the worker's `trustedOrigins`
   (`src/worker/auth.ts`) — not by disabling CSRF.
 - **API base URL:** configurable in the popup's settings but validated against an
-  allow-list (`lib/apiUrl.ts`: `timetracker.run`, `*.workers.dev`, `localhost`)
-  so the bearer token is never sent to an arbitrary origin.
-- **Content script:** the `timetracker:sync` relay only runs on the app's own
-  origins; on GitHub/Jira/Linear it only reads the issue/PR title to pre-fill the
+  allow-list (`lib/apiUrl.ts`: `timetracker.run`, `*.workers.dev`,
+  `localhost`/`127.0.0.1`) so the bearer token is never sent to an arbitrary
+  origin.
+- **Content script:** the `timetracker:sync` and `timetracker:assistant`
+  (Aski nudge-dismissal) relays only run on the app's own origins; on
+  GitHub/Jira/Linear it only reads the issue/PR title to pre-fill the
   description.
 
 ## Local development
