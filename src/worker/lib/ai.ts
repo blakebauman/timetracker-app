@@ -150,7 +150,7 @@ ${styleInstruction} Do not invent work not listed above. Output only the summary
 }
 
 /** Active projects (+tasks) shaped for AI grounding. Shared by the AI routes,
- *  calendar materialization, and Aski's track-event action. */
+ *  calendar materialization, and the assistant's track-event action. */
 export async function loadGroundingProjects(
   db: D1Database,
   workspaceId: string
@@ -270,7 +270,7 @@ ${projects.map((p) => `- "${p.name}"`).join("\n")}`;
   return resolved;
 }
 
-// Aski's chat now runs in the ChatAgent Durable Object (streaming + tool calling
+// The assistant's chat now runs in the ChatAgent Durable Object (streaming + tool calling
 // via the AI SDK's Workers AI provider) — see worker/durable-objects/ChatAgent.ts.
 // The grounding block it feeds the model is still buildAssistantContext() in
 // lib/assistant.ts.

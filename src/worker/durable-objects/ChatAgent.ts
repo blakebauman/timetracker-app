@@ -1,4 +1,4 @@
-// Aski's chat brain: one AIChatAgent (Durable Object) per workspace. Persists
+// The assistant's chat brain: one AIChatAgent (Durable Object) per workspace. Persists
 // the conversation + resumable streams in its own SQLite, and on each turn runs
 // a Workers AI (Llama) streamText loop with the assistant tools bound. The DO's
 // instance name IS the workspace id — the worker rewrites /agents/* routing so a
@@ -21,7 +21,7 @@ import { buildAssistantTools } from "../lib/assistant-tools";
 import { recallMemories, buildMemoryBlock } from "../lib/assistant-memory";
 
 // Same model the app already uses for structured AI (JSON mode + function
-// calling). Llama 4 Scout supports tool calling, which is what Aski needs.
+// calling). Llama 4 Scout supports tool calling, which is what the assistant needs.
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 
 // Cost/abuse bounds (this DO is billed per Workers AI call):
@@ -66,7 +66,7 @@ export class ChatAgent extends AIChatAgent<Cloudflare.Env> {
     ]);
     const memoryBlock = buildMemoryBlock(memories);
 
-    const system = `You are the AI assistant built into a time-tracking app used by consultants who bill clients for their hours. You help the user keep an accurate timesheet: surface untracked meetings, answer questions about tracked time, and take actions on their behalf using your tools.
+    const system = `You are the assistant built into a time-tracking app used by consultants who bill clients for their hours. You help the user keep an accurate timesheet: surface untracked meetings, answer questions about tracked time, and take actions on their behalf using your tools.
 
 When to use which tool (call the tool — never just describe the action or tell the user to do it in the app):
 - "start/begin a timer", "I'm working on X now" → startTimer

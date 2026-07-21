@@ -141,7 +141,7 @@ export function ProductivityCard() {
 
         <Separator />
 
-        {/* Aski nudge alerts */}
+        {/* Assistant nudge alerts */}
         <div className="flex items-center justify-between gap-3">
           <div className="pr-2">
             <Label htmlFor="pref-aski-alerts">Assistant nudge alerts</Label>

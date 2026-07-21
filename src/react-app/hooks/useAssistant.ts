@@ -10,7 +10,7 @@ import type {
 } from "@shared/schemas";
 
 /**
- * Aski's proactive nudges, minus the ones the user dismissed. Polled on a slow
+ * The assistant's proactive nudges, minus the ones the user dismissed. Polled on a slow
  * interval — each fetch reads through to Google Calendar server-side, so keep
  * it gentle.
  */
@@ -52,7 +52,7 @@ export function useTrackNudgeEvent() {
   });
 }
 
-/** Facts Aski has remembered about the user, for the Settings management card. */
+/** Facts the assistant has remembered about the user, for the Settings management card. */
 export function useAssistantMemory() {
   return useQuery({
     queryKey: ["assistant-memory"],

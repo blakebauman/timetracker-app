@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { signUp } from "./auth";
 
-// The AI Assistant: deterministic nudges from timer/timesheet state, the
+// The Assistant: deterministic nudges from timer/timesheet state, the
 // global launcher in the timer bar, and the right-side panel. Calendar-driven
 // nudges need a Google connection so they aren't exercised here; the
 // long_timer nudge covers the full nudge pipeline end to end.
@@ -36,19 +36,20 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   const nudgeToast = page.locator("[data-sonner-toast]");
   await expect(nudgeToast).toContainText("Timer still running");
 
-  // Scoped to the timer bar — the toast's action button is also named "Open AI Assistant".
-  const launcher = page.locator("header").getByRole("button", { name: /Open AI Assistant/ });
+  // Scoped to the timer bar — the toast's action button is also named "Open Assistant".
+  const launcher = page.locator("header").getByRole("button", { name: /Open Assistant/ });
   await expect(launcher).toBeVisible();
   await expect(launcher).toHaveAccessibleName(/\d+ nudge/);
 
-  // The toast carries an Open AI Assistant action; open the panel via the launcher
+  // The toast carries an Open Assistant action; open the panel via the launcher
   // (clicking the toast itself would race its auto-dismiss timer).
-  await expect(nudgeToast.getByRole("button", { name: "Open AI Assistant" })).toBeVisible();
+  await expect(nudgeToast.getByRole("button", { name: "Open Assistant" })).toBeVisible();
   await launcher.click();
   const panel = page.getByRole("dialog");
-  await expect(panel).toContainText("AI Assistant");
+  await expect(panel).toContainText("Assistant");
   await expect(panel.getByText("Timer still running")).toBeVisible();
-  await expect(page.getByPlaceholder("Ask the assistant…")).toBeVisible();
+  // Opening lands focus on the composer — input-first.
+  await expect(page.getByPlaceholder("Ask the assistant…")).toBeFocused();
   await expect(page.getByRole("button", { name: "Send message" })).toBeVisible();
 
   // Dismissal hides the nudge and persists client-side.
@@ -59,11 +60,18 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   // After a reload the nudge stays dismissed — no card, and no re-toast (both
   // the dismissal and the seen-marker persist per browser).
   await page.reload();
-  await page.locator("header").getByRole("button", { name: "Open AI Assistant" }).click();
+  await page.locator("header").getByRole("button", { name: "Open Assistant" }).click();
   const reopened = page.getByRole("dialog");
-  await expect(reopened).toContainText("AI Assistant");
+  await expect(reopened).toContainText("Assistant");
   await expect(reopened.getByText("Timer still running")).toBeHidden();
   await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+
+  // ⌘I / Ctrl+I toggles the panel from anywhere (panel is currently open).
+  await page.keyboard.press("ControlOrMeta+i");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await page.keyboard.press("ControlOrMeta+i");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByPlaceholder("Ask the assistant…")).toBeFocused();
 });
 
 // AI project inference is best-effort and unavailable in CI — this exercises

@@ -91,7 +91,7 @@ export const assistantRouter = new Hono<{
       billable: Boolean(match?.billable),
     } satisfies AssistantTrackEventResult);
   })
-  // ─── Memory management (what Aski has remembered about the user) ─────────────
+  // ─── Memory management (what the assistant has remembered about the user) ─────────────
   .get("/memory", async (c) => {
     const memories = await listMemories(c.env.DB, c.get("workspaceId"));
     return c.json(memories);

@@ -34,7 +34,7 @@ const NUDGE_BADGE_COLOR = "#d97706";
 
 /**
  * Single source of truth for the badge: a running timer's elapsed time wins;
- * otherwise the count of active (non-dismissed) Aski nudges; otherwise empty.
+ * otherwise the count of active (non-dismissed) assistant nudges; otherwise empty.
  */
 async function paintBadge(timerState?: TimerState | null): Promise<void> {
   if (timerState === undefined) {
@@ -115,7 +115,7 @@ chrome.alarms.create("timer-tick", { periodInMinutes: 1 / 60 });
 // catches drift while no timetracker tab exists.
 const POLL_INTERVAL_MS = 30_000;
 
-// Aski nudges change on the server's 5-minute cron cadence, and each poll reads
+// Assistant nudges change on the server's 5-minute cron cadence, and each poll reads
 // through to Google Calendar — matching the web app's 5-minute polling keeps
 // the extension from multiplying that load.
 const NUDGE_POLL_INTERVAL_MS = 5 * 60_000;

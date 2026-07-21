@@ -6,10 +6,11 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAssistantMemory, useDeleteAssistantMemory } from "@/hooks/useAssistant";
 
 /**
- * Settings card that surfaces the durable facts Aski has remembered about the
- * user (via its rememberPreference tool) so they can be reviewed and removed.
+ * Settings card that surfaces the durable facts the assistant has remembered
+ * about the user (via its rememberPreference tool) so they can be reviewed and
+ * removed.
  */
-export function AskiMemoryCard() {
+export function AssistantMemoryCard() {
   const { data: memories = [], isLoading } = useAssistantMemory();
   const del = useDeleteAssistantMemory();
   const [confirmClear, setConfirmClear] = useState(false);
@@ -19,7 +20,7 @@ export function AskiMemoryCard() {
       <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          AI Assistant memory
+          Assistant memory
         </CardTitle>
         {memories.length > 0 && (
           <Button

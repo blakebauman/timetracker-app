@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { useAssistantNudges } from "@/hooks/useAssistant";
+import { modKey } from "@/lib/platform";
 
 /**
- * The always-visible entry point to Aski, mounted in the timer bar. The badge
- * count is a live indicator (like the running-timer pulse), which is what the
- * brand red is reserved for.
+ * The always-visible entry point to the assistant, mounted in the timer bar.
+ * The badge count is a live indicator (like the running-timer pulse), which is
+ * what the brand red is reserved for.
  */
 export function AssistantButton() {
   const toggleOpen = useAssistantStore((s) => s.toggleOpen);
@@ -23,8 +24,8 @@ export function AssistantButton() {
           onClick={toggleOpen}
           aria-label={
             nudges.length > 0
-              ? `Open AI Assistant — ${nudges.length} ${nudges.length === 1 ? "nudge" : "nudges"}`
-              : "Open AI Assistant"
+              ? `Open Assistant — ${nudges.length} ${nudges.length === 1 ? "nudge" : "nudges"}`
+              : "Open Assistant"
           }
         >
           <Sparkles className="h-4 w-4" />
@@ -38,7 +39,7 @@ export function AssistantButton() {
           )}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>AI Assistant — your tracking helper</TooltipContent>
+      <TooltipContent>Assistant · {modKey}I</TooltipContent>
     </Tooltip>
   );
 }

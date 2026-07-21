@@ -236,7 +236,7 @@ export const api = {
       request<unknown>("/ai/summary", { method: "POST", body: JSON.stringify(body) }),
   },
 
-  // ─── Assistant (Aski) ─────────────────────────────────────────────────────
+  // ─── Assistant ─────────────────────────────────────────────────────
   assistant: {
     nudges: (timezoneOffsetMinutes: number) =>
       request<unknown[]>(
@@ -249,7 +249,7 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    // What Aski has remembered about the user (Settings management card).
+    // What the assistant has remembered about the user (Settings management card).
     memory: () => request<AssistantMemory[]>("/assistant/memory"),
     deleteMemory: (key: string) =>
       request<void>(`/assistant/memory/${encodeURIComponent(key)}`, { method: "DELETE" }),

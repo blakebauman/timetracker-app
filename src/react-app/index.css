@@ -62,7 +62,7 @@
     fade-up 0.35s var(--ease-out-quart) both,
     row-flash 1.4s var(--ease-out-quart) both;
 
-  /* Aski "thinking" — a soft highlight sweeps across muted text while the
+  /* Assistant "thinking" — a soft highlight sweeps across muted text while the
      assistant streams (utility: animate-shimmer, pair with the shimmer bg). */
   --animate-shimmer: shimmer 1.6s linear infinite;
 }

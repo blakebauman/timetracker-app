@@ -10,7 +10,7 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 - [Organizing work: clients, projects, tasks, tags](#organizing-work-clients-projects-tasks-tags)
 - [Favorites & recurring entries](#favorites--recurring-entries)
 - [Google Calendar sync & auto-track](#google-calendar-sync--auto-track)
-- [Aski, the assistant](#aski-the-assistant)
+- [The Assistant](#the-assistant)
 - [Reports & exports](#reports--exports)
 - [Productivity tools](#productivity-tools)
 - [Teams & sharing a workspace](#teams--sharing-a-workspace)
@@ -78,11 +78,11 @@ Connect under **Settings → Calendar sync** (read-only access — the app never
 
 Declined, cancelled, and all-day events are ignored. See [CALENDAR_SYNC.md](CALENDAR_SYNC.md) for setup details if you self-host.
 
-## Aski, the assistant
+## The Assistant
 
-Aski is the built-in assistant, reachable from the sparkle button in the top bar (or via the command palette).
+The Assistant is built in, reachable from the sparkle button in the top bar, the command palette, or `⌘I` / `Ctrl+I` — the panel opens with the chat input focused and suggestions that follow the page you're on.
 
-**Nudges** — Aski watches for things worth acting on and surfaces them as cards (and, optionally, one-time toasts/browser notifications):
+**Nudges** — the Assistant watches for things worth acting on and surfaces them as cards (and, optionally, one-time toasts/browser notifications):
 
 - a meeting happening **now** that you're not tracking
 - a past meeting today you never tracked (with a one-click **Add to timesheet**)
@@ -92,9 +92,9 @@ Aski is the built-in assistant, reachable from the sparkle button in the top bar
 
 Dismissals stick per-device. Turn nudge alerts on/off under Settings → Productivity.
 
-**Chat** — ask Aski things in plain language: *"start a timer for the Acme redesign"*, *"how much did I bill this week?"*, *"log 2 hours of code review yesterday afternoon"*, *"track my 10am meeting"*. Aski can start/stop timers, log and delete entries, track meetings, summarize your time, and look up your projects — anything that **writes or deletes data asks for your approval first** with an in-chat confirm card.
+**Chat** — ask the Assistant things in plain language: *"start a timer for the Acme redesign"*, *"how much did I bill this week?"*, *"log 2 hours of code review yesterday afternoon"*, *"track my 10am meeting"*. It can start/stop timers, log and delete entries, track meetings, summarize your time, and look up your projects — anything that **writes or deletes data asks for your approval first** with an in-chat confirm card.
 
-**Memory** — tell Aski to remember preferences ("remember that standups are never billable") and it stores them per-workspace, using them in future conversations. Review and delete everything it knows under **Settings → Aski's memory**.
+**Memory** — tell the Assistant to remember preferences ("remember that standups are never billable") and it stores them per-workspace, using them in future conversations. Review and delete everything it knows under **Settings → Assistant memory**.
 
 ## Reports & exports
 
@@ -121,7 +121,7 @@ All under **Settings → Productivity**, all device-local, all off by default:
 - **Idle detection** — if you go idle with a timer running, the app asks whether to keep, trim, or discard the idle time.
 - **Not-tracking reminders** — periodic nudge when nothing is running during your workday.
 - **Pomodoro** — work/break interval timers layered on top of your tracking.
-- **Browser notifications** — used by the above and by Aski's nudge alerts (needs one-time permission).
+- **Browser notifications** — used by the above and by the Assistant's nudge alerts (needs one-time permission).
 
 ## Teams & sharing a workspace
 
@@ -149,7 +149,7 @@ Under **Settings → Integrations** you can connect **Adobe Workfront** or **Mic
 
 | Shortcut | Action |
 |---|---|
-| `⌘K` / `Ctrl+K` | Command palette — start/stop, continue a recent entry, navigate, ask Aski |
+| `⌘K` / `Ctrl+K` | Command palette — start/stop, continue a recent entry, navigate, ask the Assistant |
 | `Alt+Shift+S` | Start / stop the timer |
 | `Alt+Shift+X` | Discard the running timer |
 | `?` | Show the shortcut reference |
@@ -182,7 +182,7 @@ Under **Settings → Account / Security / Danger zone**:
 | Data export | All-entries CSV | — |
 | Preferences | Default billable, 12/24h time, currency, week start, show weekends | Billable: device · rest: account |
 | Productivity | Notifications, idle detection, reminders, nudge alerts, pomodoro | Device |
-| Aski's memory | Review/delete assistant memories | Workspace |
+| Assistant memory | Review/delete assistant memories | Workspace |
 | Recurring entries | Manage templates | Workspace |
 | Team | Members, roles, invites | Workspace |
 | Calendar sync | Google connect/disconnect, auto-track | Workspace |

@@ -9,7 +9,9 @@ import {
   CommandGroup,
   CommandItem,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command";
+import { modKey } from "@/lib/platform";
 import { useTimer } from "@/hooks/useTimer";
 import { useGroupedEntries } from "@/hooks/useEntries";
 import { useTimerStore } from "@/stores/timerStore";
@@ -157,7 +159,8 @@ export function CommandPalette() {
             }}
           >
             <Sparkles className="h-4 w-4" />
-            Ask AI Assistant
+            Ask Assistant
+            <CommandShortcut>{modKey}I</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

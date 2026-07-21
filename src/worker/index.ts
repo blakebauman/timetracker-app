@@ -64,7 +64,7 @@ const app = new Hono<{ Bindings: Env }>()
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
   // track-event hits Workers AI (project inference); nudge polling is capped well
-  // above its 5-min cadence. (Aski chat streams via the ChatAgent DO, not here.)
+  // above its 5-min cadence. (Assistant chat streams via the ChatAgent DO, not here.)
   .use("/api/assistant/track-event", aiRateLimit)
   .use("/api/assistant/nudges", nudgesRateLimit)
   .use("/api/integrations/*", outboundRateLimit)

@@ -56,7 +56,7 @@ interface UIStore {
   shortcutsOpen: boolean;
   discardConfirmOpen: boolean;
   // AI Quick Add dialog — global so it can be opened from the Timer header and
-  // the AI Assistant panel (which is mounted app-wide). Transient, never persisted.
+  // the Assistant panel (which is mounted app-wide). Transient, never persisted.
   quickAddOpen: boolean;
   // Transient: the entry row to flash-highlight (e.g. the one just stopped so the
   // eye can track where it landed in the list). Never persisted.
