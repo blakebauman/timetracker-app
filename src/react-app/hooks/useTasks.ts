@@ -3,11 +3,18 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { Task, CreateTask, UpdateTask } from "@shared/schemas";
 
+// The API hides inactive (done) tasks unless asked, so every list here opts in:
+// the Tasks page offers an All/Active/Done filter and a "Done" group, and without
+// this the done tasks never arrive — marking one done made it vanish with no way
+// to see it again, and the Done filter was permanently empty.
 export function useTasks(projectId?: string | null) {
   return useQuery({
-    queryKey: ["tasks", projectId ?? "all"],
+    queryKey: ["tasks", projectId ?? "all", "withDone"],
     queryFn: () =>
-      api.tasks.list(projectId ? { projectId } : undefined) as Promise<Task[]>,
+      api.tasks.list({
+        ...(projectId ? { projectId } : {}),
+        includeInactive: "true",
+      }) as Promise<Task[]>,
     staleTime: 30_000,
     enabled: projectId !== undefined, // allow null (returns all) but not skip entirely
   });
@@ -15,8 +22,8 @@ export function useTasks(projectId?: string | null) {
 
 export function useAllTasks() {
   return useQuery({
-    queryKey: ["tasks", "all"],
-    queryFn: () => api.tasks.list() as Promise<Task[]>,
+    queryKey: ["tasks", "all", "withDone"],
+    queryFn: () => api.tasks.list({ includeInactive: "true" }) as Promise<Task[]>,
     staleTime: 30_000,
   });
 }
