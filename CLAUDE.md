@@ -47,12 +47,13 @@ Full-stack TypeScript time tracker (Toggl-like) running entirely on Cloudflare's
 
 ### Backend (`src/worker/`)
 
-- `index.ts` — Hono app entry; mounts all route groups and auth middleware. Also exports the worker's `scheduled()` handler (see Cron below) alongside `fetch`.
-- `auth.ts` — Better Auth config (email/password + bearer tokens; DB hook auto-creates workspace on user signup). `session.freshAge` is explicitly `0` — Better Auth's `list-sessions` endpoint 403s (`SESSION_NOT_FRESH`) once a session passes the default 1-day freshness window otherwise, which broke the Settings → Active Sessions card for every returning user.
+- `index.ts` — Hono app entry; mounts all route groups and auth middleware, and exports the worker's `scheduled()` handler (see Cron below) plus both DO classes alongside `fetch`. Requests to `/agents/*` are intercepted **before** Hono: after auth, the agent-instance URL segment is rewritten to the caller's workspace id (tenant isolation for chat) and handed to the Agents SDK's `routeAgentRequest`.
+- `auth.ts` — Better Auth config: email/password + bearer tokens (extension), plus `admin` (site-wide role: list/ban/impersonate), `organization` (workspace = organization; owner/admin/member roles, email invites via the `EMAIL` send_email binding + `mimetext`), twoFactor (TOTP), passkey, magic link, email OTP, and Google social login. DB hook auto-creates a personal workspace on signup. `session.freshAge` is explicitly `0` — Better Auth's `list-sessions` endpoint 403s (`SESSION_NOT_FRESH`) once a session passes the default 1-day freshness window otherwise, which broke the Settings → Active Sessions card for every returning user; freshness is re-imposed on sensitive ops (`update-user`, `unlink-account`).
 - `middleware/workspace.ts` — Extracts workspace context from every authenticated request; all route handlers expect `c.get('workspace')`
-- `routes/` — One file per resource: `time-entries`, `projects` (includes `POST /recolor`, AI-assisted), `clients`, `tasks`, `tags` (includes color), `favorites`, `recurring`, `reports`, `calendar` (Google sync + auto-track), `assistant` (Aski: `GET /nudges` deterministic, `POST /chat` AI), `websocket`
+- `routes/` — One file per resource: `time-entries`, `projects` (includes `POST /recolor`, AI-assisted), `clients`, `tasks`, `tags` (includes color), `favorites`, `recurring`, `reports` (summary/grouped/weekly/detailed, rounding in SQL), `saved-reports`, `settings` (per-user prefs on the auth `user` row), `calendar` (Google sync + auto-track toggle + `POST /convert`), `ai` (`/quick-entry` NL parse, `/summary` draft; rate-limited), `assistant` (Aski: `GET /nudges` deterministic, `POST /track-event`, memory list/delete — chat is NOT here, see ChatAgent below), `integrations` (Workfront/Dynamics push, SSRF-guarded), `admin` (`DELETE /users/:id`), `websocket`
 - `db/queries.ts` — Direct SQL helpers for D1; `ENTRY_SELECT` is the canonical JOIN for time entries; `broadcast()` sends WebSocket events via Durable Object; `upsertTags()` auto-assigns a deterministic color to new tags
 - `durable-objects/TimerRoomDO.ts` — Stateful WebSocket server; one DO per workspace, syncs timer state across browser tabs
+- `durable-objects/ChatAgent.ts` — Aski's chat: an `AIChatAgent` (Agents SDK + `@cloudflare/ai-chat`) DO, one per workspace, streaming `@cf/meta/llama-4-scout-17b-16e-instruct` over `workers-ai-provider` with tool calling (`lib/assistant-tools.ts` — start/stop/log/track/delete/summarize/remember; writes require human approval via AI SDK `needsApproval`). Persists capped history + resumable streams in DO SQLite; per-workspace rate limit; prompt treats calendar/entry/memory text as untrusted data. Frontend connects with `useAgent`/`useAgentChat` (`components/assistant/AssistantPanel.tsx`). Durable memory: `lib/assistant-memory.ts` + `assistant_memory` table (keyword recall, no embeddings).
 - `lib/colors.ts` — Shared swatch palette. `DISTINCT_COLORS` is hue-alternated (not simply hue-ordered) so auto-assigned colors read as visually distinct even for 2-3 items; `TAG_COLORS` is the same set in hue order for the manual picker grid.
 - `lib/ai.ts` — Workers AI calls (`@cf/meta/llama-3.1-8b-instruct-fp8`, `json_schema` response mode): quick-entry NL parsing, AI summary drafting, and `runProjectColorAssignment` (color-by-project-name, palette-validated, always falls back to the deterministic spread on a bad/missing AI response — AI assist is a best-effort enhancement, never the only path).
 - `lib/calendar-autotrack.ts` / `lib/recurring.ts` — Cron-driven materializers (see below).
@@ -101,7 +102,11 @@ Docs: `extension/README.md` (overview + local dev), `extension/PUBLISHING.md` (C
 
 ### Real-time
 
-WebSocket endpoint at `/api/ws` upgrades to a Durable Object (`TimerRoomDO`). Frontend connects on mount and listens for `timer_update` events to sync the running timer across tabs.
+Two WebSocket surfaces: `/api/ws` upgrades to `TimerRoomDO` (frontend connects on mount, listens for `timer_update` events to sync the running timer across tabs); `/agents/*` upgrades to the `ChatAgent` DO for Aski's streaming chat (Agents SDK).
+
+## Docs
+
+`docs/ARCHITECTURE.md` is the internal deep-dive (request lifecycle, auth model, DO/cron/data-model detail); `docs/USER_GUIDE.md` is the end-user feature guide — update both when shipping user-facing or architectural changes. `docs/CALENDAR_SYNC.md` covers Google Calendar setup + auto-track; `ROADMAP.md` tracks deferred work (keep it honest — move items out when they ship).
 
 ## Design context
 

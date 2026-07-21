@@ -6,19 +6,38 @@ A Toggl-like time tracking app built on Cloudflare Workers, Hono, React 19, and 
 
 ## Features
 
-- **Time tracking** — one-click start/stop, projects, tasks, clients, tags, billable flags, and inline editing (including editing a running timer's elapsed time from the top bar).
-- **Real-time sync** — the running timer syncs across browser tabs via a Durable Object WebSocket.
+- **Time tracking** — one-click start/stop, projects, tasks, clients, tags, billable flags, and inline editing (including editing a running timer's elapsed time from the top bar). Manual entry, a weekly timesheet grid, AI quick-add from natural language, favorites for one-click starts, and recurring entry templates that materialize on schedule.
+- **Timer workspace** — four views behind one header: list, Toggl-style calendar (FullCalendar week/5-day/day/month), split, and timesheet — with clickable untracked-gap blocks between entries.
+- **Google Calendar sync** — read-only: events show as ghost blocks you click to track, and an optional **auto-track** cron converts ended meetings into entries automatically ([docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md)).
+- **Aski, the assistant** — deterministic nudges (untracked/current/upcoming meetings, long-running timer, empty day) plus a tool-calling chat agent (Agents SDK Durable Object over Workers AI) that can start/stop timers, log or delete entries, summarize time, and remember preferences — with human approval on every write.
+- **Reports** — summary/weekly/detailed with grouping, rounding modes, project billing rates + currency, saved report configs, CSV/Excel/print export, and AI-drafted narrative summaries.
+- **Teams** — invite members by email into a shared workspace (owner/admin/member roles); site-admin panel for user management.
+- **Real-time sync** — the running timer syncs across browser tabs (and the extension) via a Durable Object WebSocket.
 - **Offline support** — timer state is cached and mutations are queued in IndexedDB, then replayed when back online.
-- **Calendar** — Toggl-style week/day calendar view (FullCalendar), plus optional **Google Calendar sync** (click a calendar event to confirm it into a tracked entry — see [docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md)).
-- **Reports** — summaries and CSV export.
-- **Browser extension** — MV3 Chrome extension for start/stop from the toolbar.
+- **Productivity tools** — idle detection, not-tracking reminders, pomodoro, browser notifications (all opt-in, device-local).
+- **Integrations** — push entries to Adobe Workfront or Microsoft Dynamics.
+- **Browser extension** — MV3 Chrome extension: toolbar start/stop, live badge, issue/PR title pre-fill on GitHub/Jira/Linear.
+
+See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for the full feature guide.
 
 ## Stack
 
 - **Frontend:** React 19, Vite, TailwindCSS v4, shadcn/ui, Zustand, TanStack Query
-- **Backend:** Hono on Cloudflare Workers, Cloudflare D1 (SQLite), Durable Objects
-- **Auth:** Better Auth — email/password, two-factor (TOTP), and passkeys, plus bearer tokens for the extension
+- **Backend:** Hono on Cloudflare Workers, Cloudflare D1 (SQLite), Durable Objects, Workers AI, Agents SDK, Email Service, cron triggers
+- **Auth:** Better Auth — email/password, Google, magic link, email OTP, two-factor (TOTP), passkeys; organizations for team workspaces; bearer tokens for the extension
 - **Extension:** MV3 Chrome extension with background service worker
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Every feature, by task — for users |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Internal deep-dive: routing, auth, DOs, cron, data model |
+| [docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md) | Google Calendar setup, sync design, auto-track |
+| [CLAUDE.md](CLAUDE.md) | Commands, conventions, deploy sequence |
+| [PRODUCT.md](PRODUCT.md) / [DESIGN.md](DESIGN.md) | Product register + design system (source of truth for UI) |
+| [ROADMAP.md](ROADMAP.md) | Deferred / planned work |
+| [extension/README.md](extension/README.md) | Extension architecture, publishing, security audit |
 
 ## Development
 
@@ -81,8 +100,14 @@ Cloudflare D1 (SQLite). Migrations are in `migrations/`. Run after schema change
 # Local
 npx wrangler d1 migrations apply time-tracker --local
 
-# Production
-npx wrangler d1 migrations apply time-tracker
+# Production (apply BEFORE deploying worker code that needs the new schema)
+npx wrangler d1 migrations apply time-tracker --remote
+```
+
+Optional local sample data + demo login (never a migration — local only):
+
+```bash
+npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql
 ```
 
 After modifying bindings in `wrangler.jsonc`:
