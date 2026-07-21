@@ -486,7 +486,7 @@ export const AiSummaryResultSchema = z.object({
   totalSeconds: z.number(),
 });
 
-// ─── Assistant (Aski) ────────────────────────────────────────────────────────
+// ─── Assistant ────────────────────────────────────────────────────────
 
 // A proactive prompt computed server-side from calendar events, today's
 // entries, and the running timer. `id` is stable per underlying fact (same
@@ -514,12 +514,12 @@ export const AssistantNudgeSchema = z.object({
     .default(null),
 });
 
-// Aski's chat itself now streams through the ChatAgent Durable Object
+// The assistant's chat itself now streams through the ChatAgent Durable Object
 // (useAgentChat over WebSocket), so there's no request/response schema for it
 // here. What remains are the deterministic nudge action + the memory the
 // assistant accumulates about the user.
 
-// A durable fact Aski has remembered, surfaced in Settings for review/removal.
+// A durable fact the assistant has remembered, surfaced in Settings for review/removal.
 export const AssistantMemorySchema = z.object({
   key: z.string(),
   content: z.string(),

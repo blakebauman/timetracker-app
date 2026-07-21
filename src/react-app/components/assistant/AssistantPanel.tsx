@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { useHotkeys } from "react-hotkeys-hook";
 import {
   Sparkles,
   CalendarClock,
@@ -21,6 +23,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useAssistantStore } from "@/stores/assistantStore";
+import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAssistantNudges, useTrackNudgeEvent } from "@/hooks/useAssistant";
 import { useTimer } from "@/hooks/useTimer";
@@ -28,7 +31,7 @@ import type { AssistantNudge } from "@shared/schemas";
 import { Shimmer } from "./ai-elements/Shimmer";
 import { SuggestionChips } from "./ai-elements/SuggestionChips";
 import { ToolCard } from "./ai-elements/ToolCard";
-import { AskiMarkdown } from "./ai-elements/AskiMarkdown";
+import { AssistantMarkdown } from "./ai-elements/AssistantMarkdown";
 import { MessageActions } from "./ai-elements/MessageActions";
 import { PromptInput } from "./ai-elements/PromptInput";
 import {
@@ -45,12 +48,44 @@ const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
   nothing_tracked: Coffee,
 };
 
-const SUGGESTIONS = [
-  "What haven't I tracked yet?",
-  "How much have I billed today?",
-  "Start a timer for my current meeting",
-  "What's next on my calendar?",
-];
+/**
+ * Suggestion chips follow the user's context: the reports page leads with
+ * summaries, project/client/task pages with per-project breakdowns, and the
+ * timer views with tracking gaps. A running timer swaps the "start a timer"
+ * chip for a check-in on the current one.
+ */
+function useContextualSuggestions(): string[] {
+  const { pathname } = useLocation();
+  const runningEntry = useTimerStore((s) => s.runningEntry);
+
+  return useMemo(() => {
+    const timerChip = runningEntry
+      ? "How long has my timer been running?"
+      : "Start a timer for my current meeting";
+    if (pathname.startsWith("/reports")) {
+      return [
+        "Summarize my time this week",
+        "How much have I billed today?",
+        "What haven't I tracked yet?",
+        timerChip,
+      ];
+    }
+    if (/^\/(projects|clients|tasks)/.test(pathname)) {
+      return [
+        "Which projects got my time this week?",
+        "What haven't I tracked yet?",
+        timerChip,
+        "What's next on my calendar?",
+      ];
+    }
+    return [
+      "What haven't I tracked yet?",
+      "How much have I billed today?",
+      timerChip,
+      "What's next on my calendar?",
+    ];
+  }, [pathname, runningEntry]);
+}
 
 function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   const dismissNudge = useAssistantStore((s) => s.dismissNudge);
@@ -115,13 +150,26 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   );
 }
 
-/** Right-side sheet hosting Aski's nudges and streaming chat. Mounted once in AppShell. */
+/** Right-side sheet hosting the assistant's nudges and streaming chat. Mounted once in AppShell. */
 export function AssistantPanel() {
   const open = useAssistantStore((s) => s.open);
   const setOpen = useAssistantStore((s) => s.setOpen);
   const markSeen = useAssistantStore((s) => s.markSeen);
   const openQuickAdd = useUIStore((s) => s.openQuickAdd);
   const { nudges } = useAssistantNudges();
+  const suggestions = useContextualSuggestions();
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+
+  // Global shortcut, mirrored in the launcher tooltip, command palette, and the
+  // "?" reference. enableOnFormTags so it works mid-typing in any field.
+  useHotkeys(
+    "meta+i,ctrl+i",
+    () => {
+      const s = useAssistantStore.getState();
+      s.setOpen(!s.open);
+    },
+    { preventDefault: true, enableOnFormTags: true }
+  );
 
   // The structured, review-before-save path. Close the sheet first so the two
   // modals (sheet + dialog) don't stack their focus traps.
@@ -134,7 +182,7 @@ export function AssistantPanel() {
 
   // One ChatAgent per workspace; the worker pins the instance to the caller's
   // workspace server-side, so a fixed name here is safe (see worker/index.ts).
-  const agent = useAgent({ agent: "chat-agent", name: "aski" });
+  const agent = useAgent({ agent: "chat-agent", name: "assistant" });
   const {
     messages,
     sendMessage,
@@ -181,11 +229,19 @@ export function AssistantPanel() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+        // Input-first: land ready to type instead of focusing the close button.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          promptRef.current?.focus();
+        }}
+      >
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            AI Assistant
+            Assistant
           </SheetTitle>
           <SheetDescription>
             Keeps an eye on your calendar and timesheet so billable time doesn't slip.
@@ -237,7 +293,7 @@ export function AssistantPanel() {
                     Ask about your day, or tell me to start a timer or track a meeting — or use
                     “Log time…” for a reviewable entry form.
                   </p>
-                  <SuggestionChips suggestions={SUGGESTIONS} onSelect={send} disabled={busy} />
+                  <SuggestionChips suggestions={suggestions} onSelect={send} disabled={busy} />
                 </div>
               )}
 
@@ -259,7 +315,7 @@ export function AssistantPanel() {
                         return m.role === "user" ? (
                           <span key={i}>{part.text}</span>
                         ) : (
-                          <AskiMarkdown key={i} text={part.text} />
+                          <AssistantMarkdown key={i} text={part.text} />
                         );
                       }
                       if (typeof part.type === "string" && part.type.startsWith("tool-")) {
@@ -291,6 +347,7 @@ export function AssistantPanel() {
 
         <div className="border-t p-3">
           <PromptInput
+            textareaRef={promptRef}
             value={input}
             onChange={setInput}
             onSubmit={send}

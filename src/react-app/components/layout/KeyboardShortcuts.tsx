@@ -7,11 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useUIStore } from "@/stores/uiStore";
-
-// Best-effort platform check so we render ⌘ on macOS and Ctrl elsewhere.
-const isMac =
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-const mod = isMac ? "⌘" : "Ctrl";
+import { modKey as mod } from "@/lib/platform";
 
 interface Shortcut {
   keys: string[];
@@ -28,6 +24,7 @@ const GROUPS: ShortcutGroup[] = [
     title: "General",
     items: [
       { keys: [mod, "K"], label: "Open command palette (search & quick actions)" },
+      { keys: [mod, "I"], label: "Open the Assistant" },
       { keys: ["?"], label: "Show this keyboard shortcut reference" },
     ],
   },

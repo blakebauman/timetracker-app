@@ -1,4 +1,4 @@
-// Aski, the assistant: deterministic "nudge" computation plus the grounding
+// The assistant: deterministic "nudge" computation plus the grounding
 // context for its chat endpoint. Nudges are derived from the user's calendar
 // (via the same read-through as routes/calendar.ts), today's entries, and the
 // running timer — no AI involved, so they're cheap to poll. Chat is the AI
@@ -254,7 +254,7 @@ export async function computeNudges(
 }
 
 /**
- * Grounding block for Aski's chat: today's schedule and timesheet as plain
+ * Grounding block for the assistant's chat: today's schedule and timesheet as plain
  * text the model can quote from without inventing anything.
  */
 export async function buildAssistantContext(

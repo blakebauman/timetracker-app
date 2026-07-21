@@ -46,7 +46,7 @@ export function AssistantNudgeNotifier() {
         id: n.id,
         description: n.body,
         duration: 12_000,
-        action: { label: "Open AI Assistant", onClick: () => setOpen(true) },
+        action: { label: "Open Assistant", onClick: () => setOpen(true) },
       });
       // The toast is invisible when the tab is backgrounded — that's exactly
       // when the OS-level notification earns its keep. No-op unless granted.

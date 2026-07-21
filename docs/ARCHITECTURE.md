@@ -9,7 +9,7 @@ One Cloudflare Worker serves everything: static SPA assets, the REST API, two We
 ```
 Browser SPA (React 19) ─┬─ /api/*        → Hono app (REST, workspace-scoped)
 Chrome extension ───────┤─ /api/ws       → TimerRoomDO (timer sync WebSocket)
-                        ├─ /agents/*     → ChatAgent DO (Aski chat, Agents SDK)
+                        ├─ /agents/*     → ChatAgent DO (Assistant chat, Agents SDK)
                         └─ /*            → static assets (SPA fallback)
 Cron (*/5 min) ─────────── scheduled()   → auto-track + recurring materializers
 ```
@@ -38,7 +38,7 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 | `/api/settings` | `settings.ts` | per-user prefs stored on the Better Auth `user` row |
 | `/api/calendar` | `calendar.ts` | Google OAuth connect/callback/status/disconnect, `GET /events` (read-through), `PATCH /auto-track`, `POST /convert` |
 | `/api/ai` | `ai.ts` | `POST /quick-entry` (NL→entry), `POST /summary` (AI report draft); rate-limited |
-| `/api/assistant` | `assistant.ts` | `GET /nudges`, `POST /track-event`, memory list/delete. **Chat is NOT here** — see Aski below |
+| `/api/assistant` | `assistant.ts` | `GET /nudges`, `POST /track-event`, memory list/delete. **Chat is NOT here** — see the Assistant below |
 | `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push`, SSRF-guarded, outbound rate limits |
 | `/api/admin` | `admin.ts` | `DELETE /users/:id` (site-admin user removal + orphan cleanup); list/ban/impersonate go through Better Auth's admin plugin client-side |
 | `/api/ws` | `websocket.ts` | upgrade → `TimerRoomDO` (`idFromName(workspaceId)`) |
@@ -61,9 +61,9 @@ Notable decisions:
 
 **`TimerRoomDO`** (`durable-objects/TimerRoomDO.ts`) — one per workspace, keyed `idFromName(workspaceId)`. Plain WebSocket room: tabs and the extension connect via `/api/ws`; REST mutations call `broadcast()` so every client sees `timer_update`/entry events live. No persistent storage of consequence — D1 is the source of truth; the DO is fan-out.
 
-**`ChatAgent`** (`durable-objects/ChatAgent.ts`) — Aski's chat brain, one per workspace, built on the Agents SDK (`agents` + `@cloudflare/ai-chat`, `AIChatAgent` base class). Persists conversation history (capped at 100 messages) and resumable streams in its own DO SQLite. Runs `streamText` over Workers AI (`@cf/meta/llama-4-scout-17b-16e-instruct` via `workers-ai-provider`), max 5 tool steps, 800 output tokens, 4k char input cap, 15 msg/min per-workspace rate limit.
+**`ChatAgent`** (`durable-objects/ChatAgent.ts`) — the Assistant's chat brain, one per workspace, built on the Agents SDK (`agents` + `@cloudflare/ai-chat`, `AIChatAgent` base class). Persists conversation history (capped at 100 messages) and resumable streams in its own DO SQLite. Runs `streamText` over Workers AI (`@cf/meta/llama-4-scout-17b-16e-instruct` via `workers-ai-provider`), max 5 tool steps, 800 output tokens, 4k char input cap, 15 msg/min per-workspace rate limit.
 
-## Aski (assistant) — three layers
+## The Assistant — three layers
 
 1. **Nudges — deterministic, no AI** (`lib/assistant.ts`). `GET /api/assistant/nudges` computes: meeting happening now, untracked past meeting, meeting soon (all via the same Google Calendar read-through as `routes/calendar.ts`), long-running timer, empty weekday. Dismissals/seen-markers are client-side (`stores/assistantStore.ts`, persisted). `POST /track-event` is the one-click materializer (idempotent on `calendar_event_id`, AI-assisted project inference).
 2. **Chat — ChatAgent DO** over `/agents/*` WebSocket. The frontend (`components/assistant/AssistantPanel.tsx`) uses `useAgent({ agent: "chat-agent" })` + `useAgentChat`. Tools (`lib/assistant-tools.ts`): `startTimer`, `stopTimer`, `logTimeEntry`*, `trackMeeting`*, `deleteEntry`*, `getTimeSummary`, `listProjects`, `rememberPreference`*, `searchMemory` — asterisked tools require **human approval** (AI SDK `needsApproval`, surfaced as in-chat confirm cards). Tool writes reuse the same D1 helpers + `broadcast()` as REST. The system prompt treats calendar/entry/memory text as untrusted data (prompt-injection hardening — audit phase 3).
@@ -93,7 +93,7 @@ Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy or
 - **Offline:** `lib/idb.ts` + `useOfflineSync` queue mutations in IndexedDB and replay on reconnect; timer state is cached so a refresh offline doesn't lose the running timer.
 - **Optimistic stop:** `useTimer.ts` patches the entry to completed in the Query cache *before* clearing the timer so day totals never visibly dip.
 - **Timer workspace:** `pages/TimerWorkspace.tsx` — four views (list/calendar/split/timesheet) behind one header; `lib/calendarMapping.ts` renders three event kinds on one grid (real entries, Google ghosts, untracked-gap blocks). `/calendar` redirects here.
-- **Global chrome:** `AppShell` mounts the sidebar, command palette (⌘K), keyboard shortcuts, Aski panel + nudge notifier, and `ProductivityManager` (idle detection, reminders, pomodoro).
+- **Global chrome:** `AppShell` mounts the sidebar, command palette (⌘K), keyboard shortcuts, Assistant panel + nudge notifier, and `ProductivityManager` (idle detection, reminders, pomodoro).
 
 Design tokens and conventions live in `DESIGN.md` / `PRODUCT.md` — read those before touching UI; they encode decisions (soft-tone ramp, one-accent rule, icon-button size tokens) that aren't recoverable from the code.
 
@@ -103,7 +103,7 @@ Separate Vite build. Popup authenticates with the standard Better Auth client + 
 
 ## Security posture (audit history)
 
-Four hardening passes landed as PRs #64–#67 (see git history): cross-tenant IDOR closure on read-backs/tag writes/token cache; SPA headers + prod seed removal + re-gated sensitive auth ops; Aski prompt-injection/tool-abuse/cost-abuse hardening; SSRF guard + outbound rate limits + OAuth workspace binding + extension token clearing. The extension had its own audit (`extension/SECURITY_AUDIT.md`). Known accepted gap: auth rate limiting is in-isolate only (a cross-isolate attacker isn't throttled) — candidate for a DO/KV-backed limiter.
+Four hardening passes landed as PRs #64–#67 (see git history): cross-tenant IDOR closure on read-backs/tag writes/token cache; SPA headers + prod seed removal + re-gated sensitive auth ops; assistant prompt-injection/tool-abuse/cost-abuse hardening; SSRF guard + outbound rate limits + OAuth workspace binding + extension token clearing. The extension had its own audit (`extension/SECURITY_AUDIT.md`). Known accepted gap: auth rate limiting is in-isolate only (a cross-isolate attacker isn't throttled) — candidate for a DO/KV-backed limiter.
 
 ## Testing & CI
 

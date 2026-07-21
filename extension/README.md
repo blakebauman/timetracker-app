@@ -40,7 +40,7 @@ extension/
   `localhost`/`127.0.0.1`) so the bearer token is never sent to an arbitrary
   origin.
 - **Content script:** the `timetracker:sync` and `timetracker:assistant`
-  (Aski nudge-dismissal) relays only run on the app's own origins; on
+  (assistant nudge-dismissal) relays only run on the app's own origins; on
   GitHub/Jira/Linear it only reads the issue/PR title to pre-fill the
   description.
 

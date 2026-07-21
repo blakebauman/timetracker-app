@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 
-// Deliberately tiny markdown renderer — Aski runs on Llama, which emits plain
+// Deliberately tiny markdown renderer — the assistant runs on Llama, which emits plain
 // prose with the occasional list or **bold**. This avoids pulling in streamdown
 // + shiki (heavy) for output that never contains code blocks or tables. Handles
 // paragraphs, bullet lists, inline bold, and inline `code`.
@@ -35,7 +35,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   return nodes;
 }
 
-export function AskiMarkdown({ text }: { text: string }) {
+export function AssistantMarkdown({ text }: { text: string }) {
   const lines = text.split("\n");
   const blocks: React.ReactNode[] = [];
   let bullets: string[] = [];

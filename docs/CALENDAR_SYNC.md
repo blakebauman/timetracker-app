@@ -65,7 +65,7 @@ Until the two secrets below are set, the app runs fine and the Settings card sho
   replaced by the real tracked block.
 - **Auto-track** — flip the toggle on the same Settings card
   (`PATCH /api/calendar/auto-track`) and ended meetings are materialized into
-  entries by the cron without any clicking. Aski's nudges also surface untracked
+  entries by the cron without any clicking. The assistant's nudges also surface untracked
   meetings with a one-click "Add to timesheet"
   (`POST /api/assistant/track-event`).
 - **Disconnect** any time from the Settings card.

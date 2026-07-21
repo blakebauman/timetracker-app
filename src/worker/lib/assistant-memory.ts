@@ -1,4 +1,4 @@
-// Aski's long-term memory (Tier 3): durable per-workspace facts the assistant
+// The assistant's long-term memory (Tier 3): durable per-workspace facts the assistant
 // learns about the user, stored in D1 (`assistant_memory`). Deliberately simple
 // — keyword recall, no embeddings/Vectorize. The chat loop injects a recent
 // slice into the system prompt (buildMemoryBlock) and exposes `remember` /

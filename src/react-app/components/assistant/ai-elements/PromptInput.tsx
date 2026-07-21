@@ -1,4 +1,4 @@
-import { useCallback, useState, type KeyboardEvent } from "react";
+import { useCallback, useState, type KeyboardEvent, type Ref } from "react";
 import { Send, Square, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +19,8 @@ export function PromptInput({
   busy = false,
   status,
   placeholder = "Ask the assistant…",
-  ariaLabel = "Message the AI Assistant",
+  ariaLabel = "Message the Assistant",
+  textareaRef,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -30,6 +31,8 @@ export function PromptInput({
   status?: "ready" | "submitted" | "streaming" | "error";
   placeholder?: string;
   ariaLabel?: string;
+  /** Lets the host focus the composer (e.g. when the panel opens). */
+  textareaRef?: Ref<HTMLTextAreaElement>;
 }) {
   const [isComposing, setIsComposing] = useState(false);
   const canSend = value.trim().length > 0 && !busy;
@@ -63,6 +66,7 @@ export function PromptInput({
       )}
     >
       <Textarea
+        ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}

@@ -17,7 +17,7 @@ for the shipped behaviour. Still deferred:
   (`Calendars.Read`, delta queries).
 - **Multi-calendar selection** — beyond the Google `primary` calendar.
 - **Dismiss / ignore state for ghost events** — hide specific unconfirmed
-  events on the calendar grid (needs a small table). Aski's *nudge* dismissals
+  events on the calendar grid (needs a small table). The assistant's *nudge* dismissals
   exist but are client-side only and don't hide calendar ghosts.
 - **Webhook / delta sync** — near-real-time updates instead of the 5-minute
   cron + read-through-on-view.

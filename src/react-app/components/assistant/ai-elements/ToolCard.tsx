@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 type ToolPart = UIMessage["parts"][number];
 type Rec = Record<string, unknown>;
 
-// Humanized labels + icons for Aski's tools (part.type is `tool-<name>`). Used
+// Humanized labels + icons for the assistant's tools (part.type is `tool-<name>`). Used
 // for the pending/busy line and as the fallback for unknown tools.
 const TOOLS: Record<string, { label: string; icon: typeof Play }> = {
   startTimer: { label: "Start timer", icon: Play },

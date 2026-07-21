@@ -1,4 +1,4 @@
-// Aski's tools (Tier 1): the actions the chat agent can take on the user's
+// The assistant's tools (Tier 1): the actions the chat agent can take on the user's
 // behalf. Each wraps the SAME D1 writes + WebSocket broadcasts the REST routes
 // use (see routes/time-entries.ts), so a timer the assistant starts/stops syncs
 // to every open tab and the extension exactly like a manual one. Project names

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Horizontal row of tappable prompt suggestions (fold.run ai-elements/suggestion,
- * trimmed to our Button + theme). Shown on an empty conversation to prime Aski.
+ * trimmed to our Button + theme). Shown on an empty conversation to prime the assistant.
  */
 export function SuggestionChips({
   suggestions,
