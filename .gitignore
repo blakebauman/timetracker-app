@@ -210,3 +210,6 @@ extension/.keys/*
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+### Impeccable (local design-tool state) ###
+.impeccable/
