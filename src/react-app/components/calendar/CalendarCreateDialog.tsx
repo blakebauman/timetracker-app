@@ -1,26 +1,12 @@
 import { useState } from "react";
 import { CalendarPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { ProjectPicker } from "@/components/entries/ProjectPicker";
-import { TaskPicker } from "@/components/entries/TaskPicker";
-import { TagPicker } from "@/components/entries/TagPicker";
-import { TimeOfDayInput } from "@/components/entries/TimeOfDayInput";
+import { EntryFormSheet } from "@/components/entries/EntryFormSheet";
 import { useCreateEntry } from "@/hooks/useEntries";
-import { formatDurationShort, formatFullDate } from "@/lib/dateUtils";
+import { useEntryDraft } from "@/hooks/useEntryDraft";
 
 interface CalendarCreateDialogProps {
   open: boolean;
-  // Prefilled from the dragged grid selection (ISO strings).
+  // Prefilled from the clicked/dragged grid selection (ISO strings).
   startIso: string;
   stopIso: string;
   // When confirming a Google Calendar "ghost": seed the description and stamp the
@@ -30,6 +16,7 @@ interface CalendarCreateDialogProps {
   onClose: () => void;
 }
 
+/** Create an entry from a calendar selection. Fields and shell live in EntryFormSheet. */
 export function CalendarCreateDialog({
   open,
   startIso,
@@ -38,140 +25,52 @@ export function CalendarCreateDialog({
   calendarEventId,
   onClose,
 }: CalendarCreateDialogProps) {
-  const [description, setDescription] = useState("");
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [taskId, setTaskId] = useState<string | null>(null);
-  const [tags, setTags] = useState<string[]>([]);
-  const [billable, setBillable] = useState(false);
-  const [start, setStart] = useState(startIso);
-  const [stop, setStop] = useState(stopIso);
-
+  const draft = useEntryDraft({
+    start: startIso,
+    stop: stopIso,
+    description: prefillDescription ?? "",
+  });
   const createEntry = useCreateEntry();
   const fromCalendar = Boolean(calendarEventId);
 
-  // Reset local state to the (possibly new) selection each time the dialog opens.
+  // Reset to the (possibly new) selection each time the dialog opens on a
+  // different slot — the component stays mounted between openings.
   const openKey = `${startIso}|${stopIso}|${calendarEventId ?? ""}`;
   const [syncedKey, setSyncedKey] = useState(openKey);
   if (open && syncedKey !== openKey) {
     setSyncedKey(openKey);
-    setStart(startIso);
-    setStop(stopIso);
-    setDescription(prefillDescription ?? "");
-    setProjectId(null);
-    setTaskId(null);
-    setTags([]);
-    setBillable(false);
+    draft.reset({
+      start: startIso,
+      stop: stopIso,
+      description: prefillDescription ?? "",
+    });
   }
 
-  const durationSeconds = Math.round(
-    (new Date(stop).getTime() - new Date(start).getTime()) / 1000
-  );
-  const hasValidRange = durationSeconds > 0;
-
   const handleSave = () => {
-    if (!hasValidRange) return;
+    const { start, stop } = draft.draft;
+    if (!start || !stop || !draft.hasValidRange) return;
     createEntry.mutate(
-      { description, projectId, taskId, tags, billable, start, stop, calendarEventId },
+      { ...draft.draft, start, stop, calendarEventId },
       { onSuccess: onClose }
     );
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CalendarPlus className="h-4 w-4" />
-            {fromCalendar ? "Track calendar event" : "New entry"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-5 py-2">
-          <div className="space-y-1.5">
-            <Label>Description</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What did you work on?"
-              className="min-h-20 resize-none"
-              autoFocus
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Project</Label>
-            <ProjectPicker
-              value={projectId}
-              onChange={(id) => {
-                setProjectId(id);
-                setTaskId(null);
-              }}
-            />
-          </div>
-
-          {projectId && (
-            <div className="space-y-1.5">
-              <Label>Task</Label>
-              <TaskPicker projectId={projectId} value={taskId} onChange={setTaskId} />
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label>Tags</Label>
-            <TagPicker value={tags} onChange={setTags} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-muted-foreground">{formatFullDate(start)}</Label>
-            <div className="flex gap-3">
-              <div className="flex-1 space-y-1.5">
-                <Label>Start</Label>
-                <TimeOfDayInput
-                  value={start}
-                  fallbackIso={startIso}
-                  onChange={(iso) => setStart(iso ?? start)}
-                  ariaLabel="Start time"
-                />
-              </div>
-              <div className="flex-1 space-y-1.5">
-                <Label>Stop</Label>
-                <TimeOfDayInput
-                  value={stop}
-                  fallbackIso={stopIso}
-                  onChange={(iso) => setStop(iso ?? stop)}
-                  ariaLabel="Stop time"
-                />
-              </div>
-            </div>
-          </div>
-
-          {!hasValidRange ? (
-            <p className="text-xs text-destructive">Stop time must be after start time.</p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Duration: {formatDurationShort(durationSeconds)}
-            </p>
-          )}
-
-          <div className="flex items-center gap-3">
-            <Switch id="cal-billable" checked={billable} onCheckedChange={setBillable} />
-            <Label htmlFor="cal-billable">Billable</Label>
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={!hasValidRange || createEntry.isPending}
-          >
-            {createEntry.isPending ? "Saving…" : "Add entry"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <EntryFormSheet
+      open={open}
+      onClose={onClose}
+      title={fromCalendar ? "Track calendar event" : "New entry"}
+      submitLabel="Add entry"
+      pending={createEntry.isPending}
+      onSubmit={handleSave}
+      draft={draft}
+    >
+      {fromCalendar && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
+          Tracking a calendar event — it won't be suggested again once saved.
+        </p>
+      )}
+    </EntryFormSheet>
   );
 }

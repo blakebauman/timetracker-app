@@ -16,7 +16,7 @@ test("tag colors: recolor an existing tag in the entry dialog", async ({ page })
 
   // The Tags picker lives in the Add-entry dialog.
   await page.getByRole("button", { name: "Add entry" }).click();
-  const dialog = page.getByRole("dialog", { name: "Add entry" });
+  const dialog = page.getByRole("dialog", { name: "New entry" });
   await dialog.getByRole("button", { name: "Tags" }).click();
   await page.getByPlaceholder("Add a tag...").fill("design");
   await page.getByRole("option", { name: /design/ }).first().click();

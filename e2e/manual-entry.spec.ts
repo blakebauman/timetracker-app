@@ -11,13 +11,13 @@ test.describe("manual one-off time entry", () => {
     await page.getByRole("button", { name: "Add entry" }).click();
 
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Add entry" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "New entry" })).toBeVisible();
 
     await dialog.locator("textarea").fill("Manual test entry");
 
     await fillTimeRange(dialog, "09:00", "10:30");
 
-    await expect(dialog.getByText("Duration: 1h 30m")).toBeVisible();
+    await expect(dialog.getByLabel("Duration")).toHaveValue("01:30:00");
     const saveButton = dialog.getByRole("button", { name: "Add entry" });
     await expect(saveButton).toBeEnabled();
     await saveButton.click();
@@ -44,7 +44,7 @@ test.describe("manual one-off time entry", () => {
 
     await page.getByRole("button", { name: "Add entry" }).click();
     // Scoped by name: the DatePicker popover used below also has role=dialog.
-    const dialog = page.getByRole("dialog", { name: "Add entry" });
+    const dialog = page.getByRole("dialog", { name: "New entry" });
     await dialog.locator("textarea").fill("Yesterday's work");
     // The Date field is a popover DatePicker; locate it by its accessible name
     // rather than by "the button whose label happens to contain a year".
