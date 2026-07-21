@@ -19,13 +19,16 @@ function creds(connection: Connection): DynamicsCredentials {
 }
 
 // Cache Entra ID access tokens across pushes within an isolate to avoid a token
-// round-trip per entry. Keyed by tenant+client+org; expired 60s early for safety.
+// round-trip per entry. Keyed by the connection row id (which is workspace-scoped)
+// so a token is NEVER reused across workspaces — tenant/client ids are not secret,
+// so keying on them would let one workspace ride another's warm token. Expired 60s
+// early for safety.
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
 async function getAccessToken(connection: Connection): Promise<string> {
   const { tenantId, clientId, clientSecret } = creds(connection);
   const origin = orgOrigin(connection.baseUrl);
-  const cacheKey = `${tenantId}:${clientId}:${origin}`;
+  const cacheKey = connection.id;
   const cached = tokenCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.token;
 

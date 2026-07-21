@@ -8,8 +8,8 @@ const PROJECT_SELECT = `
   SELECT p.*, c.name AS client_name,
     COALESCE(SUM(te.duration), 0) AS tracked_seconds
   FROM projects p
-  LEFT JOIN clients c ON c.id = p.client_id
-  LEFT JOIN time_entries te ON te.project_id = p.id AND te.stop IS NOT NULL
+  LEFT JOIN clients c ON c.id = p.client_id AND c.workspace_id = p.workspace_id
+  LEFT JOIN time_entries te ON te.project_id = p.id AND te.workspace_id = p.workspace_id AND te.stop IS NOT NULL
 `;
 
 function formatProject(row: Record<string, unknown>) {
@@ -76,8 +76,8 @@ export const projectsRouter = new Hono<{
     ).run();
 
     const { results } = await c.env.DB.prepare(
-      `${PROJECT_SELECT} WHERE p.id = ? GROUP BY p.id`
-    ).bind(id).all<Record<string, unknown>>();
+      `${PROJECT_SELECT} WHERE p.id = ? AND p.workspace_id = ? GROUP BY p.id`
+    ).bind(id, workspaceId).all<Record<string, unknown>>();
 
     return c.json(formatProject(results[0]), 201);
   })
@@ -169,9 +169,10 @@ export const projectsRouter = new Hono<{
     }
 
     const { results } = await c.env.DB.prepare(
-      `${PROJECT_SELECT} WHERE p.id = ? GROUP BY p.id`
-    ).bind(id).all<Record<string, unknown>>();
+      `${PROJECT_SELECT} WHERE p.id = ? AND p.workspace_id = ? GROUP BY p.id`
+    ).bind(id, workspaceId).all<Record<string, unknown>>();
 
+    if (!results.length) return c.json({ error: "Not found" }, 404);
     return c.json(formatProject(results[0]));
   })
   .delete("/:id", async (c) => {

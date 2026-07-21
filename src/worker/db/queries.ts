@@ -22,17 +22,20 @@ export async function broadcast(
   }
 }
 
-// SQL fragment for fetching a full time entry with joins
+// SQL fragment for fetching a full time entry with joins.
+// Every joined table is constrained to the entry's own workspace so a foreign
+// project_id/task_id/tag_id (however it got stored) resolves to NULL instead of
+// leaking another workspace's name/color — defense in depth behind the FK checks.
 export const ENTRY_SELECT = `
   SELECT te.*,
     p.name  AS project_name,  p.color AS project_color,
     tk.name AS task_name,
     GROUP_CONCAT(t.name) AS tag_names
   FROM time_entries te
-  LEFT JOIN projects p  ON p.id  = te.project_id
-  LEFT JOIN tasks   tk  ON tk.id = te.task_id
+  LEFT JOIN projects p  ON p.id  = te.project_id AND p.workspace_id  = te.workspace_id
+  LEFT JOIN tasks   tk  ON tk.id = te.task_id    AND tk.workspace_id = te.workspace_id
   LEFT JOIN time_entry_tags tet ON tet.time_entry_id = te.id
-  LEFT JOIN tags t ON t.id = tet.tag_id
+  LEFT JOIN tags t ON t.id = tet.tag_id AND t.workspace_id = te.workspace_id
 `;
 
 // Builds the shared WHERE clause + bindings for report queries.

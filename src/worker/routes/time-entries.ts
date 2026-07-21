@@ -194,9 +194,15 @@ export const timeEntriesRouter = new Hono<{
       ).bind(...values, workspaceId, ...ids).run();
     }
 
-    // Replace tags on all affected entries
+    // Replace tags on all affected entries. `time_entry_tags` has no
+    // workspace_id, so restrict the delete/insert to entries proven to belong to
+    // this workspace — otherwise a caller could rewrite another workspace's tags
+    // by passing foreign ids.
     if (patch.tags !== undefined) {
-      for (const id of ids) {
+      const { results: ownedEntries } = await c.env.DB.prepare(
+        `SELECT id FROM time_entries WHERE workspace_id = ? AND id IN (${placeholders})`
+      ).bind(workspaceId, ...ids).all<{ id: string }>();
+      for (const { id } of ownedEntries) {
         await c.env.DB.prepare(`DELETE FROM time_entry_tags WHERE time_entry_id = ?`).bind(id).run();
         if (patch.tags.length) {
           await upsertTags(c.env.DB, workspaceId, id, patch.tags);
@@ -232,6 +238,14 @@ export const timeEntriesRouter = new Hono<{
     const id = c.req.param("id");
     const data = c.req.valid("json");
     const now = new Date().toISOString();
+
+    // Verify the entry belongs to this workspace before touching it OR its tags.
+    // `time_entry_tags` has no workspace_id column, so without this guard a
+    // tags-only PUT would delete/rewrite another workspace's tag associations.
+    const owned = await c.env.DB.prepare(
+      `SELECT 1 FROM time_entries WHERE id = ? AND workspace_id = ?`
+    ).bind(id, workspaceId).first();
+    if (!owned) return c.json({ error: "Not found" }, 404);
 
     const fields: string[] = [];
     const values: unknown[] = [];

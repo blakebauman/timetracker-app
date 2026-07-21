@@ -22,8 +22,8 @@ const TASK_SELECT = `
     p.name  AS project_name, p.color AS project_color,
     COALESCE(SUM(te.duration), 0) AS tracked_seconds
   FROM tasks tk
-  LEFT JOIN projects p ON p.id = tk.project_id
-  LEFT JOIN time_entries te ON te.task_id = tk.id AND te.stop IS NOT NULL
+  LEFT JOIN projects p ON p.id = tk.project_id AND p.workspace_id = tk.workspace_id
+  LEFT JOIN time_entries te ON te.task_id = tk.id AND te.workspace_id = tk.workspace_id AND te.stop IS NOT NULL
 `;
 
 export const tasksRouter = new Hono<{
@@ -60,8 +60,8 @@ export const tasksRouter = new Hono<{
     ).bind(id, workspaceId, data.projectId, data.name, data.estimatedSeconds ?? null, now).run();
 
     const { results } = await c.env.DB.prepare(
-      `${TASK_SELECT} WHERE tk.id = ? GROUP BY tk.id`
-    ).bind(id).all<Record<string, unknown>>();
+      `${TASK_SELECT} WHERE tk.id = ? AND tk.workspace_id = ? GROUP BY tk.id`
+    ).bind(id, workspaceId).all<Record<string, unknown>>();
 
     return c.json(formatTask(results[0]), 201);
   })
@@ -85,9 +85,10 @@ export const tasksRouter = new Hono<{
     }
 
     const { results } = await c.env.DB.prepare(
-      `${TASK_SELECT} WHERE tk.id = ? GROUP BY tk.id`
-    ).bind(id).all<Record<string, unknown>>();
+      `${TASK_SELECT} WHERE tk.id = ? AND tk.workspace_id = ? GROUP BY tk.id`
+    ).bind(id, workspaceId).all<Record<string, unknown>>();
 
+    if (!results.length) return c.json({ error: "Not found" }, 404);
     return c.json(formatTask(results[0]));
   })
   // ─── Delete ───────────────────────────────────────────────────────────────
