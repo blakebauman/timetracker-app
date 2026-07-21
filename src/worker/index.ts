@@ -38,6 +38,10 @@ const aiRateLimit = rateLimit(20, 60_000);
 // against a runaway poller re-introducing a tight refetch loop. Relaxed in
 // dev for the same Playwright reason as authRateLimit.
 const nudgesRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 6, 60_000);
+// /test, /push and /calendar/convert each trigger an outbound fetch to a
+// third-party host — cap them so an authenticated caller can't use the worker as
+// a request amplifier. Relaxed in dev for the Playwright suite.
+const outboundRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 30, 60_000);
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
@@ -63,6 +67,8 @@ const app = new Hono<{ Bindings: Env }>()
   // above its 5-min cadence. (Aski chat streams via the ChatAgent DO, not here.)
   .use("/api/assistant/track-event", aiRateLimit)
   .use("/api/assistant/nudges", nudgesRateLimit)
+  .use("/api/integrations/*", outboundRateLimit)
+  .use("/api/calendar/convert", outboundRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)
   .route("/api/clients", clientsRouter)
