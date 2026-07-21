@@ -13,8 +13,8 @@ import { useUIStore } from "@/stores/uiStore";
 
 const navItems = [
   { to: "/", icon: Timer, label: "Timer" },
-  { to: "/projects", icon: FolderOpen, label: "Projects" },
   { to: "/tasks", icon: ListChecks, label: "Tasks" },
+  { to: "/projects", icon: FolderOpen, label: "Projects" },
   { to: "/clients", icon: Users, label: "Clients" },
   { to: "/reports", icon: BarChart2, label: "Reports" },
   { to: "/settings", icon: Settings, label: "Settings" },
