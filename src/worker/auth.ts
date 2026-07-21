@@ -49,12 +49,14 @@ export function createAuth(env: Env, baseURL: string) {
       enabled: true,
     },
     session: {
-      // Disable better-auth's "fresh session" gate. It otherwise makes
-      // /list-sessions (the Settings → Active sessions card) 403 with
-      // SESSION_NOT_FRESH once a session is older than freshAge (default 1 day),
-      // breaking the card for every returning user. Only list-sessions uses the
-      // fresh gate here — revoke and other sensitive ops use the non-fresh
-      // middleware — so this just restores anytime session visibility.
+      // Disable better-auth's global "fresh session" gate so /list-sessions (the
+      // Settings → Active sessions card) doesn't 403 with SESSION_NOT_FRESH once a
+      // session is older than freshAge (default 1 day) — that broke the card for
+      // every returning user, and better-auth has no per-endpoint override.
+      // NOTE: freshAge:0 also drops the gate from /update-user and /unlink-account,
+      // so it is re-imposed on ONLY those two endpoints in middleware/fresh-session.ts
+      // (wired in index.ts). Revoke/change-password/delete-user use better-auth's
+      // separate sensitive-session / current-password checks and are unaffected.
       freshAge: 0,
       // Serve getSession() from a signed cookie for 5 minutes instead of a D1
       // lookup on every /api/* request (workspaceMiddleware). Bearer-token

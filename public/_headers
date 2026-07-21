@@ -1,0 +1,13 @@
+# Security headers for the SPA document and static assets.
+#
+# The worker only runs for /api/* and /agents/* (assets.run_worker_first), so the
+# securityHeaders middleware never touches the HTML document — these headers do.
+# Natively supported by Workers static assets: this file is copied into
+# dist/client by Vite and parsed by Cloudflare (not served as an asset).
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://timetracker.run wss://timetracker.run; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'

@@ -72,6 +72,8 @@ Cloudflare D1 (SQLite). Direct SQL — no ORM (Drizzle is only a peer dep for Be
 
 Multi-tenant: every row is scoped to a `workspace_id`. Better Auth tables use camelCase column names; all other tables use snake_case.
 
+**Dev seed data is NOT a migration.** Sample data + the demo login (`blake.bauman@gmail.com` / `TestPassApps2026`) live in `seeds/dev-seed.sql`, applied to your **local** D1 only: `npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql`. It was moved out of `migrations/` (0005/0006 are now no-ops) so `wrangler d1 migrations apply --remote` can never seed a known-credential account into production. Never add seed/demo data as a tracked migration.
+
 ### Frontend (`src/react-app/`)
 
 - `App.tsx` — React Router v7 routes; `AuthGuard` wraps protected pages
