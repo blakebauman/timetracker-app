@@ -41,7 +41,7 @@ There are five ways to get time into your timesheet:
 - **Timesheet grid** — the Timesheet view is a weekly grid: one row per project/task combination, type hours directly into day cells.
 - **Calendar click-to-track** — with Google Calendar connected, click a "ghost" event or an untracked gap block on the calendar to convert it into an entry.
 
-Entries support **description, project, task, tags, billable flag**, and inline editing after the fact. Suggestions based on your recent entries appear as you type a description. Bulk edit/delete is available from the entry list.
+Entries support **description, project, task, tags, billable flag**, and inline editing after the fact. Suggestions based on your recent entries appear as you type a description — in both the timer bar and the manual entry form. Picking one restores the project, task, and billable flag that title is usually logged against, **plus the tags from its most recent entry** (handy for recurring meetings that get the same tags every day). In the timer bar the carried tags show as removable chips; in the entry form they land in the tag picker for editing. Bulk edit/delete is available from the entry list.
 
 ## The Timer workspace (views)
 

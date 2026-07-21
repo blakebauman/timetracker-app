@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { ColorDot } from "@/components/ColorDot";
 import { useEntrySuggestions } from "@/hooks/useEntries";
+import { useTagColors } from "@/hooks/useProjects";
 import { cn } from "@/lib/utils";
 import type { EntrySuggestion } from "@shared/schemas";
 
@@ -15,8 +17,14 @@ interface DescriptionAutocompleteProps {
   onChange: (v: string) => void;
   onSelect: (s: EntrySuggestion) => void;
   // Enter with no suggestion highlighted falls through to the timer's
-  // start/stop, preserving the bar's existing behaviour.
-  onSubmit: () => void;
+  // start/stop, preserving the bar's existing behaviour. Unused (and Enter
+  // inserts a newline instead) in multiline mode.
+  onSubmit?: () => void;
+  // Render a Textarea instead of an Input — for the entry form sheet, where
+  // descriptions are multi-line.
+  multiline?: boolean;
+  id?: string;
+  autoFocus?: boolean;
   className?: string;
   inputRef?: React.Ref<HTMLInputElement>;
 }
@@ -66,18 +74,23 @@ function Highlighted({ text, query }: { text: string; query: string }) {
   );
 }
 
-// The timer bar's "What are you working on?" input, backed by a suggestion list
-// built from the last 90 days of entries. Picking a suggestion restores the
-// project/task/billable combo it was usually logged against, not just the text.
+// The description input (timer bar, and entry form via `multiline`), backed by
+// a suggestion list built from the last 90 days of entries. Picking a
+// suggestion restores the project/task/billable combo it was usually logged
+// against plus the tags from its most recent entry, not just the text.
 export function DescriptionAutocomplete({
   value,
   onChange,
   onSelect,
   onSubmit,
+  multiline = false,
+  id,
+  autoFocus,
   className,
   inputRef,
 }: DescriptionAutocompleteProps) {
   const { data: suggestions = [] } = useEntrySuggestions();
+  const tagColor = useTagColors();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
@@ -103,7 +116,9 @@ export function DescriptionAutocomplete({
     });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     switch (e.key) {
       case "ArrowDown":
         if (!matches.length) return;
@@ -122,7 +137,8 @@ export function DescriptionAutocomplete({
           commit(matches[active]);
           return;
         }
-        onSubmit();
+        // Multiline: let Enter insert a newline as the Textarea normally would.
+        if (!multiline) onSubmit?.();
         return;
       case "Escape":
         if (!isOpen) return;
@@ -139,34 +155,46 @@ export function DescriptionAutocomplete({
     }
   };
 
+  // Input and Textarea take the same handlers/aria wiring; only the element
+  // (and its ref type) differs between the timer bar and the entry form.
+  const fieldProps = {
+    id,
+    value,
+    autoFocus,
+    onChange: (
+      e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    ) => {
+      onChange(e.target.value);
+      setOpen(true);
+      setActive(-1);
+    },
+    onFocus: () => setOpen(true),
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      // Ignore blur caused by clicking a row — the row's mousedown handler
+      // commits it; closing here first would cancel the click.
+      if (listRef.current?.contains(e.relatedTarget as Node)) return;
+      setOpen(false);
+      setActive(-1);
+    },
+    onKeyDown: handleKeyDown,
+    placeholder: multiline ? "What did you work on?" : "What are you working on?",
+    role: "combobox",
+    "aria-expanded": isOpen,
+    "aria-autocomplete": "list" as const,
+    "aria-controls": "description-suggestions",
+    "aria-activedescendant":
+      active >= 0 ? `description-suggestion-${active}` : undefined,
+    className,
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={(o) => !o && setOpen(false)}>
       <PopoverAnchor asChild>
-        <Input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            setOpen(true);
-            setActive(-1);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={(e) => {
-            // Ignore blur caused by clicking a row — the row's mousedown handler
-            // commits it; closing here first would cancel the click.
-            if (listRef.current?.contains(e.relatedTarget as Node)) return;
-            setOpen(false);
-            setActive(-1);
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="What are you working on?"
-          role="combobox"
-          aria-expanded={isOpen}
-          aria-autocomplete="list"
-          aria-controls="description-suggestions"
-          aria-activedescendant={active >= 0 ? `description-suggestion-${active}` : undefined}
-          className={className}
-        />
+        {multiline ? (
+          <Textarea {...fieldProps} />
+        ) : (
+          <Input ref={inputRef} {...fieldProps} />
+        )}
       </PopoverAnchor>
       <PopoverContent
         ref={listRef}
@@ -210,6 +238,21 @@ export function DescriptionAutocomplete({
                 </>
               ) : (
                 <span className="opacity-70">No project</span>
+              )}
+              {/* Tags carried over on selection — kept quieter than the project
+                  name so the row doesn't turn into a badge salad. */}
+              {s.tags.length > 0 && (
+                <span className="flex min-w-0 shrink-0 items-center gap-1.5">
+                  {s.tags.slice(0, 2).map((t) => (
+                    <span key={t} className="flex max-w-24 items-center gap-1">
+                      <ColorDot color={tagColor(t)} className="h-1.5 w-1.5" />
+                      <span className="truncate">{t}</span>
+                    </span>
+                  ))}
+                  {s.tags.length > 2 && (
+                    <span className="opacity-70">+{s.tags.length - 2}</span>
+                  )}
+                </span>
               )}
               <span className="ml-auto shrink-0 tabular-nums opacity-70">
                 ×{s.uses}

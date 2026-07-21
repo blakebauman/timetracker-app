@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -12,6 +11,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet";
+import { DescriptionAutocomplete } from "@/components/timer/DescriptionAutocomplete";
 import { ProjectPicker } from "./ProjectPicker";
 import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
@@ -75,11 +75,23 @@ export function EntryFormSheet({
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
           <div className="space-y-1.5">
             <Label htmlFor="entry-description">Description</Label>
-            <Textarea
+            {/* Selecting a suggestion replaces project/task/billable AND tags —
+                an explicit "make it like last time", even over tags already
+                picked below; the TagPicker shows the result for easy fix-up. */}
+            <DescriptionAutocomplete
+              multiline
               id="entry-description"
               value={d.description}
-              onChange={(e) => patch({ description: e.target.value })}
-              placeholder="What did you work on?"
+              onChange={(description) => patch({ description })}
+              onSelect={(s) =>
+                patch({
+                  description: s.description,
+                  projectId: s.projectId,
+                  taskId: s.taskId,
+                  billable: s.billable,
+                  tags: s.tags,
+                })
+              }
               className="min-h-20 resize-none"
               autoFocus
             />

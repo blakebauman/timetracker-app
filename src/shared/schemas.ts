@@ -253,6 +253,9 @@ export const EntrySuggestionSchema = z.object({
   taskId: z.string().nullable(),
   taskName: z.string().nullable(),
   billable: z.boolean(),
+  // Tag names from the *most recent* entry with this description (not the
+  // dominant combo) — carried over when the suggestion is picked.
+  tags: z.array(z.string()),
   // Total times this description was logged in the lookback window, and when it
   // was last used — the client ranks on both.
   uses: z.number(),
