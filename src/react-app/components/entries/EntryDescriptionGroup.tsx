@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EntryRow } from "./EntryRow";
+import { AssignProjectChip } from "./ProjectPicker";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { useTimer } from "@/hooks/useTimer";
-import { useBulkDeleteEntries } from "@/hooks/useEntries";
+import { useBulkDeleteEntries, useBulkUpdateEntries } from "@/hooks/useEntries";
 import { cn } from "@/lib/utils";
 import { ColorDot } from "@/components/ColorDot";
 import { ProjectBadge } from "@/components/ProjectBadge";
@@ -36,6 +37,7 @@ export function EntryDescriptionGroup({
   const [open, setOpen] = useState(false);
   const { startTimer } = useTimer();
   const bulkDelete = useBulkDeleteEntries();
+  const bulkUpdate = useBulkUpdateEntries();
 
   const allSelected = group.entries.every((e) => selectedIds?.has(e.id));
   const someSelected = group.entries.some((e) => selectedIds?.has(e.id));
@@ -129,6 +131,20 @@ export function EntryDescriptionGroup({
             </div>
           )}
         </CollapsibleTrigger>
+
+        {/* Sibling of the trigger (a button can't nest inside a button):
+            assigns the project to every entry in the group at once. */}
+        {!group.projectId && (
+          <AssignProjectChip
+            ariaLabel={`Assign project to all ${group.entries.length} entries`}
+            onAssign={(projectId) =>
+              bulkUpdate.mutate({
+                ids: group.entries.map((e) => e.id),
+                patch: { projectId },
+              })
+            }
+          />
+        )}
 
         {/* Billable indicator */}
         {group.billable && (

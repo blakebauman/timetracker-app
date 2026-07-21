@@ -23,6 +23,8 @@ interface ProjectPickerProps {
   onChange: (projectId: string | null) => void;
   compact?: boolean;
   className?: string;
+  /** Custom trigger element (single child, receives the popover ref). */
+  children?: React.ReactNode;
 }
 
 export function ProjectPicker({
@@ -30,6 +32,7 @@ export function ProjectPicker({
   onChange,
   compact = false,
   className,
+  children,
 }: ProjectPickerProps) {
   const [open, setOpen] = useState(false);
   const { data: projects = [] } = useProjects();
@@ -44,6 +47,7 @@ export function ProjectPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        {children ?? (
         <Button
           variant="ghost"
           size={compact ? "sm" : "default"}
@@ -71,6 +75,7 @@ export function ProjectPicker({
           )}
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
         <Command>
@@ -106,5 +111,34 @@ export function ProjectPicker({
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+/**
+ * Dashed "Project" chip for entries without a project — opens the picker in
+ * place so an unbillable entry can be fixed without the edit dialog. Dashed
+ * border matches the calendar's ghost/gap affordance: unfilled, actionable.
+ */
+export function AssignProjectChip({
+  onAssign,
+  ariaLabel = "Assign project",
+}: {
+  onAssign: (projectId: string) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <ProjectPicker
+      value={null}
+      onChange={(projectId) => projectId && onAssign(projectId)}
+    >
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        className="flex h-4 items-center gap-1 rounded-sm border border-dashed border-muted-foreground/40 px-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <FolderOpen className="h-2.5 w-2.5" />
+        Project
+      </button>
+    </ProjectPicker>
   );
 }
