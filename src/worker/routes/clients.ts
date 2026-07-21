@@ -60,9 +60,9 @@ export const clientsRouter = new Hono<{
       .run();
 
     const { results } = await c.env.DB.prepare(
-      `SELECT * FROM clients WHERE id = ?`
+      `SELECT * FROM clients WHERE id = ? AND workspace_id = ?`
     )
-      .bind(id)
+      .bind(id, workspaceId)
       .all<Record<string, unknown>>();
 
     return c.json(formatClient(results[0]), 201);
@@ -101,11 +101,12 @@ export const clientsRouter = new Hono<{
     }
 
     const { results } = await c.env.DB.prepare(
-      `SELECT * FROM clients WHERE id = ?`
+      `SELECT * FROM clients WHERE id = ? AND workspace_id = ?`
     )
-      .bind(id)
+      .bind(id, workspaceId)
       .all<Record<string, unknown>>();
 
+    if (!results.length) return c.json({ error: "Not found" }, 404);
     return c.json(formatClient(results[0]));
   })
   .delete("/:id", async (c) => {

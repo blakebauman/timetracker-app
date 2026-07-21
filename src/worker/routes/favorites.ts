@@ -7,8 +7,8 @@ import { CreateFavoriteSchema } from "@shared/schemas";
 const FAVORITE_SELECT = `
   SELECT f.*, p.name AS project_name, p.color AS project_color, t.name AS task_name
   FROM favorites f
-  LEFT JOIN projects p ON p.id = f.project_id
-  LEFT JOIN tasks t ON t.id = f.task_id
+  LEFT JOIN projects p ON p.id = f.project_id AND p.workspace_id = f.workspace_id
+  LEFT JOIN tasks t ON t.id = f.task_id AND t.workspace_id = f.workspace_id
 `;
 
 function formatFavorite(row: Record<string, unknown>) {
@@ -72,9 +72,9 @@ export const favoritesRouter = new Hono<{
       .run();
 
     const { results } = await c.env.DB.prepare(
-      `${FAVORITE_SELECT} WHERE f.id = ?`
+      `${FAVORITE_SELECT} WHERE f.id = ? AND f.workspace_id = ?`
     )
-      .bind(id)
+      .bind(id, workspaceId)
       .all<Record<string, unknown>>();
 
     return c.json(formatFavorite(results[0]), 201);

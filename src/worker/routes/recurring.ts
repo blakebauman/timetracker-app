@@ -8,8 +8,8 @@ import {
 const RECURRING_SELECT = `
   SELECT r.*, p.name AS project_name, p.color AS project_color, t.name AS task_name
   FROM recurring_entries r
-  LEFT JOIN projects p ON p.id = r.project_id
-  LEFT JOIN tasks t ON t.id = r.task_id
+  LEFT JOIN projects p ON p.id = r.project_id AND p.workspace_id = r.workspace_id
+  LEFT JOIN tasks t ON t.id = r.task_id AND t.workspace_id = r.workspace_id
 `;
 
 function formatRecurring(row: Record<string, unknown>) {
@@ -81,8 +81,8 @@ export const recurringRouter = new Hono<{
       )
       .run();
 
-    const { results } = await c.env.DB.prepare(`${RECURRING_SELECT} WHERE r.id = ?`)
-      .bind(id)
+    const { results } = await c.env.DB.prepare(`${RECURRING_SELECT} WHERE r.id = ? AND r.workspace_id = ?`)
+      .bind(id, workspaceId)
       .all<Record<string, unknown>>();
     return c.json(formatRecurring(results[0]), 201);
   })
@@ -114,8 +114,8 @@ export const recurringRouter = new Hono<{
         .run();
     }
 
-    const { results } = await c.env.DB.prepare(`${RECURRING_SELECT} WHERE r.id = ?`)
-      .bind(id)
+    const { results } = await c.env.DB.prepare(`${RECURRING_SELECT} WHERE r.id = ? AND r.workspace_id = ?`)
+      .bind(id, workspaceId)
       .all<Record<string, unknown>>();
     if (!results.length) return c.json({ error: "Not found" }, 404);
     return c.json(formatRecurring(results[0]));
