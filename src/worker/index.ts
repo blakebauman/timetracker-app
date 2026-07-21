@@ -3,6 +3,7 @@ import { corsMiddleware } from "./middleware/cors";
 import { securityHeaders } from "./middleware/security-headers";
 import { rateLimit } from "./middleware/rate-limit";
 import { workspaceMiddleware } from "./middleware/workspace";
+import { requireFreshSession } from "./middleware/fresh-session";
 import { timeEntriesRouter } from "./routes/time-entries";
 import { projectsRouter } from "./routes/projects";
 import { clientsRouter } from "./routes/clients";
@@ -47,6 +48,11 @@ const app = new Hono<{ Bindings: Env }>()
   .use("/api/auth/change-password", authRateLimit)
   .use("/api/auth/email-otp/send-verification-otp", authRateLimit)
   .use("/api/auth/sign-in/magic-link", authRateLimit)
+  // Re-impose the fresh-session gate on the sensitive profile mutations that
+  // Better Auth's freshAge:0 (needed for the sessions card) would otherwise leave
+  // ungated. See middleware/fresh-session.ts.
+  .use("/api/auth/update-user", requireFreshSession)
+  .use("/api/auth/unlink-account", requireFreshSession)
   .on(["GET", "POST"], "/api/auth/*", (c) => {
     const origin = new URL(c.req.url).origin;
     return createAuth(c.env, origin).handler(c.req.raw);
