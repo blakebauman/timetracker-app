@@ -369,6 +369,39 @@ export const CreateSavedReportSchema = z.object({
 export type SavedReport = z.infer<typeof SavedReportSchema>;
 export type CreateSavedReport = z.infer<typeof CreateSavedReportSchema>;
 
+// ─── Planner (per-user planned allocations) ──────────────────────────────────
+
+// One cell of the Planner grid: planned seconds for a project(+task) on a local
+// calendar date. Project/task names come joined from the server so the grid
+// renders without extra lookups.
+export const AllocationSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  taskId: z.string().nullable(),
+  date: z.string(), // 'YYYY-MM-DD'
+  plannedSeconds: z.number(),
+  projectName: z.string().nullable(),
+  projectColor: z.string().nullable(),
+  taskName: z.string().nullable(),
+  updatedAt: z.string(),
+});
+
+export const UpsertAllocationSchema = z.object({
+  projectId: z.string().min(1),
+  taskId: z.string().nullable().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  // 0 clears the cell (deletes the row server-side).
+  plannedSeconds: z.number().int().min(0).max(86400),
+});
+
+export const BulkUpsertAllocationsSchema = z.object({
+  allocations: z.array(UpsertAllocationSchema).min(1).max(500),
+});
+
+export type Allocation = z.infer<typeof AllocationSchema>;
+export type UpsertAllocation = z.infer<typeof UpsertAllocationSchema>;
+export type BulkUpsertAllocations = z.infer<typeof BulkUpsertAllocationsSchema>;
+
 // ─── Integrations ──────────────────────────────────────────────────────────────
 
 export const IntegrationTypeSchema = z.enum(["workfront", "dynamics"]);

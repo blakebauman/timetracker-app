@@ -39,6 +39,9 @@ const CalendarBody = lazy(() =>
 const TimesheetView = lazy(() =>
   import("@/components/timesheet/TimesheetView").then((m) => ({ default: m.TimesheetView }))
 );
+const PlannerView = lazy(() =>
+  import("@/components/planner/PlannerView").then((m) => ({ default: m.PlannerView }))
+);
 
 function BodyFallback() {
   return (
@@ -49,7 +52,8 @@ function BodyFallback() {
 }
 
 // The unified Timer tab: owns the navigable week + active view, renders the
-// shared header, and swaps the body between list / calendar / split / timesheet.
+// shared header, and swaps the body between list / calendar / split / timesheet
+// / planner.
 export function TimerWorkspace() {
   const view = useUIStore((s) => s.timerView);
   const setView = useUIStore((s) => s.setTimerView);
@@ -216,6 +220,12 @@ export function TimerWorkspace() {
     body = (
       <Suspense fallback={<BodyFallback />}>
         <TimesheetView weekStart={since} />
+      </Suspense>
+    );
+  else if (effectiveView === "planner")
+    body = (
+      <Suspense fallback={<BodyFallback />}>
+        <PlannerView weekStart={since} />
       </Suspense>
     );
   else if (effectiveView === "split")

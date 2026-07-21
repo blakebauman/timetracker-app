@@ -45,14 +45,25 @@ Entries support **description, project, task, tags, billable flag**, and inline 
 
 ## The Timer workspace (views)
 
-The Timer tab hosts four interchangeable views behind one shared header (date navigation, weekends toggle, zoom):
+The Timer tab hosts five interchangeable views behind one shared header (date navigation, weekends toggle, zoom):
 
 - **List** — entries grouped by day, with day totals.
 - **Calendar** — a Toggl-style FullCalendar grid (week / 5-day / day / month). Real entries render as colored blocks; unconfirmed Google Calendar events show as dashed "ghosts"; **untracked gaps** between entries show as clickable "Track hh:mm–hh:mm" blocks (toggle with the gaps switch).
 - **Split** — calendar + list side by side (large screens).
 - **Timesheet** — the weekly hours grid.
+- **Planner** — plan your week ahead of time (see below).
 
 A **"Logged" bar** in the header shows the day's total with per-project colored segments.
+
+## Project Planner
+
+The **Planner** view (Timer tab, last icon in the view switcher) is a weekly grid like the Timesheet, but its cells hold **planned hours** instead of tracked time — your personal allocation per project (and optional task) per day. Plans are **per user**: teammates in the same workspace each keep their own.
+
+- **Enter a plan** by clicking a cell and typing a duration (`4h`, `1:30`, `90m` — a bare number means minutes). Clearing a cell removes the plan.
+- **Plan vs. actual**: each cell shows your planned hours with the time you actually tracked beneath. Tracked time turns **amber when it exceeds the plan**. Rows appear for anything planned *or* tracked that week, so unplanned work is visible too. Totals per day, per row, and for the week show both numbers.
+- **Add row** adds a project/task combination you haven't planned or tracked yet.
+- **Copy last week's plan** duplicates the previous week's allocations onto the current week (with Undo).
+- **Import CSV** accepts `Date,Project,Task,Hours` rows (paste or upload). Dates are `YYYY-MM-DD`; projects/tasks are matched by name; in the Hours column a plain number means **hours** (`1.5` = 1h 30m) and `1:30` / `1h 30m` / `90m` also work. A preview flags unknown projects, bad dates, and bad durations — clean rows import, flagged ones are skipped.
 
 ## Organizing work: clients, projects, tasks, tags
 

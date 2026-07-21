@@ -35,6 +35,7 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 | `/api/clients`, `/api/tasks`, `/api/tags`, `/api/favorites`, `/api/recurring` | one file each | plain CRUD (tags: rename/recolor/delete only — created implicitly via entries) |
 | `/api/reports` | `reports.ts` | `summary`, `grouped` (group→subGroup), `weekly`, `detailed`; rounding applied in SQL |
 | `/api/saved-reports` | `saved-reports.ts` | per-user saved report configs |
+| `/api/planner` | `planner.ts` | per-user planned allocations (project+task per day): `GET ?since&until`, `PUT /` cell upsert (0 deletes), `POST /bulk` (CSV import / copy-week) |
 | `/api/settings` | `settings.ts` | per-user prefs stored on the Better Auth `user` row |
 | `/api/calendar` | `calendar.ts` | Google OAuth connect/callback/status/disconnect, `GET /events` (read-through), `PATCH /auto-track`, `POST /convert` |
 | `/api/ai` | `ai.ts` | `POST /quick-entry` (NL→entry), `POST /summary` (AI report draft); rate-limited |
@@ -82,7 +83,7 @@ Two independent, idempotent materializers, both iterating workspaces and swallow
 
 ## Data model (D1)
 
-Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy ordering rule). Core tables: `workspaces`, `clients`, `projects` (rate, budget, color), `tasks`, `time_entries` (+ `calendar_event_id`), `tags` + `time_entry_tags` (tag colors), `favorites`, `recurring_entries`, `saved_reports`, `integrations` (encrypted tokens — AES-GCM keyed by `AUTH_SECRET`, `lib/crypto.ts`), `assistant_memory`, plus the Better Auth tables (user/session/account/organization/invitation/twoFactor/passkey).
+Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy ordering rule). Core tables: `workspaces`, `clients`, `projects` (rate, budget, color), `tasks`, `time_entries` (+ `calendar_event_id`), `tags` + `time_entry_tags` (tag colors), `favorites`, `recurring_entries`, `saved_reports`, `project_allocations` (per-user planned hours; `task_id` uses `''` for "no task" so the 5-column UNIQUE supports `ON CONFLICT` upserts), `integrations` (encrypted tokens — AES-GCM keyed by `AUTH_SECRET`, `lib/crypto.ts`), `assistant_memory`, plus the Better Auth tables (user/session/account/organization/invitation/twoFactor/passkey).
 
 **Seed data is not a migration.** `seeds/dev-seed.sql` is local-only (`npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql`); migrations 0005/0006 were retroactively no-op'd so remote applies can never seed demo credentials into prod.
 
@@ -92,7 +93,7 @@ Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy or
 - **Local state:** Zustand — `timerStore` (running timer), `uiStore` (view prefs, calendar prefs, productivity settings), `assistantStore` (nudge dismissals, alert toggle). Device-local by design; account-level prefs go through `/api/settings`.
 - **Offline:** `lib/idb.ts` + `useOfflineSync` queue mutations in IndexedDB and replay on reconnect; timer state is cached so a refresh offline doesn't lose the running timer.
 - **Optimistic stop:** `useTimer.ts` patches the entry to completed in the Query cache *before* clearing the timer so day totals never visibly dip.
-- **Timer workspace:** `pages/TimerWorkspace.tsx` — four views (list/calendar/split/timesheet) behind one header; `lib/calendarMapping.ts` renders three event kinds on one grid (real entries, Google ghosts, untracked-gap blocks). `/calendar` redirects here.
+- **Timer workspace:** `pages/TimerWorkspace.tsx` — five views (list/calendar/split/timesheet/planner) behind one header; `lib/calendarMapping.ts` renders three event kinds on one grid (real entries, Google ghosts, untracked-gap blocks). `/calendar` redirects here.
 - **Global chrome:** `AppShell` mounts the sidebar, command palette (⌘K), keyboard shortcuts, Assistant panel + nudge notifier, and `ProductivityManager` (idle detection, reminders, pomodoro).
 
 Design tokens and conventions live in `DESIGN.md` / `PRODUCT.md` — read those before touching UI; they encode decisions (soft-tone ramp, one-accent rule, icon-button size tokens) that aren't recoverable from the code.

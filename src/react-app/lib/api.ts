@@ -300,6 +300,19 @@ export const api = {
       request<unknown[]>(`/reports/weekly?${reportQuery(params)}`),
   },
 
+  // ─── Planner (planned allocations) ────────────────────────────────────────
+  planner: {
+    list: (params: { since: string; until: string }) =>
+      request<unknown[]>(`/planner?since=${params.since}&until=${params.until}`),
+    upsert: (body: Record<string, unknown>) =>
+      request<unknown>("/planner", { method: "PUT", body: JSON.stringify(body) }),
+    bulkUpsert: (body: { allocations: Record<string, unknown>[] }) =>
+      request<{ upserted: number; deleted: number }>("/planner/bulk", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
+
   // ─── Saved reports ────────────────────────────────────────────────────────
   savedReports: {
     list: () => request<unknown[]>("/saved-reports"),
