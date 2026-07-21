@@ -21,7 +21,9 @@ export async function addManualEntry(
   const dialog = page.getByRole("dialog");
   await dialog.locator("textarea").fill(description);
   await fillTimeRange(dialog, start, stop);
-  await expect(dialog.getByText(/^Duration:/)).toBeVisible();
+  // The Duration field reflects the committed range (the old standalone
+  // "Duration: 1h 30m" line was removed once every form gained the field).
+  await expect(dialog.getByLabel("Duration")).not.toHaveValue("00:00:00");
   await dialog.getByRole("button", { name: "Add entry" }).click();
   await dialog.waitFor({ state: "hidden" });
 }
