@@ -109,6 +109,11 @@ export function groupEntriesByDay(
           billable: grpEntries.some((e) => e.billable),
         }))
         .sort((a, b) => {
+          // The actively running entry's group always leads its day — resuming
+          // work later in the day must bring its whole group back to the top.
+          const aRunning = a.entries.some((e) => e.stop === null);
+          const bRunning = b.entries.some((e) => e.stop === null);
+          if (aRunning !== bRunning) return aRunning ? -1 : 1;
           // The just-stopped entry floats to the top of its day; everything else
           // stays in reverse-chronological order.
           if (pinnedEntryId) {

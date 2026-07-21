@@ -66,6 +66,9 @@ export function useTimer() {
       }) as Promise<TimeEntry>;
     },
     onMutate: async (partial) => {
+      // Release the just-stopped pin: once a new timer runs, ordering should be
+      // running-group-first + reverse-chronological, not last-stopped-first.
+      useUIStore.getState().clearPinnedEntry();
       const now = Date.now();
       const optimistic: TimeEntry = {
         id: `optimistic-${now}`,
