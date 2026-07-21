@@ -17,6 +17,7 @@ import { useUIStore } from "@/stores/uiStore";
 import { useAssistantStore } from "@/stores/assistantStore";
 import {
   Timer,
+  ListChecks,
   FolderOpen,
   Users,
   BarChart2,
@@ -85,6 +86,9 @@ export function CommandPalette() {
 
   const navItems = [
     { to: "/", label: "Timer", icon: Timer },
+    // Same order as the sidebar. Tasks was missing here entirely — a top-level
+    // page with no command-palette entry.
+    { to: "/tasks", label: "Tasks", icon: ListChecks },
     { to: "/projects", label: "Projects", icon: FolderOpen },
     { to: "/clients", label: "Clients", icon: Users },
     { to: "/reports", label: "Reports", icon: BarChart2 },
