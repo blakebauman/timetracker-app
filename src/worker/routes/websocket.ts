@@ -2,7 +2,7 @@ import { Hono } from "hono";
 
 export const websocketRouter = new Hono<{
   Bindings: Env;
-  Variables: { workspaceId: string };
+  Variables: { workspaceId: string; userId: string };
 }>().get("/", async (c) => {
   const workspaceId = c.get("workspaceId");
 
@@ -15,8 +15,11 @@ export const websocketRouter = new Hono<{
   try {
     const id = c.env.TIMER_ROOM.idFromName(workspaceId);
     const stub = c.env.TIMER_ROOM.get(id);
-    // Pass the original request object directly (preserves Upgrade header)
-    return await stub.fetch(c.req.raw);
+    // Clone so we can tag the authenticated user for the DO (the room is
+    // per-workspace; activity relay is scoped per-user via this header).
+    const forwarded = new Request(c.req.raw);
+    forwarded.headers.set("X-User-Id", c.get("userId"));
+    return await stub.fetch(forwarded);
   } catch {
     return c.text("WebSocket unavailable", 503);
   }

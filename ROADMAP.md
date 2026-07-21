@@ -40,4 +40,12 @@ WebSocket `broadcast` for live refresh.
 
 ## Ideas / backlog
 
-- (add future items here)
+- **Desktop app (Tauri) for OS-level idle detection** — the web app can only
+  see in-page activity, so "idle" can't distinguish *left the machine* from
+  *working in another native app*. Cross-session activity relay via
+  `TimerRoomDO` + the hidden-tab gate (shipped) fix the multi-device false
+  positives, but true away-from-keyboard detection needs a native shell.
+  A [Tauri](https://github.com/tauri-apps/tauri) wrapper around the existing
+  SPA could read system idle time (e.g. the `user-idle` crate) and feed it in
+  as just another activity source — it would *complement* the web idle
+  detection (browser/PWA users still need it), not replace it.

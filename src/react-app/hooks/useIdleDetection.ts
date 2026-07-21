@@ -1,18 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const ACTIVITY_EVENTS = [
-  "mousemove",
-  "mousedown",
-  "keydown",
-  "touchstart",
-  "scroll",
-  "wheel",
-] as const;
+import { ACTIVITY_EVENTS, getLastRemoteActivity } from "@/lib/activitySync";
 
 // Fires while `active`. Tracks the last user activity and, once the user has
 // been idle for `thresholdMs`, exposes the timestamp at which they went idle.
 // The value stays frozen until `clear()` is called (i.e. the user resolves the
 // idle prompt), so returning activity doesn't lose the idle window.
+//
+// "Activity" is the later of local input in this tab and `user_activity`
+// relayed from the user's other sessions, and a hidden tab never opens an
+// idle window — a background tab can't tell "user left" from "user is working
+// in another window or on another device".
 export function useIdleDetection(active: boolean, thresholdMs: number) {
   const [idleSince, setIdleSince] = useState<number | null>(null);
   const lastActivity = useRef(0);
@@ -53,9 +50,11 @@ export function useIdleDetection(active: boolean, thresholdMs: number) {
 
     const id = window.setInterval(() => {
       if (frozen.current) return;
-      if (Date.now() - lastActivity.current >= thresholdMs) {
+      if (document.visibilityState === "hidden") return;
+      const last = Math.max(lastActivity.current, getLastRemoteActivity());
+      if (Date.now() - last >= thresholdMs) {
         frozen.current = true;
-        setIdleSince(lastActivity.current);
+        setIdleSince(last);
       }
     }, 15_000);
 
