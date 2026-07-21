@@ -6,8 +6,6 @@ export function useAuth() {
     user: session?.user ?? null,
     session: session?.session ?? null,
     isLoading: isPending,
-    signIn: authClient.signIn.email,
-    signUp: authClient.signUp.email,
     signOut: () => authClient.signOut(),
   };
 }

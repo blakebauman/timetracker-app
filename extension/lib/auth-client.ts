@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { emailOTPClient } from "better-auth/client/plugins";
 import { DEFAULT_API_URL } from "./apiUrl";
 
 // Standard better-auth client for the extension popup.
@@ -18,6 +19,10 @@ export type ExtAuthClient = ReturnType<typeof makeAuthClient>;
 export function makeAuthClient(baseURL: string = DEFAULT_API_URL) {
   return createAuthClient({
     baseURL,
+    // Sign-in is email OTP only: the popup can't complete a magic-link flow
+    // (the link opens the web app, so the session would land in cookies there,
+    // never in this client's bearer-token storage).
+    plugins: [emailOTPClient()],
     fetchOptions: {
       auth: {
         type: "Bearer",
