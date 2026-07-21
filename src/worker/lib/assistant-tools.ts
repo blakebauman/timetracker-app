@@ -134,6 +134,10 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         projectName: z.string().nullish(),
         billable: z.boolean().nullish(),
       }),
+      // Creates a billable record — require the user to confirm before it writes,
+      // so an instruction injected via calendar/entry text can't silently invent
+      // billable hours (native AI-SDK human-in-the-loop; see the ToolCard UI).
+      needsApproval: true,
       execute: async ({ description, start, stop, projectName, billable }) => {
         if (Date.parse(stop) <= Date.parse(start)) {
           return { ok: false, reason: "Stop must be after start." };
@@ -180,6 +184,8 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         start: ISO,
         stop: ISO,
       }),
+      // Creates a billable record — confirm before writing (see logTimeEntry).
+      needsApproval: true,
       execute: async ({ title, start, stop }) => {
         if (Date.parse(stop) <= Date.parse(start)) {
           return { ok: false, reason: "Stop must be after start." };
@@ -277,6 +283,10 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         key: z.string().max(80).describe("short slug identifying the fact, e.g. 'acme-billing'"),
         content: z.string().max(1000).describe("the fact, phrased so it's useful later"),
       }),
+      // Persistent memory is replayed into every future prompt, so a poisoned
+      // entry outlives the turn that wrote it — require confirmation before it
+      // saves, so injected text can't silently plant a durable instruction.
+      needsApproval: true,
       execute: async ({ key, content }) => {
         const { key: saved } = await rememberFact(db, workspaceId, key, content);
         return { ok: true, key: saved };
