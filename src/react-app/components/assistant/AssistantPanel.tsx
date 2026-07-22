@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useHotkeys } from "react-hotkeys-hook";
 import {
   Sparkles,
   CalendarClock,
@@ -150,7 +149,12 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   );
 }
 
-/** Right-side sheet hosting the assistant's nudges and streaming chat. Mounted once in AppShell. */
+/**
+ * Right-side sheet hosting the assistant's nudges and streaming chat.
+ * Lazy-mounted from AppShell on first open (this module pulls the whole
+ * agents/AI SDK chain, ~a quarter of the entry chunk); the ⌘I shortcut lives in
+ * AppShell so it works before this chunk has ever loaded.
+ */
 export function AssistantPanel() {
   const open = useAssistantStore((s) => s.open);
   const setOpen = useAssistantStore((s) => s.setOpen);
@@ -159,17 +163,6 @@ export function AssistantPanel() {
   const { nudges } = useAssistantNudges();
   const suggestions = useContextualSuggestions();
   const promptRef = useRef<HTMLTextAreaElement>(null);
-
-  // Global shortcut, mirrored in the launcher tooltip, command palette, and the
-  // "?" reference. enableOnFormTags so it works mid-typing in any field.
-  useHotkeys(
-    "meta+i,ctrl+i",
-    () => {
-      const s = useAssistantStore.getState();
-      s.setOpen(!s.open);
-    },
-    { preventDefault: true, enableOnFormTags: true }
-  );
 
   // The structured, review-before-save path. Close the sheet first so the two
   // modals (sheet + dialog) don't stack their focus traps.

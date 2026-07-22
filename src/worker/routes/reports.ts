@@ -5,6 +5,12 @@ import { buildReportWhere, durationExpr } from "../db/queries";
 
 type RoundMode = "off" | "nearest" | "up" | "down";
 
+// /detailed was the only unbounded row fetch in the API (the entries list caps
+// at ENTRY_LIST_LIMIT). This cap protects the worker from buffering a multi-MB
+// JSON body on an "All dates" range — far above any realistic report today;
+// revisit with real pagination if a workspace ever hits it.
+const DETAILED_ROW_LIMIT = 10_000;
+
 // The filter/rounding fields every report query reads (since/until required).
 interface ReportQuery {
   since: string;
@@ -67,9 +73,14 @@ export const reportsRouter = new Hono<{
     const { where, bindings } = buildReportWhere(filterArgs(q, workspaceId));
     const e = exprs(q);
 
-    // Total stats
-    const { results: totals } = await c.env.DB.prepare(
-      `
+    // All six aggregations share the same WHERE/bindings — one db.batch() round
+    // trip (consistent snapshot) instead of six serial D1 queries, which from a
+    // far-away PoP is the difference between ~1 RTT and ~6.
+    const [totalsRes, byProjectRes, byClientRes, byTaskRes, byTagRes, dailyRes] =
+      await c.env.DB.batch<Record<string, unknown>>([
+        // Total stats
+        c.env.DB.prepare(
+          `
       SELECT
         COUNT(*) as entry_count,
         ${e.total} as total_seconds,
@@ -79,13 +90,10 @@ export const reportsRouter = new Hono<{
       LEFT JOIN projects p ON p.id = te.project_id
       WHERE ${where}
     `
-    )
-      .bind(...bindings)
-      .all<Record<string, number>>();
-
-    // By project
-    const { results: byProject } = await c.env.DB.prepare(
-      `
+        ).bind(...bindings),
+        // By project
+        c.env.DB.prepare(
+          `
       SELECT
         p.id as id, p.name as name, p.color as color,
         COUNT(*) as entry_count,
@@ -98,13 +106,10 @@ export const reportsRouter = new Hono<{
       GROUP BY te.project_id
       ORDER BY total_seconds DESC
     `
-    )
-      .bind(...bindings)
-      .all<Record<string, unknown>>();
-
-    // By client
-    const { results: byClient } = await c.env.DB.prepare(
-      `
+        ).bind(...bindings),
+        // By client
+        c.env.DB.prepare(
+          `
       SELECT
         p.client_id as id, COALESCE(cl.name, 'No client') as name,
         COUNT(*) as entry_count,
@@ -118,13 +123,10 @@ export const reportsRouter = new Hono<{
       GROUP BY p.client_id
       ORDER BY total_seconds DESC
     `
-    )
-      .bind(...bindings)
-      .all<Record<string, unknown>>();
-
-    // By task
-    const { results: byTask } = await c.env.DB.prepare(
-      `
+        ).bind(...bindings),
+        // By task
+        c.env.DB.prepare(
+          `
       SELECT
         te.task_id as id, COALESCE(tk.name, 'No task') as name,
         COUNT(*) as entry_count,
@@ -138,13 +140,10 @@ export const reportsRouter = new Hono<{
       GROUP BY te.task_id
       ORDER BY total_seconds DESC
     `
-    )
-      .bind(...bindings)
-      .all<Record<string, unknown>>();
-
-    // By tag — joins tags, so an entry with N tags counts toward N tags.
-    const { results: byTag } = await c.env.DB.prepare(
-      `
+        ).bind(...bindings),
+        // By tag — joins tags, so an entry with N tags counts toward N tags.
+        c.env.DB.prepare(
+          `
       SELECT
         t.id as id, COALESCE(t.name, 'No tag') as name,
         COUNT(DISTINCT te.id) as entry_count,
@@ -159,13 +158,10 @@ export const reportsRouter = new Hono<{
       GROUP BY t.id
       ORDER BY total_seconds DESC
     `
-    )
-      .bind(...bindings)
-      .all<Record<string, unknown>>();
-
-    // Daily breakdown
-    const { results: daily } = await c.env.DB.prepare(
-      `
+        ).bind(...bindings),
+        // Daily breakdown
+        c.env.DB.prepare(
+          `
       SELECT
         date(te.start) as date,
         ${e.total} as total_seconds,
@@ -176,9 +172,14 @@ export const reportsRouter = new Hono<{
       GROUP BY date(te.start)
       ORDER BY date ASC
     `
-    )
-      .bind(...bindings)
-      .all<Record<string, unknown>>();
+        ).bind(...bindings),
+      ]);
+    const totals = totalsRes.results as Record<string, number>[];
+    const byProject = byProjectRes.results;
+    const byClient = byClientRes.results;
+    const byTask = byTaskRes.results;
+    const byTag = byTagRes.results;
+    const daily = dailyRes.results;
 
     const mapBreakdown = (
       rows: Record<string, unknown>[],
@@ -248,8 +249,11 @@ export const reportsRouter = new Hono<{
         groupBy.push(sub.col);
       }
 
-      const { results } = await c.env.DB.prepare(
-        `
+      // Grouped rows + grand totals (a separate statement so tag double-counting
+      // never inflates them) in one batched round trip.
+      const [groupedRes, totalsRes] = await c.env.DB.batch<Record<string, unknown>>([
+        c.env.DB.prepare(
+          `
         SELECT ${cols.join(", ")},
           COUNT(DISTINCT te.id) as entry_count,
           ${e.total} as total_seconds,
@@ -261,22 +265,19 @@ export const reportsRouter = new Hono<{
         GROUP BY ${groupBy.join(", ")}
         ORDER BY total_seconds DESC
       `
-      )
-        .bind(...bindings)
-        .all<Record<string, unknown>>();
-
-      // Grand totals (single query so tag double-counting never inflates them).
-      const { results: totals } = await c.env.DB.prepare(
-        `
+        ).bind(...bindings),
+        c.env.DB.prepare(
+          `
         SELECT COUNT(*) as entry_count, ${e.total} as total_seconds,
           ${e.billable} as billable_seconds, ${e.amount} as billable_amount
         FROM time_entries te
         LEFT JOIN projects p ON p.id = te.project_id
         WHERE ${where}
       `
-      )
-        .bind(...bindings)
-        .all<Record<string, number>>();
+        ).bind(...bindings),
+      ]);
+      const results = groupedRes.results;
+      const totals = totalsRes.results as Record<string, number>[];
 
       // Nest rows into group → subGroup.
       type Row = {
@@ -406,6 +407,7 @@ export const reportsRouter = new Hono<{
       WHERE ${where}
       GROUP BY te.id
       ORDER BY te.start DESC
+      LIMIT ${DETAILED_ROW_LIMIT}
     `
       )
         .bind(...bindings)

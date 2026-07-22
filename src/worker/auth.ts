@@ -36,14 +36,19 @@ export function createAuth(env: Env, baseURL: string) {
   // and worker share an origin here, so the RP origin is just the base origin.
   const rpURL = new URL(baseURL);
 
+  // Better Auth silently falls back BETTER_AUTH_SECRET → AUTH_SECRET → a
+  // known default string; never let that chain start. (AUTH_SECRET is a
+  // different key — it encrypts integration credentials at rest.)
+  if (!env.BETTER_AUTH_SECRET) {
+    throw new Error("BETTER_AUTH_SECRET is not set (wrangler secret put BETTER_AUTH_SECRET)");
+  }
+
   const auth = betterAuth({
     // D1 is auto-detected via its batch/exec/prepare interface
     database: env.DB as unknown as Parameters<typeof betterAuth>[0]["database"],
     secret: env.BETTER_AUTH_SECRET,
     baseURL,
     trustedOrigins: [
-      "http://localhost:5173",
-      "http://localhost:8787",
       "https://timetracker.run",
       // Browser extension. The ID below is pinned via the manifest "key" for
       // local dev/testing (see extension/.keys/README.md). NOTE: the Chrome Web
@@ -51,6 +56,11 @@ export function createAuth(env: Env, baseURL: string) {
       // published chrome-extension://<id> here too. See extension/PUBLISHING.md.
       // The extension signs in with the standard better-auth client + bearer().
       "chrome-extension://nogikmhdpnnedmfldanickgpikmifcje",
+      // trustedOrigins gates CSRF origin checks AND callbackURL validation, so
+      // localhost must never be trusted by the production build — any local
+      // process on a user's machine could serve those origins. Compiled in for
+      // dev/e2e builds only.
+      ...(import.meta.env.DEV ? ["http://localhost:5173", "http://localhost:8787"] : []),
     ],
     emailAndPassword: {
       // Passwords are retired in production — sign-in is email OTP, magic link,

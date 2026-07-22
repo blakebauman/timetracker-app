@@ -70,8 +70,9 @@ async function insertEvents(
   let inferred = new Map<string, InferredEventProject>();
   try {
     inferred = await inferEventProjects(db, env.AI, workspaceId, fresh.map((e) => e.title));
-  } catch {
+  } catch (e) {
     // AI unavailable — entries still materialize, just uncategorized.
+    console.warn("autotrack: project inference unavailable", { workspaceId, error: String(e) });
   }
 
   const now = new Date().toISOString();
@@ -158,12 +159,25 @@ export async function runAutoTrack(env: Env): Promise<void> {
   const since = new Date(now - 60 * 60 * 1000).toISOString();
   const until = new Date(now + 60 * 1000).toISOString();
 
-  for (const row of results) {
-    try {
-      await convertRange(env, row.workspace_id, since, until, { onlyEnded: true });
-    } catch {
-      // One workspace failing (revoked token, transient Google error) must not
-      // abort the rest of the sweep.
-    }
+  // Bounded concurrency: a serial sweep head-of-line-blocks every workspace
+  // behind one slow Google response; unbounded Promise.all would breach the
+  // 6-simultaneous-connection limit. Chunks of 5 keep the sweep O(n/5).
+  const CONCURRENCY = 5;
+  for (let i = 0; i < results.length; i += CONCURRENCY) {
+    await Promise.all(
+      results.slice(i, i + CONCURRENCY).map(async (row) => {
+        try {
+          await convertRange(env, row.workspace_id, since, until, { onlyEnded: true });
+        } catch (e) {
+          // One workspace failing (revoked token, transient Google error) must
+          // not abort the rest of the sweep — but a persistent failure means
+          // that workspace's entries silently stop materializing, so log it.
+          console.error("autotrack: workspace sweep failed", {
+            workspaceId: row.workspace_id,
+            error: String(e),
+          });
+        }
+      })
+    );
   }
 }
