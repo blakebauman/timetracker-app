@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Timer, FolderOpen, ListChecks, Users, BarChart2, Settings, Clock, LogOut, ChevronLeft, Menu, ShieldCheck, Search, Keyboard } from "lucide-react";
+import { Timer, FolderOpen, ListChecks, Users, BarChart2, Settings, LogOut, ChevronLeft, Menu, ShieldCheck, Search, Keyboard } from "lucide-react";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
 import { formatSeconds } from "@/lib/dateUtils";
@@ -225,7 +226,7 @@ export function Sidebar() {
       {/* Mobile top bar — replaces the sidebar below md */}
       <div className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-3 md:hidden">
         <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 shrink-0 text-primary" />
+          <BrandMark className="h-5 w-5 shrink-0" />
           <span className="font-semibold tracking-tight">Time Tracker</span>
         </div>
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -242,7 +243,7 @@ export function Sidebar() {
           <SheetContent side="left" className="w-64 gap-0 p-0">
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <div className="flex h-14 items-center border-b px-4">
-              <Clock className="h-5 w-5 shrink-0 text-primary" />
+              <BrandMark className="h-5 w-5 shrink-0" />
               <span className="ml-2 font-semibold tracking-tight">Time Tracker</span>
             </div>
             <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
@@ -272,16 +273,16 @@ export function Sidebar() {
                   type="button"
                   onClick={toggleSidebar}
                   aria-label="Expand sidebar"
-                  className="flex h-full w-full items-center justify-center text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  className="flex h-full w-full items-center justify-center transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 >
-                  <Clock className="h-5 w-5 shrink-0" />
+                  <BrandMark className="h-5 w-5 shrink-0" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">Expand sidebar</TooltipContent>
             </Tooltip>
           ) : (
             <>
-              <Clock className="h-5 w-5 shrink-0 text-primary" />
+              <BrandMark className="h-5 w-5 shrink-0" />
               {/* nowrap + clipped so the label doesn't wrap to two lines while the
                   rail width animates open (was a "Time / Tracker" flash). */}
               <span className="ml-2 whitespace-nowrap font-semibold tracking-tight">

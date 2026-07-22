@@ -14,7 +14,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
-import { Clock } from "lucide-react";
+import { BrandMark } from "@/components/brand/BrandMark";
 
 function GoogleIcon() {
   return (
@@ -122,9 +122,7 @@ export function SignupPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 flex items-center justify-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Clock className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <BrandMark className="h-9 w-9" />
           <span className="text-xl font-bold">Time Tracker</span>
         </div>
 
