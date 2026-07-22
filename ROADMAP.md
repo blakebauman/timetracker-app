@@ -35,8 +35,64 @@ WebSocket `broadcast` for live refresh.
 ## Backend hardening
 
 - **Cross-isolate auth rate limiting** — the credential-endpoint limiter
-  (`middleware/rate-limit.ts`) is in-isolate only; a Durable Object or KV-backed
-  limiter would hold across isolates. Flagged in `extension/SECURITY_AUDIT.md`.
+  (`middleware/rate-limit.ts`) is in-isolate only; a distributed attacker (or one
+  user spread across colos) gets N× the configured limit. Flagged in
+  `extension/SECURITY_AUDIT.md` and again in the July 2026 audit. Cheapest
+  durable fix: a zone-level **WAF rate-limiting rule on `/api/auth/*`**
+  (dashboard config, no code); alternatives are the Workers Rate Limiting
+  binding or a DO-backed counter for the email-sending + AI endpoints
+  specifically. OTP brute force is already safe regardless (Better Auth's
+  DB-backed 3-attempt limit holds across isolates).
+- **CSP tightening** — the worker's CSP (`middleware/security-headers.ts`)
+  allows `'unsafe-inline'` scripts and any-host `wss:`/`ws:` connect-src;
+  relevant since the Assistant renders LLM output. Move to nonce/hash-based
+  script-src for production and pin connect-src, mirroring the stricter
+  document CSP in `public/_headers`.
+
+---
+
+## Deferred from the July 2026 production audit (PR #79)
+
+Deliberate deferrals, not oversights — each has a trigger. The audit's
+fix-now items (membership checks, delete-user gate, batched reports/tags,
+immutable asset caching, auth indexes, cron logging/concurrency, lazy
+AssistantPanel) shipped in #79.
+
+- **Smart Placement trial** — `"placement": { "mode": "smart" }` in
+  `wrangler.jsonc`. The worker is D1-chatty, so running it near the D1 primary
+  collapses remaining serial-query latency for far-away users. Measure
+  before/after; one-line and reversible. Trigger: users outside North America.
+- **D1 read replication (Sessions API)** — wrap read-heavy report/list queries
+  in `env.DB.withSession("first-unconstrained")` with bookmark passthrough via
+  a response header for read-your-writes. Free (replicas are automatic); pairs
+  with, and partly overlaps, Smart Placement. Same trigger.
+- **Compatibility date bump past `2026-04-07`** — own PR, run the full e2e
+  suite. `TimerRoomDO.webSocketClose` carries a manual close-handshake
+  workaround that this date makes redundant (see the inline comment).
+- **TimerRoomDO → SQLite-backed DO migration** — the class is on the legacy
+  KV backend (`new_classes` in the v1 migration) with no in-place migration
+  path from Cloudflare. It stores nothing persistent today, so a
+  delete-and-recreate migration is free *now* and gets costly the moment
+  state is added. Do it before ever writing to `ctx.storage`.
+- **Projects list `trackedSeconds` split** — `GET /api/projects` recomputes
+  all-time `SUM(duration)` over the whole entries table on one of the hottest
+  endpoints, for a number only the Projects page shows. Move it behind a
+  `?withTracked=1` flag. Trigger: workspaces with multi-year entry history.
+- **Cron sweep → Queues** — auto-track now runs with bounded concurrency (5),
+  which is fine to a few hundred auto-track workspaces; past that, the cron
+  should enqueue workspace IDs and a queue consumer should fan out.
+- **`/reports/detailed` real pagination** — capped at 10k rows in #79 as a
+  memory guard; replace with keyset pagination + a streaming CSV export if any
+  workspace approaches the cap.
+- **Frontend boot waterfall** — HTML → JS → session → data is serial; kick off
+  the `get-session` fetch before React mounts to overlap it with JS parse.
+  Smaller wins behind it: lazy date-picker popover, `zod/mini` on the client.
+- **Stayed on D1 (decision)** — Neon-via-Hyperdrive was evaluated and
+  rejected: same single-region latency structure, large raw-SQL migration,
+  second vendor, and Hyperdrive's read cache doesn't invalidate on writes
+  (wrong fit for a read-after-write timer app). Revisit only if two or more
+  materialize: pgvector-grade search, the 10 GB D1 ceiling, interactive
+  transactions, per-PR database branching.
 
 ## Ideas / backlog
 
