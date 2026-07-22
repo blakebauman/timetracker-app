@@ -6,8 +6,13 @@
 -- (was 0005/0006) so `wrangler d1 migrations apply --remote` can never seed a
 -- known-credential account into production.
 --
+-- Every statement is INSERT OR IGNORE, so re-applying is safe — including to
+-- repair a drifted local DB (e.g. one seeded before the credential/member rows
+-- were added, or where a Google sign-in linked onto the demo user).
+--
 -- Demo login: blake.bauman@gmail.com / TestPassApps2026
 -- Password is Better Auth scrypt (N:16384, r:16, p:1, dkLen:64) as salt:hex.
+-- Password sign-in is dev/e2e-only (ENABLE_PASSWORD_AUTH in .dev.vars).
 
 INSERT OR IGNORE INTO "user" (id, name, email, emailVerified, createdAt, updatedAt)
 VALUES (
@@ -37,13 +42,25 @@ VALUES (
   'blakedemouser000000000000000001'
 );
 
+-- The organization plugin resolves workspace access via `member`, not
+-- workspaces.userId — migration 0011's owner backfill runs before seeding on a
+-- fresh clone, so the seed must create the demo user's membership itself.
+INSERT OR IGNORE INTO "member" (id, organizationId, userId, role, createdAt)
+VALUES (
+  'blakedemomembr000000000000000001',
+  'blakedemowrkspc00000000000000001',
+  'blakedemouser000000000000000001',
+  'owner',
+  datetime('now')
+);
+
 -- ─── Clients ─────────────────────────────────────────────────────────────────
-INSERT INTO clients (id, workspace_id, name, archived, created_at) VALUES
+INSERT OR IGNORE INTO clients (id, workspace_id, name, archived, created_at) VALUES
   ('client001', 'blakedemowrkspc00000000000000001', 'Acme Corp',           0, '2026-01-15 10:00:00'),
   ('client002', 'blakedemowrkspc00000000000000001', 'Freelance Projects',  0, '2026-01-20 10:00:00');
 
 -- ─── Projects ─────────────────────────────────────────────────────────────────
-INSERT INTO projects (id, workspace_id, client_id, name, color, billable, active, created_at) VALUES
+INSERT OR IGNORE INTO projects (id, workspace_id, client_id, name, color, billable, active, created_at) VALUES
   ('proj001', 'blakedemowrkspc00000000000000001', 'client001', 'Website Redesign', '#3b82f6', 1, 1, '2026-01-15 10:00:00'),
   ('proj002', 'blakedemowrkspc00000000000000001', 'client001', 'API Development',  '#8b5cf6', 1, 1, '2026-01-20 10:00:00'),
   ('proj003', 'blakedemowrkspc00000000000000001', 'client002', 'Marketing Assets', '#10b981', 0, 1, '2026-02-01 10:00:00'),
@@ -53,7 +70,7 @@ INSERT INTO projects (id, workspace_id, client_id, name, color, billable, active
 -- ~30 days of entries: 2026-03-07 through 2026-04-05
 -- Durations are in seconds (1800–7200 range)
 
-INSERT INTO time_entries (id, workspace_id, project_id, description, start, stop, duration, billable, created_at, updated_at) VALUES
+INSERT OR IGNORE INTO time_entries (id, workspace_id, project_id, description, start, stop, duration, billable, created_at, updated_at) VALUES
   -- Week 1: March 7–9
   ('entry001', 'blakedemowrkspc00000000000000001', 'proj001', 'Kickoff meeting with Acme design team',        '2026-03-07 09:00:00', '2026-03-07 10:00:00', 3600, 1, '2026-03-07 10:00:00', '2026-03-07 10:00:00'),
   ('entry002', 'blakedemowrkspc00000000000000001', 'proj001', 'Sketch wireframes for homepage layout',        '2026-03-07 13:00:00', '2026-03-07 15:30:00', 9000, 1, '2026-03-07 15:30:00', '2026-03-07 15:30:00'),
