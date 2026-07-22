@@ -10,34 +10,25 @@ import sharp from "sharp";
 import { writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+// Shared with the in-app <BrandMark> component so the shipped assets and the
+// UI can never render two different marks (node strips the types natively).
+import {
+  BRAND_RED,
+  GROUND_DARK,
+  GROUND_LIGHT,
+  MUTED_INK_DARK,
+  MARK_FACE_RATIO,
+  clockGlyph,
+} from "../src/shared/brand-mark.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 
-const RED = "#e5291a";
-const DARK = "#111315";
-const LIGHT = "#fdfcfb";
-const MUTED = "#9a9a9a";
+const RED = BRAND_RED;
+const DARK = GROUND_DARK;
+const LIGHT = GROUND_LIGHT;
+const MUTED = MUTED_INK_DARK;
 const FONT_STACK = "-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-
-// ── Clock glyph — hands at ~10:10, the classic "watch ad" angle ────────────
-function clockGlyph(cx, cy, faceR) {
-  const ring = faceR * 0.08;
-  const stroke = faceR * 0.19;
-  const hour = faceR * 0.48;
-  const minute = faceR * 0.7;
-  const dot = faceR * 0.115;
-  const minX2 = cx;
-  const minY2 = cy - minute;
-  const hourAngle = -Math.PI / 3;
-  const hrX2 = (cx + hour * Math.sin(hourAngle)).toFixed(2);
-  const hrY2 = (cy - hour * Math.cos(hourAngle)).toFixed(2);
-  return `
-    <circle cx="${cx}" cy="${cy}" r="${faceR}" fill="none" stroke="white" stroke-width="${ring}" opacity="0.9"/>
-    <line x1="${cx}" y1="${cy}" x2="${minX2}" y2="${minY2}" stroke="white" stroke-width="${stroke}" stroke-linecap="round"/>
-    <line x1="${cx}" y1="${cy}" x2="${hrX2}" y2="${hrY2}" stroke="white" stroke-width="${stroke}" stroke-linecap="round"/>
-    <circle cx="${cx}" cy="${cy}" r="${dot}" fill="white"/>`;
-}
 
 // "any"-purpose mark: the red circle is inscribed in the canvas (corners
 // transparent). This is the general-purpose favicon/app-icon look.
@@ -45,7 +36,7 @@ function markSVG(size) {
   const c = size / 2;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <circle cx="${c}" cy="${c}" r="${c}" fill="${RED}"/>
-  ${clockGlyph(c, c, size * 0.39)}
+  ${clockGlyph(c, c, size * MARK_FACE_RATIO)}
 </svg>`;
 }
 
@@ -113,7 +104,7 @@ function ogImageSVG() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${DARK}"/>
   <circle cx="${markCx}" cy="${markCy}" r="${markSize / 2}" fill="${RED}"/>
-  ${clockGlyph(markCx, markCy, markSize * 0.39)}
+  ${clockGlyph(markCx, markCy, markSize * MARK_FACE_RATIO)}
   <text x="${textX}" y="${markCy - 20}" font-family="${FONT_STACK}" font-size="76" font-weight="700" fill="${LIGHT}">Time Tracker</text>
   <text x="${textX}" y="${markCy + 40}" font-family="${FONT_STACK}" font-size="30" fill="${MUTED}">Track your time, manage projects,</text>
   <text x="${textX}" y="${markCy + 80}" font-family="${FONT_STACK}" font-size="30" fill="${MUTED}">and analyze your productivity.</text>

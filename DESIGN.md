@@ -131,6 +131,7 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 - **Headline** (600 weight, 16px / `text-base`, 1.4 line-height): card titles, section headers.
 - **Body** (400 weight, 14px / `text-sm`, 1.5 line-height): default UI text, descriptions, table cells. 65–75ch cap where prose appears (AI summary output); dense tabular data runs narrower.
 - **Label** (500 weight, 12px / `text-xs`, 1.3 line-height): muted metadata, timestamps, badge text, form labels.
+- **Micro** (500 weight, 10px / `text-[10px]`): the floor of the ramp, for chrome-level detail only — `kbd` shortcut chips, dense inline badges (entry-row tags, session badges), counts, and micro-metadata inside 16–20px-tall elements. Never for content the user reads as text; anything sentence-shaped belongs at Label or above.
 - **Mono/Data** (500 weight, tabular-nums, Geist Mono): durations (`2h 15m`), elapsed timers, currency amounts — anywhere a column of numbers needs to align.
 
 ### Named Rules
@@ -199,3 +200,24 @@ Real tracked entries render as a translucent fill (16% opacity of the project/ta
 - **Don't** add drop-shadow "lift" to cards, menus, or panels on hover — depth comes from tone and border, not shadow, except on the one dedicated timer control.
 - **Don't** pair an icon-only button's `size="icon"` with an ad-hoc height/width override; use the size token so it matches its labeled siblings.
 - **Don't** visually clone Toggl. Feature parity (calendar view, favorites, auto-track) is a gap-closing strategy — the soft-tone, red-accent identity is this product's own.
+
+## 7. Brand Mark & App Icons
+
+The brand mark is a **circled analog clock reading ~10:10** (the classic "watch ad" angle): a brand-red circle, a white ring at 90% opacity, two rounded white hands, and a center dot. It is the one place the brand red appears as a fill.
+
+**Single source of truth:** `src/shared/brand-mark.ts` — glyph geometry (`clockGlyph`), face ratio, and the pre-converted sRGB hexes of the brand tokens for surfaces that can't use `oklch()` (static assets, email, OG image):
+
+| Token | oklch | hex |
+|---|---|---|
+| Brand red (light `--primary`) | `oklch(0.588 0.207 27.33)` | `#dd322e` |
+| Brand red (dark `--primary`) | `oklch(0.65 0.207 27.33)` | `#f34a42` |
+| Ground light | `oklch(0.988 0.0015 30)` | `#fcfbfa` |
+| Ground dark | `oklch(0.185 0.006 265)` | `#111315` |
+
+**Two consumers, one geometry:**
+- `src/react-app/components/brand/BrandMark.tsx` — the in-app mark (sidebar brand + collapsed-rail expand control, mobile top bar and nav sheet, login/signup). Fills the circle with `var(--primary)` so it tracks the theme.
+- `scripts/generate-icons.mjs` (`pnpm generate-icons`) — every static asset: favicon (`logo.svg` + multi-res `favicon.ico`), PWA `any` + `maskable` icons, `apple-touch-icon`, PWA shortcut icons, OG share image, and the extension's four action icons.
+
+**Named rule — One Clock.** No surface may draw its own clock glyph (including lucide's `Clock`) as a brand stand-in. The mark is always the shared geometry; change it in `brand-mark.ts` and re-run `pnpm generate-icons`. The lucide `Timer` icon in the nav is a *navigation* icon, not a brand mark — that distinction is the line.
+
+**Satellite surfaces:** the extension popup consumes the same oklch tokens directly in its inline CSS (Chrome-only surface); transactional email uses the pre-converted hexes via `src/worker/emails/theme.ts` and a deliberately text-only header ("timetracker.run") — no image logo in email, since image blocking would break it.

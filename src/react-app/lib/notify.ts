@@ -25,7 +25,9 @@ export async function requestNotifyPermission(): Promise<boolean> {
 export function notify(title: string, body?: string): void {
   if (!canNotify()) return;
   try {
-    new Notification(title, { body, icon: "/favicon.ico", tag: "timetracker" });
+    // logo192.png, not favicon.ico — several platforms won't render ICO in
+    // notification toasts.
+    new Notification(title, { body, icon: "/logo192.png", tag: "timetracker" });
   } catch {
     // Some browsers throw when constructing Notifications outside a user gesture.
   }
