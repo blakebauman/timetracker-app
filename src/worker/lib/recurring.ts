@@ -82,8 +82,14 @@ export async function runRecurring(env: Env): Promise<void> {
         .run();
 
       await broadcast(env, workspaceId, "entries:changed", { source: "recurring" });
-    } catch {
-      // One template failing (deleted project FK, etc.) must not abort the rest.
+    } catch (e) {
+      // One template failing (deleted project FK, etc.) must not abort the
+      // rest — but log it, or the template silently never materializes again.
+      console.error("recurring: template materialization failed", {
+        templateId: row.id,
+        workspaceId: row.workspace_id,
+        error: String(e),
+      });
     }
   }
 }

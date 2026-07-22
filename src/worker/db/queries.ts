@@ -17,8 +17,10 @@ export async function broadcast(
         headers: { "Content-Type": "application/json" },
       })
     );
-  } catch {
-    // Broadcast errors are non-critical — client will poll as fallback
+  } catch (e) {
+    // Non-critical — the client falls back to polling — but must be visible in
+    // Workers Logs, not silent.
+    console.warn("broadcast failed", { workspaceId, event, error: String(e) });
   }
 }
 
@@ -162,25 +164,23 @@ export async function upsertTags(
   entryId: string,
   tagNames: string[]
 ): Promise<void> {
-  for (const name of tagNames) {
-    const tagId = crypto.randomUUID();
-    await db
-      .prepare(`INSERT OR IGNORE INTO tags (id, workspace_id, name, color) VALUES (?, ?, ?, ?)`)
-      .bind(tagId, workspaceId, name, colorForTagName(name))
-      .run();
+  if (!tagNames.length) return;
 
-    const { results } = await db
-      .prepare(`SELECT id FROM tags WHERE workspace_id = ? AND name = ?`)
-      .bind(workspaceId, name)
-      .all<{ id: string }>();
-
-    if (results[0]) {
-      await db
-        .prepare(
-          `INSERT OR IGNORE INTO time_entry_tags (time_entry_id, tag_id) VALUES (?, ?)`
-        )
-        .bind(entryId, results[0].id)
-        .run();
-    }
-  }
+  // Single atomic batch (1 D1 round trip) instead of 3 serial queries per tag:
+  // create any missing tags, then link the entry to all of them by name.
+  const insertTag = db.prepare(
+    `INSERT OR IGNORE INTO tags (id, workspace_id, name, color) VALUES (?, ?, ?, ?)`
+  );
+  const placeholders = tagNames.map(() => "?").join(",");
+  await db.batch([
+    ...tagNames.map((name) =>
+      insertTag.bind(crypto.randomUUID(), workspaceId, name, colorForTagName(name))
+    ),
+    db
+      .prepare(
+        `INSERT OR IGNORE INTO time_entry_tags (time_entry_id, tag_id)
+         SELECT ?, id FROM tags WHERE workspace_id = ? AND name IN (${placeholders})`
+      )
+      .bind(entryId, workspaceId, ...tagNames),
+  ]);
 }

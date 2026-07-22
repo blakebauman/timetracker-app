@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { corsMiddleware } from "./middleware/cors";
 import { securityHeaders } from "./middleware/security-headers";
 import { rateLimit } from "./middleware/rate-limit";
-import { workspaceMiddleware } from "./middleware/workspace";
+import { workspaceMiddleware, resolveWorkspace } from "./middleware/workspace";
 import { requireFreshSession } from "./middleware/fresh-session";
 import { timeEntriesRouter } from "./routes/time-entries";
 import { projectsRouter } from "./routes/projects";
@@ -47,17 +47,36 @@ const outboundRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 30, 60_000);
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
   .use("*", securityHeaders)
+  // Authenticated JSON must never be stored by any shared or disk cache — a
+  // zone-level cache rule change would otherwise be one step from leaking user
+  // data. The WS upgrade (101) response from the DO has immutable headers.
+  .use("/api/*", async (c, next) => {
+    await next();
+    if (c.res.status !== 101) {
+      try {
+        c.res.headers.set("Cache-Control", "no-store");
+      } catch {
+        // Immutable response headers (upgraded/proxied) — nothing to cache anyway.
+      }
+    }
+  })
   // Auth endpoints — rate limited, no workspace middleware needed
   .use("/api/auth/sign-in/*", authRateLimit)
   .use("/api/auth/sign-up/*", authRateLimit)
   .use("/api/auth/change-password", authRateLimit)
   .use("/api/auth/email-otp/send-verification-otp", authRateLimit)
+  // invite-member sends an email per call — throttle it like the other senders.
+  .use("/api/auth/organization/invite-member", authRateLimit)
   .use("/api/auth/sign-in/magic-link", authRateLimit)
   // Re-impose the fresh-session gate on the sensitive profile mutations that
   // Better Auth's freshAge:0 (needed for the sessions card) would otherwise leave
-  // ungated. See middleware/fresh-session.ts.
+  // ungated. See middleware/fresh-session.ts. delete-user is included: with
+  // freshAge 0, Better Auth skips its own freshness check on deletion entirely
+  // (and no delete-verification email is configured), so without this gate any
+  // stolen cookie or bearer token could irreversibly delete the account.
   .use("/api/auth/update-user", requireFreshSession)
   .use("/api/auth/unlink-account", requireFreshSession)
+  .use("/api/auth/delete-user", requireFreshSession)
   .on(["GET", "POST"], "/api/auth/*", (c) => {
     const origin = new URL(c.req.url).origin;
     return createAuth(c.env, origin).handler(c.req.raw);
@@ -91,46 +110,33 @@ const app = new Hono<{ Bindings: Env }>()
 export type AppType = typeof app;
 
 /**
- * Resolve the caller's workspace id from their session (cookie or bearer), the
- * same way workspaceMiddleware does. Returns null when unauthenticated.
- */
-async function resolveWorkspaceId(request: Request, env: Env): Promise<string | null> {
-  const origin = new URL(request.url).origin;
-  const auth = createAuth(env, origin);
-  const result = await auth.api.getSession({ headers: request.headers });
-  if (!result) return null;
-  let workspaceId = result.session.activeOrganizationId;
-  if (!workspaceId) {
-    const orgs = await auth.api.listOrganizations({ headers: request.headers });
-    if (orgs.length === 0) return null;
-    workspaceId = orgs[0].id;
-    await auth.api.setActiveOrganization({
-      body: { organizationId: workspaceId },
-      headers: request.headers,
-    });
-  }
-  return workspaceId;
-}
-
-/**
  * Gate the Agents SDK routes. The client connects to /agents/chat-agent/<any>;
- * we authenticate, then FORCE the instance name to the caller's workspace id so
- * a client can never reach another workspace's ChatAgent — the same server-side
- * routing guarantee as the timer WebSocket (routes/websocket.ts).
+ * we authenticate (with the same membership re-verification as /api/*), then
+ * FORCE the instance name to the caller's workspace id so a client can never
+ * reach another workspace's ChatAgent — the same server-side routing guarantee
+ * as the timer WebSocket (routes/websocket.ts).
  */
 async function handleAgentRequest(request: Request, env: Env): Promise<Response> {
-  const workspaceId = await resolveWorkspaceId(request, env);
-  if (!workspaceId) return new Response("Unauthorized", { status: 401 });
+  const resolved = await resolveWorkspace(env, request);
+  if (!resolved.ok) return new Response("Unauthorized", { status: 401 });
 
   const url = new URL(request.url);
   // /agents/<kebab-class>/<instance>[/subpath] → pin <instance> to the workspace.
   const segments = url.pathname.split("/"); // ["", "agents", "chat-agent", "<instance>", ...]
   if (segments.length >= 4) {
-    segments[3] = workspaceId;
+    segments[3] = resolved.workspaceId;
     url.pathname = segments.join("/");
   }
   const rewritten = new Request(url, request);
-  return (await routeAgentRequest(rewritten, env)) ?? new Response("Not found", { status: 404 });
+  const response =
+    (await routeAgentRequest(rewritten, env)) ?? new Response("Not found", { status: 404 });
+
+  // Same no-store policy as /api/* — but never touch a WebSocket upgrade, and
+  // re-wrap instead of mutating (subrequest response headers are immutable).
+  if (response.status === 101 || response.webSocket) return response;
+  const wrapped = new Response(response.body, response);
+  wrapped.headers.set("Cache-Control", "no-store");
+  return wrapped;
 }
 
 export default {

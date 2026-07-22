@@ -20,7 +20,8 @@ export const websocketRouter = new Hono<{
     const forwarded = new Request(c.req.raw);
     forwarded.headers.set("X-User-Id", c.get("userId"));
     return await stub.fetch(forwarded);
-  } catch {
+  } catch (e) {
+    console.error("timer ws upgrade failed", { workspaceId, error: String(e) });
     return c.text("WebSocket unavailable", 503);
   }
 });

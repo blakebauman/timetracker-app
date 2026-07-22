@@ -9,6 +9,11 @@
   "observability": {
     "enabled": true
   },
+  // Explicitly off (wrangler infers false once routes exist, but a config edit
+  // could silently re-enable them). A second live origin on *.workers.dev would
+  // sit outside trustedOrigins/CORS and split the passkey rpID.
+  "workers_dev": false,
+  "preview_urls": false,
   // Auto-track: sweep finished Google Calendar events into time entries every 5 min.
   "triggers": {
     "crons": ["*/5 * * * *"]

@@ -22,6 +22,17 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
+// TextEncoder coerces undefined to the literal string "undefined", so an unset
+// AUTH_SECRET would silently derive a publicly-known constant key and encryption
+// would appear to work. Fail loudly instead.
+function assertSecret(secret: string | undefined): asserts secret is string {
+  if (!secret) {
+    throw new Error(
+      "AUTH_SECRET is not set — refusing to encrypt/decrypt credentials (wrangler secret put AUTH_SECRET)",
+    );
+  }
+}
+
 async function deriveKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
   const baseKey = await crypto.subtle.importKey(
     "raw",
@@ -41,6 +52,7 @@ async function deriveKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
 
 /** Encrypt a JSON-serialisable value into a self-contained base64 blob. */
 export async function encryptJSON(secret: string, value: unknown): Promise<string> {
+  assertSecret(secret);
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
   const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const key = await deriveKey(secret, salt);
@@ -58,6 +70,7 @@ export async function encryptJSON(secret: string, value: unknown): Promise<strin
 
 /** Decrypt a blob produced by encryptJSON back into its typed value. */
 export async function decryptJSON<T>(secret: string, blob: string): Promise<T> {
+  assertSecret(secret);
   const bytes = base64ToBytes(blob);
   const salt = bytes.slice(0, SALT_LEN);
   const iv = bytes.slice(SALT_LEN, SALT_LEN + IV_LEN);
