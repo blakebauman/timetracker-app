@@ -117,6 +117,45 @@ AssistantPanel) shipped in #79.
 
 ---
 
+## Deferred from the entry-list inline-edit audit (PRs #84, #85)
+
+Found while fixing the row-identity bug in #84 (rows were keyed by the
+description and project they edit inline). Each was in scope of the audit and
+deliberately left out of those PRs to keep the diffs about one thing; none is
+blocking.
+
+- **Bulk update has no optimistic path** — `useBulkUpdateEntries` is the only
+  entry mutation with no `onMutate` (`hooks/useEntries.ts`). The group row's
+  "Assign project to all N entries" and the bulk bar's billable toggles wait a
+  full round-trip showing nothing, while every single-entry equivalent lands
+  instantly and ticks. Give it the same optimistic merge `useUpdateEntry` has;
+  the project/task name resolution is already written and reusable.
+- **Group project chip is still silent** — #84 gave `AssignProjectChip` a
+  `SavedTick` in `EntryRow`, but the copy in `EntryDescriptionGroup` routes
+  through `bulkUpdate`, so it has nothing to acknowledge yet. Blocked on the
+  item above; do them together.
+- **Rollback clobbers concurrent edits** — every entry mutation's `onError`
+  restores a whole-cache snapshot taken in its own `onMutate`. If edit A fails
+  while edit B succeeded in between, B is silently reverted along with A.
+  Correct fix: roll back only the mutated entry's row rather than replacing the
+  whole query data. Low frequency (needs two overlapping edits, one failing),
+  which is why it isn't urgent — but it loses a *successful* write when it hits.
+- **"Assign project" is two different controls with one name** — the stop
+  toast's action (`hooks/useTimer.ts`) and the row's `AssignProjectChip` share
+  the accessible name while doing different things at different scopes. A
+  screen-reader user hears no difference, and `e2e/entry-inline-edit.spec.ts`
+  has to scope by `[data-sonner-toast]` to disambiguate. Rename one.
+- **Entry-list micro-labels are off the type ramp** — `text-[10px]` (tag
+  badges, group count) and `text-[11px]` (billable `$`) in `EntryRow` /
+  `EntryDescriptionGroup` are literal sizes with no step in `DESIGN.md`. They
+  predate this work and read as intentional, so the fix is a decision, not a
+  patch: either document a micro-label step on the ramp or move them onto an
+  existing one. Not local to the entry list — 43 occurrences across 21
+  components, so whichever way it goes it's one sweep, per the
+  fix-the-system-not-the-instance convention.
+
+---
+
 ## Loose ends
 
 - **Extension is not published** — `trustedOrigins` in `src/worker/auth.ts`
