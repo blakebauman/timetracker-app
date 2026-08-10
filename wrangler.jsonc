@@ -44,8 +44,10 @@
   "durable_objects": {
     "bindings": [
       {
+        // Binding name is unchanged (`env.TIMER_ROOM`), only the class behind
+        // it — see the v3 migration for why the class had to be renamed.
         "name": "TIMER_ROOM",
-        "class_name": "TimerRoomDO"
+        "class_name": "TimerRoom"
       },
       // Aski chat: one AIChatAgent instance per workspace. Persists conversation
       // history + resumable streams in its own SQLite (hence new_sqlite_classes).
@@ -72,6 +74,28 @@
     {
       "tag": "v2",
       "new_sqlite_classes": ["ChatAgent"]
+    },
+    // v3 — move the timer room off the legacy key-value storage backend.
+    //
+    // There is no in-place KV→SQLite migration: "You cannot enable a SQLite
+    // storage backend on an existing, deployed Durable Object class." The only
+    // route today is to delete the namespace and create a new one, and since a
+    // class name can't be both deleted and live in the same config, the class
+    // had to be renamed (TimerRoomDO → TimerRoom).
+    //
+    // Safe to delete precisely because this DO has never persisted anything:
+    // no ctx.storage access anywhere, D1 is the source of truth, and
+    // per-connection state lives in the socket attachment. What it costs is one
+    // reconnect — every live socket drops on deploy and the client's 1s→30s
+    // backoff picks them back up.
+    //
+    // Done now rather than later because the window is only free while the DO
+    // stays stateless. Do NOT write to ctx.storage in TimerRoom without
+    // revisiting this: from that point the same move loses real data.
+    {
+      "tag": "v3",
+      "deleted_classes": ["TimerRoomDO"],
+      "new_sqlite_classes": ["TimerRoom"]
     }
   ],
   "routes": [

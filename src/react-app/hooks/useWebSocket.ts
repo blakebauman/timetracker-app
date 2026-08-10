@@ -101,7 +101,7 @@ export function useWebSocket() {
           break;
         }
         case "user_activity": {
-          // Another session of THIS user was active (TimerRoomDO only relays
+          // Another session of THIS user was active (TimerRoom only relays
           // to same-user sockets). Stamp with our own clock — see activitySync.
           recordRemoteActivity();
           break;

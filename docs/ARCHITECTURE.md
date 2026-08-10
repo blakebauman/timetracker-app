@@ -8,7 +8,7 @@ One Cloudflare Worker serves everything: static SPA assets, the REST API, two We
 
 ```
 Browser SPA (React 19) ─┬─ /api/*        → Hono app (REST, workspace-scoped)
-Chrome extension ───────┤─ /api/ws       → TimerRoomDO (timer sync WebSocket)
+Chrome extension ───────┤─ /api/ws       → TimerRoom (timer sync WebSocket)
                         ├─ /agents/*     → ChatAgent DO (Assistant chat, Agents SDK)
                         └─ /*            → static assets (SPA fallback)
 Cron (*/5 min) ─────────── scheduled()   → auto-track + recurring materializers
@@ -42,7 +42,7 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 | `/api/assistant` | `assistant.ts` | `GET /nudges`, `POST /track-event`, memory list/delete. **Chat is NOT here** — see the Assistant below |
 | `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push`, SSRF-guarded, outbound rate limits |
 | `/api/admin` | `admin.ts` | `DELETE /users/:id` (site-admin user removal + orphan cleanup); list/ban/impersonate go through Better Auth's admin plugin client-side |
-| `/api/ws` | `websocket.ts` | upgrade → `TimerRoomDO` (`idFromName(workspaceId)`) |
+| `/api/ws` | `websocket.ts` | upgrade → `TimerRoom` (`idFromName(workspaceId)`) |
 
 `db/queries.ts` holds the shared SQL helpers — `ENTRY_SELECT` is the canonical time-entry JOIN; `broadcast()` fans WebSocket events out through the DO; `upsertTags()` implicitly creates tags with deterministic colors.
 
@@ -60,7 +60,7 @@ Notable decisions:
 
 ## Durable Objects
 
-**`TimerRoomDO`** (`durable-objects/TimerRoomDO.ts`) — one per workspace, keyed `idFromName(workspaceId)`. Plain WebSocket room: tabs and the extension connect via `/api/ws`; REST mutations call `broadcast()` so every client sees `timer_update`/entry events live. Each socket is tagged with its authenticated `userId` (`serializeAttachment`, forwarded by `routes/websocket.ts` as `X-User-Id`); the one client→server message is a throttled `{type:"activity"}` heartbeat, relayed as `user_activity` to the same user's *other* sockets so idle detection on their open sessions knows they're active elsewhere (`react-app/lib/activitySync.ts`). No persistent storage of consequence — D1 is the source of truth; the DO is fan-out.
+**`TimerRoom`** (`durable-objects/TimerRoom.ts`) — one per workspace, keyed `idFromName(workspaceId)`. Plain WebSocket room: tabs and the extension connect via `/api/ws`; REST mutations call `broadcast()` so every client sees `timer_update`/entry events live. Each socket is tagged with its authenticated `userId` (`serializeAttachment`, forwarded by `routes/websocket.ts` as `X-User-Id`); the one client→server message is a throttled `{type:"activity"}` heartbeat, relayed as `user_activity` to the same user's *other* sockets so idle detection on their open sessions knows they're active elsewhere (`react-app/lib/activitySync.ts`). No persistent storage of consequence — D1 is the source of truth; the DO is fan-out.
 
 **`ChatAgent`** (`durable-objects/ChatAgent.ts`) — the Assistant's chat brain, one per workspace, built on the Agents SDK (`agents` + `@cloudflare/ai-chat`, `AIChatAgent` base class). Persists conversation history (capped at 100 messages) and resumable streams in its own DO SQLite. Runs `streamText` over Workers AI (`@cf/meta/llama-4-scout-17b-16e-instruct` via `workers-ai-provider`), max 5 tool steps, 800 output tokens, 4k char input cap, 15 msg/min per-workspace rate limit.
 

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { signUp } from "./auth";
 
 /**
- * TimerRoomDO used to complete the WebSocket close handshake by hand, because on
+ * TimerRoom used to complete the WebSocket close handshake by hand, because on
  * compatibility dates before 2026-04-07 failing to reciprocate a Close frame
  * leaves the client with a 1006 abnormal closure. From that date
  * `web_socket_auto_reply_to_close` is on by default and the runtime replies for
