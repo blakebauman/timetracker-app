@@ -5,17 +5,68 @@ const API_BASE = "/api";
 
 const MUTABLE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * Identifies this tab for the lifetime of the page.
+ *
+ * Sent as `X-Client-Id` on every request and echoed back on the WebSocket
+ * broadcast the request causes, so this tab can ignore the news of its own
+ * change (see `useWebSocket`). Not a security boundary — purely an echo filter,
+ * and the server treats it as opaque.
+ */
+export const CLIENT_ID =
+  globalThis.crypto?.randomUUID?.() ?? `c${Date.now().toString(36)}`;
+
+/**
+ * A failed API call, carrying enough for a caller to react precisely.
+ *
+ * `message` is the server's own `error` text when it sent one, so a handler can
+ * show it verbatim ("Stop time must be after start time") instead of falling
+ * back to a generic "Failed to update entry" that tells the user nothing about
+ * what to change.
+ *
+ * `queued` marks the offline case: the request never reached the network but was
+ * persisted for replay. It still rejects — the caller hasn't got a result — but
+ * it must NOT be treated as a lost write, because the write is going to land.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly queued: boolean;
+  constructor(message: string, status: number, queued = false) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.queued = queued;
+  }
+}
+
+/** Prefer the server's `{ error }` text; fall back to the raw body, then status. */
+function errorMessage(raw: string, statusText: string): string {
+  if (!raw) return statusText;
+  try {
+    const parsed = JSON.parse(raw) as { error?: unknown };
+    if (typeof parsed.error === "string" && parsed.error) return parsed.error;
+  } catch {
+    // Not JSON — fall through to the raw text.
+  }
+  return raw.slice(0, 300) || statusText;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const method = (options?.method ?? "GET").toUpperCase();
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
       ...options,
+      // After the spread, so a caller's `headers` can't drop the client id.
+      headers: {
+        "Content-Type": "application/json",
+        "X-Client-Id": CLIENT_ID,
+        ...(options?.headers as Record<string, string> | undefined),
+      },
     });
     if (!res.ok) {
-      const msg = await res.text().catch(() => res.statusText);
-      throw new Error(`API ${res.status}: ${msg}`);
+      const raw = await res.text().catch(() => "");
+      throw new ApiError(errorMessage(raw, res.statusText), res.status);
     }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
@@ -25,6 +76,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     if (err instanceof TypeError && MUTABLE_METHODS.has(method)) {
       const body = options?.body ? JSON.parse(options.body as string) : undefined;
       await addPendingMutation({ method: method as "POST" | "PUT" | "PATCH" | "DELETE", url: `${API_BASE}${path}`, body });
+      throw new ApiError("Offline — saved locally, will sync when you reconnect", 0, true);
     }
     throw err;
   }

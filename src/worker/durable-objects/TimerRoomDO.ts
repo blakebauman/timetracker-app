@@ -29,11 +29,15 @@ export class TimerRoomDO extends DurableObject<Env> {
     }
 
     if (url.pathname === "/broadcast" && request.method === "POST") {
-      const { event, data } = (await request.json()) as {
+      const { event, data, origin } = (await request.json()) as {
         event: string;
         data: unknown;
+        origin?: string | null;
       };
-      const msg = JSON.stringify({ event, data, ts: Date.now() });
+      // `origin` rides along so the client that caused the change can skip its
+      // own echo; the room still fans out to everyone, including that client,
+      // because it may care about the payload even when it ignores the refetch.
+      const msg = JSON.stringify({ event, data, origin: origin ?? null, ts: Date.now() });
       let sent = 0;
       for (const ws of this.ctx.getWebSockets()) {
         try {

@@ -21,6 +21,14 @@ import {
   ENTRY_SELECT,
 } from "../db/queries";
 
+/**
+ * The tab that made this request, so its own broadcast can be filtered out
+ * client-side (see `broadcast`'s `origin`). Absent for the extension and any
+ * non-browser caller, which simply means they get the normal fan-out.
+ */
+const clientId = (c: { req: { header: (n: string) => string | undefined } }) =>
+  c.req.header("X-Client-Id") ?? null;
+
 export const timeEntriesRouter = new Hono<{
   Bindings: Env;
   Variables: { workspaceId: string };
@@ -179,7 +187,7 @@ export const timeEntriesRouter = new Hono<{
     }
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
-    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, data.stop ? "entries:changed" : "timer:start", entry));
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, data.stop ? "entries:changed" : "timer:start", entry, clientId(c)));
     return c.json(entry, 201);
   })
   // ─── Current running entry ─────────────────────────────────────────────
@@ -231,7 +239,7 @@ export const timeEntriesRouter = new Hono<{
       }
     }
 
-    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null));
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null, clientId(c)));
     return c.json({ ok: true, updated: ids.length });
   })
   // ─── Bulk delete ──────────────────────────────────────────────────────────
@@ -244,7 +252,7 @@ export const timeEntriesRouter = new Hono<{
       `DELETE FROM time_entries WHERE workspace_id = ? AND id IN (${placeholders})`
     ).bind(workspaceId, ...ids).run();
 
-    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null));
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null, clientId(c)));
     return c.json({ ok: true, deleted: ids.length });
   })
   // ─── Get by ID ────────────────────────────────────────────────────────────
@@ -264,9 +272,24 @@ export const timeEntriesRouter = new Hono<{
     // `time_entry_tags` has no workspace_id column, so without this guard a
     // tags-only PUT would delete/rewrite another workspace's tag associations.
     const owned = await c.env.DB.prepare(
-      `SELECT 1 FROM time_entries WHERE id = ? AND workspace_id = ?`
-    ).bind(id, workspaceId).first();
+      `SELECT start, stop FROM time_entries WHERE id = ? AND workspace_id = ?`
+    ).bind(id, workspaceId).first<{ start: string; stop: string | null }>();
     if (!owned) return c.json({ error: "Not found" }, 404);
+
+    // Validate the range the row will actually have after the patch. The schema's
+    // refine can only compare fields present in the body, so a single-field patch
+    // — which is what every inline edit sends — slipped past it and let the
+    // duration recompute below write a negative value.
+    //
+    // `<` not `<=`: creating a zero-length entry is rejected by
+    // CreateTimeEntrySchema, but one that already exists (a start immediately
+    // followed by a stop) must stay editable — otherwise its description could
+    // never be corrected.
+    const nextStart = data.start ?? owned.start;
+    const nextStop = data.stop !== undefined ? data.stop : owned.stop;
+    if (nextStop && new Date(nextStop) < new Date(nextStart)) {
+      return c.json({ error: "Stop time must be after start time" }, 400);
+    }
 
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -297,7 +320,7 @@ export const timeEntriesRouter = new Hono<{
     }
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
-    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", entry));
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", entry, clientId(c)));
     return c.json(entry);
   })
   // ─── Delete ───────────────────────────────────────────────────────────────
@@ -306,7 +329,7 @@ export const timeEntriesRouter = new Hono<{
     await c.env.DB.prepare(
       `DELETE FROM time_entries WHERE id = ? AND workspace_id = ?`
     ).bind(c.req.param("id"), workspaceId).run();
-    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null));
+    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", null, clientId(c)));
     return c.json({ ok: true });
   })
   // ─── Stop running ─────────────────────────────────────────────────────────
@@ -325,7 +348,7 @@ export const timeEntriesRouter = new Hono<{
     // Only broadcast if the entry was actually running — prevents false timer:stop
     // events when the extension tries to stop an already-stopped (stale) entry
     if (result.meta.changes > 0) {
-      c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "timer:stop", entry));
+      c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "timer:stop", entry, clientId(c)));
     }
     return c.json(entry);
   });

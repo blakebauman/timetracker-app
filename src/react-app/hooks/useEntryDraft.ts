@@ -113,6 +113,17 @@ export function useEntryDraft(init: EntryDraftInit) {
   const durationSeconds = durationOf(draft.start, draft.stop);
   // A create needs a real span; an edit of a running entry legitimately has no stop.
   const hasValidRange = Boolean(draft.start && draft.stop) && durationSeconds > 0;
+  /**
+   * Stop strictly before start — the only range an edit must refuse.
+   *
+   * Deliberately not `!hasValidRange`: that also catches a zero-length entry,
+   * which you can't *create* but can certainly already *have* (a start
+   * immediately followed by a stop, a zero-length calendar event). Refusing to
+   * save those would mean an entry whose description could never be corrected.
+   */
+  const rangeInverted =
+    Boolean(draft.start && draft.stop) &&
+    new Date(draft.stop!).getTime() < new Date(draft.start!).getTime();
 
   /** Noon anchor so Start/Stop have a calendar date before either is picked. */
   const fallbackIso = new Date(
@@ -133,6 +144,7 @@ export function useEntryDraft(init: EntryDraftInit) {
     commitDuration,
     durationSeconds,
     hasValidRange,
+    rangeInverted,
     fallbackIso,
   };
 }

@@ -41,7 +41,7 @@ There are five ways to get time into your timesheet:
 - **Timesheet grid** — the Timesheet view is a weekly grid: one row per project/task combination, type hours directly into day cells.
 - **Calendar click-to-track** — with Google Calendar connected, click a "ghost" event or an untracked gap block on the calendar to convert it into an entry.
 
-Entries support **description, project, task, tags, billable flag**, and inline editing after the fact. Suggestions based on your recent entries appear as you type a description — in both the timer bar and the manual entry form. Picking one restores the project, task, and billable flag that title is usually logged against, **plus the tags from its most recent entry** (handy for recurring meetings that get the same tags every day). In the timer bar the carried tags show as removable chips; in the entry form they land in the tag picker for editing. Bulk edit/delete is available from the entry list.
+Entries support **description, project, task, tags, billable flag**, and inline editing after the fact. In the list, click a description, a duration, or a time range to edit it in place — each saves on Enter or blur and shows a small check when it lands. A running entry's start time and date are editable the same way (its stop shows "Still running"). Durations accept `1h 30m`, `1:30`, `90m`, or a plain number of minutes; anything unrecognized keeps the field open and marked rather than discarding what you typed. Deleting is undoable from the toast — for a single entry, a selection, or a whole repeated-description group. Suggestions based on your recent entries appear as you type a description — in both the timer bar and the manual entry form. Picking one restores the project, task, and billable flag that title is usually logged against, **plus the tags from its most recent entry** (handy for recurring meetings that get the same tags every day). In the timer bar the carried tags show as removable chips; in the entry form they land in the tag picker for editing. Bulk edit/delete is available from the entry list.
 
 ## The Timer workspace (views)
 
@@ -170,7 +170,7 @@ The command palette is the fastest path to almost everything — try it first.
 ## Offline & sync behavior
 
 - The **running timer syncs in real time** across all your open tabs (and the extension) via a WebSocket — stop it anywhere, it stops everywhere.
-- If you **go offline**, the timer keeps state locally and your changes are queued in the browser (IndexedDB), then replayed automatically when you're back online. A logged minute is never lost to a bad connection.
+- If you **go offline**, the timer keeps state locally and your changes are queued in the browser (IndexedDB), then replayed automatically when you're back online. A logged minute is never lost to a bad connection. An edit made offline stays on screen and tells you it's waiting to sync — it isn't reverted and then quietly reapplied later.
 - Timer stop is optimistic: totals update instantly, without a visible dip while the server catches up.
 
 ## Account & security

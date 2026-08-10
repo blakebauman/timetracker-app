@@ -38,8 +38,20 @@ export const useTimerStore = create<TimerStore>((set) => ({
       if (entry === null) {
         return { runningEntry: null, localStartTime: null, elapsed: 0 };
       }
-      // Only update if this is a different entry
       if (state.runningEntry?.id === entry.id) {
+        // Same entry — keep the local anchor so the readout doesn't jitter on
+        // clock skew, UNLESS the start itself moved. Correcting a running
+        // entry's start (inline, or in the edit sheet) has to move the elapsed
+        // count with it; without this the timer kept counting from the old
+        // anchor and the bar disagreed with the row it was editing.
+        if (state.runningEntry.start !== entry.start) {
+          const localStartTime = new Date(entry.start).getTime();
+          return {
+            runningEntry: entry,
+            localStartTime,
+            elapsed: Math.max(0, Math.floor((Date.now() - localStartTime) / 1000)),
+          };
+        }
         return { runningEntry: entry };
       }
       // New entry from another tab — calculate elapsed from entry's start time
