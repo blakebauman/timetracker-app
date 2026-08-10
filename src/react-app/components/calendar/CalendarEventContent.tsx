@@ -16,7 +16,7 @@ export function CalendarEventContent(arg: EventContentArg) {
     return (
       <div className="tt-on-tint-muted flex h-full items-center gap-1 overflow-hidden px-1 text-left leading-tight">
         <CalendarPlus className="h-3 w-3 shrink-0" />
-        <span className="truncate text-[11px] font-medium">Track {arg.timeText}</span>
+        <span className="truncate text-xs font-medium">Track {arg.timeText}</span>
       </div>
     );
   }
@@ -30,7 +30,7 @@ export function CalendarEventContent(arg: EventContentArg) {
           <CalendarPlus className="tt-on-tint-muted h-3 w-3 shrink-0" />
           <span className="truncate text-xs font-medium">{external?.title ?? "(no title)"}</span>
         </div>
-        <span className="tt-on-tint-muted truncate text-[11px]">
+        <span className="tt-on-tint-muted truncate text-micro">
           {arg.timeText} · click to track
         </span>
       </div>
@@ -61,7 +61,7 @@ export function CalendarEventContent(arg: EventContentArg) {
       </div>
       {/* Class hooks let the block drop detail as its own width shrinks —
           see the @container rules in styles/fullcalendar.css. */}
-      <div className="tt-event-meta tt-on-tint-muted flex items-center gap-1.5 whitespace-nowrap text-[11px]">
+      <div className="tt-event-meta tt-on-tint-muted flex items-center gap-1.5 whitespace-nowrap text-micro">
         <span className="font-mono">{arg.timeText}</span>
         <span className="tt-event-sep" aria-hidden>
           ·
@@ -72,7 +72,7 @@ export function CalendarEventContent(arg: EventContentArg) {
       </div>
       {entry.projectName && (
         <span
-          className="tt-swatch-ink truncate text-[11px] font-medium"
+          className="tt-swatch-ink truncate text-micro font-medium"
           style={{ "--swatch": color } as CSSProperties}
         >
           {entry.projectName}

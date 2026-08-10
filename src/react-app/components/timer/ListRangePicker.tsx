@@ -60,7 +60,7 @@ export function ListRangePicker({
         {LIST_RANGE_GROUPS.map((group, i) => (
           <div key={group.label}>
             {i > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground">
+            <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
               {group.label}
             </DropdownMenuLabel>
             {group.keys.map((key) => (

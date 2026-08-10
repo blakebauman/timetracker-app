@@ -273,7 +273,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
             {days.map((d, i) => (
               <th key={i} className="px-2 py-2 text-center font-medium">
                 <div className="uppercase">{format(d, "EEE")}</div>
-                <div className="text-[11px] text-muted-foreground">{format(d, "MMM d")}</div>
+                <div className="text-micro text-muted-foreground">{format(d, "MMM d")}</div>
               </th>
             ))}
             <th className="px-3 py-2 text-right font-medium">Total</th>

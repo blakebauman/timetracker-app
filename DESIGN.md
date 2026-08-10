@@ -137,9 +137,9 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 ### Named Rules
 **The Tabular Rule.** Any number that appears in a list or column (durations, currency, percentages) uses `tabular-nums` so digits align vertically. This is non-negotiable in reports and entry lists.
 
-**The Named-Step Rule.** Every size above comes from a named utility — `text-xl`, `text-base`, `text-sm`, `text-xs`, `text-micro`. An arbitrary `text-[Npx]` anywhere in the app is drift by definition, even when the pixel value happens to match a step: it can't be changed centrally and it defeats the design-system check. `text-micro` exists precisely so the ramp's floor stops being written as a literal at 28 call sites.
+**The Named-Step Rule.** Every size above comes from a named utility — `text-xl`, `text-base`, `text-sm`, `text-xs`, `text-micro`. An arbitrary size anywhere in the app is drift by definition, even when the pixel value happens to match a step: it can't be changed centrally and it defeats the design-system check. There are now **zero** arbitrary font sizes in the app; keep it that way. (Write sizes in words in Markdown files — Tailwind scans them, and class syntax in prose emits real dead CSS.)
 
-> **Known exception, tracked in `ROADMAP.md`:** 15 remaining `text-[11px]` literals sit between Micro and Label with no step of their own. Folding each to `text-micro` or `text-xs` is a per-site visual judgment in dense surfaces (calendar, planner, timesheet), so it is a deliberate open decision, not an oversight.
+**The Two-Tier Rule.** Where a dense element stacks a heading over its metadata — calendar blocks, table column headers, tool cards, entry rows — the heading is Label (12px) and everything beneath it is Micro (10px). No in-between size: an 11px middle tier is a near-miss that reads as sloppy rather than hierarchical, which is exactly what the app accumulated before this rule existed. The exception is a block whose *only* content is that one line (the calendar's untracked-gap affordance, a `<code>` value you may need to read exactly) — that line is the heading tier, so it takes Label.
 
 ## 4. Elevation
 

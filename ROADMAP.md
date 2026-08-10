@@ -129,34 +129,30 @@ blocking.
 group chip's acknowledgement it unblocked, and per-row rollback. Removed from
 this list; the two below remain open.*
 
-*Both remaining items were addressed in #94; only the 11px judgment call below
-is still open.*
+*All items in this section have shipped — #87, #94, and #95. Kept as a record of
+what the audit turned up; nothing here is outstanding.*
 
 - ~~**"Assign project" is two different controls with one name**~~ — fixed in
   #94: the row chip is now "Assign project to this entry", matching the scoped
   label the group chip already carried.
-- **Micro-label sizes below the ramp floor** — 15 arbitrary 11px sizes remain,
-  sitting between Micro (10px) and Label (12px) with no step of their own.
+- ~~**Micro-label sizes below the ramp floor**~~ — closed across #94 and #95.
 
-  This item previously said "43 occurrences off the ramp". That was wrong:
-  `DESIGN.md` §3 has always documented **Micro** as a real 10px step, so the 28
-  ten-pixel uses were on the ramp and merely spelled as arbitrary values. #94
-  gave that step a name (`text-micro`) and swept all 28 — byte-identical CSS
-  output, no visual change.
+  Worth recording that this item was filed wrong. It claimed "43 occurrences off
+  the ramp"; in fact `DESIGN.md` §3 had always documented **Micro** as a real
+  10px step, so 28 of those were on the ramp and merely spelled as arbitrary
+  values. #94 named the step (`text-micro`) and swept them with byte-identical
+  CSS output. Only 15 sizes were genuinely off-ramp.
 
-  What's left is a genuine design decision, not a sweep: each of the 15 has to
-  fold *up* to `text-xs` or *down* to `text-micro`, and they live in dense
-  surfaces (calendar event chips, planner and timesheet date sublabels, `kbd`
-  chips, the billable `$`, assistant tool cards) where a 1–2px change is
-  visible. Doing it uniformly would regress at least one of them. Decide per
-  site, with the app open.
+  #95 resolved those 15 site by site rather than uniformly, and the result was
+  a rule, not a pile of exceptions: 12 were secondary lines under a 12px
+  heading → Micro; 3 were the sole content of their own block (the calendar's
+  untracked-gap affordance, a `<code>` key, a dropdown group label) → Label.
+  That is now **The Two-Tier Rule** in `DESIGN.md`, so the next dense component
+  doesn't have to re-derive it.
 
-  Two things worth knowing before picking this up:
-  - `DESIGN.md` now carries a **Named-Step Rule** — an arbitrary size anywhere
-    is drift by definition, even when the pixel value matches a step.
-  - Tailwind scans markdown in this repo, so writing an arbitrary size in
-    prose emits a real (dead) CSS rule. That is exactly how this file was
-    shipping one. Describe sizes in words here, not as class syntax.
+  The app now has zero arbitrary font sizes. One trap to remember: Tailwind
+  scans Markdown here, so writing class syntax in prose emits real dead CSS —
+  this file was shipping one that way.
 
 ---
 

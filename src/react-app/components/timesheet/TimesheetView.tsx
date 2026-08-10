@@ -250,7 +250,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
               <th key={i} className="px-2 py-2 text-center font-medium">
                 <div className="uppercase">{format(d, "EEE")}</div>
                 {/* Full-strength muted: the old /70 opacity measured 4.26:1 in dark. */}
-                <div className="text-[11px] text-muted-foreground">{format(d, "MMM d")}</div>
+                <div className="text-micro text-muted-foreground">{format(d, "MMM d")}</div>
               </th>
             ))}
             <th className="px-3 py-2 text-right font-medium">Total</th>

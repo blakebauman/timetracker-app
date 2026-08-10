@@ -359,7 +359,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
                   label announces it in reading order — better than making it
                   focusable, which would add a tab stop per row to an already
                   tab-stop-heavy list for something that isn't an action. */}
-              <span className="text-[11px] font-semibold text-primary-ink">
+              <span className="text-micro font-semibold text-primary-ink">
                 <span aria-hidden>$</span>
                 <span className="sr-only">Billable</span>
               </span>
