@@ -25,7 +25,7 @@ import { createAuth } from "./auth";
 import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
 import { routeAgentRequest } from "agents";
-export { TimerRoomDO } from "./durable-objects/TimerRoomDO";
+export { TimerRoom } from "./durable-objects/TimerRoom";
 export { ChatAgent } from "./durable-objects/ChatAgent";
 
 // 10 attempts per minute on auth endpoints. Relaxed in the Vite dev server

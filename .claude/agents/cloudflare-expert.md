@@ -15,7 +15,7 @@ You are a Cloudflare Workers expert specializing in this time-tracker app's back
 
 - Worker entry: `src/worker/index.ts` (Hono v4 app)
 - D1 database binding: `DB`, database name: `time-tracker`
-- Durable Object: `TIMER_ROOM` → `TimerRoomDO` (one per workspace, handles WebSocket sync)
+- Durable Object: `TIMER_ROOM` → `TimerRoom` (one per workspace, handles WebSocket sync)
 - Auth: Better Auth with D1 adapter (`src/worker/auth.ts`)
 - Direct SQL helpers in `src/worker/db/queries.ts` (no ORM in app code)
 - Migrations in `migrations/` — numbered `0001_`, `0002_`, etc.

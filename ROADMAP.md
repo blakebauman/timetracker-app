@@ -80,18 +80,19 @@ AssistantPanel) shipped in #79.
   in `env.DB.withSession("first-unconstrained")` with bookmark passthrough via
   a response header for read-your-writes. Free (replicas are automatic); pairs
   with, and partly overlaps, Smart Placement. Same trigger.
-- **Compatibility date bump** — currently `2025-10-08` in `wrangler.jsonc`,
-  about ten months of default-on flag changes behind. Own PR, run the full e2e
-  suite. The specific payoff: crossing `2026-04-07` enables
-  `web_socket_auto_reply_to_close`, which makes the manual close-handshake
-  workaround in `TimerRoomDO.webSocketClose` redundant (the call stays safe —
-  it is silently ignored once the socket is already closed). Read the flag
-  changelog for the whole interval before bumping, not just that one entry.
-- **TimerRoomDO → SQLite-backed DO migration** — the class is on the legacy
-  KV backend (`new_classes` in the v1 migration) with no in-place migration
-  path from Cloudflare. It stores nothing persistent today, so a
-  delete-and-recreate migration is free *now* and gets costly the moment
-  state is added. Do it before ever writing to `ctx.storage`.
+- ~~**Compatibility date bump**~~ — shipped in #88 (`2025-10-08` → `2026-07-08`,
+  pinned to the installed workerd rather than "today"). Crossing `2026-04-07`
+  turned on `web_socket_auto_reply_to_close` and the manual close-handshake
+  workaround was removed.
+- ~~**TimerRoom → SQLite-backed DO migration**~~ — shipped in #89. Worth
+  recording what it actually took, because this item under-described it: there
+  is **no** in-place KV→SQLite path ("you cannot enable a SQLite storage
+  backend on an existing, deployed Durable Object class"), so it required
+  deleting the namespace and creating a new one — and because a class name
+  can't be both deleted and live in one config, the class had to be renamed
+  `TimerRoomDO` → `TimerRoom`. Free only because the DO had never persisted
+  anything. **`TimerRoom` must not write to `ctx.storage`** casually now: it is
+  SQLite-backed and its data is real, so there is no second free move.
 - **Projects list `trackedSeconds` split** — `GET /api/projects` recomputes
   all-time `SUM(duration)` over the whole entries table on one of the hottest
   endpoints, for a number only the Projects page shows. Move it behind a
@@ -165,7 +166,7 @@ this list; the two below remain open.*
 - **Desktop app (Tauri) for OS-level idle detection** — the web app can only
   see in-page activity, so "idle" can't distinguish *left the machine* from
   *working in another native app*. Cross-session activity relay via
-  `TimerRoomDO` + the hidden-tab gate (shipped) fix the multi-device false
+  `TimerRoom` + the hidden-tab gate (shipped) fix the multi-device false
   positives, but true away-from-keyboard detection needs a native shell.
   A [Tauri](https://github.com/tauri-apps/tauri) wrapper around the existing
   SPA could read system idle time (e.g. the `user-idle` crate) and feed it in

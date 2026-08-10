@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
-export class TimerRoomDO extends DurableObject<Env> {
+export class TimerRoom extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     // Answer the client's "ping" without waking a hibernated object.

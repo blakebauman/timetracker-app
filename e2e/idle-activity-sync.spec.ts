@@ -7,7 +7,7 @@ declare global {
   }
 }
 
-// Cross-session activity relay for idle detection (TimerRoomDO): local input
+// Cross-session activity relay for idle detection (TimerRoom): local input
 // while a timer runs is sent as a throttled heartbeat and relayed to the same
 // user's OTHER sockets as `user_activity`, so their idle detection knows the
 // user is active elsewhere. A raw second WebSocket on the same session cookie
