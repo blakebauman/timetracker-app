@@ -1,4 +1,10 @@
-import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
@@ -199,6 +205,96 @@ function invalidateEntryDerived(queryClient: QueryClient, suggestions = false) {
   if (suggestions) queryClient.invalidateQueries({ queryKey: ["entry-suggestions"] });
 }
 
+/** The rows an optimistic mutation is about to touch, and the caches holding them. */
+interface EntrySnapshot {
+  rows: Map<string, TimeEntry>;
+  keys: QueryKey[];
+}
+
+/**
+ * Capture just the rows a mutation will change — not the whole cache.
+ *
+ * Every entry mutation used to snapshot all of `["time-entries"]` in `onMutate`
+ * and restore it wholesale on failure. That reverts more than the failed edit:
+ * anything else that succeeded while it was in flight was inside the snapshot
+ * too, so a rejected edit silently undid a *successful* one. Recording the
+ * affected rows and their query keys lets the rollback put back exactly what it
+ * took, and leave everything else alone.
+ */
+function snapshotEntries(queryClient: QueryClient, ids: Set<string>): EntrySnapshot {
+  const rows = new Map<string, TimeEntry>();
+  const keys: QueryKey[] = [];
+  for (const [key, data] of queryClient.getQueriesData<TimeEntry[]>({
+    queryKey: ["time-entries"],
+  })) {
+    if (!data?.some((e) => ids.has(e.id))) continue;
+    keys.push(key);
+    for (const e of data) if (ids.has(e.id) && !rows.has(e.id)) rows.set(e.id, e);
+  }
+  return { rows, keys };
+}
+
+/**
+ * Put the snapshotted rows back, into exactly the caches they came from.
+ *
+ * Handles both shapes of rollback: a changed row is replaced in place, and a
+ * row an optimistic delete removed is re-inserted. Re-inserted rows are sorted
+ * newest-first to match the list endpoint's `ORDER BY te.start DESC`, so the
+ * restored array is ordered the way a refetch would return it.
+ */
+function rollbackEntries(queryClient: QueryClient, snap: EntrySnapshot | undefined) {
+  if (!snap) return;
+  for (const key of snap.keys) {
+    queryClient.setQueryData<TimeEntry[]>(key, (old) => {
+      if (!old) return old;
+      const restored = old.map((e) => snap.rows.get(e.id) ?? e);
+      const missing = [...snap.rows.values()].filter((r) => !old.some((e) => e.id === r.id));
+      if (!missing.length) return restored;
+      return [...restored, ...missing].sort((a, b) => b.start.localeCompare(a.start));
+    });
+  }
+}
+
+/**
+ * Apply a patch to a cached row, resolving the denormalized columns the list
+ * renders from so a reassignment shows the new project/task immediately rather
+ * than the old label until the refetch lands.
+ *
+ * Shared by the single and bulk update paths — they take the same field set
+ * (bulk simply can't move start/stop).
+ */
+function mergeEntryPatch(
+  queryClient: QueryClient,
+  entry: TimeEntry,
+  patch: Partial<TimeEntry> & { projectId?: string | null; taskId?: string | null }
+): TimeEntry {
+  const merged: TimeEntry = { ...entry, ...patch };
+  if (patch.projectId !== undefined) {
+    const proj = queryClient
+      .getQueryData<{ id: string; name: string; color: string | null }[]>(["projects"])
+      ?.find((p) => p.id === patch.projectId);
+    merged.projectName = proj?.name ?? null;
+    merged.projectColor = proj?.color ?? null;
+  }
+  if (patch.taskId !== undefined) {
+    // Tasks are cached per project (`["tasks", projectId, "withDone"]`), so the
+    // lookup has to sweep the prefix rather than read one key.
+    const task = queryClient
+      .getQueriesData<{ id: string; name: string }[]>({ queryKey: ["tasks"] })
+      .flatMap(([, rows]) => rows ?? [])
+      .find((t) => t.id === patch.taskId);
+    merged.taskName = task?.name ?? null;
+  }
+  // Duration is recomputed with Math.round to match the server's
+  // `* 86400 + 0.5`, so an exact 30m span never flickers as 29m.
+  if ((patch.start !== undefined || patch.stop !== undefined) && merged.start && merged.stop) {
+    merged.duration = Math.round(
+      (new Date(merged.stop).getTime() - new Date(merged.start).getTime()) / 1000
+    );
+  }
+  return merged;
+}
+
 export function useCreateEntry() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -221,50 +317,16 @@ export function useUpdateEntry() {
     mutationFn: ({ id, data }: { id: string; data: UpdateTimeEntry }) =>
       api.timeEntries.update(id, data as Record<string, unknown>) as Promise<TimeEntry>,
     // Optimistically patch the cached entry so inline edits (duration, description,
-    // project, billable) land instantly instead of after the round-trip. Duration
-    // is recomputed from start/stop with Math.round to match the server's
-    // `* 86400 + 0.5` rounding, so an exact 30m span never flickers as 29m.
+    // project, billable) land instantly instead of after the round-trip.
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["time-entries"] });
-      const prev = queryClient.getQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] });
-
-      // Resolve the denormalized join columns the list renders from, so the row
-      // shows the new project/task immediately instead of the old label until
-      // the refetch lands.
-      const projects =
-        data.projectId !== undefined
-          ? queryClient.getQueryData<{ id: string; name: string; color: string | null }[]>(["projects"])
-          : undefined;
-      // Tasks are cached per project (`["tasks", projectId, "withDone"]`), so the
-      // lookup has to sweep the prefix rather than read one key.
-      const tasks =
-        data.taskId !== undefined
-          ? queryClient
-              .getQueriesData<{ id: string; name: string }[]>({ queryKey: ["tasks"] })
-              .flatMap(([, rows]) => rows ?? [])
-          : undefined;
-
+      const snap = snapshotEntries(queryClient, new Set([id]));
       queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
-        old?.map((e) => {
-          if (e.id !== id) return e;
-          const merged: TimeEntry = { ...e, ...(data as Partial<TimeEntry>) };
-          if (data.projectId !== undefined) {
-            const proj = projects?.find((p) => p.id === data.projectId);
-            merged.projectName = proj?.name ?? null;
-            merged.projectColor = proj?.color ?? null;
-          }
-          if (data.taskId !== undefined) {
-            merged.taskName = tasks?.find((t) => t.id === data.taskId)?.name ?? null;
-          }
-          if ((data.start !== undefined || data.stop !== undefined) && merged.start && merged.stop) {
-            merged.duration = Math.round(
-              (new Date(merged.stop).getTime() - new Date(merged.start).getTime()) / 1000
-            );
-          }
-          return merged;
-        }) ?? []
+        old?.map((e) =>
+          e.id === id ? mergeEntryPatch(queryClient, e, data as Partial<TimeEntry>) : e
+        )
       );
-      return { prev };
+      return { snap };
     },
     onError: (err, _vars, ctx) => {
       if (isQueuedOffline(err)) {
@@ -272,7 +334,7 @@ export function useUpdateEntry() {
         toast.info("Offline — your change will sync when you reconnect");
         return;
       }
-      ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      rollbackEntries(queryClient, ctx?.snap);
       toast.error(mutationErrorMessage(err, "Failed to update entry"));
     },
     onSuccess: (updated) => {
@@ -314,21 +376,19 @@ export function useDeleteEntry() {
     mutationFn: (id: string) => api.timeEntries.delete(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["time-entries"] });
-      const prev = queryClient.getQueriesData<TimeEntry[]>({
-        queryKey: ["time-entries"],
-      });
+      const snap = snapshotEntries(queryClient, new Set([id]));
       queryClient.setQueriesData<TimeEntry[]>(
         { queryKey: ["time-entries"] },
         (old) => old?.filter((e) => e.id !== id) ?? []
       );
-      return { prev };
+      return { snap };
     },
     onError: (err, _id, ctx) => {
       if (isQueuedOffline(err)) {
         toast.info("Offline — the deletion will sync when you reconnect");
         return;
       }
-      ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      rollbackEntries(queryClient, ctx?.snap);
       toast.error(mutationErrorMessage(err, "Failed to delete entry"));
     },
     onSettled: (_data, err) => {
@@ -344,20 +404,20 @@ export function useBulkDeleteEntries() {
     mutationFn: (ids: string[]) => api.timeEntries.bulkDelete(ids),
     onMutate: async (ids) => {
       await queryClient.cancelQueries({ queryKey: ["time-entries"] });
-      const prev = queryClient.getQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] });
       const set = new Set(ids);
+      const snap = snapshotEntries(queryClient, set);
       queryClient.setQueriesData<TimeEntry[]>(
         { queryKey: ["time-entries"] },
         (old) => old?.filter((e) => !set.has(e.id)) ?? []
       );
-      return { prev };
+      return { snap };
     },
     onError: (err, _ids, ctx) => {
       if (isQueuedOffline(err)) {
         toast.info("Offline — the deletions will sync when you reconnect");
         return;
       }
-      ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      rollbackEntries(queryClient, ctx?.snap);
       toast.error(mutationErrorMessage(err, "Failed to delete entries"));
     },
     onSettled: (_data, err) => {
@@ -372,10 +432,33 @@ export function useBulkUpdateEntries() {
   return useMutation({
     mutationFn: ({ ids, patch }: { ids: string[]; patch: Record<string, unknown> }) =>
       api.timeEntries.bulkUpdate({ ids, patch }),
-    onSuccess: () => invalidateEntryDerived(queryClient),
-    onError: (err) =>
-      isQueuedOffline(err)
-        ? toast.info("Offline — your changes will sync when you reconnect")
-        : toast.error(mutationErrorMessage(err, "Failed to update entries")),
+    // This was the one entry mutation with no optimistic path: assigning a
+    // project to a whole group, or flipping billable across a selection, sat
+    // there doing nothing for a round-trip while every single-entry equivalent
+    // landed instantly. Same merge as useUpdateEntry — bulk takes the same
+    // fields, it just can't move start/stop.
+    onMutate: async ({ ids, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ["time-entries"] });
+      const set = new Set(ids);
+      const snap = snapshotEntries(queryClient, set);
+      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
+        old?.map((e) =>
+          set.has(e.id) ? mergeEntryPatch(queryClient, e, patch as Partial<TimeEntry>) : e
+        )
+      );
+      return { snap };
+    },
+    onError: (err, _vars, ctx) => {
+      if (isQueuedOffline(err)) {
+        toast.info("Offline — your changes will sync when you reconnect");
+        return;
+      }
+      rollbackEntries(queryClient, ctx?.snap);
+      toast.error(mutationErrorMessage(err, "Failed to update entries"));
+    },
+    onSettled: (_data, err, vars) => {
+      if (isQueuedOffline(err)) return;
+      invalidateEntryDerived(queryClient, vars.patch.description !== undefined);
+    },
   });
 }
