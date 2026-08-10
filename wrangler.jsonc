@@ -116,6 +116,14 @@
     {
       "tag": "v3",
       "new_sqlite_classes": ["TimerRoom"]
+    },
+    // v4 — drop the now-orphaned legacy namespace and its tombstone export.
+    // Legal only because v3 already shipped: the live binding points at
+    // TimerRoom (clears 10061) and this deploy pairs the dropped export with an
+    // explicit delete-class (clears 10064).
+    {
+      "tag": "v4",
+      "deleted_classes": ["TimerRoomDO"]
     }
   ],
   "routes": [
