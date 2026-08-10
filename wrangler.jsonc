@@ -92,9 +92,19 @@
     // Done now rather than later because the window is only free while the DO
     // stays stateless. Do NOT write to ctx.storage in TimerRoom without
     // revisiting this: from that point the same move loses real data.
+    //
+    // Create and delete are SEPARATE tags applied by SEPARATE deploys, and that
+    // is not stylistic. Putting both in one migration is rejected:
+    //
+    //   Cannot apply --delete-class migration to class 'TimerRoomDO' without
+    //   also removing the binding that references it. [code: 10061]
+    //
+    // The delete is validated against the bindings of the *currently deployed*
+    // script, not the one being uploaded — so the binding has to already point
+    // at TimerRoom in a live deploy before TimerRoomDO can be dropped. v3 does
+    // the create + rebind; v4 drops the orphan afterwards.
     {
       "tag": "v3",
-      "deleted_classes": ["TimerRoomDO"],
       "new_sqlite_classes": ["TimerRoom"]
     }
   ],
