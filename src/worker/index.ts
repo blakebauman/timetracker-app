@@ -26,6 +26,9 @@ import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
 import { routeAgentRequest } from "agents";
 export { TimerRoom } from "./durable-objects/TimerRoom";
+// Temporary: required for exactly one deploy so the v4 delete-class migration
+// is legal. Goes away with the migration — see TimerRoomDO.legacy.ts.
+export { TimerRoomDO } from "./durable-objects/TimerRoomDO.legacy";
 export { ChatAgent } from "./durable-objects/ChatAgent";
 
 // 10 attempts per minute on auth endpoints. Relaxed in the Vite dev server
