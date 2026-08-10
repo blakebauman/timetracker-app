@@ -213,3 +213,8 @@ extension/.keys/*
 
 ### Impeccable (local design-tool state) ###
 .impeccable/
+# The skill itself is installed locally, not vendored. Everything else under
+# .claude/ (agents, hooks, settings) IS tracked, so without this line a stray
+# `git add -A` sweeps ~100 tool files into an unrelated commit — which is
+# exactly how it got into #95.
+.claude/skills/impeccable/
