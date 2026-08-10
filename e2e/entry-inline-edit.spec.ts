@@ -75,6 +75,32 @@ test.describe("entry list inline editing", () => {
     await expect(page.getByRole("dialog")).not.toBeVisible();
   });
 
+  test("a bulk edit lands optimistically instead of waiting for the round-trip", async ({
+    page,
+  }) => {
+    await addManualEntry(page, { description: "Bulk A", start: "09:00", stop: "10:00" });
+    await addManualEntry(page, { description: "Bulk B", start: "11:00", stop: "12:00" });
+
+    // Hold the response well past the assertion window below, so the only way
+    // the UI can show the change is optimistically. useBulkUpdateEntries had no
+    // onMutate at all — it was the one entry mutation that made you wait.
+    await page.route("**/api/time_entries/bulk", async (route) => {
+      await new Promise((r) => setTimeout(r, 4000));
+      await route.continue();
+    });
+
+    const rowA = page.locator("div.group", { hasText: "Bulk A" }).first();
+    const rowB = page.locator("div.group", { hasText: "Bulk B" }).first();
+    await rowA.getByRole("checkbox", { name: "Select entry" }).click();
+    await rowB.getByRole("checkbox", { name: "Select entry" }).click();
+
+    await page.getByRole("button", { name: "Mark billable" }).click();
+
+    // Both rows carry the billable marker long before the request comes back.
+    await expect(rowA.getByText("Billable")).toBeAttached({ timeout: 1500 });
+    await expect(rowB.getByText("Billable")).toBeAttached({ timeout: 1500 });
+  });
+
   test("a rejected time range reports the reason, not a serialized ZodError", async ({ page }) => {
     await addManualEntry(page, { description: "Range reject", start: "09:00", stop: "10:00" });
 

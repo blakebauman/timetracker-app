@@ -124,22 +124,10 @@ description and project they edit inline). Each was in scope of the audit and
 deliberately left out of those PRs to keep the diffs about one thing; none is
 blocking.
 
-- **Bulk update has no optimistic path** — `useBulkUpdateEntries` is the only
-  entry mutation with no `onMutate` (`hooks/useEntries.ts`). The group row's
-  "Assign project to all N entries" and the bulk bar's billable toggles wait a
-  full round-trip showing nothing, while every single-entry equivalent lands
-  instantly and ticks. Give it the same optimistic merge `useUpdateEntry` has;
-  the project/task name resolution is already written and reusable.
-- **Group project chip is still silent** — #84 gave `AssignProjectChip` a
-  `SavedTick` in `EntryRow`, but the copy in `EntryDescriptionGroup` routes
-  through `bulkUpdate`, so it has nothing to acknowledge yet. Blocked on the
-  item above; do them together.
-- **Rollback clobbers concurrent edits** — every entry mutation's `onError`
-  restores a whole-cache snapshot taken in its own `onMutate`. If edit A fails
-  while edit B succeeded in between, B is silently reverted along with A.
-  Correct fix: roll back only the mutated entry's row rather than replacing the
-  whole query data. Low frequency (needs two overlapping edits, one failing),
-  which is why it isn't urgent — but it loses a *successful* write when it hits.
+*The first three items shipped in #87 — bulk update's optimistic path, the
+group chip's acknowledgement it unblocked, and per-row rollback. Removed from
+this list; the two below remain open.*
+
 - **"Assign project" is two different controls with one name** — the stop
   toast's action (`hooks/useTimer.ts`) and the row's `AssignProjectChip` share
   the accessible name while doing different things at different scopes. A

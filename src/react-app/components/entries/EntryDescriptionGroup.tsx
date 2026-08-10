@@ -20,6 +20,8 @@ import { formatDurationShort } from "@/lib/dateUtils";
 import { useTimer } from "@/hooks/useTimer";
 import { useBulkDeleteEntries, useBulkUpdateEntries, useCreateEntry } from "@/hooks/useEntries";
 import { toCreatePayload } from "@/lib/entryUtils";
+import { useSavedFlash } from "@/hooks/useSavedFlash";
+import { SavedTick } from "./SavedTick";
 import { cn } from "@/lib/utils";
 import { ColorDot } from "@/components/ColorDot";
 import { ProjectBadge } from "@/components/ProjectBadge";
@@ -41,6 +43,10 @@ export function EntryDescriptionGroup({
   const bulkDelete = useBulkDeleteEntries();
   const bulkUpdate = useBulkUpdateEntries();
   const createEntry = useCreateEntry();
+  // Matches the per-row chip: assigning a project is an inline commit and gets
+  // the same acknowledgement. It could only say nothing until bulkUpdate grew an
+  // optimistic path — there was no moment to acknowledge.
+  const savedProject = useSavedFlash();
 
   const allSelected = group.entries.every((e) => selectedIds?.has(e.id));
   const someSelected = group.entries.some((e) => selectedIds?.has(e.id));
@@ -149,15 +155,21 @@ export function EntryDescriptionGroup({
         {/* Sibling of the trigger (a button can't nest inside a button):
             assigns the project to every entry in the group at once. */}
         {!group.projectId && (
-          <AssignProjectChip
-            ariaLabel={`Assign project to all ${group.entries.length} entries`}
-            onAssign={(projectId) =>
-              bulkUpdate.mutate({
-                ids: group.entries.map((e) => e.id),
-                patch: { projectId },
-              })
-            }
-          />
+          <span className="relative">
+            <SavedTick saved={savedProject.saved} className="-right-3" />
+            <AssignProjectChip
+              ariaLabel={`Assign project to all ${group.entries.length} entries`}
+              onAssign={(projectId) =>
+                bulkUpdate.mutate(
+                  {
+                    ids: group.entries.map((e) => e.id),
+                    patch: { projectId },
+                  },
+                  { onSuccess: savedProject.flash }
+                )
+              }
+            />
+          </span>
         )}
 
         {/* Billable indicator */}
