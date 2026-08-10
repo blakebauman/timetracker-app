@@ -11,12 +11,21 @@ import { signUp } from "./auth";
  * This asserts the behaviour the handler existed to guarantee, rather than the
  * handler itself: close the socket from the client and require a clean 1000.
  *
- * Caveat worth knowing before you trust it as a compat-date guard: it does NOT
- * discriminate compatibility dates locally. Checked directly — with the handler
- * removed it still passes on the old `2025-10-08` date against a freshly
- * started dev server, so the local runtime reciprocates regardless and 1006 is
- * not reproducible here. It is a regression test for clean closure, not proof
- * that the flag is what delivers it.
+ * Read this before trusting it: **this test cannot fail locally**, whatever the
+ * server does. The local runtime reciprocates the Close frame regardless of
+ * compatibility date or handler — verified by removing the handler and dropping
+ * the date back to `2025-10-08` against a fresh dev server; still passed.
+ *
+ * That blind spot has already cost once. #88 removed `webSocketClose` on the
+ * strength of the docs plus this test, and production then returned
+ * `1006 / wasClean: false` — nothing was reciprocating. The handler is back.
+ *
+ * So: this guards the client contract in CI, but the only thing that actually
+ * verifies close behaviour is a probe against the deployed worker:
+ *
+ *   const ws = new WebSocket("wss://timetracker.run/api/ws");   // authenticated tab
+ *   ws.onopen = () => ws.close(1000, "probe");
+ *   ws.onclose = (e) => console.log(e.code, e.wasClean);        // want 1000, true
  */
 test("closing a timer socket completes the handshake cleanly", async ({ page }) => {
   await signUp(page);

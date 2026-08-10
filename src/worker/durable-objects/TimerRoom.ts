@@ -85,13 +85,27 @@ export class TimerRoom extends DurableObject<Env> {
     }
   }
 
-  // No handler: with `web_socket_auto_reply_to_close` (default on from compat
-  // date 2026-04-07, see wrangler.jsonc) the runtime sends the reciprocal Close
-  // frame itself and `readyState` is already CLOSED by the time this would run.
-  // The manual `ws.close(code, reason)` that used to live here existed only to
-  // avoid a 1006 abnormal closure on older compat dates, and there is nothing
-  // else to do on close — per-connection state lives in the socket's attachment
-  // and dies with it.
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    // Keep completing the handshake by hand, despite `web_socket_auto_reply_to_close`
+    // being default-on from compat date 2026-04-07 (see wrangler.jsonc).
+    //
+    // #88 removed this on the strength of the docs and a local test. Measured
+    // against production afterwards, a client-initiated close came back
+    // `1006 / wasClean: false` — an abnormal closure, i.e. nothing reciprocated
+    // the Close frame. Restoring this returns it to a clean 1000.
+    //
+    // The local runtime reciprocates regardless of compat date, so neither the
+    // e2e suite nor CI can see the difference; only a probe against the deployed
+    // worker can. Do not remove this again without re-measuring on production —
+    // and note the docs say the call is harmless when auto-reply *is* active
+    // (silently ignored once the socket is closed), so keeping it costs nothing
+    // if the platform behaviour later matches the documentation.
+    try {
+      ws.close(code, reason);
+    } catch {
+      // Already closed, or a code (e.g. 1005) that close() rejects.
+    }
+  }
 
   webSocketError(ws: WebSocket): void {
     // Still needed: auto-reply covers Close frames, not the error path.

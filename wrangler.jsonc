@@ -7,8 +7,10 @@
   // suite run on different semantics than the config claims, and warns on every
   // invocation. Bump this together with the workerd/wrangler dependency.
   //
-  // Crossing 2026-04-07 turns on `web_socket_auto_reply_to_close`, which is why
-  // TimerRoomDO no longer completes the close handshake by hand.
+  // Crossing 2026-04-07 turns on `web_socket_auto_reply_to_close`. Measured
+  // against production, that did NOT actually reciprocate Close frames — the
+  // wire showed 1006 once the manual handshake was removed — so TimerRoom still
+  // closes by hand. Read its webSocketClose comment before touching that again.
   "compatibility_date": "2026-07-08",
   "compatibility_flags": [
     "nodejs_compat"
