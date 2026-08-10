@@ -131,11 +131,15 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 - **Headline** (600 weight, 16px / `text-base`, 1.4 line-height): card titles, section headers.
 - **Body** (400 weight, 14px / `text-sm`, 1.5 line-height): default UI text, descriptions, table cells. 65–75ch cap where prose appears (AI summary output); dense tabular data runs narrower.
 - **Label** (500 weight, 12px / `text-xs`, 1.3 line-height): muted metadata, timestamps, badge text, form labels.
-- **Micro** (500 weight, 10px / `text-[10px]`): the floor of the ramp, for chrome-level detail only — `kbd` shortcut chips, dense inline badges (entry-row tags, session badges), counts, and micro-metadata inside 16–20px-tall elements. Never for content the user reads as text; anything sentence-shaped belongs at Label or above.
+- **Micro** (500 weight, 10px / `text-micro`): the floor of the ramp, for chrome-level detail only — `kbd` shortcut chips, dense inline badges (entry-row tags, session badges), counts, and micro-metadata inside 16–20px-tall elements. Never for content the user reads as text; anything sentence-shaped belongs at Label or above.
 - **Mono/Data** (500 weight, tabular-nums, Geist Mono): durations (`2h 15m`), elapsed timers, currency amounts — anywhere a column of numbers needs to align.
 
 ### Named Rules
 **The Tabular Rule.** Any number that appears in a list or column (durations, currency, percentages) uses `tabular-nums` so digits align vertically. This is non-negotiable in reports and entry lists.
+
+**The Named-Step Rule.** Every size above comes from a named utility — `text-xl`, `text-base`, `text-sm`, `text-xs`, `text-micro`. An arbitrary `text-[Npx]` anywhere in the app is drift by definition, even when the pixel value happens to match a step: it can't be changed centrally and it defeats the design-system check. `text-micro` exists precisely so the ramp's floor stops being written as a literal at 28 call sites.
+
+> **Known exception, tracked in `ROADMAP.md`:** 15 remaining `text-[11px]` literals sit between Micro and Label with no step of their own. Folding each to `text-micro` or `text-xs` is a per-site visual judgment in dense surfaces (calendar, planner, timesheet), so it is a deliberate open decision, not an oversight.
 
 ## 4. Elevation
 

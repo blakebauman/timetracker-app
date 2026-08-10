@@ -108,7 +108,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
               }}
               placeholder="e.g. 1h 30m"
               title="Estimated time — e.g. 1h 30m, 1:30, 90m"
-              className="h-5 w-28 py-0 text-[10px]"
+              className="h-5 w-28 py-0 text-micro"
             />
           </div>
         ) : progress !== null ? (
@@ -117,7 +117,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
             onClick={startEditTime}
           >
             <Progress value={progress} className="h-1 flex-1" />
-            <span className="text-[10px] tabular-nums text-muted-foreground">
+            <span className="text-micro tabular-nums text-muted-foreground">
               {formatDurationShort(task.trackedSeconds)} / {formatDurationShort(task.estimatedSeconds!)}
             </span>
           </button>
@@ -126,7 +126,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
             // gap-1.5, not gap-1: the trailing space in the text node is swallowed
             // at the flex-item boundary, so the dashed underline started hard
             // against the "·" and read tighter than the spaces around it.
-            className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground transition-opacity hover:opacity-70"
+            className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground transition-opacity hover:opacity-70"
             onClick={startEditTime}
           >
             <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
@@ -137,7 +137,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
             // `block`: a bare <button> is inline-block, so this ran onto the same
             // line as the task name ("Data mappingadd estimate"). The other two
             // states are flex and already drop below; mt-0.5 shows this meant to.
-            className="mt-0.5 block text-[10px] text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50 hover:text-muted-foreground!"
+            className="mt-0.5 block text-micro text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50 hover:text-muted-foreground!"
             onClick={startEditTime}
           >
             add estimate

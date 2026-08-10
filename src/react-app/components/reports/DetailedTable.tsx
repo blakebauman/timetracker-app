@@ -373,10 +373,10 @@ function renderCell(
           </span>
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
             {entry.billable && (
-              <span className="text-[10px] font-semibold text-primary">$</span>
+              <span className="text-micro font-semibold text-primary">$</span>
             )}
             {entry.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="h-4 px-1 py-0 text-[10px] font-normal">
+              <Badge key={tag} variant="outline" className="h-4 px-1 py-0 text-micro font-normal">
                 {tag}
               </Badge>
             ))}

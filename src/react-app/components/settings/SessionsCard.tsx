@@ -121,7 +121,7 @@ export function SessionsCard() {
                     <div className="flex items-center gap-2">
                       <span className="truncate font-medium">{label}</span>
                       {isCurrent && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-micro">
                           This device
                         </Badge>
                       )}

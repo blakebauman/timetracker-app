@@ -62,7 +62,7 @@ export function IntegrationsCard() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium">{integration.name}</span>
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-micro">
                       {TYPE_LABELS[integration.type]}
                     </Badge>
                   </div>

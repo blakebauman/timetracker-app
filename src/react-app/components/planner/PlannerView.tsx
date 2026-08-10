@@ -247,7 +247,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
       {(cell.planned > 0 || cell.actual > 0) && (
         <span
           className={cn(
-            "text-[10px] tabular-nums",
+            "text-micro tabular-nums",
             cell.actual > cell.planned
               ? "text-amber-600 dark:text-amber-500"
               : "text-muted-foreground"
@@ -400,7 +400,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
               >
                 <span className="flex flex-col leading-tight">
                   <span>Planned</span>
-                  <span className="text-[10px]">Tracked</span>
+                  <span className="text-micro">Tracked</span>
                 </span>
               </td>
               {dayTotals.map((t, i) => (

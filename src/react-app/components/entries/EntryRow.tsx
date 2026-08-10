@@ -292,6 +292,11 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
                     gets the same acknowledgement — it was the one that said
                     nothing at all. */}
                 <AssignProjectChip
+                  // Scoped like the group chip's label. The bare "Assign
+                  // project" collided with the stop toast's action, which does
+                  // something different (opens the whole editor) at a different
+                  // scope — a screen reader heard two identical controls.
+                  ariaLabel="Assign project to this entry"
                   onAssign={(projectId) =>
                     updateEntry.mutate(
                       { id: entry.id, data: { projectId } },
@@ -305,7 +310,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
               <Badge
                 key={tag}
                 variant="outline"
-                className="h-4 gap-1 px-1 py-0 text-[10px] font-normal"
+                className="h-4 gap-1 px-1 py-0 text-micro font-normal"
               >
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full"

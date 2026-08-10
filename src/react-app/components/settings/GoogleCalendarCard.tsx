@@ -44,7 +44,7 @@ export function GoogleCalendarCard() {
           <CalendarDays className="h-4 w-4" />
           Google Calendar
           {status?.connected && (
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-micro">
               Connected
             </Badge>
           )}

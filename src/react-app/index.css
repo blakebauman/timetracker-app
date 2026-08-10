@@ -41,6 +41,21 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
+  /* Micro — the documented floor of the type ramp (DESIGN.md §3), for
+     chrome-level detail only: kbd chips, dense inline badges, counts. It was
+     always a real step; it was just spelled as a 10px arbitrary value at 28
+     call sites, which reads as drift and trips the design-system check. Named
+     so it can be used as `text-micro` and so the floor moves in one place.
+
+     Deliberately no `--text-micro--line-height`: the arbitrary values it
+     replaces set font-size only and inherited their leading, so pinning one
+     here would quietly reflow 28 dense call sites. This swap is meant to be
+     byte-identical in output.
+
+     (Don't write the arbitrary form in this comment — Tailwind scans CSS
+     comments too and will emit a dead utility for it.) */
+  --text-micro: 0.625rem;
+
   /* Motion — natural deceleration curves (no bounce/elastic) */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);

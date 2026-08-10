@@ -79,7 +79,7 @@ export function ConnectedAccountsCard() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{p.label}</span>
                   {linked && (
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className="text-micro">
                       Connected
                     </Badge>
                   )}

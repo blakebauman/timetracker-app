@@ -129,19 +129,34 @@ blocking.
 group chip's acknowledgement it unblocked, and per-row rollback. Removed from
 this list; the two below remain open.*
 
-- **"Assign project" is two different controls with one name** — the stop
-  toast's action (`hooks/useTimer.ts`) and the row's `AssignProjectChip` share
-  the accessible name while doing different things at different scopes. A
-  screen-reader user hears no difference, and `e2e/entry-inline-edit.spec.ts`
-  has to scope by `[data-sonner-toast]` to disambiguate. Rename one.
-- **Entry-list micro-labels are off the type ramp** — `text-[10px]` (tag
-  badges, group count) and `text-[11px]` (billable `$`) in `EntryRow` /
-  `EntryDescriptionGroup` are literal sizes with no step in `DESIGN.md`. They
-  predate this work and read as intentional, so the fix is a decision, not a
-  patch: either document a micro-label step on the ramp or move them onto an
-  existing one. Not local to the entry list — 43 occurrences across 21
-  components, so whichever way it goes it's one sweep, per the
-  fix-the-system-not-the-instance convention.
+*Both remaining items were addressed in #94; only the 11px judgment call below
+is still open.*
+
+- ~~**"Assign project" is two different controls with one name**~~ — fixed in
+  #94: the row chip is now "Assign project to this entry", matching the scoped
+  label the group chip already carried.
+- **Micro-label sizes below the ramp floor** — 15 arbitrary 11px sizes remain,
+  sitting between Micro (10px) and Label (12px) with no step of their own.
+
+  This item previously said "43 occurrences off the ramp". That was wrong:
+  `DESIGN.md` §3 has always documented **Micro** as a real 10px step, so the 28
+  ten-pixel uses were on the ramp and merely spelled as arbitrary values. #94
+  gave that step a name (`text-micro`) and swept all 28 — byte-identical CSS
+  output, no visual change.
+
+  What's left is a genuine design decision, not a sweep: each of the 15 has to
+  fold *up* to `text-xs` or *down* to `text-micro`, and they live in dense
+  surfaces (calendar event chips, planner and timesheet date sublabels, `kbd`
+  chips, the billable `$`, assistant tool cards) where a 1–2px change is
+  visible. Doing it uniformly would regress at least one of them. Decide per
+  site, with the app open.
+
+  Two things worth knowing before picking this up:
+  - `DESIGN.md` now carries a **Named-Step Rule** — an arbitrary size anywhere
+    is drift by definition, even when the pixel value matches a step.
+  - Tailwind scans markdown in this repo, so writing an arbitrary size in
+    prose emits a real (dead) CSS rule. That is exactly how this file was
+    shipping one. Describe sizes in words here, not as class syntax.
 
 ---
 
