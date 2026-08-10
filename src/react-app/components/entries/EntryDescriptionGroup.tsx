@@ -176,7 +176,7 @@ export function EntryDescriptionGroup({
         {group.billable && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-[11px] font-semibold text-primary-ink">
+              <span className="text-micro font-semibold text-primary-ink">
                 <span aria-hidden>$</span>
                 <span className="sr-only">Billable</span>
               </span>

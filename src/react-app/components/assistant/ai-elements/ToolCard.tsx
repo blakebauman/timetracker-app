@@ -180,7 +180,7 @@ function renderResult(name: string, input: Rec, out: Rec): React.ReactNode {
                 </li>
               ))}
               {byProject.length > 6 && (
-                <li className="text-[11px] italic text-muted-foreground/70">
+                <li className="text-micro italic text-muted-foreground/70">
                   +{byProject.length - 6} more
                 </li>
               )}
@@ -203,11 +203,11 @@ function renderResult(name: string, input: Rec, out: Rec): React.ReactNode {
               {projects.slice(0, 8).map((p, i) => (
                 <li key={i} className="flex items-center gap-1.5 truncate">
                   <span className="truncate text-foreground/90">{p.name ?? "?"}</span>
-                  {p.billable && <span className="text-[11px] text-success">billable</span>}
+                  {p.billable && <span className="text-micro text-success">billable</span>}
                 </li>
               ))}
               {projects.length > 8 && (
-                <li className="text-[11px] italic text-muted-foreground/70">
+                <li className="text-micro italic text-muted-foreground/70">
                   +{projects.length - 8} more
                 </li>
               )}
@@ -225,7 +225,7 @@ function renderResult(name: string, input: Rec, out: Rec): React.ReactNode {
     case "rememberPreference":
       return (
         <Card icon={Brain} tone="ok" title="Remembered">
-          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">
             {str(out, "key") ?? str(input, "key") ?? "?"}
           </code>
         </Card>
@@ -246,7 +246,7 @@ function renderResult(name: string, input: Rec, out: Rec): React.ReactNode {
                 </li>
               ))}
               {memories.length > 4 && (
-                <li className="text-[11px] italic text-muted-foreground/70">
+                <li className="text-micro italic text-muted-foreground/70">
                   +{memories.length - 4} more
                 </li>
               )}
