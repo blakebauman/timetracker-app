@@ -2,7 +2,14 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "timetracker-app",
   "main": "./src/worker/index.ts",
-  "compatibility_date": "2025-10-08",
+  // Pinned to the installed workerd's date (1.20260708.1), not "today": a
+  // compat date ahead of the local runtime makes `wrangler dev` and the e2e
+  // suite run on different semantics than the config claims, and warns on every
+  // invocation. Bump this together with the workerd/wrangler dependency.
+  //
+  // Crossing 2026-04-07 turns on `web_socket_auto_reply_to_close`, which is why
+  // TimerRoomDO no longer completes the close handshake by hand.
+  "compatibility_date": "2026-07-08",
   "compatibility_flags": [
     "nodejs_compat"
   ],
