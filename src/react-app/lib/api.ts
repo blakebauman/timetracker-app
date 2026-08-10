@@ -39,11 +39,52 @@ export class ApiError extends Error {
   }
 }
 
-/** Prefer the server's `{ error }` text; fall back to the raw body, then status. */
+/**
+ * Pull the human-readable message out of a Hono `zValidator` rejection.
+ *
+ * Its body is `{ success: false, error: <ZodError> }`, and both levels are
+ * serialized: `error` arrives as a JSON *string*, whose `message` is itself a
+ * JSON string holding the issues array. Taking `error` at face value because it
+ * is a string put the entire escaped ZodError in a toast — which is what the
+ * user actually saw for an inverted time range, the single most likely
+ * validation failure in the app.
+ *
+ * Returns the first issue's message, or null when this isn't a zod rejection.
+ */
+function zodIssueMessage(value: unknown): string | null {
+  let err: unknown = value;
+  if (typeof err === "string") {
+    try {
+      err = JSON.parse(err);
+    } catch {
+      return null;
+    }
+  }
+  if (!err || typeof err !== "object") return null;
+
+  const { issues, message } = err as { issues?: unknown; message?: unknown };
+  let list = issues;
+  if (!Array.isArray(list) && typeof message === "string") {
+    try {
+      list = JSON.parse(message);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(list) || list.length === 0) return null;
+
+  const first = list[0] as { message?: unknown };
+  return typeof first?.message === "string" && first.message ? first.message : null;
+}
+
+/** Prefer a zod issue, then the server's `{ error }` text, then the raw body. */
 function errorMessage(raw: string, statusText: string): string {
   if (!raw) return statusText;
   try {
     const parsed = JSON.parse(raw) as { error?: unknown };
+    // Before the plain-string branch: a zod rejection's `error` IS a string.
+    const zod = zodIssueMessage(parsed.error);
+    if (zod) return zod;
     if (typeof parsed.error === "string" && parsed.error) return parsed.error;
   } catch {
     // Not JSON — fall through to the raw text.
