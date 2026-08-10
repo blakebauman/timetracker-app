@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Trash2, X, DollarSign, Upload, Clock, AlertTriangle } from "lucide-react";
 import { EntryGroup } from "./EntryGroup";
+import { EntryForm } from "./EntryForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/hooks/useEntries";
 import { useIntegrations, usePushEntries } from "@/hooks/useIntegrations";
 import { useTimerStore } from "@/stores/timerStore";
+import { useUIStore } from "@/stores/uiStore";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { ENTRY_LIST_LIMIT } from "@shared/schemas";
 
@@ -39,6 +41,17 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
   const pushEntries = usePushEntries();
   const createEntry = useCreateEntry();
   const { data: integrations = [] } = useIntegrations();
+
+  // The edit sheet is hosted here rather than inside EntryRow. A row unmounts
+  // whenever its day or grouping changes — which the sheet itself can cause, by
+  // editing the date or the description — and taking the open sheet down with it
+  // dropped the mutation's `onSuccess: onClose`, leaving `editEntryId` set so the
+  // sheet immediately reopened on the remounted row.
+  const editEntryId = useUIStore((s) => s.editEntryId);
+  const closeEntryEditor = useUIStore((s) => s.closeEntryEditor);
+  const editingEntry = editEntryId
+    ? (entries.find((e) => e.id === editEntryId) ?? null)
+    : null;
 
   const onToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -210,6 +223,17 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
           </p>
         )}
       </ScrollArea>
+
+      {/* Keyed by entry id so switching targets rebuilds the draft rather than
+          leaving the previous entry's values in the fields. */}
+      {editingEntry && (
+        <EntryForm
+          key={editingEntry.id}
+          entry={editingEntry}
+          open
+          onClose={closeEntryEditor}
+        />
+      )}
     </div>
   );
 }

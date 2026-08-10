@@ -56,17 +56,20 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
       </CollapsibleTrigger>
 
       <CollapsibleContent>
+        {/* Keyed by `anchorId`, never `key` — see DescriptionGroup.anchorId.
+            `key` is built from the description and project the row edits inline,
+            so keying by it made every rename look like a delete-and-recreate. */}
         {groups.map((group) =>
           group.entries.length === 1 ? (
             <EntryRow
-              key={group.key}
+              key={group.anchorId}
               entry={group.entries[0]}
               isSelected={selectedIds?.has(group.entries[0].id)}
               onToggleSelect={onToggleSelect}
             />
           ) : (
             <EntryDescriptionGroup
-              key={group.key}
+              key={group.anchorId}
               group={group}
               selectedIds={selectedIds}
               onToggleSelect={onToggleSelect}

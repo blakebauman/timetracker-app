@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTimerStore } from "@/stores/timerStore";
 import { ACTIVITY_EVENTS, recordRemoteActivity } from "@/lib/activitySync";
+import { CLIENT_ID } from "@/lib/api";
 import type { TimeEntry } from "@shared/schemas";
 
 // Local activity is relayed to the user's other sessions (for idle detection)
@@ -11,6 +12,8 @@ const ACTIVITY_HEARTBEAT_MS = 30_000;
 interface WSMessage {
   event: string;
   data: unknown;
+  /** The tab whose request caused this, or null for server-originated changes. */
+  origin?: string | null;
   ts: number;
 }
 
@@ -60,12 +63,23 @@ export function useWebSocket() {
     }
 
     function handleMessage(msg: WSMessage) {
+      // A change this tab made is already reflected — optimistically, then from
+      // the mutation's own response and invalidate. Refetching again because the
+      // socket reported our own write doubled the request count on every edit
+      // and could land a refetch on top of an unrelated field mid-typing.
+      // State merges below still run: they're idempotent and cheap.
+      const isOwnEcho = !!msg.origin && msg.origin === CLIENT_ID;
+      const invalidateEntries = () => {
+        if (isOwnEcho) return;
+        queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      };
+
       switch (msg.event) {
         case "timer:start": {
           const entry = msg.data as TimeEntry;
           setFromWS(entry);
           // Also refresh entries list — starting a timer auto-stops the previous one
-          queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+          invalidateEntries();
           // Notify extension content script for instant badge update (no poll lag)
           window.dispatchEvent(new CustomEvent("timetracker:sync", {
             detail: { running: true, entryId: entry.id, startedAt: entry.start, description: entry.description, projectId: entry.projectId ?? null },
@@ -83,7 +97,7 @@ export function useWebSocket() {
             // Notify extension content script for instant badge update (no poll lag)
             window.dispatchEvent(new CustomEvent("timetracker:sync", { detail: { running: false } }));
           }
-          queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+          invalidateEntries();
           break;
         }
         case "user_activity": {
@@ -101,7 +115,7 @@ export function useWebSocket() {
           if (changed && running && changed.id === running.id) {
             setFromWS(changed);
           }
-          queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+          invalidateEntries();
           break;
         }
       }

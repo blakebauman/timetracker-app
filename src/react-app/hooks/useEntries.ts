@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDayHeader } from "@/lib/dateUtils";
@@ -49,6 +49,21 @@ export function useEntrySuggestions() {
 
 export interface DescriptionGroup {
   key: string; // `${description}__${projectId ?? ""}`
+  /**
+   * React key for the group and its single-entry row form.
+   *
+   * Deliberately NOT `key`: that one is derived from description + projectId,
+   * i.e. from two fields the row itself edits inline. Keying the DOM by it meant
+   * every rename or project assignment changed the key mid-mutation — the row
+   * unmounted on the optimistic patch and remounted as a "new" row, which
+   * replayed the entrance animation, dropped the per-mutation `onSuccess`
+   * callbacks (so the Saved tick never fired and the edit sheet reopened), and
+   * reset the row's local editing state.
+   *
+   * The oldest member's id instead: stable across content edits, and stable when
+   * a sibling leaves the group.
+   */
+  anchorId: string;
   description: string;
   projectId: string | null;
   projectName: string | null;
@@ -100,6 +115,12 @@ export function groupEntriesByDay(
       const groups: DescriptionGroup[] = [...descMap.values()]
         .map((grpEntries) => ({
           key: `${grpEntries[0].description}__${grpEntries[0].projectId ?? ""}`,
+          // Earliest member anchors the group's identity (see `anchorId`).
+          // Computed rather than taken by position so it doesn't depend on the
+          // order the list endpoint happened to return.
+          anchorId: grpEntries.reduce((oldest, e) =>
+            e.start < oldest.start || (e.start === oldest.start && e.id < oldest.id) ? e : oldest
+          ).id,
           description: grpEntries[0].description,
           projectId: grpEntries[0].projectId,
           projectName: grpEntries[0].projectName,
@@ -145,6 +166,39 @@ export function useGroupedEntriesRange(sinceIso: string, untilIso: string) {
   return { days: groupEntriesByDay(entries, pinnedEntryId), entries, ...rest };
 }
 
+/**
+ * An edit that never reached the network was still persisted for replay (see
+ * `ApiError.queued`). Rolling it back would show the user their correction being
+ * undone and a "Failed to update" toast — and then, minutes later, silently
+ * reapply it when the queue drains. Keep the optimistic value on screen and say
+ * what's actually true.
+ */
+function isQueuedOffline(err: unknown): err is ApiError {
+  return err instanceof ApiError && err.queued;
+}
+
+/** The generic fallback only when the server didn't say something more useful. */
+function mutationErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError && err.status >= 400 && err.message ? err.message : fallback;
+}
+
+/**
+ * Entries changed, so anything derived from them is stale.
+ *
+ * `entry-suggestions` is deliberately outside the `time-entries` prefix, so a
+ * prefix invalidate never reaches it and a renamed entry kept being offered
+ * under its old text by the autocomplete. But it is outside that prefix for a
+ * reason — the running timer saves its description on an 800 ms debounce, and
+ * refetching the whole suggestion set every few keystrokes is exactly what that
+ * separation exists to prevent. So it refreshes only when a caller says the
+ * change was one the suggestion set can see.
+ */
+function invalidateEntryDerived(queryClient: QueryClient, suggestions = false) {
+  queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+  queryClient.invalidateQueries({ queryKey: ["reports"] });
+  if (suggestions) queryClient.invalidateQueries({ queryKey: ["entry-suggestions"] });
+}
+
 export function useCreateEntry() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -152,10 +206,12 @@ export function useCreateEntry() {
       api.timeEntries.create(data as unknown as Record<string, unknown>) as Promise<TimeEntry>,
     onSuccess: () => {
       toast.success("Entry added");
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      invalidateEntryDerived(queryClient, true);
     },
-    onError: () => toast.error("Failed to add entry"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the entry will be added when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to add entry")),
   });
 }
 
@@ -172,10 +228,20 @@ export function useUpdateEntry() {
       await queryClient.cancelQueries({ queryKey: ["time-entries"] });
       const prev = queryClient.getQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] });
 
-      // Resolve project name/color from the projects cache when reassigning.
+      // Resolve the denormalized join columns the list renders from, so the row
+      // shows the new project/task immediately instead of the old label until
+      // the refetch lands.
       const projects =
         data.projectId !== undefined
           ? queryClient.getQueryData<{ id: string; name: string; color: string | null }[]>(["projects"])
+          : undefined;
+      // Tasks are cached per project (`["tasks", projectId, "withDone"]`), so the
+      // lookup has to sweep the prefix rather than read one key.
+      const tasks =
+        data.taskId !== undefined
+          ? queryClient
+              .getQueriesData<{ id: string; name: string }[]>({ queryKey: ["tasks"] })
+              .flatMap(([, rows]) => rows ?? [])
           : undefined;
 
       queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
@@ -187,6 +253,9 @@ export function useUpdateEntry() {
             merged.projectName = proj?.name ?? null;
             merged.projectColor = proj?.color ?? null;
           }
+          if (data.taskId !== undefined) {
+            merged.taskName = tasks?.find((t) => t.id === data.taskId)?.name ?? null;
+          }
           if ((data.start !== undefined || data.stop !== undefined) && merged.start && merged.stop) {
             merged.duration = Math.round(
               (new Date(merged.stop).getTime() - new Date(merged.start).getTime()) / 1000
@@ -197,9 +266,14 @@ export function useUpdateEntry() {
       );
       return { prev };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err, _vars, ctx) => {
+      if (isQueuedOffline(err)) {
+        // Keep the optimistic value — the write is queued, not lost.
+        toast.info("Offline — your change will sync when you reconnect");
+        return;
+      }
       ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
-      toast.error("Failed to update entry");
+      toast.error(mutationErrorMessage(err, "Failed to update entry"));
     },
     onSuccess: (updated) => {
       // Keep the live timer (bar + sidebar) in sync when the edit targets the
@@ -209,8 +283,27 @@ export function useUpdateEntry() {
       if (updated && timer.runningEntry && updated.id === timer.runningEntry.id) {
         timer.setFromWS(updated);
       }
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      // Write the server's row straight into every cached range that holds it.
+      // The invalidate in onSettled still refetches, but this makes the authoritative
+      // values (duration rounding, tag ids, syncStatus) visible on the next frame
+      // rather than after a round-trip the user can watch.
+      if (updated) {
+        queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
+          old?.map((e) => (e.id === updated.id ? updated : e))
+        );
+      }
+    },
+    // Refetch on failure too: a rejected edit may have been rejected against
+    // state this client hasn't seen yet.
+    onSettled: (_data, err, vars) => {
+      if (isQueuedOffline(err)) return;
+      // Renaming a completed entry changes what autocomplete should offer.
+      // A running entry's description is still being typed — that's the debounce
+      // case the suggestion cache is kept separate for.
+      const renamedCompleted =
+        vars.data.description !== undefined &&
+        useTimerStore.getState().runningEntry?.id !== vars.id;
+      invalidateEntryDerived(queryClient, renamedCompleted);
     },
   });
 }
@@ -230,13 +323,17 @@ export function useDeleteEntry() {
       );
       return { prev };
     },
-    onError: (_err, _id, ctx) => {
+    onError: (err, _id, ctx) => {
+      if (isQueuedOffline(err)) {
+        toast.info("Offline — the deletion will sync when you reconnect");
+        return;
+      }
       ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
-      toast.error("Failed to delete entry");
+      toast.error(mutationErrorMessage(err, "Failed to delete entry"));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    onSettled: (_data, err) => {
+      if (isQueuedOffline(err)) return;
+      invalidateEntryDerived(queryClient, true);
     },
   });
 }
@@ -255,13 +352,17 @@ export function useBulkDeleteEntries() {
       );
       return { prev };
     },
-    onError: (_err, _ids, ctx) => {
+    onError: (err, _ids, ctx) => {
+      if (isQueuedOffline(err)) {
+        toast.info("Offline — the deletions will sync when you reconnect");
+        return;
+      }
       ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
-      toast.error("Failed to delete entries");
+      toast.error(mutationErrorMessage(err, "Failed to delete entries"));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    onSettled: (_data, err) => {
+      if (isQueuedOffline(err)) return;
+      invalidateEntryDerived(queryClient, true);
     },
   });
 }
@@ -271,10 +372,10 @@ export function useBulkUpdateEntries() {
   return useMutation({
     mutationFn: ({ ids, patch }: { ids: string[]; patch: Record<string, unknown> }) =>
       api.timeEntries.bulkUpdate({ ids, patch }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["reports"] });
-    },
-    onError: () => toast.error("Failed to update entries"),
+    onSuccess: () => invalidateEntryDerived(queryClient),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — your changes will sync when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to update entries")),
   });
 }

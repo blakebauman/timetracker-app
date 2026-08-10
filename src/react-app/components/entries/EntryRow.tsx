@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Play, Trash2, MoreHorizontal, Edit2, Upload, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { EntryForm } from "./EntryForm";
 import { AssignProjectChip } from "./ProjectPicker";
 import { TimeRangePopover } from "./TimeRangePopover";
 import { useUpdateEntry, useDeleteEntry, useCreateEntry } from "@/hooks/useEntries";
@@ -19,10 +18,11 @@ import { useProjects, useTagColors } from "@/hooks/useProjects";
 import { usePushEntries, useIntegrations } from "@/hooks/useIntegrations";
 import { useTimer } from "@/hooks/useTimer";
 import { cn } from "@/lib/utils";
-import { formatSeconds, formatDurationShort, formatShortDate, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
+import { formatDurationShort, formatShortDate, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { useUIStore } from "@/stores/uiStore";
 import { useSavedFlash } from "@/hooks/useSavedFlash";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SavedTick } from "./SavedTick";
 import { ColorDot } from "@/components/ColorDot";
 import { ProjectBadge } from "@/components/ProjectBadge";
@@ -34,13 +34,20 @@ interface EntryRowProps {
   onToggleSelect?: (id: string) => void;
 }
 
+/** Must match the row's exit animation duration below. */
+const EXIT_MS = 200;
+
 export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRowProps) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [desc, setDesc] = useState(entry.description);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingDuration, setEditingDuration] = useState(false);
   const [durationInput, setDurationInput] = useState("");
+  const [durationInvalid, setDurationInvalid] = useState(false);
   const [removing, setRemoving] = useState(false);
+  // Flushed if the row unmounts before its exit animation finishes — see handleDelete.
+  const pendingDelete = useRef<(() => void) | null>(null);
+  useEffect(() => () => pendingDelete.current?.(), []);
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const updateEntry = useUpdateEntry();
   const deleteEntry = useDeleteEntry();
   const createEntry = useCreateEntry();
@@ -55,16 +62,23 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   const savedDesc = useSavedFlash();
   const savedDuration = useSavedFlash();
   const savedRange = useSavedFlash();
-  // A toast elsewhere (e.g. "Stopped 2h 30m with no project") can request this
-  // row's editor; treat that as equivalent to opening it from the row menu.
-  const editRequested = useUIStore((s) => s.editEntryId === entry.id);
-  const closeEntryEditor = useUIStore((s) => s.closeEntryEditor);
-  const editorOpen = showEditDialog || editRequested;
+  const savedProject = useSavedFlash();
+  // The editor is hosted by EntryList, not here — a row that unmounts (its day
+  // changed, its group collapsed) must not take a half-finished edit with it.
+  const openEntryEditor = useUIStore((s) => s.openEntryEditor);
+  const flashEntry = useUIStore((s) => s.flashEntry);
 
-  const closeEditor = () => {
-    setShowEditDialog(false);
-    if (editRequested) closeEntryEditor();
-  };
+  // Resync the draft description when it changes from outside — a WS edit from
+  // another tab, or a failed mutation rolling back. Previously this was masked
+  // by the row's key being derived from the description: any change remounted
+  // the row and reset the state. Now that the key is stable, the resync has to
+  // be explicit or a stale draft would be written back on the next blur.
+  const [syncedDesc, setSyncedDesc] = useState(entry.description);
+  if (syncedDesc !== entry.description) {
+    setSyncedDesc(entry.description);
+    // Never clobber what the user is actively typing.
+    if (!editingDesc) setDesc(entry.description);
+  }
 
   const project = projects.find((p) => p.id === entry.projectId);
   const integration = integrations.find((i) => i.id === project?.integrationId);
@@ -102,20 +116,52 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
   };
 
   const handleStartEditDuration = () => {
-    setDurationInput(entry.duration ? formatSeconds(entry.duration) : "");
+    // Seed with the same text the row was showing. It used to seed with
+    // formatSeconds ("01:30:00") under a display of formatDurationShort
+    // ("1h 30m"), so the value appeared to change the instant you clicked it.
+    // parseTimeInput round-trips this form, so nothing is lost.
+    setDurationInput(entry.duration ? formatDurationShort(entry.duration) : "");
+    setDurationInvalid(false);
     setEditingDuration(true);
   };
 
   const handleSaveDuration = () => {
-    setEditingDuration(false);
     const parsed = parseTimeInput(durationInput);
-    if (parsed !== null && parsed > 0 && entry.start) {
-      const newStop = new Date(new Date(entry.start).getTime() + parsed * 1000).toISOString();
-      updateEntry.mutate(
-        { id: entry.id, data: { stop: newStop } },
-        { onSuccess: savedDuration.flash }
-      );
+    // Unparseable or non-positive input used to close the field and silently
+    // restore the old duration — the edit simply evaporated. Hold the field open
+    // and mark it instead; on this screen a dropped duration is a wrong invoice.
+    if (parsed === null || parsed <= 0 || !entry.start) {
+      setDurationInvalid(true);
+      return;
     }
+    setDurationInvalid(false);
+    setEditingDuration(false);
+    const newStop = new Date(new Date(entry.start).getTime() + parsed * 1000).toISOString();
+    updateEntry.mutate(
+      { id: entry.id, data: { stop: newStop } },
+      { onSuccess: savedDuration.flash }
+    );
+  };
+
+  const cancelDurationEdit = () => {
+    setDurationInvalid(false);
+    setEditingDuration(false);
+  };
+
+  const handleRangeChange = ({ start, stop }: { start: string; stop: string | null }) => {
+    // Changing the date moves the entry to another day group, so this row
+    // unmounts on the optimistic patch and a tick rendered here would never be
+    // seen. Flash the entry instead — the same machinery that shows you where a
+    // stopped timer landed — and fire it now, before the row relocates, rather
+    // than from an onSuccess this component won't be around to receive.
+    const movedDay = start.slice(0, 10) !== entry.start.slice(0, 10);
+    if (movedDay) flashEntry(entry.id);
+    updateEntry.mutate(
+      // `undefined` omits the field: a running entry keeps its null stop rather
+      // than having it explicitly cleared.
+      { id: entry.id, data: { start, stop: stop ?? undefined } },
+      movedDay ? undefined : { onSuccess: savedRange.flash }
+    );
   };
 
   const handleContinue = () => {
@@ -126,28 +172,39 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     });
   };
 
-  // Play the exit animation first, then actually delete once it finishes. The
-  // reduced-motion guard collapses the animation to ~0ms, so those users get an
-  // immediate delete.
-  const finalizeDelete = () => {
+  /**
+   * Let the exit animation play, then commit — but never let the animation be
+   * what decides whether the delete happens.
+   *
+   * This used to fire from the row's `onAnimationEnd`, so the deletion only
+   * happened if the animation was allowed to finish. Anything that unmounted the
+   * row inside that 200 ms window — collapsing its group or day header, switching
+   * Timer view, navigating the period — cancelled it silently: no delete, no
+   * toast, no error, and the row reappeared on the next refetch.
+   *
+   * The commit is held in a ref and flushed on unmount, so the window is a
+   * presentation delay rather than a condition.
+   */
+  const handleDelete = () => {
+    if (removing) return;
+    setRemoving(true);
     const payload = toCreatePayload(entry);
-    deleteEntry.mutate(entry.id);
-    toast.success("Entry deleted", {
-      action: {
-        label: "Undo",
-        onClick: () => createEntry.mutate(payload),
-      },
-    });
+    pendingDelete.current = () => {
+      pendingDelete.current = null;
+      deleteEntry.mutate(entry.id);
+      toast.success("Entry deleted", {
+        action: {
+          label: "Undo",
+          onClick: () => createEntry.mutate(payload),
+        },
+      });
+    };
+    setTimeout(() => pendingDelete.current?.(), reducedMotion ? 0 : EXIT_MS);
   };
-
-  const handleDelete = () => setRemoving(true);
 
   return (
     <>
       <div
-        onAnimationEnd={(e) => {
-          if (removing && e.target === e.currentTarget) finalizeDelete();
-        }}
         className={cn(
           "group flex items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors hover:bg-accent/40",
           removing
@@ -192,6 +249,10 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           {editingDesc ? (
             <input
               autoFocus
+              // The inline editor had no accessible name at all — a screen reader
+              // landed on an unlabelled text field. The button it replaces reads
+              // out the description itself, so the swap lost the only context.
+              aria-label="Description"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               onBlur={handleDescBlur}
@@ -225,11 +286,20 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             {entry.projectName ? (
               <ProjectBadge name={entry.projectName} color={entry.projectColor} />
             ) : (
-              <AssignProjectChip
-                onAssign={(projectId) =>
-                  updateEntry.mutate({ id: entry.id, data: { projectId } })
-                }
-              />
+              <span className="relative">
+                <SavedTick saved={savedProject.saved} className="-right-3" />
+                {/* Assigning a project is an inline commit like the others and
+                    gets the same acknowledgement — it was the one that said
+                    nothing at all. */}
+                <AssignProjectChip
+                  onAssign={(projectId) =>
+                    updateEntry.mutate(
+                      { id: entry.id, data: { projectId } },
+                      { onSuccess: savedProject.flash }
+                    )
+                  }
+                />
+              </span>
             )}
             {entry.tags.map((tag) => (
               <Badge
@@ -293,54 +363,55 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           </Tooltip>
         )}
 
-        {/* Time range — click to edit start/stop + date inline (running
-            entries have no stop yet, so they stay plain text). */}
-        {entry.stop ? (
-          <span className="relative hidden sm:inline-flex">
+        {/* Time range — click to edit start/stop + date inline. A running entry
+            has no stop yet but its start is just as correctable, and it used to
+            be the one row you couldn't fix without opening the sheet. */}
+        <span className="relative hidden sm:inline-flex">
           <SavedTick saved={savedRange.saved} />
           <TimeRangePopover
             start={entry.start}
             stop={entry.stop}
-            onChange={({ start, stop }) =>
-              updateEntry.mutate(
-                { id: entry.id, data: { start, stop } },
-                { onSuccess: savedRange.flash }
-              )
-            }
+            onChange={handleRangeChange}
             triggerClassName="hidden text-xs text-muted-foreground sm:flex items-center gap-1 px-1"
           >
             <span>{formatEntryTime(entry.start, timeFormat)}</span>
             <span>–</span>
-            <span>{formatEntryTime(entry.stop, timeFormat)}</span>
+            <span>
+              {entry.stop ? formatEntryTime(entry.stop, timeFormat) : "…"}
+            </span>
           </TimeRangePopover>
-          </span>
-        ) : (
-          <div className="hidden text-xs text-muted-foreground sm:flex items-center gap-1">
-            <span>{formatEntryTime(entry.start, timeFormat)}</span>
-            <span>–</span>
-            <span>...</span>
-          </div>
-        )}
+        </span>
 
         {/* Duration — click to edit */}
         {editingDuration ? (
           <input
             autoFocus
             value={durationInput}
-            onChange={(e) => setDurationInput(e.target.value)}
+            onChange={(e) => {
+              setDurationInput(e.target.value);
+              if (durationInvalid) setDurationInvalid(false);
+            }}
             onBlur={handleSaveDuration}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSaveDuration();
-              if (e.key === "Escape") setEditingDuration(false);
+              if (e.key === "Escape") cancelDurationEdit();
             }}
-            className="w-16 bg-transparent text-right font-mono text-sm tabular-nums outline-none ring-0 border-b border-primary"
+            aria-label="Duration"
+            aria-invalid={durationInvalid}
+            // "1h 30m" needs more room than "01:30:00" did, and the width has to
+            // match the button below or the row shifts on every click.
+            title={durationInvalid ? "Enter a duration like 1h 30m, 1:30, or 90m" : undefined}
+            className={cn(
+              "w-20 bg-transparent text-right font-mono text-sm tabular-nums outline-none ring-0 border-b",
+              durationInvalid ? "border-destructive text-destructive" : "border-primary"
+            )}
           />
         ) : (
           <span className="relative">
             <SavedTick saved={savedDuration.saved} />
             <button
               onClick={handleStartEditDuration}
-              className="min-w-16 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-w-20 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {entry.duration ? formatDurationShort(entry.duration) : "–"}
             </button>
@@ -374,7 +445,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+              <DropdownMenuItem onClick={() => openEntryEditor(entry.id)}>
                 <Edit2 className="mr-2 h-3.5 w-3.5" />
                 Edit
               </DropdownMenuItem>
@@ -407,10 +478,6 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
           </DropdownMenu>
         </div>
       </div>
-
-      {editorOpen && (
-        <EntryForm entry={entry} open={editorOpen} onClose={closeEditor} />
-      )}
     </>
   );
 }

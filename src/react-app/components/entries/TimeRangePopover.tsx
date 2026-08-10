@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 
 interface TimeRangePopoverProps {
   start: string;
-  stop: string;
-  onChange: (data: { start: string; stop: string }) => void;
+  /** Null for a running entry — Start and the date stay editable, Stop doesn't exist yet. */
+  stop: string | null;
+  onChange: (data: { start: string; stop: string | null }) => void;
   children: ReactNode;
   triggerClassName?: string;
 }
@@ -42,7 +43,15 @@ export function TimeRangePopover({ start, stop, onChange, children, triggerClass
     if (!date) return;
     const deltaDays = dateDelta(start, toDateInputValue(date));
     if (deltaDays === 0) return;
-    onChange({ start: shiftDate(start, deltaDays), stop: shiftDate(stop, deltaDays) });
+    onChange({
+      start: shiftDate(start, deltaDays),
+      stop: stop ? shiftDate(stop, deltaDays) : null,
+    });
+    // The entry now belongs to a different day, so this row — and this popover
+    // with it — is about to unmount. Close first so it reads as "done", not as
+    // the editor being yanked away mid-edit; EntryRow flashes the row in its
+    // new day so the move is legible.
+    setOpen(false);
   };
 
   return (
@@ -70,15 +79,23 @@ export function TimeRangePopover({ start, stop, onChange, children, triggerClass
               ariaLabel="Start time"
             />
           </div>
+          {/* A running entry has no stop yet — show why the field is absent
+              rather than an empty box that looks broken. */}
           <div className="space-y-1">
             <div className="text-xs font-medium text-muted-foreground">Stop</div>
-            <TimeOfDayInput
-              value={stop}
-              fallbackIso={stop}
-              onChange={handleStopChange}
-              className="h-8 w-24"
-              ariaLabel="Stop time"
-            />
+            {stop ? (
+              <TimeOfDayInput
+                value={stop}
+                fallbackIso={stop}
+                onChange={handleStopChange}
+                className="h-8 w-24"
+                ariaLabel="Stop time"
+              />
+            ) : (
+              <div className="flex h-8 w-24 items-center text-xs text-muted-foreground">
+                Still running
+              </div>
+            )}
           </div>
         </div>
         <Calendar

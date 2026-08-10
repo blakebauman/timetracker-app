@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { ChevronRight, Play, Trash2, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +18,8 @@ import { EntryRow } from "./EntryRow";
 import { AssignProjectChip } from "./ProjectPicker";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { useTimer } from "@/hooks/useTimer";
-import { useBulkDeleteEntries, useBulkUpdateEntries } from "@/hooks/useEntries";
+import { useBulkDeleteEntries, useBulkUpdateEntries, useCreateEntry } from "@/hooks/useEntries";
+import { toCreatePayload } from "@/lib/entryUtils";
 import { cn } from "@/lib/utils";
 import { ColorDot } from "@/components/ColorDot";
 import { ProjectBadge } from "@/components/ProjectBadge";
@@ -38,6 +40,7 @@ export function EntryDescriptionGroup({
   const { startTimer } = useTimer();
   const bulkDelete = useBulkDeleteEntries();
   const bulkUpdate = useBulkUpdateEntries();
+  const createEntry = useCreateEntry();
 
   const allSelected = group.entries.every((e) => selectedIds?.has(e.id));
   const someSelected = group.entries.some((e) => selectedIds?.has(e.id));
@@ -61,8 +64,19 @@ export function EntryDescriptionGroup({
     });
   };
 
+  // Deleting a whole group is the most destructive action in the list, and it
+  // was the only delete path with no undo: the single-row menu, the bulk bar,
+  // and the timesheet's clear-a-cell all offer one. The app's convention for
+  // destructive actions is undo rather than a confirm dialog — match it.
   const handleDeleteAll = () => {
+    const payloads = group.entries.map(toCreatePayload);
     bulkDelete.mutate(group.entries.map((e) => e.id));
+    toast.success(`${group.entries.length} entries deleted`, {
+      action: {
+        label: "Undo",
+        onClick: () => payloads.forEach((p) => createEntry.mutate(p)),
+      },
+    });
   };
 
   return (

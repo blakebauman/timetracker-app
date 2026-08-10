@@ -5,7 +5,16 @@ export async function broadcast(
   env: Env,
   workspaceId: string,
   event: string,
-  data: unknown
+  data: unknown,
+  /**
+   * The client that caused this change (its `X-Client-Id`), echoed back in the
+   * message so that client can ignore its own broadcast. Without it every
+   * mutation refetched the entry list twice on the originating tab — once from
+   * the mutation's own invalidate, once from the socket telling it about the
+   * change it just made. Omit for server-originated changes (cron, integrations),
+   * which every client should act on.
+   */
+  origin?: string | null
 ): Promise<void> {
   try {
     const id = env.TIMER_ROOM.idFromName(workspaceId);
@@ -13,7 +22,7 @@ export async function broadcast(
     await stub.fetch(
       new Request("http://do/broadcast", {
         method: "POST",
-        body: JSON.stringify({ event, data }),
+        body: JSON.stringify({ event, data, origin: origin ?? null }),
         headers: { "Content-Type": "application/json" },
       })
     );

@@ -63,7 +63,13 @@ export function EntryFormSheet({
   children,
 }: EntryFormSheetProps) {
   const { draft: d, patch, setDate, anchorDate } = draft;
-  const canSubmit = requireRange ? draft.hasValidRange : true;
+  // A create needs a full span. An edit only has to not be *inverted*: a running
+  // entry has no stop yet, and a zero-length entry may already exist and still
+  // needs its description fixable. `requireRange: false` used to mean no check at
+  // all, so Save stayed enabled while the form showed "Stop time must be after
+  // start time" right below it and the only real feedback was the server's 400.
+  const rangeError = requireRange ? !draft.hasValidRange : draft.rangeInverted;
+  const canSubmit = !rangeError;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -169,7 +175,7 @@ export function EntryFormSheet({
           {/* No "Duration: 1h" helper line: the create dialog carried one because
               it had no Duration field, and now every form does — it would restate
               the value sitting directly above it. */}
-          {d.start && d.stop && !draft.hasValidRange && (
+          {d.start && d.stop && rangeError && (
             <p className="text-xs text-destructive">Stop time must be after start time.</p>
           )}
 
