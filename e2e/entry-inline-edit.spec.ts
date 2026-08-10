@@ -75,6 +75,30 @@ test.describe("entry list inline editing", () => {
     await expect(page.getByRole("dialog")).not.toBeVisible();
   });
 
+  test("a rejected time range reports the reason, not a serialized ZodError", async ({ page }) => {
+    await addManualEntry(page, { description: "Range reject", start: "09:00", stop: "10:00" });
+
+    const row = page.locator("div.group", { hasText: "Range reject" }).first();
+    await row.getByRole("button", { name: /–/ }).click();
+
+    // Start after stop. The request carries both fields, so Hono's zValidator
+    // rejects it before the route's own merged-range check — and its body nests
+    // the real message two levels deep inside a serialized ZodError.
+    const startInput = page.getByRole("textbox", { name: "Start time" });
+    await startInput.fill("11:00");
+    await startInput.press("Enter");
+
+    const errorToast = page.locator('[data-sonner-toast][data-type="error"]');
+    await expect(errorToast).toHaveText(/Stop time must be after start time/);
+    await expect(errorToast).not.toContainText("ZodError");
+    // Exactly one: Enter used to commit and then blur-commit again, firing the
+    // mutation — and this toast — twice.
+    await expect(errorToast).toHaveCount(1);
+
+    // And the row is rolled back, not left showing the rejected value.
+    await expect(row).toContainText("1h");
+  });
+
   test("an unparseable duration holds the field open instead of discarding the edit", async ({
     page,
   }) => {

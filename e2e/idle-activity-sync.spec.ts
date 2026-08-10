@@ -35,14 +35,18 @@ test("activity heartbeat reaches the user's other sessions", async ({ page }) =>
   await page.getByRole("button", { name: "Start" }).click();
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
 
-  // Real user input (not synthetic dispatch) so the window listener fires.
-  await page.mouse.move(200, 300);
-  await page.mouse.move(400, 350);
-
+  // Real user input (not synthetic dispatch) so the window listener fires — and
+  // re-emitted on every poll round rather than once up front. The heartbeat is
+  // dropped outright if the app's own socket isn't OPEN yet, *without* consuming
+  // the 30s throttle, so under parallel load a single nudge could land before the
+  // connection and then nothing would ever arrive.
+  let x = 200;
   await expect
     .poll(
-      () =>
-        page.evaluate(() =>
+      async () => {
+        x = x === 200 ? 400 : 200;
+        await page.mouse.move(x, 300);
+        return page.evaluate(() =>
           (window.__wsMessages ?? []).some((m) => {
             try {
               return (JSON.parse(m) as { event?: string }).event === "user_activity";
@@ -50,7 +54,8 @@ test("activity heartbeat reaches the user's other sessions", async ({ page }) =>
               return false;
             }
           })
-        ),
+        );
+      },
       { timeout: 10_000 }
     )
     .toBe(true);

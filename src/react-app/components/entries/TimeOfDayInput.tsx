@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { formatEntryTime, parseTimeOfDayInput, applyTimeOfDay } from "@/lib/dateUtils";
 import { useUIStore } from "@/stores/uiStore";
@@ -38,6 +38,12 @@ export function TimeOfDayInput({
     setText(display(value));
   }
 
+  // Enter commits and then blurs, and blur commits too — so every Enter-confirmed
+  // time edit fired the mutation twice (two PUTs on success, two error toasts on
+  // rejection). The Enter path claims the commit and the blur that follows it
+  // stands down.
+  const committedByEnter = useRef(false);
+
   const commit = () => {
     const trimmed = text.trim();
     if (trimmed === "") {
@@ -49,20 +55,34 @@ export function TimeOfDayInput({
       return;
     }
     const parsed = parseTimeOfDayInput(trimmed);
-    if (parsed) {
-      onChange(applyTimeOfDay(value ?? fallbackIso, parsed.hours, parsed.minutes));
-    } else {
+    if (!parsed) {
       setText(display(value));
+      return;
     }
+    const next = applyTimeOfDay(value ?? fallbackIso, parsed.hours, parsed.minutes);
+    // Re-committing the value the field already holds is not an edit. Without
+    // this, reformatting alone ("9:00" → "9:00 AM") round-tripped a mutation.
+    if (next === value) {
+      setText(display(value));
+      return;
+    }
+    onChange(next);
   };
 
   return (
     <Input
       value={text}
       onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
+      onBlur={() => {
+        if (committedByEnter.current) {
+          committedByEnter.current = false;
+          return;
+        }
+        commit();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
+          committedByEnter.current = true;
           commit();
           e.currentTarget.blur();
         }
