@@ -93,16 +93,24 @@
     // stays stateless. Do NOT write to ctx.storage in TimerRoom without
     // revisiting this: from that point the same move loses real data.
     //
-    // Create and delete are SEPARATE tags applied by SEPARATE deploys, and that
-    // is not stylistic. Putting both in one migration is rejected:
+    // Create and delete are SEPARATE tags applied by SEPARATE deploys, and the
+    // old class stays exported across the first one. That is not stylistic —
+    // two API checks pin this move and cannot both be satisfied at once:
     //
-    //   Cannot apply --delete-class migration to class 'TimerRoomDO' without
-    //   also removing the binding that references it. [code: 10061]
+    //   10061 — "Cannot apply --delete-class migration to class 'TimerRoomDO'
+    //            without also removing the binding that references it."
+    //            Validated against the *currently deployed* script, so the
+    //            binding must already point elsewhere in a live deploy.
     //
-    // The delete is validated against the bindings of the *currently deployed*
-    // script, not the one being uploaded — so the binding has to already point
-    // at TimerRoom in a live deploy before TimerRoomDO can be dropped. v3 does
-    // the create + rebind; v4 drops the orphan afterwards.
+    //   10064 — "New version of script does not export class 'TimerRoomDO'
+    //            which is depended on by existing Durable Objects."
+    //            A script cannot stop exporting a class whose namespace lives.
+    //
+    // The binding must move away BEFORE the delete; the class must stay
+    // exported UNTIL the delete. So: v3 creates TimerRoom and repoints the
+    // binding while a stub keeps TimerRoomDO exported
+    // (durable-objects/TimerRoomDO.legacy.ts), and v4 deletes the namespace and
+    // the stub together.
     {
       "tag": "v3",
       "new_sqlite_classes": ["TimerRoom"]
