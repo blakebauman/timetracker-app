@@ -143,7 +143,7 @@ export function TaskList({ projectId }: TaskListProps) {
                     }}
                     placeholder="e.g. 1h 30m"
                     title="Estimated time — e.g. 1h 30m, 1:30, 90m"
-                    className="h-5 w-28 py-0 text-[10px]"
+                    className="h-5 w-28 py-0 text-micro"
                   />
                 </div>
               ) : progress !== null ? (
@@ -154,7 +154,7 @@ export function TaskList({ projectId }: TaskListProps) {
                       onClick={() => handleStartEditTime(task)}
                     >
                       <Progress value={progress} className="h-1 flex-1" />
-                      <span className="text-[10px] tabular-nums text-muted-foreground">
+                      <span className="text-micro tabular-nums text-muted-foreground">
                         {formatDurationShort(task.trackedSeconds)} /{" "}
                         {formatDurationShort(task.estimatedSeconds!)}
                       </span>
@@ -165,7 +165,7 @@ export function TaskList({ projectId }: TaskListProps) {
               ) : task.trackedSeconds > 0 ? (
                 <button
                   // gap-1.5 so the dashed underline isn't flush against the "·".
-                  className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground hover:opacity-70 transition-opacity"
+                  className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground hover:opacity-70 transition-opacity"
                   onClick={() => handleStartEditTime(task)}
                 >
                   <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
@@ -175,7 +175,7 @@ export function TaskList({ projectId }: TaskListProps) {
                 <button
                   // `block`: a bare <button> is inline-block and ran onto the task
                   // name's line. The other two states are flex and drop below.
-                  className="mt-0.5 block text-[10px] text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors hover:text-muted-foreground!"
+                  className="mt-0.5 block text-micro text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors hover:text-muted-foreground!"
                   onClick={() => handleStartEditTime(task)}
                 >
                   add estimate

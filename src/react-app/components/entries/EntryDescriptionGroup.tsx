@@ -186,7 +186,7 @@ export function EntryDescriptionGroup({
         )}
 
         {/* Count badge */}
-        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-micro font-medium tabular-nums text-muted-foreground">
           {group.entries.length}×
         </span>
 

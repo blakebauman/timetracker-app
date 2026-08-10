@@ -74,7 +74,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                   <span className="flex-1 text-left">Search…</span>
                   {/* text-foreground, not muted: 10px muted-on-muted measured
                       4.38:1. A keycap is a label, not secondary text. */}
-                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-foreground">
+                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-micro font-medium text-foreground">
                     ⌘K
                   </kbd>
                 </>
@@ -164,7 +164,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                 <UserAvatar name={user.name} email={user.email} image={user.image} />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium">{user.name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+                  <p className="truncate text-micro text-muted-foreground">{user.email}</p>
                 </div>
               </div>
             )}
@@ -200,7 +200,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
               {!collapsed && (
                 <>
                   <span className="flex-1 text-left">Keyboard shortcuts</span>
-                  <kbd className="pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border bg-muted px-1 font-mono text-[10px] font-medium">
+                  <kbd className="pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border bg-muted px-1 font-mono text-micro font-medium">
                     ?
                   </kbd>
                 </>

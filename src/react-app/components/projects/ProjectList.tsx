@@ -140,7 +140,7 @@ export function ProjectList() {
                           </TooltipTrigger>
                           <TooltipContent>{Math.round(budgetPercent)}% of budget used</TooltipContent>
                         </Tooltip>
-                        <span className="text-[10px] tabular-nums text-muted-foreground">
+                        <span className="text-micro tabular-nums text-muted-foreground">
                           {formatDurationShort(project.trackedSeconds)} / {project.estimatedHours}h
                         </span>
                       </div>

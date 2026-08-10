@@ -230,7 +230,7 @@ export function ReportsPage() {
               <TabsTrigger value="detailed">
                 Detailed
                 {detailed.length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-micro font-medium tabular-nums text-muted-foreground">
                     {detailed.length}
                   </span>
                 )}

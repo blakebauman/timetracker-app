@@ -42,7 +42,7 @@ function Keys({ keys }: { keys: string[] }) {
     <span className="flex items-center gap-1">
       {keys.map((k, i) => (
         <span key={k} className="flex items-center gap-1">
-          {i > 0 && <span className="text-[10px] text-muted-foreground">+</span>}
+          {i > 0 && <span className="text-micro text-muted-foreground">+</span>}
           <kbd className="inline-flex h-6 min-w-6 select-none items-center justify-center rounded border bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground">
             {k}
           </kbd>

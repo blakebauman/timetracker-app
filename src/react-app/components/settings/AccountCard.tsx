@@ -162,11 +162,11 @@ export function AccountCard() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm">{user?.email ?? "—"}</span>
             {emailVerified ? (
-              <Badge variant="secondary" className="gap-1 text-[10px]">
+              <Badge variant="secondary" className="gap-1 text-micro">
                 <BadgeCheck className="h-3 w-3 text-success" /> Verified
               </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1 text-[10px] text-warning">
+              <Badge variant="outline" className="gap-1 text-micro text-warning">
                 <MailWarning className="h-3 w-3" /> Unverified
               </Badge>
             )}
