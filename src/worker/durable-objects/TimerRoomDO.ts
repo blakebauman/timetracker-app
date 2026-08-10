@@ -85,17 +85,16 @@ export class TimerRoomDO extends DurableObject<Env> {
     }
   }
 
-  webSocketClose(ws: WebSocket, code: number, reason: string): void {
-    // Compat date < 2026-04-07: we must complete the close handshake ourselves
-    // or the client sees a 1006 abnormal closure.
-    try {
-      ws.close(code, reason);
-    } catch {
-      // Already closed, or a code (e.g. 1005) that close() rejects.
-    }
-  }
+  // No handler: with `web_socket_auto_reply_to_close` (default on from compat
+  // date 2026-04-07, see wrangler.jsonc) the runtime sends the reciprocal Close
+  // frame itself and `readyState` is already CLOSED by the time this would run.
+  // The manual `ws.close(code, reason)` that used to live here existed only to
+  // avoid a 1006 abnormal closure on older compat dates, and there is nothing
+  // else to do on close — per-connection state lives in the socket's attachment
+  // and dies with it.
 
   webSocketError(ws: WebSocket): void {
+    // Still needed: auto-reply covers Close frames, not the error path.
     try {
       ws.close(1011, "error");
     } catch {
