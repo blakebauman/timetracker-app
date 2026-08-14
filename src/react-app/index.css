@@ -84,9 +84,20 @@
   --animate-fade-up: fade-up var(--transition-duration-base) var(--ease-out-quart) both;
   --animate-scale-in: scale-in var(--transition-duration-base) var(--ease-out-quart) both;
 
-  /* Running-timer recording pulse — a flat ring breathes outward behind the
-     round Stop button to signal "recording" (utility: animate-recording-pulse). */
+  /* "A timer is running" has exactly two forms, and they share a 1.6s cadence
+     so that when both are on screen — the sidebar readout sits under the timer
+     bar — they breathe together instead of drifting against each other.
+
+     1. The signature: a flat ring breathes outward from behind the round Stop
+        button. Spends attention deliberately; only used on that one control.
+     2. The quiet one: a small dot breathes in place, for dense surfaces (the
+        sidebar's running readout, a running block on the calendar grid).
+
+     Both loop symmetrically, so the dot is on `ease-in-out` rather than the
+     house `ease-out-quart` — see DESIGN.md §6. The ring keeps `ease-out-quart`
+     because it *travels* (scale 1 → 1.7) rather than breathing in place. */
   --animate-recording-pulse: recording-pulse 1.6s var(--ease-out-quart) infinite;
+  --animate-running-dot: running-dot 1.6s ease-in-out infinite;
 
   /* Just-stopped entry — the row fades up into place while a primary-tinted wash
      and left rail bloom then recede, so the eye tracks where the timer landed
@@ -139,6 +150,13 @@
     transform: scale(1.7);
     opacity: 0;
   }
+}
+/* The quiet running cue — a dot breathing in place, for the sidebar readout and
+   a running block on the calendar grid. Opacity only: these sit inside dense
+   rows where a scaling dot would nudge its neighbours. */
+@keyframes running-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 :root {

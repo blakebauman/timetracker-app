@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 /** Centered spinner shown while a lazily-loaded route chunk resolves. */
 export function PageFallback() {
@@ -8,7 +8,7 @@ export function PageFallback() {
       role="status"
       aria-label="Loading"
     >
-      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <Spinner size="lg" className="text-muted-foreground" />
     </div>
   );
 }

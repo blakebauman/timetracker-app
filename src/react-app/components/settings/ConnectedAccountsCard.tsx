@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 
 interface AccountRow {
@@ -97,7 +97,7 @@ export function ConnectedAccountsCard() {
                         : undefined
                     }
                   >
-                    {unlink.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Disconnect"}
+                    {unlink.isPending ? <Spinner size="sm" /> : "Disconnect"}
                   </Button>
                 ) : (
                   <Button
@@ -106,7 +106,7 @@ export function ConnectedAccountsCard() {
                     onClick={() => link.mutate(p.id)}
                     disabled={link.isPending}
                   >
-                    {link.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+                    {link.isPending ? <Spinner size="sm" /> : "Connect"}
                   </Button>
                 )}
               </div>

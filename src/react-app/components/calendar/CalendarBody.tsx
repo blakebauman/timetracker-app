@@ -9,13 +9,14 @@ import {
   endOfMonth,
   isWithinInterval,
 } from "date-fns";
-import { Loader2, CalendarPlus, AlertTriangle } from "lucide-react";
+import { CalendarPlus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarView, type CalendarViewType } from "./CalendarView";
 import { CalendarCreateDialog } from "./CalendarCreateDialog";
 import { EntryForm, type EditableEntry } from "@/components/entries/EntryForm";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
 import { useEntriesRange, useUpdateEntry } from "@/hooks/useEntries";
 import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarSync";
 import { useTimerStore } from "@/stores/timerStore";
@@ -204,7 +205,7 @@ export function CalendarBody({
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-2">
       {entriesLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <Spinner size="lg" className="text-muted-foreground" />
         </div>
       )}
 
@@ -252,7 +253,7 @@ export function CalendarBody({
           title="Add every calendar event in view as a time entry"
         >
           {convertRange.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Spinner size="sm" />
           ) : (
             <CalendarPlus className="h-3.5 w-3.5" />
           )}

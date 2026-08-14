@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Sparkles, Trash2, Loader2 } from "lucide-react";
+import { Sparkles, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { useAssistantMemory, useDeleteAssistantMemory } from "@/hooks/useAssistant";
 
 /**
@@ -42,7 +43,7 @@ export function AssistantMemoryCard() {
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <Spinner /> Loading…
           </div>
         ) : memories.length === 0 ? (
           <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">

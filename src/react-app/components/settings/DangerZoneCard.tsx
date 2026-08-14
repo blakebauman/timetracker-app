@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 
@@ -94,7 +94,7 @@ export function DangerZoneCard() {
               disabled={pending || !password}
               className={cn(buttonVariants({ variant: "destructive" }))}
             >
-              {pending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {pending && <Spinner size="sm" className="mr-1.5" />}
               Delete account
             </AlertDialogAction>
           </AlertDialogFooter>

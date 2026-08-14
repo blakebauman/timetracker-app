@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
-import { Plus, Copy, Loader2, AlertTriangle, Table2 } from "lucide-react";
+import { Plus, Copy, AlertTriangle, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ColorDot } from "@/components/ColorDot";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
 import {
   useEntriesRange,
   useCreateEntry,
@@ -260,7 +261,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
           {isLoading ? (
             <tr>
               <td colSpan={10} className="py-16 text-center text-muted-foreground">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                <Spinner size="lg" className="mx-auto" />
               </td>
             </tr>
           ) : isError ? (
@@ -407,7 +408,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
           onClick={handleCopyLastWeek}
           disabled={copying}
         >
-          {copying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+          {copying ? <Spinner /> : <Copy className="h-4 w-4" />}
           Copy last week
         </Button>
       </div>

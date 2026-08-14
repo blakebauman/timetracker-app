@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Palette, Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { Download, Palette } from "lucide-react";
 import { useEntries } from "@/hooks/useEntries";
 import { exportToCSV } from "@/lib/exportUtils";
 import { useUIStore } from "@/stores/uiStore";
@@ -144,7 +145,7 @@ export function SettingsPage() {
                 title="Spread distinct colors across your existing projects"
               >
                 {recolorProjects.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Spinner size="sm" />
                 ) : (
                   "Apply to existing"
                 )}

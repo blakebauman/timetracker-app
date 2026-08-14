@@ -205,19 +205,33 @@ Numeric utilities (`duration-200`) still compile, but the named steps are the co
 
 ### Easing
 
-`--ease-out-quart` (`cubic-bezier(0.25, 1, 0.5, 1)`) is **the** curve. Everything decelerating into place uses it; there is no separate "enter" and "exit" curve. `--ease-out-quint` is reserved for the single largest move — the timer control's width change — where a flatter tail keeps a wide element from appearing to overshoot. Looping opacity pulses (the calendar's running dot) stay on `ease-in-out`, because a symmetric breathe wants a symmetric curve.
+`--ease-out-quart` (`cubic-bezier(0.25, 1, 0.5, 1)`) is **the** curve. Everything decelerating into place uses it; there is no separate "enter" and "exit" curve. `--ease-out-quint` is reserved for the single largest move — the timer control's width change — where a flatter tail keeps a wide element from appearing to overshoot. Looping opacity pulses (`animate-running-dot`) stay on `ease-in-out`, because a symmetric breathe wants a symmetric curve.
 
 Stock `ease-out` / `ease-in-out` / `ease` and Tailwind's default curve are not part of the system. A bare `transition-colors` silently falls back to that default — always pair a transition with a duration and `ease-out-quart`.
 
 ### The Running State
 
-The one motion the product is allowed to spend attention on. A flat destructive-tinted ring scales outward from behind the Stop disc (`animate-recording-pulse`, 1.6s) while the disc itself stays put — the visual equivalent of a recording light. It's the only infinite animation in the product chrome, and it earns that because "am I still tracking?" is the question the whole app exists to answer.
+The one motion the product is allowed to spend attention on, because "am I still tracking?" is the question the whole app exists to answer. It has **two forms and one cadence** — both loop at 1.6s, so when they share a screen (the sidebar readout sits directly under the timer bar) they breathe together instead of drifting against each other.
+
+- **The signature** (`animate-recording-pulse`): a flat destructive-tinted ring scales outward from behind the Stop disc while the disc itself stays put — the visual equivalent of a recording light. Only ever on that one control. Keeps `ease-out-quart` because it *travels*.
+- **The quiet one** (`animate-running-dot`): a small dot breathing in place, for dense surfaces — the sidebar's running readout, a running block on the calendar grid. Opacity only, because these sit inside rows where a scaling dot would nudge its neighbours. On `ease-in-out`, per the curve rule above.
+
+These are the only infinite animations in the product. Adding a third form of "running" is the wrong move — extend one of these two.
+
+### Busy vs. Not-Loaded-Yet
+
+Two different states, two different components, and they are not interchangeable:
+
+- **`Spinner`** (`components/ui/spinner.tsx`) — *this specific action is working*. Sizes are `sm` (14px, compact controls and row actions), `default` (16px, inside a default button), `lg` (20px, a whole panel or route). Never hand-roll `<Loader2 className="animate-spin" />`; that is how five sizes appeared for three jobs.
+- **`Skeleton`** — *this surface hasn't loaded yet*. Preferred for anything with a known shape (lists, cards, tables) because it holds the layout instead of collapsing it and then shoving content in.
 
 ### Named Rules
 
 **The Confirmation Rule.** Motion confirms something the user did, or reports something that changed. It never decorates, never celebrates, and never delays access to content.
 
 **The One Curve Rule.** `ease-out-quart` unless there is a stated reason otherwise — and the reason belongs in a comment at the call site.
+
+**The Disclosure Rule.** Anything that opens or closes animates its *panel*, not just its chevron. `CollapsibleContent` carries the height animation by default (`duration-base`, `overflow-hidden`); a disclosure whose arrow rotates smoothly while its content snaps into place reads as broken.
 
 **The Reduced-Motion Rule.** `prefers-reduced-motion: reduce` collapses every animation and transition globally (`index.css`). Any effect whose *timing is coordinated in JS* — a row that waits for its exit animation before unmounting, a highlight that clears on a timer — must read the preference too and shorten itself; the CSS rule cannot reach a `setTimeout`. A running state must always survive the preference as colour and iconography, never as motion alone.
 

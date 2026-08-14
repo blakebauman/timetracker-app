@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Play, Trash2, MoreHorizontal, Edit2, Upload, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { Play, Trash2, MoreHorizontal, Edit2, Upload, Check, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Spinner } from "@/components/ui/spinner";
 import { AssignProjectChip } from "./ProjectPicker";
 import { TimeRangePopover } from "./TimeRangePopover";
 import { useUpdateEntry, useDeleteEntry, useCreateEntry } from "@/hooks/useEntries";
@@ -344,7 +345,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
                 )}
               >
                 {isPushing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Spinner size="sm" />
                 ) : entry.syncStatus === "synced" ? (
                   <Check className="h-3.5 w-3.5" />
                 ) : (

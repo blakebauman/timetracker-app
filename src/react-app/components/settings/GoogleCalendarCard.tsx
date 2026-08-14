@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CalendarDays, Loader2 } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   useCalendarStatus,
   useDisconnectCalendar,
@@ -58,7 +59,7 @@ export function GoogleCalendarCard() {
               onClick={() => disconnect.mutate()}
               disabled={disconnect.isPending}
             >
-              {disconnect.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Disconnect"}
+              {disconnect.isPending ? <Spinner size="sm" /> : "Disconnect"}
             </Button>
           ) : (
             <Button variant="outline" size="sm" onClick={connect}>

@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
-import { Plus, Copy, Loader2, AlertTriangle, CalendarRange, Upload } from "lucide-react";
+import { Plus, Copy, AlertTriangle, CalendarRange, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ColorDot } from "@/components/ColorDot";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
 import { useEntriesRange } from "@/hooks/useEntries";
 import {
   useAllocationsRange,
@@ -225,7 +226,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
         onClick={handleCopyLastWeek}
         disabled={copying}
       >
-        {copying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+        {copying ? <Spinner /> : <Copy className="h-4 w-4" />}
         Copy last week's plan
       </Button>
       <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setImportOpen(true)}>
@@ -283,7 +284,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
           {isLoading ? (
             <tr>
               <td colSpan={10} className="py-16 text-center text-muted-foreground">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                <Spinner size="lg" className="mx-auto" />
               </td>
             </tr>
           ) : isError ? (
