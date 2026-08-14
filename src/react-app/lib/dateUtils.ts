@@ -96,6 +96,21 @@ export function formatEntryTime(isoString: string, timeFormat?: "24h" | "12h"): 
   return format(parseISO(isoString), pattern);
 }
 
+/**
+ * The `yyyy-MM-dd` day an instant belongs to *in the viewer's timezone*.
+ *
+ * Deliberately not `iso.slice(0, 10)`: the API returns UTC instants, so slicing
+ * buckets by the UTC date. West of Greenwich that rolls over during the working
+ * evening — at UTC-6, everything tracked after 18:00 landed in tomorrow's group,
+ * so the "Today" header vanished mid-afternoon and the day's entries split
+ * across two headers, one of them dated in the future. Every day key the UI
+ * renders (list groups, the live day total, the moved-day flash, CSV export)
+ * goes through here so they all agree with the clock on the wall.
+ */
+export function localDayKey(isoString: string): string {
+  return format(parseISO(isoString), "yyyy-MM-dd");
+}
+
 export function formatDayHeader(isoString: string): string {
   const date = parseISO(isoString);
   if (isToday(date)) return "Today";
@@ -288,13 +303,18 @@ export const LIST_RANGE_PRESETS: ListRangeKey[] = LIST_RANGE_GROUPS.flatMap(
 // `customSince`/`customUntil` are bare "YYYY-MM-DD" strings and only consulted
 // for the `custom` key; a half-filled custom range falls back to today's bound
 // on the missing side so the list never queries an inverted window.
+//
+// `now` defaults to the current instant but is injectable so a caller can tie
+// the presets to a value that changes at midnight (see useDayRollover). Every
+// branch below snaps to a day/week/month boundary, so passing today's local
+// midnight resolves identically to passing the current time.
 export function resolveListRange(
   key: ListRangeKey,
   customSince: string | null,
   customUntil: string | null,
-  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6,
+  now: Date = new Date()
 ): ResolvedListRange {
-  const now = new Date();
   const label = LIST_RANGE_LABELS[key];
 
   switch (key) {

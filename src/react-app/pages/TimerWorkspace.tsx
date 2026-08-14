@@ -12,6 +12,7 @@ import {
   addDays,
   isSameDay,
   format,
+  parseISO,
 } from "date-fns";
 import { EntryList } from "@/components/entries/EntryList";
 import { TimerWorkspaceHeader } from "@/components/timer/TimerWorkspaceHeader";
@@ -24,6 +25,7 @@ import {
   useUIStore,
   CALENDAR_SLOT_HEIGHT_STEP,
 } from "@/stores/uiStore";
+import { useDayRollover } from "@/hooks/useDayRollover";
 import { useMediaQuery, BELOW_MD, BELOW_LG } from "@/hooks/useMediaQuery";
 import { useElementWidth } from "@/hooks/useElementWidth";
 import { resolveCalendarDensity } from "@/lib/calendarDensity";
@@ -98,7 +100,17 @@ export function TimerWorkspace() {
   const isMonthView = isCalendarish && effectiveCalendarView === "dayGridMonth";
   const isDayView = isCalendarish && effectiveCalendarView === "timeGridDay";
 
-  const [anchor, setAnchor] = useState(() => new Date());
+  // Every period this component resolves is relative to "now", so both the
+  // memo below and the default anchor have to be recomputed when the calendar
+  // day rolls over under an open tab — see useDayRollover.
+  const dayKey = useDayRollover();
+
+  // `null` means "follow the clock": the grid views open on today and keep
+  // following it across midnight. Stepping or revealing a date pins an explicit
+  // anchor; the Today button releases it again.
+  const [anchorOverride, setAnchorOverride] = useState<Date | null>(null);
+  const today = useMemo(() => parseISO(dayKey), [dayKey]);
+  const anchor = anchorOverride ?? today;
 
   // The list view scopes by the user's chosen range (persisted); every other
   // view — including the list pane *inside* split, which must stay aligned with
@@ -106,7 +118,7 @@ export function TimerWorkspace() {
   const isListView = effectiveView === "list";
   const { since, until } = useMemo(() => {
     if (isListView) {
-      const r = resolveListRange(listRangeKey, listRangeSince, listRangeUntil, wso);
+      const r = resolveListRange(listRangeKey, listRangeSince, listRangeUntil, wso, today);
       return { since: r.since, until: r.until };
     }
     if (isMonthView) return { since: startOfMonth(anchor), until: endOfMonth(anchor) };
@@ -117,6 +129,7 @@ export function TimerWorkspace() {
     };
   }, [
     anchor,
+    today,
     isMonthView,
     isDayView,
     isListView,
@@ -145,12 +158,12 @@ export function TimerWorkspace() {
     const enteringList = effectiveView !== "list" && next === "list";
 
     if (leavingList) {
-      setAnchor(since);
+      setAnchorOverride(since);
     } else if (enteringList && !belowMd) {
       // Name the period if it's one the picker can express, else keep the exact
       // dates as a custom range.
-      const wk = resolveListRange("thisWeek", null, null, wso);
-      const lastWk = resolveListRange("lastWeek", null, null, wso);
+      const wk = resolveListRange("thisWeek", null, null, wso, today);
+      const lastWk = resolveListRange("lastWeek", null, null, wso, today);
       if (isSameDay(since, wk.since) && isSameDay(until, wk.until)) {
         setListRange("thisWeek");
       } else if (isSameDay(since, lastWk.since) && isSameDay(until, lastWk.until)) {
@@ -244,20 +257,23 @@ export function TimerWorkspace() {
 
   /** Move whichever period control is active so `date` becomes visible. */
   const revealDate = (date: Date) => {
-    setAnchor(date);
+    setAnchorOverride(date);
     if (effectiveView === "list") {
       setListRange("custom", format(date, "yyyy-MM-dd"), format(date, "yyyy-MM-dd"));
     }
   };
 
+  // Stepping pins the anchor: from here on the grid stays where the user put it
+  // rather than following the clock (`?? today` only applies while unpinned).
   const step = (dir: 1 | -1) =>
-    setAnchor((d) =>
-      isMonthView
-        ? addMonths(d, dir)
+    setAnchorOverride((d) => {
+      const from = d ?? anchor;
+      return isMonthView
+        ? addMonths(from, dir)
         : isDayView
-          ? addDays(d, dir)
-          : addWeeks(d, dir)
-    );
+          ? addDays(from, dir)
+          : addWeeks(from, dir);
+    });
 
   return (
     <div className="flex h-full flex-col">
@@ -273,7 +289,7 @@ export function TimerWorkspace() {
         onNext={() => step(1)}
         periodNoun={isMonthView ? "month" : isDayView ? "day" : "week"}
         weekStartsOn={wso}
-        onToday={() => setAnchor(new Date())}
+        onToday={() => setAnchorOverride(null)}
         onAddEntry={() => setAddEntryOpen(true)}
         onAiQuickAdd={openQuickAdd}
         calendarView={effectiveCalendarView}
