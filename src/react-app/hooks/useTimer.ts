@@ -4,6 +4,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
+import { invalidateEntryDerived } from "@/hooks/useEntries";
 import { api } from "@/lib/api";
 import { formatSeconds, formatDurationShort } from "@/lib/dateUtils";
 import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
@@ -197,12 +198,11 @@ export function useTimer() {
     },
     onSuccess: (entry) => {
       clearTimerState();
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      invalidateEntryDerived(queryClient);
       announceStopped(entry);
     },
     onError: () => {
       toast.error("Failed to stop timer — please try again");
-      queryClient.invalidateQueries({ queryKey: ["timer-current"] });
     },
   });
 
@@ -218,12 +218,11 @@ export function useTimer() {
     },
     onSuccess: (entry) => {
       clearTimerState();
-      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      invalidateEntryDerived(queryClient);
       announceStopped(entry);
     },
     onError: () => {
       toast.error("Failed to stop timer — please try again");
-      queryClient.invalidateQueries({ queryKey: ["timer-current"] });
     },
   });
 
@@ -231,7 +230,13 @@ export function useTimer() {
   const discardMutation = useMutation({
     mutationFn: (id: string) => api.timeEntries.delete(id),
     onMutate: () => clearTimer(),
-    onSuccess: () => clearTimerState(),
+    onSuccess: () => {
+      clearTimerState();
+      // The discarded entry is gone from the day's list and from every total
+      // derived from it; nothing was invalidated here before, so the row it
+      // left behind lingered until the next focus refetch.
+      invalidateEntryDerived(queryClient);
+    },
     onError: () => toast.error("Failed to discard timer"),
   });
 
@@ -250,6 +255,7 @@ export function useTimer() {
     },
     onMutate: async (seconds) => {
       if (!runningEntry) return;
+      const previousStart = useTimerStore.getState().localStartTime;
       const newStart = Date.now() - seconds * 1000;
       setRunningEntry(runningEntry, newStart);
       await saveTimerState({
@@ -259,10 +265,23 @@ export function useTimer() {
         projectId: runningEntry.projectId,
         projectColor: runningEntry.projectColor,
       });
+      return { previousStart };
     },
-    onError: () => {
+    // Put the anchor back. This used to invalidate `timer-current`, a key no
+    // query has ever read, so a rejected edit left the optimistic elapsed on
+    // screen — and in IndexedDB — with only the toast to say otherwise.
+    onError: (_err, _seconds, context) => {
       toast.error("Failed to update timer");
-      queryClient.invalidateQueries({ queryKey: ["timer-current"] });
+      const previousStart = context?.previousStart;
+      if (!runningEntry || previousStart == null) return;
+      setRunningEntry(runningEntry, previousStart);
+      void saveTimerState({
+        entryId: runningEntry.id,
+        startedAt: previousStart,
+        description: runningEntry.description,
+        projectId: runningEntry.projectId,
+        projectColor: runningEntry.projectColor,
+      });
     },
   });
 

@@ -197,6 +197,16 @@ function mutationErrorMessage(err: unknown, fallback: string): string {
 /**
  * Entries changed, so anything derived from them is stale.
  *
+ * Exported because the socket needs the same set: `useWebSocket` used to
+ * invalidate `time-entries` alone, so a stop in one tab left Reports, and the
+ * tracked totals on Projects/Tasks, stale in every other tab. Any path that
+ * changes an entry — local mutation, socket event, reconnect resync — goes
+ * through here so the derived surfaces can't drift apart again.
+ *
+ * `projects` and `tasks` are included because both carry a `trackedSeconds`
+ * summed from time entries (`worker/routes/projects.ts`, `routes/tasks.ts`),
+ * not because their own rows changed.
+ *
  * `entry-suggestions` is deliberately outside the `time-entries` prefix, so a
  * prefix invalidate never reaches it and a renamed entry kept being offered
  * under its old text by the autocomplete. But it is outside that prefix for a
@@ -205,9 +215,11 @@ function mutationErrorMessage(err: unknown, fallback: string): string {
  * separation exists to prevent. So it refreshes only when a caller says the
  * change was one the suggestion set can see.
  */
-function invalidateEntryDerived(queryClient: QueryClient, suggestions = false) {
+export function invalidateEntryDerived(queryClient: QueryClient, suggestions = false) {
   queryClient.invalidateQueries({ queryKey: ["time-entries"] });
   queryClient.invalidateQueries({ queryKey: ["reports"] });
+  queryClient.invalidateQueries({ queryKey: ["projects"] });
+  queryClient.invalidateQueries({ queryKey: ["tasks"] });
   if (suggestions) queryClient.invalidateQueries({ queryKey: ["entry-suggestions"] });
 }
 
