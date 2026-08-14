@@ -35,7 +35,13 @@ export const useTimerStore = create<TimerStore>((set) => ({
 
   setFromWS: (entry) =>
     set((state) => {
-      if (entry === null) {
+      // A stopped entry is a clear, not a running one. Not every stop arrives
+      // as `timer:stop` — trimming idle time and the edit sheet both close the
+      // entry through the ordinary update route, which broadcasts
+      // `entries:changed` carrying the now-stopped row. Without this check the
+      // receiving tab stored that row as `runningEntry` and kept counting an
+      // entry the server had already closed.
+      if (entry === null || entry.stop) {
         return { runningEntry: null, localStartTime: null, elapsed: 0 };
       }
       if (state.runningEntry?.id === entry.id) {
