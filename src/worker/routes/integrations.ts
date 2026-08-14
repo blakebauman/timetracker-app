@@ -9,6 +9,7 @@ import {
   type PushResult,
 } from "@shared/schemas";
 import { encryptJSON, decryptJSON } from "../lib/crypto";
+import { localDateInZone } from "../lib/local-date";
 import { broadcast } from "../db/queries";
 import { getAdapter, IntegrationError, type Connection } from "../integrations";
 import { safeIntegrationOrigin } from "../integrations/url-guard";
@@ -137,7 +138,7 @@ export const integrationsRouter = new Hono<{
   })
   .post("/push", zValidator("json", PushTimeEntriesSchema), async (c) => {
     const workspaceId = c.get("workspaceId");
-    const { entryIds, comment } = c.req.valid("json");
+    const { entryIds, comment, timezone } = c.req.valid("json");
 
     // Decrypt each integration at most once per request.
     const connCache = new Map<string, Connection>();
@@ -203,6 +204,7 @@ export const integrationsRouter = new Hono<{
             start: row.start as string,
             stop: row.stop as string,
             durationSeconds: duration,
+            localDate: localDateInZone(row.start as string, timezone),
           },
           comment: comment ?? ((row.description as string) || ""),
         });
