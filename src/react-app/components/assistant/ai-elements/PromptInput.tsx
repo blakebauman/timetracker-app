@@ -1,7 +1,8 @@
 import { useCallback, useState, type KeyboardEvent, type Ref } from "react";
-import { Send, Square, Loader2 } from "lucide-react";
+import { Send, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 /**
@@ -88,7 +89,7 @@ export function PromptInput({
           title="Stop"
         >
           {status === "submitted" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Spinner />
           ) : (
             <Square className="h-4 w-4" />
           )}

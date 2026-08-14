@@ -1,5 +1,4 @@
 import { useMemo, useState, Suspense, lazy } from "react";
-import { Loader2 } from "lucide-react";
 import {
   startOfWeek,
   endOfWeek,
@@ -32,6 +31,7 @@ import { resolveCalendarDensity } from "@/lib/calendarDensity";
 import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 import type { LoggedSegment } from "@/components/timer/TimerWorkspaceHeader";
+import { Spinner } from "@/components/ui/spinner";
 
 // FullCalendar (~270 kB) and the timesheet grid load only when their view is
 // selected, keeping the eager Timer landing route lean.
@@ -48,7 +48,7 @@ const PlannerView = lazy(() =>
 function BodyFallback() {
   return (
     <div className="flex flex-1 items-center justify-center">
-      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <Spinner size="lg" className="text-muted-foreground" />
     </div>
   );
 }

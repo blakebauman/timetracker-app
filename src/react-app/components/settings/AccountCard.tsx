@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Check, X, BadgeCheck, MailWarning, Loader2 } from "lucide-react";
+import { Pencil, Check, X, BadgeCheck, MailWarning } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { UserAvatar } from "@/components/layout/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
@@ -145,7 +146,7 @@ export function AccountCard() {
               className="h-8 text-sm"
             />
             <Button size="sm" onClick={handleSaveImage} disabled={imagePending}>
-              {imagePending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {imagePending && <Spinner size="sm" className="mr-1.5" />}
               Save
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setEditingImage(false)}>
@@ -172,7 +173,7 @@ export function AccountCard() {
             )}
             {!emailVerified && verifyStage === "idle" && (
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleSendVerification} disabled={verifyPending}>
-                {verifyPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                {verifyPending && <Spinner size="sm" className="mr-1.5" />}
                 Verify email
               </Button>
             )}
@@ -190,7 +191,7 @@ export function AccountCard() {
                 autoFocus
               />
               <Button size="sm" onClick={handleVerifyEmail} disabled={verifyPending || otp.length < 6}>
-                {verifyPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {verifyPending && <Spinner size="sm" className="mr-1.5" />}
                 Confirm
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setVerifyStage("idle")}>

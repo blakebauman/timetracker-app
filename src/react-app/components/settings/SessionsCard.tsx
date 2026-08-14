@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Monitor, Smartphone, Loader2, LogOut } from "lucide-react";
+import { Monitor, Smartphone, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 import { formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 
@@ -141,7 +142,7 @@ export function SessionsCard() {
                     onClick={() => revoke.mutate(s.token)}
                     disabled={revoke.isPending}
                   >
-                    {revoke.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Revoke"}
+                    {revoke.isPending ? <Spinner size="sm" /> : "Revoke"}
                   </Button>
                 )}
               </div>

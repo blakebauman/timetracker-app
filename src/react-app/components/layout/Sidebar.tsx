@@ -102,7 +102,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
-                  className="h-2 w-2 rounded-full bg-primary animate-pulse"
+                  className="h-2 w-2 rounded-full bg-primary animate-running-dot"
                   aria-label={`Timer running — ${formatSeconds(elapsed)}`}
                 />
               </TooltipTrigger>
@@ -111,7 +111,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
           ) : (
             <>
               <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-running-dot" />
                 <span className="font-mono font-medium text-primary-ink">
                   {formatSeconds(elapsed)}
                 </span>

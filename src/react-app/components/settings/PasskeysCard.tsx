@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Loader2, Trash2 } from "lucide-react";
+import { KeyRound, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 import { formatShortDate } from "@/lib/dateUtils";
 
@@ -112,7 +113,7 @@ export function PasskeysCard() {
             onClick={() => add.mutate()}
             disabled={add.isPending}
           >
-            {add.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+            {add.isPending ? <Spinner size="sm" /> : <KeyRound className="h-3.5 w-3.5" />}
             Add passkey
           </Button>
         </div>

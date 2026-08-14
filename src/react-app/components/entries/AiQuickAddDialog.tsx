@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Loader2, AlertTriangle } from "lucide-react";
+import { Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { ProjectPicker } from "./ProjectPicker";
 import { TaskPicker } from "./TaskPicker";
 import { TagPicker } from "./TagPicker";
@@ -142,7 +143,7 @@ export function AiQuickAddDialog({ open, onClose }: AiQuickAddDialogProps) {
               >
                 {quickEntry.isPending ? (
                   <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    <Spinner size="sm" className="mr-1.5" />
                     Parsing…
                   </>
                 ) : (
