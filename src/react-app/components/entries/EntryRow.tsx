@@ -18,7 +18,13 @@ import { useProjects, useTagColors } from "@/hooks/useProjects";
 import { usePushEntries, useIntegrations } from "@/hooks/useIntegrations";
 import { useTimer } from "@/hooks/useTimer";
 import { cn } from "@/lib/utils";
-import { formatDurationShort, formatShortDate, formatEntryTime, parseTimeInput } from "@/lib/dateUtils";
+import {
+  formatDurationShort,
+  formatShortDate,
+  formatEntryTime,
+  localDayKey,
+  parseTimeInput,
+} from "@/lib/dateUtils";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { useUIStore } from "@/stores/uiStore";
 import { useSavedFlash } from "@/hooks/useSavedFlash";
@@ -154,7 +160,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     // seen. Flash the entry instead — the same machinery that shows you where a
     // stopped timer landed — and fire it now, before the row relocates, rather
     // than from an onSuccess this component won't be around to receive.
-    const movedDay = start.slice(0, 10) !== entry.start.slice(0, 10);
+    const movedDay = localDayKey(start) !== localDayKey(entry.start);
     if (movedDay) flashEntry(entry.id);
     updateEntry.mutate(
       // `undefined` omits the field: a running entry keeps its null stop rather

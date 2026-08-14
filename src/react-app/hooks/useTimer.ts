@@ -9,19 +9,40 @@ import { formatSeconds, formatDurationShort } from "@/lib/dateUtils";
 import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
 import type { TimeEntry } from "@shared/schemas";
 
+/**
+ * Does the range a `["time-entries", since, until]` cache holds contain `start`?
+ *
+ * Optimistic inserts used to go into *every* cached range unconditionally,
+ * which shows a row the server will not return: starting a timer while the list
+ * is scoped to last week (or to a stale "today" from before midnight — see
+ * useDayRollover) rendered the entry, and the refetch after Stop silently took
+ * it away again. Same half-open window as the list endpoint's
+ * `start >= since AND start < until`, compared as UTC ISO strings, which sort
+ * lexicographically. Unranged caches keep the old always-write behaviour.
+ */
+function rangeContains(key: readonly unknown[], start: string): boolean {
+  const [, since, until] = key;
+  if (typeof since !== "string" || typeof until !== "string") return true;
+  return start >= since && start < until;
+}
+
 export function useTimer() {
   const { runningEntry, setRunningEntry, clearTimer } = useTimerStore();
   const queryClient = useQueryClient();
 
-  // Optimistically drop the just-started entry into every cached time-entries
-  // range so it appears in the list immediately instead of after the create
-  // round-trip — mirrors patchStopInCache below, just for the opposite edge.
+  // Optimistically drop the just-started entry into the cached time-entries
+  // ranges that actually contain it, so it appears in the list immediately
+  // instead of after the create round-trip — mirrors patchStopInCache below,
+  // just for the opposite edge.
   const patchStartInCache = useCallback(
     (entry: TimeEntry) => {
-      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) => {
-        if (!old || old.some((e) => e.id === entry.id)) return old;
-        return [entry, ...old];
-      });
+      for (const [key, data] of queryClient.getQueriesData<TimeEntry[]>({
+        queryKey: ["time-entries"],
+      })) {
+        if (!data || data.some((e) => e.id === entry.id)) continue;
+        if (!rangeContains(key, entry.start)) continue;
+        queryClient.setQueryData<TimeEntry[]>(key, [entry, ...data]);
+      }
     },
     [queryClient]
   );
@@ -126,14 +147,24 @@ export function useTimer() {
         0,
         Math.round((new Date(stopIso).getTime() - new Date(entry.start).getTime()) / 1000)
       );
-      queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) => {
-        if (!old) return old;
-        if (old.some((e) => e.id === entry.id)) {
-          return old.map((e) => (e.id === entry.id ? { ...e, stop: stopIso, duration } : e));
+      for (const [key, data] of queryClient.getQueriesData<TimeEntry[]>({
+        queryKey: ["time-entries"],
+      })) {
+        if (!data) continue;
+        if (data.some((e) => e.id === entry.id)) {
+          queryClient.setQueryData<TimeEntry[]>(
+            key,
+            data.map((e) => (e.id === entry.id ? { ...e, stop: stopIso, duration } : e))
+          );
+        } else if (rangeContains(key, entry.start)) {
+          // Not in this range's cache yet — prepend so the day total stays
+          // continuous across the stop → refetch window.
+          queryClient.setQueryData<TimeEntry[]>(key, [
+            { ...entry, stop: stopIso, duration },
+            ...data,
+          ]);
         }
-        // Not in this range's cache — prepend so today's total stays continuous.
-        return [{ ...entry, stop: stopIso, duration }, ...old];
-      });
+      }
     },
     [queryClient]
   );

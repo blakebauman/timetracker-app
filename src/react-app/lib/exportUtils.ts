@@ -1,4 +1,4 @@
-import { formatSeconds, formatEntryTime } from "./dateUtils";
+import { formatSeconds, formatEntryTime, localDayKey } from "./dateUtils";
 import { buildXlsx } from "./xlsx";
 
 interface ExportEntry {
@@ -31,7 +31,9 @@ const EXPORT_HEADERS = [
 // Row cells shared by CSV and XLSX (Amount kept numeric for spreadsheets).
 function exportRow(e: ExportEntry): (string | number)[] {
   return [
-    e.start.slice(0, 10),
+    // Local date, matching the Date column to the Start time beside it — the
+    // UTC slice dated an 18:00 entry to the next day for anyone west of UTC.
+    localDayKey(e.start),
     formatEntryTime(e.start),
     e.stop ? formatEntryTime(e.stop) : "",
     e.duration ? formatSeconds(e.duration) : "",

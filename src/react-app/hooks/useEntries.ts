@@ -9,18 +9,24 @@ import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
-import { formatDayHeader } from "@/lib/dateUtils";
+import { formatDayHeader, localDayKey } from "@/lib/dateUtils";
 import type {
   TimeEntry,
   CreateTimeEntry,
   UpdateTimeEntry,
   EntrySuggestion,
 } from "@shared/schemas";
-import { startOfDay, subDays, endOfDay } from "date-fns";
+import { startOfDay, subDays, endOfDay, parseISO } from "date-fns";
+import { useDayRollover } from "@/hooks/useDayRollover";
 
+// A rolling window anchored to today — so, like every other "now"-relative
+// range in the app, it has to move when the calendar day does (useDayRollover).
+// Left resolved at mount, a tab open past midnight kept querying yesterday's
+// window and simply never saw the entries logged after it.
 export function useEntries(days = 30) {
-  const since = startOfDay(subDays(new Date(), days - 1)).toISOString();
-  const until = endOfDay(new Date()).toISOString();
+  const today = parseISO(useDayRollover());
+  const since = startOfDay(subDays(today, days - 1)).toISOString();
+  const until = endOfDay(today).toISOString();
 
   return useQuery({
     queryKey: ["time-entries", since, until],
@@ -96,7 +102,7 @@ export function groupEntriesByDay(
 ): DayGroup[] {
   const grouped = entries.reduce(
     (acc, entry) => {
-      const dayKey = entry.start.slice(0, 10);
+      const dayKey = localDayKey(entry.start);
       if (!acc[dayKey]) acc[dayKey] = [];
       acc[dayKey].push(entry);
       return acc;
