@@ -56,15 +56,33 @@
      comments too and will emit a dead utility for it.) */
   --text-micro: 0.625rem;
 
-  /* Motion — natural deceleration curves (no bounce/elastic) */
+  /* Motion — natural deceleration curves (no bounce/elastic).
+     `--ease-out-quart` is the default: everything uses it unless it has a
+     reason not to. Quint is reserved for the one large, slow move (the timer
+     control's width change), where the flatter tail keeps a big element from
+     appearing to overshoot. */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Reusable entrance animations (utilities: animate-fade-in / -up / -scale-in) */
-  --animate-fade-in: fade-in 0.25s var(--ease-out-quart) both;
-  --animate-fade-up: fade-up 0.35s var(--ease-out-quart) both;
-  --animate-scale-in: scale-in 0.4s var(--ease-out-quart) both;
+  /* Duration scale (utilities: duration-fast / -base / -slow).
+     Three steps, chosen by how far the thing being animated travels:
+       fast — a state change in place: hover, focus, colour, a chevron.
+       base — something appearing or leaving: overlays, popovers, rows.
+       slow — a panel-sized move across the screen: sheets, drawers.
+     Numeric `duration-200` and friends still work; prefer the named steps so
+     the scale stays greppable and a retune happens in one place. */
+  --transition-duration-fast: 150ms;
+  --transition-duration-base: 200ms;
+  --transition-duration-slow: 300ms;
+
+  /* Reusable entrance animations (utilities: animate-fade-in / -up / -scale-in).
+     All three sit on the `base` step: they used to run 250/350/400ms, which read
+     as three different systems on screens that show more than one of them (the
+     reports strip fades up while an empty state scales in). A pure opacity fade
+     can afford to be the slowest of the three since nothing moves. */
+  --animate-fade-in: fade-in var(--transition-duration-slow) var(--ease-out-quart) both;
+  --animate-fade-up: fade-up var(--transition-duration-base) var(--ease-out-quart) both;
+  --animate-scale-in: scale-in var(--transition-duration-base) var(--ease-out-quart) both;
 
   /* Running-timer recording pulse — a flat ring breathes outward behind the
      round Stop button to signal "recording" (utility: animate-recording-pulse). */
@@ -74,7 +92,7 @@
      and left rail bloom then recede, so the eye tracks where the timer landed
      (utility: animate-stopped). */
   --animate-stopped:
-    fade-up 0.35s var(--ease-out-quart) both,
+    fade-up var(--transition-duration-base) var(--ease-out-quart) both,
     row-flash 1.4s var(--ease-out-quart) both;
 
   /* Assistant "thinking" — a soft highlight sweeps across muted text while the
@@ -263,7 +281,7 @@
    focus-within/focus-visible keep it reachable by keyboard. */
 .tt-reveal {
   opacity: 1;
-  transition: opacity 150ms var(--ease-out-quart);
+  transition: opacity var(--transition-duration-fast) var(--ease-out-quart);
 }
 @media (hover: hover) and (pointer: fine) {
   .tt-reveal {

@@ -254,7 +254,7 @@ export function Sidebar() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden h-full flex-col overflow-hidden border-r bg-card transition-all duration-200 md:flex",
+          "hidden h-full flex-col overflow-hidden border-r bg-card transition-all duration-base ease-out-quart md:flex",
           sidebarCollapsed ? "w-14" : "w-56"
         )}
       >

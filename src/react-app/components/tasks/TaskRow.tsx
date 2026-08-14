@@ -55,7 +55,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
     : null;
 
   return (
-    <div className="group flex items-center gap-2 rounded-md px-2 py-2 hover:bg-muted/50">
+    <div className="group flex items-center gap-2 rounded-md px-2 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/50">
       {/* Done toggle */}
       <button
         onClick={() => updateTask.mutate({ id: task.id, data: { active: !task.active } })}

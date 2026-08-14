@@ -87,6 +87,9 @@
   }
 }
 
+.tt-calendar .fc .fc-timegrid-event {
+  transition: filter var(--transition-duration-fast) var(--ease-out-quart);
+}
 .tt-calendar .fc .fc-timegrid-event:hover {
   filter: brightness(1.03);
 }

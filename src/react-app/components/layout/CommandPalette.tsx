@@ -107,7 +107,7 @@ export function CommandPalette() {
       <CommandList>
         <CommandEmpty>
           <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors duration-fast ease-out-quart hover:bg-accent"
             onClick={handleStartTimer}
           >
             <Play className="h-4 w-4 text-primary" />

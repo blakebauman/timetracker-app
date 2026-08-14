@@ -325,7 +325,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
               return (
                 <tr
                   key={row.key}
-                  className="group/row border-b border-border-strong hover:bg-muted/30"
+                  className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
                   <td className="sticky left-0 z-10 w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
                     {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}

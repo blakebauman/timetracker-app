@@ -143,14 +143,14 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 
 ## 4. Elevation
 
-The system is flat-by-default with tonal layering, not shadow-driven. Depth is conveyed by a one-step lightness shift between background and surface (card/popover), plus a 1px border — not by drop shadows implying physical height. The one exception is the timer Start/Stop control, which uses a deliberate multi-layer inset+outer shadow ("lit-dome" treatment, `--btn-3d-*` tokens) to read as a single tactile, physical button — the one place in the system where dimensional depth is intentional rather than decorative.
+The system is flat-by-default with tonal layering, not shadow-driven. Depth is conveyed by a one-step lightness shift between background and surface (card/popover), plus a 1px border — not by drop shadows implying physical height. The timer Start/Stop control is the one place that gets a distinct treatment, and it earns it with *color and motion* rather than dimension: a flat destructive-tinted capsule with a ring breathing outward behind the disc (see §8).
 
 ### Shadow Vocabulary
 - **Card rest** (`shadow-sm`): the default resting shadow on cards and popovers — barely-there, present mainly to separate a surface from the page on light backgrounds.
-- **Timer button** (`--btn-3d-rest` / `--btn-3d-hover` / `--btn-3d-press`): layered inset highlight + inset shadow + outer glow, unique to the primary timer control. Not reused elsewhere.
+- **Overlay** (`shadow-md` / `shadow-lg`): popovers, dialogs and sheets, which float above the page and need to read as detached rather than layered.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Surfaces are flat at rest, separated by tone and a hairline border, not by shadow. Shadow depth is reserved for the single physical-feeling control (timer Start/Stop) and light hover feedback — never for cards, panels, or menus.
+**The Flat-By-Default Rule.** Surfaces are flat at rest, separated by tone and a hairline border, not by shadow. There is no gradient, inner-shadow or "lit-dome" depth anywhere — including on the timer control, which is a flat solid disc.
 
 ## 5. Components
 
@@ -187,7 +187,41 @@ The system is flat-by-default with tonal layering, not shadow-driven. Depth is c
 ### Calendar Event Block (signature component)
 Real tracked entries render as a translucent fill (16% opacity of the project/tag color) with a solid left-accent border in the same color — not a solid block, so overlapping context (now-indicator, grid lines) stays legible through it. Three distinct block styles share the same grid: **real entries** (solid border, translucent fill), **unconfirmed calendar "ghost" events** (dashed border, near-transparent, cursor pointer, "click to track" affordance), and **untracked-gap blocks** (dashed, barely-there, "Track hh:mm–hh:mm" label) — all three read as fundamentally different weights of interactivity at a glance without needing a legend.
 
-## 6. Do's and Don'ts
+## 6. Motion
+
+Motion in a quiet ledger is confirmation, not performance. It exists to answer three questions — *did that register?*, *where did this come from?*, and *is this still running?* — and nothing else. Nothing bounces, nothing springs, nothing slides in to be admired.
+
+### Duration Scale
+
+Three steps, defined in `index.css` and consumed as `duration-fast` / `duration-base` / `duration-slow`. Pick by **how far the thing travels**, not by how important it is.
+
+| Token | Value | For |
+|---|---|---|
+| `duration-fast` | 150ms | A state change in place: hover, focus, colour, a chevron rotating, a row tint. |
+| `duration-base` | 200ms | Something appearing or leaving: dialogs, popovers, dropdowns, tooltips, entry rows, stat strips. |
+| `duration-slow` | 300ms | A panel-sized move across the screen: sheets and drawers, the timer capsule opening. |
+
+Numeric utilities (`duration-200`) still compile, but the named steps are the convention — they keep the scale greppable and let a retune happen in one place.
+
+### Easing
+
+`--ease-out-quart` (`cubic-bezier(0.25, 1, 0.5, 1)`) is **the** curve. Everything decelerating into place uses it; there is no separate "enter" and "exit" curve. `--ease-out-quint` is reserved for the single largest move — the timer control's width change — where a flatter tail keeps a wide element from appearing to overshoot. Looping opacity pulses (the calendar's running dot) stay on `ease-in-out`, because a symmetric breathe wants a symmetric curve.
+
+Stock `ease-out` / `ease-in-out` / `ease` and Tailwind's default curve are not part of the system. A bare `transition-colors` silently falls back to that default — always pair a transition with a duration and `ease-out-quart`.
+
+### The Running State
+
+The one motion the product is allowed to spend attention on. A flat destructive-tinted ring scales outward from behind the Stop disc (`animate-recording-pulse`, 1.6s) while the disc itself stays put — the visual equivalent of a recording light. It's the only infinite animation in the product chrome, and it earns that because "am I still tracking?" is the question the whole app exists to answer.
+
+### Named Rules
+
+**The Confirmation Rule.** Motion confirms something the user did, or reports something that changed. It never decorates, never celebrates, and never delays access to content.
+
+**The One Curve Rule.** `ease-out-quart` unless there is a stated reason otherwise — and the reason belongs in a comment at the call site.
+
+**The Reduced-Motion Rule.** `prefers-reduced-motion: reduce` collapses every animation and transition globally (`index.css`). Any effect whose *timing is coordinated in JS* — a row that waits for its exit animation before unmounting, a highlight that clears on a timer — must read the preference too and shorten itself; the CSS rule cannot reach a `setTimeout`. A running state must always survive the preference as colour and iconography, never as motion alone.
+
+## 7. Do's and Don'ts
 
 ### Do:
 - **Do** keep the brand red to one or two elements per screen — the running-timer state and the primary action (**The One Accent Rule**).
@@ -201,11 +235,11 @@ Real tracked entries render as a translucent fill (16% opacity of the project/ta
 - **Don't** use a cream/sand/near-white body background — the "SaaS-cream dashboard" look is explicitly rejected. Neutrals carry a chroma nudge toward the brand's own hue, not a generic warm default.
 - **Don't** use gradient-clipped text, tiny uppercase tracked eyebrows above every section, or identical stat-card grids that can orphan an empty cell.
 - **Don't** reach for enterprise-bloat density — an overloaded toolbar, a nested-card layout, or a settings screen exposing everything at once. Reveal what the task needs.
-- **Don't** add drop-shadow "lift" to cards, menus, or panels on hover — depth comes from tone and border, not shadow, except on the one dedicated timer control.
+- **Don't** add drop-shadow "lift" to cards, menus, or panels on hover — depth comes from tone and border, not shadow.
 - **Don't** pair an icon-only button's `size="icon"` with an ad-hoc height/width override; use the size token so it matches its labeled siblings.
 - **Don't** visually clone Toggl. Feature parity (calendar view, favorites, auto-track) is a gap-closing strategy — the soft-tone, red-accent identity is this product's own.
 
-## 7. Brand Mark & App Icons
+## 8. Brand Mark & App Icons
 
 The brand mark is a **circled analog clock reading ~10:10** (the classic "watch ad" angle): a brand-red circle, a white ring at 90% opacity, two rounded white hands, and a center dot. It is the one place the brand red appears as a fill.
 
