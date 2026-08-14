@@ -90,10 +90,11 @@ Multi-tenant: every row is scoped to a `workspace_id`. Better Auth tables use ca
 
 ### Design system
 
-Tailwind v4 (OKLCH tokens in `index.css`) + shadcn/ui. Two conventions worth knowing before touching UI:
+Tailwind v4 (OKLCH tokens in `index.css`) + shadcn/ui. Three conventions worth knowing before touching UI:
 
 - **Icon buttons use the `Button` size tokens** (`icon-xs` = 24px, `icon-sm` = 32px, `icon-lg` = 40px), never `size="icon"` with an ad-hoc `h-N w-N` override — the two drift out of sync with labeled buttons of the equivalent `size="sm"`/`"lg"`. Prefer icon-only actions (with `aria-label` + `title`) over icon+label buttons in dense toolbars (Reports header, Timer header) to cut visual noise; keep the label when the button conveys current state (date range, rounding mode).
 - **Theme is "soft tones", not shadcn defaults.** Dark mode is a soft charcoal with a faint cool tint (not near-black), light mode a warm off-white (not pure white or AI-cream) — see `index.css` `:root`/`.dark`. The brand red (`--primary`) and the project/tag color palette (`lib/colorUtils.ts` `DISTINCT_COLORS`, mirrored server-side in `worker/lib/colors.ts`) are unchanged by this; only the neutral ground/surface/border ramp was softened.
+- **Motion is one scale and one curve.** `duration-fast` / `-base` / `-slow` (150/200/300ms, tokens in `index.css`) chosen by how far a thing travels, always with `ease-out-quart`. A bare `transition-colors` silently falls back to Tailwind's default curve, which is not part of the system — pair every transition with a duration and the easing. `prefers-reduced-motion` is handled globally in `index.css`, but anything whose timing is coordinated in JS (a `setTimeout` waiting on an animation) must check the preference itself, since the CSS rule can't reach it. See DESIGN.md §6.
 
 ### Browser Extension (`extension/`)
 

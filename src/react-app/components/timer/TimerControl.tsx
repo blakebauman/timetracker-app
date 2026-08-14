@@ -65,7 +65,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
   return (
     <div
       className={cn(
-        "relative flex items-center gap-1 rounded-full transition-all duration-500 ease-out-quint",
+        "relative flex items-center gap-1 rounded-full transition-all duration-slow ease-out-quint",
         isRunning ? "bg-destructive/10 pl-3 pr-1" : "bg-transparent"
       )}
     >
@@ -93,7 +93,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
               >
                 <TimerDisplay
                   seconds={elapsed}
-                  className="min-w-20 animate-in fade-in slide-in-from-right-2 cursor-pointer text-right text-destructive duration-300 ease-out"
+                  className="min-w-20 animate-in fade-in slide-in-from-right-2 cursor-pointer text-right text-destructive duration-base ease-out-quart"
                 />
               </button>
             </TooltipTrigger>

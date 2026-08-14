@@ -263,7 +263,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                     type="button"
                     onClick={() => setSortKey(c.key)}
                     className={cn(
-                      "inline-flex items-center gap-1 hover:text-foreground",
+                      "inline-flex items-center gap-1 transition-colors duration-fast ease-out-quart hover:text-foreground",
                       c.align === "right" && "flex-row-reverse"
                     )}
                   >

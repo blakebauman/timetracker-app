@@ -91,7 +91,7 @@ export function TaskList({ projectId }: TaskListProps) {
         return (
           <div
             key={task.id}
-            className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50"
+            className="group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/50"
           >
             {/* Done toggle */}
             <button

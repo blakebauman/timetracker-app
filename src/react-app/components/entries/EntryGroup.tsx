@@ -46,7 +46,7 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
         <div className="flex items-center gap-2">
           <ChevronDown
             className={cn(
-              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-fast ease-out-quart",
               !open && "-rotate-90"
             )}
           />

@@ -14,7 +14,7 @@ export function SavedTick({ saved, className }: { saved: boolean; className?: st
       <Check
         aria-hidden
         className={cn(
-          "pointer-events-none absolute -right-4 top-1/2 h-3 w-3 -translate-y-1/2 text-success transition-opacity duration-200",
+          "pointer-events-none absolute -right-4 top-1/2 h-3 w-3 -translate-y-1/2 text-success transition-opacity duration-base ease-out-quart",
           saved ? "opacity-100" : "opacity-0",
           className
         )}

@@ -171,7 +171,9 @@ The command palette is the fastest path to almost everything — try it first.
 
 ## Offline & sync behavior
 
-- The **running timer syncs in real time** across all your open tabs (and the extension) via a WebSocket — stop it anywhere, it stops everywhere.
+- The **running timer syncs in real time** across all your open tabs (and the extension) via a WebSocket — start, stop, discard or trim it anywhere and every other tab follows immediately.
+- **Everything derived from your entries follows too.** A stop in one tab updates Reports, and the tracked totals on Projects and Tasks, in a tab you left open on another screen — no reload, no clicking away and back.
+- If the connection drops (laptop asleep, a flaky network), the app reconnects and **re-checks the server** rather than trusting what it last heard, so a tab can't sit showing a timer that stopped somewhere else while it was away.
 - If you **go offline**, the timer keeps state locally and your changes are queued in the browser (IndexedDB), then replayed automatically when you're back online. A logged minute is never lost to a bad connection. An edit made offline stays on screen and tells you it's waiting to sync — it isn't reverted and then quietly reapplied later.
 - Timer stop is optimistic: totals update instantly, without a visible dip while the server catches up.
 

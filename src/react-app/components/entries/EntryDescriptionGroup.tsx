@@ -135,7 +135,7 @@ export function EntryDescriptionGroup({
           <div className="flex items-center gap-1.5">
             <ChevronRight
               className={cn(
-                "h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-150",
+                "h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-fast ease-out-quart",
                 open && "rotate-90"
               )}
             />

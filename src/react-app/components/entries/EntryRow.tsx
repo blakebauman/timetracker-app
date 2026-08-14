@@ -40,7 +40,7 @@ interface EntryRowProps {
   onToggleSelect?: (id: string) => void;
 }
 
-/** Must match the row's exit animation duration below. */
+/** Must match `duration-base` on the row's exit animation below. */
 const EXIT_MS = 200;
 
 export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRowProps) {
@@ -214,7 +214,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
         className={cn(
           "group flex items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors hover:bg-accent/40",
           removing
-            ? "pointer-events-none animate-out fade-out slide-out-to-right-4 fill-mode-forwards duration-200 ease-out"
+            ? "pointer-events-none animate-out fade-out slide-out-to-right-4 fill-mode-forwards duration-base ease-out-quart"
             : highlighted
               ? "animate-stopped"
               : "animate-fade-up",

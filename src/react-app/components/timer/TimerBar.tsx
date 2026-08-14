@@ -220,7 +220,7 @@ export function TimerBar() {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="animate-in fade-in text-muted-foreground duration-300 hover:text-destructive"
+              className="animate-in fade-in text-muted-foreground duration-base ease-out-quart hover:text-destructive"
               onClick={() => setConfirmDiscard(true)}
               aria-label="Discard timer"
             >

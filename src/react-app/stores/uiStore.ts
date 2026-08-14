@@ -216,9 +216,19 @@ export const useUIStore = create<UIStore>()(
       flashEntry: (id) => {
         clearTimeout(flashTimeout);
         set({ highlightedEntryId: id, pinnedEntryId: id });
-        // Outlast the refetch + the row's highlight keyframe, then release so a
-        // later re-render doesn't re-trigger the flash.
-        flashTimeout = setTimeout(() => set({ highlightedEntryId: null }), 2500);
+        // Outlast the refetch + the row's `row-flash` keyframe (1.4s), then
+        // release so a later re-render doesn't re-trigger the flash. This was
+        // 2.5s, leaving ~1.1s where the row was still flagged as highlighted
+        // but visually finished; 1.8s covers the keyframe with margin.
+        //
+        // Under reduced motion the global rule collapses the keyframe, so
+        // there is nothing to outlast — a JS timer can't be reached by that CSS
+        // rule, so it has to check the preference itself.
+        const stilled = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        flashTimeout = setTimeout(
+          () => set({ highlightedEntryId: null }),
+          stilled ? 300 : 1800
+        );
       },
     }),
     {
