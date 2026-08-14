@@ -40,9 +40,8 @@ export const workfrontAdapter: IntegrationAdapter = {
     // Workfront logs time as an HOUR object. hours is a decimal value and
     // entryDate is the calendar day (YYYY-MM-DD) the work was performed.
     const hours = Math.round((entry.durationSeconds / 3600) * 100) / 100;
-    const entryDate = entry.start.slice(0, 10);
 
-    const fields = new URLSearchParams({ hours: String(hours), entryDate });
+    const fields = new URLSearchParams({ hours: String(hours), entryDate: entry.localDate });
     if (comment) fields.set("description", comment);
     if (project.externalTaskId) fields.set("taskID", project.externalTaskId);
     else if (project.externalProjectId) fields.set("projectID", project.externalProjectId);

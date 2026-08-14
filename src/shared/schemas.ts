@@ -456,6 +456,16 @@ export const UpdateIntegrationSchema = z.object({
 export const PushTimeEntriesSchema = z.object({
   entryIds: z.array(z.string()).min(1).max(200),
   comment: z.string().max(2000).optional(),
+  /**
+   * IANA zone the work day should be measured in, e.g. "America/Denver".
+   *
+   * Workfront and Dynamics both file an entry against a calendar date, and the
+   * server holds only UTC instants — so without this, an 18:00 entry west of
+   * UTC was filed under the *next* day. An offset would do for one instant but
+   * not for a backlog pushed across a DST boundary; the zone id is evaluated
+   * per entry, at that entry's own start.
+   */
+  timezone: z.string().min(1).max(64).optional(),
 });
 
 export const PushResultSchema = z.object({

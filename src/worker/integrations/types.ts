@@ -27,6 +27,13 @@ export interface EntryRef {
   start: string; // ISO 8601
   stop: string | null; // ISO 8601
   durationSeconds: number; // > 0 for a completed entry
+  /**
+   * The calendar day the work is filed under, `YYYY-MM-DD`, already resolved
+   * into the pusher's timezone — adapters must not re-derive it from `start`,
+   * which is UTC and rolls over mid-evening west of Greenwich. See
+   * `lib/local-date.ts`.
+   */
+  localDate: string;
 }
 
 export interface PushContext {

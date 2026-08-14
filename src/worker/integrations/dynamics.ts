@@ -90,7 +90,7 @@ export const dynamicsAdapter: IntegrationAdapter = {
     // Dynamics stores duration in whole minutes and the date as YYYY-MM-DD.
     const record: Record<string, unknown> = {
       msdyn_duration: Math.max(1, Math.round(entry.durationSeconds / 60)),
-      msdyn_date: entry.start.slice(0, 10),
+      msdyn_date: entry.localDate,
       msdyn_description: comment,
       "msdyn_project@odata.bind": `/msdyn_projects(${project.externalProjectId})`,
     };

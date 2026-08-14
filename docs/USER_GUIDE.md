@@ -156,6 +156,8 @@ Install: load `dist/extension/` unpacked (dev) or via the Chrome Web Store listi
 
 Under **Settings → Integrations** you can connect **Adobe Workfront** or **Microsoft Dynamics** and push time entries into them (for firms where the system of record isn't this app). Each integration has a **Test connection** button; pushes are explicit — nothing syncs without you asking.
 
+Both systems file time against a calendar day rather than a timestamp, and the day used is the one **you** were working in: the push sends your browser's timezone, so an entry tracked at 18:30 is filed on that date, not the next one. Pushing an older backlog is dated by the rule in force back then, so entries either side of a daylight-saving change still land on the right day.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |

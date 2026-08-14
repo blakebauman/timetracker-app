@@ -284,7 +284,7 @@ export const api = {
       request<unknown>(`/integrations/${id}`, { method: "DELETE" }),
     test: (id: string) =>
       request<{ ok: boolean; error?: string }>(`/integrations/${id}/test`, { method: "POST" }),
-    push: (body: { entryIds: string[]; comment?: string }) =>
+    push: (body: { entryIds: string[]; comment?: string; timezone?: string }) =>
       request<{ results: { id: string; ok: boolean; externalId?: string; error?: string }[] }>(
         "/integrations/push",
         { method: "POST", body: JSON.stringify(body) }

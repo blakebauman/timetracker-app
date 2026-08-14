@@ -63,8 +63,15 @@ export function useTestIntegration() {
 export function usePushEntries() {
   const queryClient = useQueryClient();
   return useMutation({
+    // The browser is the only party that knows which zone the tracked day was
+    // lived in — the server holds UTC instants, and the external systems file
+    // against a calendar date. Sent as an IANA id so the server can resolve it
+    // per entry, DST included.
     mutationFn: (vars: { entryIds: string[]; comment?: string }) =>
-      api.integrations.push(vars),
+      api.integrations.push({
+        ...vars,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }),
     onSuccess: (data) => {
       const results = data?.results ?? [];
       const ok = results.filter((r) => r.ok).length;
