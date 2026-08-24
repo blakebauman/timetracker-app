@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { CreateProjectSchema, UpdateProjectSchema } from "@shared/schemas";
 import { DISTINCT_COLORS, spreadColor } from "../lib/colors";
 import { runProjectColorAssignment } from "../lib/ai";
+import { loadProjectPacing } from "../lib/pacing";
 
 const PROJECT_SELECT = `
   SELECT p.*, c.name AS client_name,
@@ -150,6 +151,13 @@ export const projectsRouter = new Hono<{
     await c.env.DB.batch(assignments.map((a) => stmt.bind(a.color, a.id, workspaceId)));
 
     return c.json({ recolored: assignments.length, usedAI });
+  })
+  // Budget pacing for every active project: share of budget spent, burn rate
+  // over the trailing window, and where that rate lands the project by its end
+  // date. Declared before "/:id" so the literal path isn't read as a project id.
+  .get("/pacing", async (c) => {
+    const pacing = await loadProjectPacing(c.env.DB, c.get("workspaceId"));
+    return c.json(pacing);
   })
   .get("/:id", async (c) => {
     const { results } = await c.env.DB.prepare(

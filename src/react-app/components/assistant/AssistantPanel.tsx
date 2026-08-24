@@ -7,6 +7,7 @@ import {
   Play,
   Hourglass,
   Coffee,
+  TrendingUp,
   X,
   CheckCircle2,
   Eraser,
@@ -45,6 +46,7 @@ const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
   meeting_soon: Clock,
   long_timer: Hourglass,
   nothing_tracked: Coffee,
+  budget_risk: TrendingUp,
 };
 
 /**

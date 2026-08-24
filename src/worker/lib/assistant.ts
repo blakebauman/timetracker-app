@@ -8,6 +8,7 @@ import type { AssistantNudge } from "@shared/schemas";
 import { encryptJSON } from "./crypto";
 import { ensureAccessToken, listEvents, type ExternalEvent } from "./google-calendar";
 import { loadGoogleConnection } from "./calendar-autotrack";
+import { atRiskProjects, loadProjectPacing, type ProjectPacing } from "./pacing";
 
 // How far ahead a meeting can be and still get a "starts soon" nudge.
 const SOON_WINDOW_MS = 15 * 60 * 1000;
@@ -17,6 +18,9 @@ const LONG_TIMER_MS = 4 * 60 * 60 * 1000;
 const NOTHING_TRACKED_HOUR = 11;
 // Events at least this long are treated as all-day blocks, not meetings.
 const ALL_DAY_MS = 8 * 60 * 60 * 1000;
+// At most this many budget warnings at once — past two or three they stop being
+// a prompt and become a wall the user learns to dismiss without reading.
+const MAX_BUDGET_NUDGES = 2;
 
 interface RunningEntry {
   id: string;
@@ -149,7 +153,8 @@ export function buildNudges(
   nowMs: number,
   offsetMinutes: number,
   facts: TodayFacts,
-  events: ExternalEvent[]
+  events: ExternalEvent[],
+  pacing: ProjectPacing[] = []
 ): AssistantNudge[] {
   const nudges: AssistantNudge[] = [];
   const { localHour, localWeekday, localDate } = localDayBounds(nowMs, offsetMinutes);
@@ -227,6 +232,45 @@ export function buildNudges(
     });
   }
 
+  // A budget that has already blown, or is on course to, is worth knowing about
+  // the week it happens rather than at invoice time. Deterministic — the numbers
+  // come from lib/pacing.ts, not from a model.
+  for (const p of atRiskProjects(pacing).slice(0, MAX_BUDGET_NUDGES)) {
+    const budgetHours = Math.round((p.estimatedSeconds ?? 0) / 3600);
+    if (p.status === "over_budget") {
+      const over = formatDuration((p.trackedSeconds - (p.estimatedSeconds ?? 0)) * 1000);
+      nudges.push({
+        id: `budget_over:${p.projectId}`,
+        kind: "budget_risk",
+        title: "Over budget",
+        body: `“${p.projectName}” has used ${formatDuration(p.trackedSeconds * 1000)} of its ${budgetHours}h budget — ${over} over.`,
+        event: null,
+      });
+    } else if (p.projectedOverrunSeconds && p.projectedOverrunSeconds > 0) {
+      const by = formatDuration(p.projectedOverrunSeconds * 1000);
+      const left =
+        p.workingDaysRemaining && p.workingDaysRemaining > 0
+          ? ` with ${p.workingDaysRemaining} working ${p.workingDaysRemaining === 1 ? "day" : "days"} left`
+          : "";
+      nudges.push({
+        id: `budget_pace:${p.projectId}`,
+        kind: "budget_risk",
+        title: "On pace to overrun",
+        body: `At the current rate “${p.projectName}” lands about ${by} over its ${budgetHours}h budget${left}.`,
+        event: null,
+      });
+    } else {
+      const pct = Math.round((p.percentUsed ?? 0) * 100);
+      nudges.push({
+        id: `budget_close:${p.projectId}`,
+        kind: "budget_risk",
+        title: "Close to budget",
+        body: `“${p.projectName}” is at ${pct}% of its ${budgetHours}h budget.`,
+        event: null,
+      });
+    }
+  }
+
   // Ended-meeting nudges are the most actionable — surface them first.
   const order: Record<AssistantNudge["kind"], number> = {
     meeting_now: 0,
@@ -234,6 +278,7 @@ export function buildNudges(
     meeting_soon: 2,
     long_timer: 3,
     nothing_tracked: 4,
+    budget_risk: 5,
   };
   return nudges.sort((a, b) => order[a.kind] - order[b.kind]).slice(0, 12);
 }
@@ -246,11 +291,12 @@ export async function computeNudges(
 ): Promise<AssistantNudge[]> {
   const nowMs = Date.now();
   const { dayStartIso, dayEndIso } = localDayBounds(nowMs, offsetMinutes);
-  const [facts, events] = await Promise.all([
+  const [facts, events, pacing] = await Promise.all([
     loadTodayFacts(env.DB, workspaceId, dayStartIso, dayEndIso),
     loadTodayEvents(env, workspaceId, dayStartIso, dayEndIso),
+    loadProjectPacing(env.DB, workspaceId, nowMs),
   ]);
-  return buildNudges(nowMs, offsetMinutes, facts, events);
+  return buildNudges(nowMs, offsetMinutes, facts, events, pacing);
 }
 
 /**

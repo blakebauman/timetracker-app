@@ -121,6 +121,40 @@ export const UpdateProjectSchema = CreateProjectSchema.partial().extend({
   active: z.boolean().optional(),
 });
 
+// ─── Project pacing ──────────────────────────────────────────────────────────
+
+// How a project's time budget is being spent: how much is gone, how fast it's
+// going, and where the current burn rate lands it by the end date. Computed
+// server-side (worker/lib/pacing.ts) so the request, the nudge and the emailed
+// briefing all quote the same numbers.
+export const PacingStatusSchema = z.enum([
+  "no_budget",
+  "on_track",
+  "at_risk",
+  "over_budget",
+]);
+
+export const ProjectPacingSchema = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  projectColor: z.string(),
+  clientName: z.string().nullable(),
+  estimatedSeconds: z.number().nullable(),
+  trackedSeconds: z.number(),
+  recentSeconds: z.number(),
+  billableAmount: z.number(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  lastTracked: z.string().nullable(),
+  // 1 = exactly on budget. Not clamped — 1.2 is 20% over.
+  percentUsed: z.number().nullable(),
+  burnPerWorkingDay: z.number(),
+  workingDaysRemaining: z.number().nullable(),
+  projectedSeconds: z.number().nullable(),
+  projectedOverrunSeconds: z.number().nullable(),
+  status: PacingStatusSchema,
+});
+
 // ─── Task ─────────────────────────────────────────────────────────────────────
 
 export const TaskSchema = z.object({
@@ -562,6 +596,7 @@ export const AssistantNudgeSchema = z.object({
     "meeting_soon", // an event starts within the lookahead window
     "long_timer", // the running timer has been going suspiciously long
     "nothing_tracked", // late morning on a weekday with an empty timesheet
+    "budget_risk", // a budgeted project is over, or on pace to overrun
   ]),
   title: z.string(),
   body: z.string(),
@@ -628,6 +663,8 @@ export type EntrySuggestion = z.infer<typeof EntrySuggestionSchema>;
 export type CreateTimeEntry = z.infer<typeof CreateTimeEntrySchema>;
 export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
+export type PacingStatus = z.infer<typeof PacingStatusSchema>;
+export type ProjectPacing = z.infer<typeof ProjectPacingSchema>;
 export type CreateClient = z.infer<typeof CreateClientSchema>;
 export type UpdateClient = z.infer<typeof UpdateClientSchema>;
 export type ClientStats = z.infer<typeof ClientStatsSchema>;

@@ -1,5 +1,5 @@
 import { addPendingMutation } from "@/lib/idb";
-import type { Settings, AssistantMemory } from "@shared/schemas";
+import type { Settings, AssistantMemory, ProjectPacing } from "@shared/schemas";
 
 const API_BASE = "/api";
 
@@ -196,6 +196,7 @@ export const api = {
       request<unknown>(`/projects/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete: (id: string) =>
       request<unknown>(`/projects/${id}`, { method: "DELETE" }),
+    pacing: () => request<ProjectPacing[]>("/projects/pacing"),
     recolor: () =>
       request<{ recolored: number; usedAI: boolean }>("/projects/recolor", {
         method: "POST",
