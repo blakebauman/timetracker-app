@@ -167,8 +167,15 @@ export function SettingsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => recolorProjects.mutate()}
-                disabled={recolorProjects.isPending}
-                title="Spread distinct colors across your existing projects"
+                // Reads as actionable while the setting it belongs to is off,
+                // which is the one state where pressing it contradicts the
+                // switch beside it.
+                disabled={recolorProjects.isPending || !autoAssignColors}
+                title={
+                  autoAssignColors
+                    ? "Spread distinct colors across your existing projects"
+                    : "Turn on auto-assign colors to recolor existing projects"
+                }
               >
                 {recolorProjects.isPending ? (
                   <Spinner size="sm" />

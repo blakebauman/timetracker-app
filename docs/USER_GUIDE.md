@@ -70,7 +70,7 @@ The **Planner** view (Timer tab, last icon in the view switcher) is a weekly gri
 ## Organizing work: clients, projects, tasks, tags
 
 - **Clients** hold contact details and notes; each client's detail page shows its projects and recent activity.
-- **Projects** belong to a client (optionally), carry a **color**, a **billable** flag, an optional **billing rate**, and an optional budget. Rate × billable hours = the amounts you see in Reports. The billable flag is the default for new time on that project — the timer bar adopts it when you pick the project, and any entry created without an explicit flag (the browser extension, AI Quick Add, the API) inherits it too.
+- **Projects** belong to a client (optionally), carry a **color**, a **billable** flag, an optional **billing rate**, and an optional budget. The Projects page can be searched (by project *or* client name) and sorted by name, client, tracked time or rate. Rate × billable hours = the amounts you see in Reports. The billable flag is the default for new time on that project — the timer bar adopts it when you pick the project, and any entry created without an explicit flag (the browser extension, AI Quick Add, the API) inherits it too.
 - **Tasks** belong to projects; the Tasks page is a board-style list where you can also log time directly against a task.
 - **Tags** are freeform labels; new tags automatically get a distinct color (editable later, along with renames, on the fly from any tag picker).
 

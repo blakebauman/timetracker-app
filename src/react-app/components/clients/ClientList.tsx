@@ -96,7 +96,14 @@ function ClientFigures({
         {/* The headline figure: the one number a consultant is actually here
             for, so it gets the weight and the semantic colour that means
             "billable" everywhere else in the app. */}
-        <span className="text-sm font-semibold tabular-nums text-success-ink md:block md:text-right">
+        {/* Green is the billable colour, so a green $0.00 reads as a positive
+            outcome for a client that has earned nothing. Zero is neutral. */}
+        <span
+          className={cn(
+            "text-sm font-semibold tabular-nums md:block md:text-right",
+            stats.billableAmount > 0 ? "text-success-ink" : "text-muted-foreground"
+          )}
+        >
           {formatCurrency(stats.billableAmount, currency)}
         </span>
       </span>
