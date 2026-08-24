@@ -12,6 +12,11 @@ import type { EntrySuggestion } from "@shared/schemas";
 // scannable and starts competing with the timer controls for vertical space.
 const MAX_VISIBLE = 8;
 
+// Shared by the listbox's id, the field's aria-controls, and the focus-outside
+// guard below — which identifies "our own field" by that attribute rather than
+// by a ref, so the three can't drift apart.
+const LISTBOX_ID = "description-suggestions";
+
 interface DescriptionAutocompleteProps {
   value: string;
   onChange: (v: string) => void;
@@ -181,7 +186,7 @@ export function DescriptionAutocomplete({
     role: "combobox",
     "aria-expanded": isOpen,
     "aria-autocomplete": "list" as const,
-    "aria-controls": "description-suggestions",
+    "aria-controls": LISTBOX_ID,
     "aria-activedescendant":
       active >= 0 ? `description-suggestion-${active}` : undefined,
     className,
@@ -198,7 +203,7 @@ export function DescriptionAutocomplete({
       </PopoverAnchor>
       <PopoverContent
         ref={listRef}
-        id="description-suggestions"
+        id={LISTBOX_ID}
         role="listbox"
         align="start"
         // Matching the trigger width is right until the trigger is narrow: in
@@ -210,6 +215,28 @@ export function DescriptionAutocomplete({
         // Focus must stay in the input so typing continues to filter.
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
+        /**
+         * Clicking the field used to open the list and shut it again ~230ms
+         * later — long enough to read as a flash, and it left the popover
+         * closed while the field kept focus, so a second click did nothing at
+         * all (only typing brought it back).
+         *
+         * The field is a Popover *Anchor*, not a *Trigger*, and Radix's
+         * dismissable layer only exempts a Trigger from its outside-interaction
+         * check. So the very focus that opens the list — onFocus → setOpen(true)
+         * — is seen by the layer mounting a tick later as a `focusin` OUTSIDE
+         * itself, and it dismisses immediately. The delay was the exit animation.
+         *
+         * Focus arriving on our own field is never a reason to close: the field
+         * IS this combobox. Focus genuinely leaving is still handled, by the
+         * field's own onBlur above.
+         */
+        onFocusOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.getAttribute?.("aria-controls") === LISTBOX_ID) {
+            e.preventDefault();
+          }
+        }}
       >
         {matches.map((s, i) => (
           <button
