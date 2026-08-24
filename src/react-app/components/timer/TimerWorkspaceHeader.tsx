@@ -7,7 +7,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { isSameDay, isToday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -120,12 +119,11 @@ export function TimerWorkspaceHeader({
   const periodSummary = summarizePeriod(since, until, wso);
   const now = new Date();
   const periodIncludesToday = now >= since && now <= until;
-  // When the period *is* today, the label beside this button already reads
-  // "Today" (formatPeriodLabel collapses a single day to that word), so the
-  // button rendered as the literal "Today Today". Disabling it wasn't enough —
-  // the duplicated word is the defect. Keep the box so the toolbar doesn't
-  // reflow as you step through days, but take the word out of it.
-  const todayIsRedundant = isSameDay(since, until) && isToday(since);
+  // The pane can be too narrow for the view the user asked for (Split halves it
+  // at 1280, phones force a single day). CalendarViewOptions explains this, but
+  // only once you open it — so the header total silently changes from a week to
+  // a day with nothing on screen saying why. Say it where the number changed.
+  const densityReduced = showCalendarControls && calendarView !== requestedCalendarView;
 
   return (
     <div className="border-b">
@@ -182,14 +180,19 @@ export function TimerWorkspaceHeader({
               through periods; `invisible` (not `hidden`) when the label itself
               already says "Today" — same reserved box, no duplicated word, and
               out of the a11y tree. */}
+          {/* Deliberately visible-but-disabled when the period already contains
+              today, never hidden. An earlier pass made it `invisible` +
+              `aria-hidden` to avoid the label reading "Today Today" beside the
+              h1 — which traded an affordance for a cosmetic nit, and fired at
+              exactly the wrong moment: switching to Split collapses the period
+              to a single day, so the one period control vanished from both the
+              screen and the a11y tree just as a user would reach for it. */}
           <Button
             variant="outline"
             size="sm"
-            className={cn("h-8", todayIsRedundant && "invisible")}
+            className="h-8"
             onClick={isListView ? () => onListRangeChange("thisWeek") : onToday}
             disabled={periodIncludesToday}
-            aria-hidden={todayIsRedundant}
-            tabIndex={todayIsRedundant ? -1 : undefined}
           >
             Today
           </Button>
@@ -198,6 +201,11 @@ export function TimerWorkspaceHeader({
               ? formatListRangeLabel(listRangeKey, since, until, wso)
               : formatPeriodLabel(since, until, { weekStamp: !isDayView })}
           </h1>
+          {densityReduced && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-micro font-medium text-muted-foreground">
+              narrow pane
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

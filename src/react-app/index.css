@@ -26,6 +26,7 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-ink: var(--warning-ink);
+  --color-success-ink: var(--success-ink);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
@@ -198,6 +199,13 @@
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.596 0.145 163.225);
   --success-foreground: oklch(0.985 0 0);
+  /* Success used as TEXT — the third of the same family as --primary-ink and
+     --warning-ink, and it exists for the same measured reason. --success is
+     calibrated as a fill and fails AA as small type on every light ground:
+     3.61:1 on card, 3.31:1 on muted/accent, 3.15:1 on its own /10 tint. Some of
+     the call sites are 10px. Holds hue and chroma, moves lightness only; worst
+     measured ground is a /15 tint at 4.52:1. */
+  --success-ink: oklch(0.488 0.145 163.225);
   --warning: oklch(0.666 0.179 58.318);
   --warning-foreground: oklch(0.985 0 0);
   /* Warning used as TEXT, exactly as --primary-ink is for the brand red.
@@ -271,6 +279,9 @@
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.696 0.17 162.48);
   --success-foreground: oklch(0.16 0.006 265);
+  /* Dark ink is light, so the fill value already clears AA as text here
+     (5.53:1 worst ground). Same value, declared so call sites use one class. */
+  --success-ink: oklch(0.696 0.17 162.48);
   --warning: oklch(0.769 0.188 70.08);
   --warning-foreground: oklch(0.16 0.006 265);
   /* Dark ink is light, so the fill value already clears AA as text here

@@ -134,8 +134,17 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
                   aria-pressed={color === c}
                   title={PROJECT_COLOR_NAMES[c] ?? c}
                   className={cn(
-                    "h-6 w-6 rounded-full ring-2 ring-offset-2 transition-all duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-ring focus-visible:ring-offset-2",
-                    color === c ? "scale-110 ring-foreground" : "ring-transparent hover:scale-105"
+                    // Selection and focus use different CSS properties on
+                    // purpose. Both used to be `ring-*`, so a swatch that was
+                    // selected *and* focused resolved by source order rather
+                    // than intent — and the selection ring was a 2px
+                    // full-opacity one that also drifted from the house focus
+                    // vocabulary. Selection is now an outline, leaving `ring`
+                    // to mean focus and only focus, everywhere.
+                    "h-6 w-6 rounded-full outline-offset-2 transition-all duration-fast ease-out-quart focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                    color === c
+                      ? "scale-110 outline-2 outline-foreground"
+                      : "outline-none hover:scale-105"
                   )}
                   style={{ backgroundColor: c }}
                   onClick={() => setColor(c)}

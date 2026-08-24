@@ -80,7 +80,14 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 outline-none", className)}
+      // Radix gives the panel `tabindex="0"` so keyboard users land on the
+      // content after the tablist — but `outline-none` alone left that stop with
+      // no visible indicator at all (WCAG 2.4.7). The house ring, applied only
+      // on keyboard focus so a mouse click on the panel doesn't flash it.
+      className={cn(
+        "flex-1 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        className
+      )}
       {...props}
     />
   )
