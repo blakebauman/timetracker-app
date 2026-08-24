@@ -40,15 +40,36 @@ const DateArg = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
   .describe("A calendar date, YYYY-MM-DD");
 
-/** Local date range → the UTC half-open interval the report queries expect. */
-function rangeToIso(since: string, until: string) {
+/**
+ * A range of the caller's LOCAL dates → the UTC half-open interval the report
+ * queries expect.
+ *
+ * The offset matters more than it looks. Asked "how much did I track
+ * yesterday", a client seven hours west of UTC that got a UTC-day window would
+ * report a day shifted by seven hours — quietly including the previous
+ * evening's work and dropping its own. Defaults to 0 (UTC) when the client
+ * doesn't say, which is at least a defensible reading of a bare date.
+ */
+function rangeToIso(since: string, until: string, offsetMinutes = 0) {
+  const startMs = new Date(`${since}T00:00:00.000Z`).getTime() + offsetMinutes * 60_000;
+  const endMs =
+    new Date(`${until}T00:00:00.000Z`).getTime() + offsetMinutes * 60_000 + 86_400_000;
   return {
-    sinceIso: new Date(`${since}T00:00:00.000Z`).toISOString(),
-    untilIso: new Date(
-      new Date(`${until}T00:00:00.000Z`).getTime() + 86_400_000
-    ).toISOString(),
+    sinceIso: new Date(startMs).toISOString(),
+    untilIso: new Date(endMs).toISOString(),
   };
 }
+
+/** Shared arg so date ranges mean the caller's days, not the server's. */
+const TimezoneArg = z
+  .number()
+  .int()
+  .min(-900)
+  .max(900)
+  .default(0)
+  .describe(
+    "The user's UTC offset in minutes, JS getTimezoneOffset sign (west of UTC is positive). Pass it so the date range means their days, not UTC's."
+  );
 
 function hours(seconds: number): number {
   return Math.round((seconds / 3600) * 100) / 100;
@@ -150,10 +171,11 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .enum(["project", "client", "task", "tag"])
           .default("project")
           .describe("Which dimension to break the total down by"),
+        timezoneOffsetMinutes: TimezoneArg,
       },
     },
-    async ({ since, until, groupBy }) => {
-      const { sinceIso, untilIso } = rangeToIso(since, until);
+    async ({ since, until, groupBy, timezoneOffsetMinutes }) => {
+      const { sinceIso, untilIso } = rangeToIso(since, until, timezoneOffsetMinutes);
       const { where, bindings } = buildReportWhere({
         workspaceId,
         since: sinceIso,
@@ -245,10 +267,11 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .max(200)
           .optional()
           .describe("Optional case-insensitive substring of the entry description"),
+        timezoneOffsetMinutes: TimezoneArg,
       },
     },
-    async ({ since, until, search }) => {
-      const { sinceIso, untilIso } = rangeToIso(since, until);
+    async ({ since, until, search, timezoneOffsetMinutes }) => {
+      const { sinceIso, untilIso } = rangeToIso(since, until, timezoneOffsetMinutes);
       const clauses = [`te.workspace_id = ?`, `te.start >= ?`, `te.start < ?`];
       const bindings: unknown[] = [workspaceId, sinceIso, untilIso];
       if (search?.trim()) {
@@ -540,15 +563,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         "Propose the entries missing from a day, from calendar events that ended untracked, uncovered stretches between the day's activity, and work usually logged on that weekday. Proposals are NOT tracked time — they wait for a person to review and confirm them in the app.",
       inputSchema: {
         date: DateArg.describe("The local day to draft, YYYY-MM-DD"),
-        timezoneOffsetMinutes: z
-          .number()
-          .int()
-          .min(-900)
-          .max(900)
-          .default(0)
-          .describe(
-            "The user's UTC offset in minutes, JS getTimezoneOffset sign (west of UTC is positive)"
-          ),
+        timezoneOffsetMinutes: TimezoneArg,
       },
     },
     async ({ date, timezoneOffsetMinutes }) => {

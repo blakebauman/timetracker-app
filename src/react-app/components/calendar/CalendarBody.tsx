@@ -177,7 +177,9 @@ export function CalendarBody({
     });
     return {
       events: [...gaps, ...draftBlocks, ...real, ...visibleGhosts],
-      ghostCount: unconfirmed.length - (ghosts.length - visibleGhosts.length),
+      // What the "Convert N events" button offers to do — the ghosts still on
+      // screen, not every unconfirmed event (a drafted one is already handled).
+      ghostCount: visibleGhosts.length,
     };
   }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView, drafts]);
 
