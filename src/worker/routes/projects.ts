@@ -56,6 +56,24 @@ export const projectsRouter = new Hono<{
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
 
+    // Colour is optional: when the caller doesn't pick one, take the first
+    // palette entry this workspace isn't already using, so two projects are
+    // never born the same colour. DISTINCT_COLORS is hue-alternated, so even the
+    // first two or three read as clearly different — which is the promise the
+    // breakdown donut and the calendar blocks rely on. The old fixed schema
+    // default meant every project created outside the project form (API,
+    // extension, seed) came out the same sky blue.
+    let color = data.color;
+    if (!color) {
+      const { results: used } = await c.env.DB.prepare(
+        `SELECT color FROM projects WHERE workspace_id = ?`
+      ).bind(workspaceId).all<{ color: string }>();
+      const taken = new Set(used.map((r) => r.color));
+      color =
+        DISTINCT_COLORS.find((candidate) => !taken.has(candidate)) ??
+        spreadColor(used.length);
+    }
+
     await c.env.DB.prepare(
       `INSERT INTO projects
          (id, workspace_id, client_id, name, color, billable, rate, active, start_date, end_date, estimated_hours, integration_id, external_project_id, external_task_id, created_at)
@@ -63,7 +81,7 @@ export const projectsRouter = new Hono<{
     ).bind(
       id, workspaceId,
       data.clientId ?? null,
-      data.name, data.color,
+      data.name, color,
       data.billable ? 1 : 0,
       data.rate ?? null,
       data.startDate ?? null,

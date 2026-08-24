@@ -91,7 +91,12 @@ export const ProjectSchema = z.object({
 
 export const CreateProjectSchema = z.object({
   name: z.string().min(1).max(255),
-  color: z.string().regex(/^#[0-9a-f]{6}$/i).default("#0ea5e9"),
+  // Deliberately no default: when the caller omits it the server assigns the
+  // next distinct palette colour (see routes/projects.ts). A fixed default
+  // meant every project created outside the project form — API, extension,
+  // seed — came out the same sky blue, so a three-project breakdown donut
+  // rendered three identical slices.
+  color: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
   clientId: z.string().nullable().optional(),
   billable: z.boolean().default(false),
   rate: z.number().nullable().optional(),
