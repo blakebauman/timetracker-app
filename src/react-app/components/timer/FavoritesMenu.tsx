@@ -68,7 +68,7 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
               variant="ghost"
               size="icon"
               className={cn(
-                "h-8 w-8 text-muted-foreground hover:text-foreground",
+                "tt-touch h-8 w-8 text-muted-foreground hover:text-foreground",
                 favorites.length > 0 && "text-amber-500 hover:text-amber-500"
               )}
               aria-label="Favorites"

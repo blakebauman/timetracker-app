@@ -20,7 +20,7 @@ export function AssistantButton() {
         <Button
           variant="ghost"
           size="icon-sm"
-          className="relative text-muted-foreground"
+          className="tt-touch relative text-muted-foreground"
           onClick={toggleOpen}
           aria-label={
             nudges.length > 0

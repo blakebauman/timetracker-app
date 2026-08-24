@@ -201,7 +201,12 @@ export function DescriptionAutocomplete({
         id="description-suggestions"
         role="listbox"
         align="start"
-        className="w-(--radix-popover-trigger-width) max-w-none p-1"
+        // Matching the trigger width is right until the trigger is narrow: in
+        // the timer bar's single-row band the input can sit around 140px, and a
+        // 140px suggestion list can't show a description, a project and a task.
+        // Floor it at a readable width, capped to the viewport so it can't
+        // become the thing that overflows.
+        className="w-(--radix-popover-trigger-width) max-w-[calc(100vw-2rem)] min-w-80 p-1"
         // Focus must stay in the input so typing continues to filter.
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}

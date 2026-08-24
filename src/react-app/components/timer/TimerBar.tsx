@@ -140,7 +140,16 @@ export function TimerBar() {
   };
 
   return (
-    <header aria-label="Timer" className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm md:h-14 md:flex-nowrap md:gap-3 md:py-0">
+    // Wrap is load-bearing, not a fallback. `md:flex-nowrap` used to switch this
+    // row to nowrap while every control except the description was `shrink-0`
+    // (Button's base class), so between 768px and ~1000px the row needed 680px
+    // in a 544–676px container: the Stop button rendered past the viewport's
+    // right edge with `scrollWidth === clientWidth`, i.e. clipped, not
+    // scrollable. A running timer could not be stopped from the bar on an iPad
+    // in portrait or a laptop at half width. Single row is now `xl` only, where
+    // the numbers actually fit, and the controls are one shrink-0 unit that
+    // wraps whole rather than being pushed off.
+    <header aria-label="Timer" className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm xl:h-14 xl:flex-nowrap xl:gap-3 xl:py-0">
       {/* Description input, with autocomplete over the last 90 days of entries */}
       <DescriptionAutocomplete
         inputRef={descRef}
@@ -160,7 +169,11 @@ export function TimerBar() {
           // bar, and full opacity rather than /50, because with `border-0` this
           // ring is the *only* focus signal — the canonical pairing leans on
           // `border-ring` for half its contrast. Width follows the scale.
-          "basis-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset md:flex-1 md:basis-auto",
+          //
+          // `min-w-0` is what lets `flex-1` actually yield at `xl`; without it
+          // the input's intrinsic min-width fights the row and the overflow
+          // comes out of whatever sits furthest right.
+          "basis-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset xl:min-w-0 xl:flex-1 xl:basis-auto",
           isRunning && "font-medium"
         )}
       />
@@ -193,7 +206,15 @@ export function TimerBar() {
         </span>
       )}
 
-      {/* Project picker */}
+      {/* Project + task chips. Button's base is `shrink-0`, so these could never
+          give up width and the overflow came out of the controls instead.
+          `basis-28` is the load-bearing part: flex wraps a line *before* it
+          shrinks anything, so chips sized by their content (178px + 184px for a
+          real project name) pushed the control cluster onto a row of its own at
+          every width below `xl`. Sizing them from a 7rem basis and letting them
+          grow into the leftover keeps chips and controls on one line down to
+          768px, and the same 7rem as `min-w` stops them collapsing into
+          unreadable slivers when they genuinely don't fit. */}
       <ProjectPicker
         value={projectId}
         onChange={(id) => {
@@ -204,6 +225,7 @@ export function TimerBar() {
           }
         }}
         compact
+        className="tt-touch shrink max-xl:min-w-28 max-xl:grow max-xl:basis-28"
       />
 
       {/* Task picker — only when a project is selected */}
@@ -217,38 +239,45 @@ export function TimerBar() {
           }
         }}
         compact
+        className="tt-touch shrink max-xl:min-w-28 max-xl:grow max-xl:basis-28"
       />
 
-      {/* Discard button (only when running) */}
-      {isRunning && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="animate-in fade-in text-muted-foreground duration-base ease-out-quart hover:text-destructive"
-              onClick={() => setConfirmDiscard(true)}
-              aria-label="Discard timer"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Discard timer
-            <span className="ml-1.5 text-background/60">Alt+Shift+X</span>
-          </TooltipContent>
-        </Tooltip>
-      )}
+      {/* Control cluster. One shrink-0 unit, pushed right by `ml-auto`: it wraps
+          to its own row as a whole when the chips can't make room, and never
+          gives up width to them. Stop must be on screen at every width — that
+          is the invariant `e2e/timer-bar-responsive.spec.ts` guards. */}
+      <div className="ml-auto flex shrink-0 items-center gap-1 xl:gap-2">
+        {/* Discard button (only when running) */}
+        {isRunning && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="tt-touch animate-in fade-in text-muted-foreground duration-base ease-out-quart hover:text-destructive"
+                onClick={() => setConfirmDiscard(true)}
+                aria-label="Discard timer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Discard timer
+              <span className="ml-1.5 text-background/60">Alt+Shift+X</span>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
-      {/* Favorites: one-click start from a saved preset */}
-      {!isRunning && (
-        <FavoritesMenu current={{ description, projectId, taskId, tags }} />
-      )}
+        {/* Favorites: one-click start from a saved preset */}
+        {!isRunning && (
+          <FavoritesMenu current={{ description, projectId, taskId, tags }} />
+        )}
 
-      {/* Combined elapsed + Start/Stop capsule */}
-      <TimerControl isRunning={isRunning} onStart={handleStart} onStop={handleStop} />
+        {/* Combined elapsed + Start/Stop capsule */}
+        <TimerControl isRunning={isRunning} onStart={handleStart} onStop={handleStop} />
 
-      <AssistantButton />
+        <AssistantButton />
+      </div>
 
       <ConfirmDialog
         open={confirmDiscard}

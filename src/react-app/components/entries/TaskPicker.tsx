@@ -92,7 +92,7 @@ export function TaskPicker({
         >
           <CheckSquare className="h-3.5 w-3.5 shrink-0" />
           {selected ? (
-            <span className="max-w-30 truncate">{selected.name}</span>
+            <span className="min-w-0 max-w-30 truncate">{selected.name}</span>
           ) : (
             !compact && <span>No task</span>
           )}

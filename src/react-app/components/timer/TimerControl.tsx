@@ -89,7 +89,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
                 type="button"
                 onClick={handleStartEditElapsed}
                 aria-label="Edit elapsed time"
-                className="rounded px-1 transition-colors duration-fast ease-out-quart hover:bg-accent/50"
+                className="tt-touch rounded px-1 transition-colors duration-fast ease-out-quart hover:bg-accent/50"
               >
                 <TimerDisplay
                   seconds={elapsed}
@@ -117,7 +117,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
               variant={isRunning ? "destructive" : "default"}
               size="icon"
               onClick={isRunning ? onStop : onStart}
-              className="relative h-10 w-10 cursor-pointer rounded-full"
+              className="tt-touch relative h-10 w-10 cursor-pointer rounded-full"
               aria-label={isRunning ? "Stop timer" : "Start timer"}
             >
               {isRunning ? (
