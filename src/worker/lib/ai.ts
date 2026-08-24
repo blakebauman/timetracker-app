@@ -149,6 +149,46 @@ ${styleInstruction} Do not invent work not listed above. Output only the summary
   return summary;
 }
 
+/**
+ * One short paragraph for the morning briefing.
+ *
+ * Deliberately NOT `runSummaryGeneration`: that one writes outward-facing copy
+ * for a client ("we held a scope call to review the estimate…"), which is the
+ * wrong voice entirely for an email telling one person what they themselves did
+ * yesterday. Same model, same grounding discipline — different reader.
+ *
+ * Best-effort: returns null rather than throwing, because a briefing without a
+ * paragraph is still a briefing.
+ */
+export async function runBriefNarrative(
+  ai: Ai,
+  entries: SummaryEntryInput[],
+  period: "day" | "week"
+): Promise<string | null> {
+  if (!entries.length) return null;
+  const lines = entries.slice(0, 120).map((e) => {
+    const hours = ((e.duration ?? 0) / 3600).toFixed(2);
+    return `${e.start.slice(0, 10)} | ${e.projectName ?? "No project"} | ${hours}h | ${e.description || "(no description)"}`;
+  });
+
+  const prompt = `Below are the time entries one person logged over the past ${period === "week" ? "week" : "day"} (date | project | hours | description):
+
+${lines.join("\n")}
+
+Write ONE short paragraph, at most three sentences, telling that person where their time went. Address them as "you". Be concrete: name the projects and the work that took the most time, and note anything striking about the shape of the ${period} (a project that took most of it, an unusual amount of meetings, a ${period} split across many things). Do not invent work that isn't listed, do not moralise, do not give advice, and do not open with a greeting. Output only the paragraph.`;
+
+  try {
+    const raw = (await ai.run(
+      SUMMARY_MODEL,
+      { messages: [{ role: "user", content: prompt }] },
+      { gateway: GATEWAY }
+    )) as { response?: string };
+    return raw.response?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Active projects (+tasks) shaped for AI grounding. Shared by the AI routes,
  *  calendar materialization, and the assistant's track-event action. */
 export async function loadGroundingProjects(
@@ -274,6 +314,120 @@ ${projects.map((p) => `- "${p.name}"`).join("\n")}`;
 // via the AI SDK's Workers AI provider) — see worker/durable-objects/ChatAgent.ts.
 // The grounding block it feeds the model is still buildAssistantContext() in
 // lib/assistant.ts.
+
+// ─── Day-draft enrichment ────────────────────────────────────────────────────
+
+const DayDraftSchema = z.object({
+  entries: z.array(
+    z.object({
+      index: z.number(),
+      description: z.string(),
+      projectName: z.string().nullable(),
+      billable: z.boolean().nullable().default(null),
+    })
+  ),
+});
+
+export interface DraftEnrichmentCandidate {
+  /** Position in the caller's candidate array — the model echoes it back. */
+  index: number;
+  /** Local clock range, e.g. "09:15–10:00". */
+  when: string;
+  /** Everything known about the slot: event title, neighbouring work, history. */
+  signal: string;
+}
+
+export interface DraftEnrichment {
+  description: string;
+  projectId: string | null;
+  projectName: string | null;
+  billable: boolean | null;
+}
+
+/**
+ * Turn a day's draft candidates into plain-language entries attributed to a
+ * known project.
+ *
+ * This is the only AI step in the drafting pipeline, and it is strictly an
+ * enrichment: the candidates (what happened, when, for how long) are derived
+ * deterministically before this runs, and every field the model returns is
+ * validated against the workspace's real projects before it is used. A failed,
+ * empty or hallucinated response costs the day its prose — never its entries.
+ *
+ * Returns a map keyed by candidate index; absent keys keep the caller's own
+ * deterministic seed values.
+ */
+export async function runDayDraftEnrichment(
+  ai: Ai,
+  dayContext: string,
+  candidates: DraftEnrichmentCandidate[],
+  projects: ProjectGrounding[]
+): Promise<Map<number, DraftEnrichment>> {
+  const out = new Map<number, DraftEnrichment>();
+  if (!candidates.length) return out;
+
+  const projectLines = projects.length
+    ? projects
+        .map((p) => `- "${p.name}" [${p.billable ? "billable" : "non-billable"} by default]`)
+        .join("\n")
+    : "(no active projects)";
+
+  const system = `You write a consultant's timesheet entries for one day from signals captured while they worked, so they can confirm the day instead of reconstructing it from memory.
+
+For each numbered slot below, write:
+- "description": ONE specific sentence in past tense naming the actual work, as the person would write it themselves. Draw only on the slot's own signal and the day's context. No filler ("worked on tasks", "various activities"), no pleading ("possibly", "may have"), no time or duration (the entry already carries those). Under 120 characters.
+- "projectName": the ONE project the slot belongs to, chosen ONLY as an exact name from the list below, or null. A match must be evident from the signal — a client or project name, an engagement code, an obvious abbreviation. Generic slots ("1:1", "Lunch", "Admin", an unexplained gap) are null. Prefer null over a guess: a wrong project is worse than none.
+- "billable": true/false only when the signal makes it explicit, otherwise null to inherit the project's default.
+
+Never invent work that no signal supports. For a slot whose signal says only that time is unaccounted for, describe it as untracked work on the neighbouring task rather than inventing a new one.
+
+Output ONLY JSON of the form { "entries": [ { "index": <number>, "description": "...", "projectName": "..." | null, "billable": true | false | null } ] }, one object per slot, echoing each slot's index exactly.
+
+Known active projects:
+${projectLines}`;
+
+  const user = `Context for the day:
+${dayContext}
+
+Slots to describe:
+${candidates.map((c) => `[${c.index}] ${c.when} — ${c.signal}`).join("\n")}`;
+
+  let raw: unknown;
+  try {
+    raw = await ai.run(
+      QUICK_ENTRY_MODEL,
+      {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: z.toJSONSchema(DayDraftSchema),
+        },
+      },
+      { gateway: GATEWAY }
+    );
+  } catch {
+    return out; // AI unavailable — the caller's deterministic drafts stand.
+  }
+
+  const parsed = DayDraftSchema.safeParse(extractJson(raw));
+  if (!parsed.success) return out;
+
+  const valid = new Set(candidates.map((c) => c.index));
+  for (const e of parsed.data.entries) {
+    if (!valid.has(e.index) || out.has(e.index)) continue;
+    const project = e.projectName ? bestMatch(e.projectName, projects, (p) => p.name) : undefined;
+    out.set(e.index, {
+      description: e.description.trim().slice(0, 200),
+      projectId: project?.id ?? null,
+      projectName: project?.name ?? null,
+      billable: e.billable ?? null,
+    });
+  }
+  return out;
+}
 
 // ─── Project color assignment ─────────────────────────────────────────────────
 

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type {
   Project,
+  ProjectPacing,
   Client,
   CreateProject,
   CreateClient,
@@ -22,6 +23,22 @@ export function useAllProjects() {
     queryKey: ["projects", "all"],
     queryFn: () =>
       api.projects.list({ includeArchived: "true" }) as Promise<Project[]>,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Budget pacing for the active projects: share of budget spent, burn rate, and
+ * whether the current rate overruns before the end date.
+ *
+ * Separate from `useProjects` on purpose — the pacing query carries a
+ * trailing-window aggregate the plain project list has no use for, and the
+ * project list is on the hot path for every picker in the app.
+ */
+export function useProjectPacing() {
+  return useQuery({
+    queryKey: ["projects", "pacing"],
+    queryFn: () => api.projects.pacing() as Promise<ProjectPacing[]>,
     staleTime: 5 * 60_000,
   });
 }

@@ -11,6 +11,7 @@ import { tagsRouter } from "./routes/tags";
 import { tasksRouter } from "./routes/tasks";
 import { favoritesRouter } from "./routes/favorites";
 import { recurringRouter } from "./routes/recurring";
+import { draftsRouter } from "./routes/drafts";
 import { reportsRouter } from "./routes/reports";
 import { savedReportsRouter } from "./routes/saved-reports";
 import { plannerRouter } from "./routes/planner";
@@ -20,11 +21,16 @@ import { calendarRouter } from "./routes/calendar";
 import { aiRouter } from "./routes/ai";
 import { assistantRouter } from "./routes/assistant";
 import { adminRouter } from "./routes/admin";
+import { apiKeysRouter } from "./routes/api-keys";
 import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
 import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
+import { runDigests } from "./lib/digest";
 import { routeAgentRequest } from "agents";
+import { createMcpHandler } from "agents/mcp";
+import { buildMcpServer } from "./mcp/server";
+import { resolveApiKey, touchApiKey } from "./lib/api-keys";
 export { TimerRoom } from "./durable-objects/TimerRoom";
 export { ChatAgent } from "./durable-objects/ChatAgent";
 
@@ -43,6 +49,10 @@ const nudgesRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 6, 60_000);
 // third-party host — cap them so an authenticated caller can't use the worker as
 // a request amplifier. Relaxed in dev for the Playwright suite.
 const outboundRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 30, 60_000);
+// "Send me a digest now" costs an outbound email and an AI call. Deliberately
+// tighter than the other limits: the endpoint mails a real inbox, so an
+// authenticated caller shouldn't be able to use it as a flooding primitive.
+const emailRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 5, 60_000);
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
@@ -87,6 +97,9 @@ const app = new Hono<{ Bindings: Env }>()
   // above its 5-min cadence. (Assistant chat streams via the ChatAgent DO, not here.)
   .use("/api/assistant/track-event", aiRateLimit)
   .use("/api/assistant/nudges", nudgesRateLimit)
+  // Drafting a day costs one Workers AI call plus a Google Calendar read-through.
+  .use("/api/drafts/generate", aiRateLimit)
+  .use("/api/settings/digest/send", emailRateLimit)
   .use("/api/integrations/*", outboundRateLimit)
   .use("/api/calendar/convert", outboundRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
@@ -96,6 +109,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/tasks", tasksRouter)
   .route("/api/favorites", favoritesRouter)
   .route("/api/recurring", recurringRouter)
+  .route("/api/drafts", draftsRouter)
   .route("/api/reports", reportsRouter)
   .route("/api/saved-reports", savedReportsRouter)
   .route("/api/planner", plannerRouter)
@@ -105,6 +119,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/ai", aiRouter)
   .route("/api/assistant", assistantRouter)
   .route("/api/admin", adminRouter)
+  .route("/api/keys", apiKeysRouter)
   .route("/api/ws", websocketRouter);
 
 export type AppType = typeof app;
@@ -139,16 +154,77 @@ async function handleAgentRequest(request: Request, env: Env): Promise<Response>
   return wrapped;
 }
 
+/**
+ * The MCP endpoint: /mcp, Streamable HTTP, authenticated by a workspace API key.
+ *
+ * Deliberately NOT behind the session middleware. An MCP client is a program
+ * with no cookie jar, and it holds a long-lived credential the user can see and
+ * revoke in Settings — which is a different, and more revocable, thing than a
+ * browser session token. `resolveApiKey` refuses anything that isn't one of our
+ * keys rather than quietly accepting a session bearer, so a caller who thinks
+ * they are presenting an API key is told when they aren't.
+ *
+ * A fresh server is built per request, bound to the resolved workspace: no tool
+ * ever takes a workspace id as an argument, so nothing a model can invent
+ * reaches a tenant boundary.
+ */
+async function handleMcpRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  const resolved = await resolveApiKey(env.DB, request.headers.get("Authorization"));
+  if (!resolved) {
+    return new Response(
+      JSON.stringify({
+        error: "Unauthorized",
+        message:
+          "Send an API key as `Authorization: Bearer tt_live_…`. Create one in Settings → Workspace → API keys.",
+      }),
+      {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+          // Names the scheme so a compliant client knows what to send back.
+          "WWW-Authenticate": 'Bearer realm="timetracker"',
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  }
+
+  ctx.waitUntil(touchApiKey(env.DB, resolved.id));
+
+  const server = buildMcpServer({
+    env,
+    workspaceId: resolved.workspaceId,
+    userId: resolved.userId,
+    scope: resolved.scope,
+  });
+  const response = await createMcpHandler(server, { route: "/mcp" })(request, env, ctx);
+
+  // Same no-store policy as /api/*, minus the WebSocket case MCP never hits.
+  const wrapped = new Response(response.body, response);
+  wrapped.headers.set("Cache-Control", "no-store");
+  return wrapped;
+}
+
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
-    if (new URL(request.url).pathname.startsWith("/agents/")) {
+    const { pathname } = new URL(request.url);
+    if (pathname.startsWith("/agents/")) {
       return handleAgentRequest(request, env);
+    }
+    if (pathname === "/mcp" || pathname.startsWith("/mcp/")) {
+      return handleMcpRequest(request, env, ctx);
     }
     return app.fetch(request, env, ctx);
   },
-  // Cron (*/5): materialize finished calendar events for auto-track workspaces
-  // and any due recurring-entry occurrences.
+  // Cron (*/5): materialize finished calendar events for auto-track workspaces,
+  // any due recurring-entry occurrences, and any digest whose local send hour
+  // has arrived. Each sweep swallows its own per-workspace/per-user errors, so
+  // one broken connection can't stop the others.
   scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(Promise.all([runAutoTrack(env), runRecurring(env)]));
+    ctx.waitUntil(Promise.all([runAutoTrack(env), runRecurring(env), runDigests(env)]));
   },
 } satisfies ExportedHandler<Env>;

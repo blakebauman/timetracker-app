@@ -24,6 +24,15 @@ export const SettingsSchema = z.object({
   showWeekends: z.boolean(),
   // When on, new projects get a distinct palette color instead of the default.
   autoAssignColors: z.boolean(),
+  // Email digests: a morning briefing on yesterday, and a Monday summary of the
+  // week just gone. Both off by default.
+  digestDaily: z.boolean(),
+  digestWeekly: z.boolean(),
+  digestHour: z.number().int().min(0).max(23),
+  // The user's own UTC offset (JS getTimezoneOffset sign: west of UTC is
+  // positive), so the cron knows when their morning is. Refreshed by the client
+  // whenever it drifts — a DST change would otherwise send an hour off for months.
+  digestTimezoneOffsetMinutes: z.number().int(),
 });
 
 export const UpdateSettingsSchema = z
@@ -35,6 +44,10 @@ export const UpdateSettingsSchema = z
     weekStart: z.coerce.number().int().min(0).max(6),
     showWeekends: z.boolean(),
     autoAssignColors: z.boolean(),
+    digestDaily: z.boolean(),
+    digestWeekly: z.boolean(),
+    digestHour: z.coerce.number().int().min(0).max(23),
+    digestTimezoneOffsetMinutes: z.coerce.number().int().min(-900).max(900),
   })
   .partial();
 
@@ -119,6 +132,40 @@ export const CreateProjectSchema = z.object({
 
 export const UpdateProjectSchema = CreateProjectSchema.partial().extend({
   active: z.boolean().optional(),
+});
+
+// ─── Project pacing ──────────────────────────────────────────────────────────
+
+// How a project's time budget is being spent: how much is gone, how fast it's
+// going, and where the current burn rate lands it by the end date. Computed
+// server-side (worker/lib/pacing.ts) so the request, the nudge and the emailed
+// briefing all quote the same numbers.
+export const PacingStatusSchema = z.enum([
+  "no_budget",
+  "on_track",
+  "at_risk",
+  "over_budget",
+]);
+
+export const ProjectPacingSchema = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  projectColor: z.string(),
+  clientName: z.string().nullable(),
+  estimatedSeconds: z.number().nullable(),
+  trackedSeconds: z.number(),
+  recentSeconds: z.number(),
+  billableAmount: z.number(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  lastTracked: z.string().nullable(),
+  // 1 = exactly on budget. Not clamped — 1.2 is 20% over.
+  percentUsed: z.number().nullable(),
+  burnPerWorkingDay: z.number(),
+  workingDaysRemaining: z.number().nullable(),
+  projectedSeconds: z.number().nullable(),
+  projectedOverrunSeconds: z.number().nullable(),
+  status: PacingStatusSchema,
 });
 
 // ─── Task ─────────────────────────────────────────────────────────────────────
@@ -328,6 +375,76 @@ export const BulkDeleteTimeEntriesSchema = z.object({
   ids: z.array(z.string()).min(1),
 });
 
+// ─── Drafted entries ─────────────────────────────────────────────────────────
+
+// A proposed time entry the app wrote for a day, waiting for the user to
+// confirm it. Drafts live in their own table and are NOT time: they never reach
+// a report, an invoice, a project total or an integration push until confirmed.
+export const DraftSourceSchema = z.enum([
+  "calendar", // a calendar event that ended without being tracked
+  "gap", // an uncovered stretch between the day's activity
+  "pattern", // work this person logs on this weekday most weeks
+]);
+
+export const DraftEntrySchema = z.object({
+  id: z.string(),
+  localDate: z.string(),
+  projectId: z.string().nullable(),
+  projectName: z.string().nullable(),
+  projectColor: z.string().nullable(),
+  taskId: z.string().nullable(),
+  taskName: z.string().nullable(),
+  description: z.string(),
+  start: z.string(),
+  stop: z.string(),
+  duration: z.number(),
+  billable: z.boolean(),
+  source: DraftSourceSchema,
+  confidence: z.enum(["high", "medium", "low"]),
+  /** Why this was proposed, in plain language — shown on the review card. */
+  reason: z.string().nullable(),
+  calendarEventId: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const GenerateDraftsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  // The client's own UTC offset, so "the day" means the user's day.
+  timezoneOffsetMinutes: z.number().int().min(-900).max(900),
+});
+
+export const UpdateDraftSchema = z
+  .object({
+    description: z.string().max(2000).optional(),
+    projectId: z.string().nullable().optional(),
+    taskId: z.string().nullable().optional(),
+    start: z.string().optional(),
+    stop: z.string().optional(),
+    billable: z.boolean().optional(),
+  })
+  .refine((d) => !d.start || !d.stop || new Date(d.stop) > new Date(d.start), {
+    message: "Stop time must be after start time",
+    path: ["stop"],
+  });
+
+export const ConfirmDraftsSchema = z.object({
+  ids: z.array(z.string()).min(1).max(50),
+  /**
+   * The total the user actually stands behind for the day, in seconds. When
+   * present, the confirmed drafts are scaled proportionally to hit it — the
+   * last step of review, where the day's number is corrected once instead of
+   * entry by entry. Omit to confirm the drafts exactly as they stand.
+   */
+  reportedTotalSeconds: z.number().int().min(0).max(24 * 3600).nullable().optional(),
+});
+
+export const GenerateDraftsResultSchema = z.object({
+  drafts: z.array(DraftEntrySchema),
+  created: z.number(),
+  /** False when the AI enrichment step was skipped or rejected. */
+  enriched: z.boolean(),
+});
+
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
 // Optional comma-separated list of IDs → string[] (e.g. "a,b,c"). Undefined when absent.
@@ -386,6 +503,12 @@ export const CreateSavedReportSchema = z.object({
   config: z.record(z.string(), z.unknown()),
 });
 
+export type DraftSource = z.infer<typeof DraftSourceSchema>;
+export type DraftEntry = z.infer<typeof DraftEntrySchema>;
+export type GenerateDrafts = z.infer<typeof GenerateDraftsSchema>;
+export type UpdateDraft = z.infer<typeof UpdateDraftSchema>;
+export type ConfirmDrafts = z.infer<typeof ConfirmDraftsSchema>;
+export type GenerateDraftsResult = z.infer<typeof GenerateDraftsResultSchema>;
 export type SavedReport = z.infer<typeof SavedReportSchema>;
 export type CreateSavedReport = z.infer<typeof CreateSavedReportSchema>;
 
@@ -421,6 +544,33 @@ export const BulkUpsertAllocationsSchema = z.object({
 export type Allocation = z.infer<typeof AllocationSchema>;
 export type UpsertAllocation = z.infer<typeof UpsertAllocationSchema>;
 export type BulkUpsertAllocations = z.infer<typeof BulkUpsertAllocationsSchema>;
+
+// ─── API keys ────────────────────────────────────────────────────────────────
+
+// The credential an outside program presents instead of a browser session —
+// today, an MCP client. The plaintext key is returned ONCE, at creation, and is
+// unrecoverable afterwards; everything else only ever sees the display prefix.
+export const ApiKeyScopeSchema = z.enum(["read", "read_write"]);
+
+export const ApiKeySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  prefix: z.string(),
+  scope: ApiKeyScopeSchema,
+  lastUsedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const CreateApiKeySchema = z.object({
+  name: z.string().min(1).max(120),
+  scope: ApiKeyScopeSchema.default("read"),
+});
+
+// Creation is the only response that ever carries the secret.
+export const CreatedApiKeySchema = z.object({
+  key: ApiKeySchema,
+  plaintext: z.string(),
+});
 
 // ─── Integrations ──────────────────────────────────────────────────────────────
 
@@ -562,6 +712,7 @@ export const AssistantNudgeSchema = z.object({
     "meeting_soon", // an event starts within the lookahead window
     "long_timer", // the running timer has been going suspiciously long
     "nothing_tracked", // late morning on a weekday with an empty timesheet
+    "budget_risk", // a budgeted project is over, or on pace to overrun
   ]),
   title: z.string(),
   body: z.string(),
@@ -628,11 +779,17 @@ export type EntrySuggestion = z.infer<typeof EntrySuggestionSchema>;
 export type CreateTimeEntry = z.infer<typeof CreateTimeEntrySchema>;
 export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
+export type PacingStatus = z.infer<typeof PacingStatusSchema>;
+export type ProjectPacing = z.infer<typeof ProjectPacingSchema>;
 export type CreateClient = z.infer<typeof CreateClientSchema>;
 export type UpdateClient = z.infer<typeof UpdateClientSchema>;
 export type ClientStats = z.infer<typeof ClientStatsSchema>;
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
+export type ApiKeyScope = z.infer<typeof ApiKeyScopeSchema>;
+export type ApiKey = z.infer<typeof ApiKeySchema>;
+export type CreateApiKey = z.infer<typeof CreateApiKeySchema>;
+export type CreatedApiKey = z.infer<typeof CreatedApiKeySchema>;
 export type IntegrationType = z.infer<typeof IntegrationTypeSchema>;
 export type Integration = z.infer<typeof IntegrationSchema>;
 export type CreateIntegration = z.infer<typeof CreateIntegrationSchema>;

@@ -39,11 +39,16 @@ export function useEntries(days = 30) {
 // can't reach future or custom ranges). Shares the ["time-entries", …] key
 // prefix so create/update/delete invalidations and the WebSocket `entries:changed`
 // handler keep it in sync automatically.
-export function useEntriesRange(sinceIso: string, untilIso: string) {
+export function useEntriesRange(
+  sinceIso: string,
+  untilIso: string,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: ["time-entries", sinceIso, untilIso],
     queryFn: () =>
       api.timeEntries.list({ since: sinceIso, until: untilIso }) as Promise<TimeEntry[]>,
+    enabled: options?.enabled ?? true,
   });
 }
 

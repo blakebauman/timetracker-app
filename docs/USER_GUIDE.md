@@ -7,10 +7,14 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 - [Getting started](#getting-started)
 - [Tracking time](#tracking-time)
 - [The Timer workspace (views)](#the-timer-workspace-views)
+- [Draft your day & review](#draft-your-day--review)
 - [Organizing work: clients, projects, tasks, tags](#organizing-work-clients-projects-tasks-tags)
 - [Favorites & recurring entries](#favorites--recurring-entries)
 - [Google Calendar sync & auto-track](#google-calendar-sync--auto-track)
 - [The Assistant](#the-assistant)
+- [Budgets & pacing](#budgets--pacing)
+- [Email digests](#email-digests)
+- [Ask your AI assistant (MCP)](#ask-your-ai-assistant-mcp)
 - [Reports & exports](#reports--exports)
 - [Productivity tools](#productivity-tools)
 - [Teams & sharing a workspace](#teams--sharing-a-workspace)
@@ -67,6 +71,64 @@ The **Planner** view (Timer tab, last icon in the view switcher) is a weekly gri
 - **Copy last week's plan** duplicates the previous week's allocations onto the current week (with Undo).
 - **Import CSV** accepts `Date,Project,Task,Hours` rows (paste or upload). Dates are `YYYY-MM-DD`; projects/tasks are matched by name; in the Hours column a plain number means **hours** (`1.5` = 1h 30m) and `1:30` / `1h 30m` / `90m` also work. A preview flags unknown projects, bad dates, and bad durations — clean rows import, flagged ones are skipped.
 
+## Draft your day & review
+
+Instead of reconstructing a day from memory, let the app propose it and confirm what's right.
+
+Hit **Draft day** in the Timer header. The app looks at what it already knows about that day and proposes the entries that are missing:
+
+- **Calendar events that ended without being tracked** — the meeting happened, it isn't on your timesheet.
+- **Uncovered stretches** between the things you did track, inside your own working window (not the hours before you started).
+- **Weekly habits** — work you log on this weekday most weeks but haven't logged today.
+
+*When* something happened and *how long* it lasted always come from the signals themselves. AI is used for one thing only: writing the description and guessing the project, from a list of your real projects. If it isn't available, you still get the proposals — just in plainer words.
+
+Proposals appear on the calendar as dashed, project-tinted blocks. **They are not tracked time.** Nothing reaches a report, an invoice, or a project total until you confirm it.
+
+Click **Review** (or any dashed block) to step through them one card at a time. On each card you can:
+
+- **Keep** it as it is
+- **Reassign** it to a different project, or toggle billable
+- **Rename** it — click the description
+- **Nudge the minutes** with ±15 / ±30
+- **Discard** it
+
+Each card also tells you *why* it was proposed ("1h 30m between 10:00 and 11:30 isn't accounted for") so you can judge it rather than rubber-stamp it.
+
+The last card asks **"How much time should we report?"** — set the day's real total and the drafted entries are scaled proportionally to hit it, instead of you hand-editing five entries. It tells you what it's about to change before it does. Confirm, and they become ordinary time entries you can edit like any other.
+
+## Budgets & pacing
+
+Give a project a **time target** (Projects → edit → estimated hours) and optionally an end date, and the Projects page starts telling you where it's heading, not just where it is:
+
+- the share of the budget used
+- a verdict underneath — *"on pace to overrun by 14h · 12 working days left"*, *"6h over budget"*, *"close to budget"*, or how much is left
+
+The projection uses your burn rate per **working day** over the last two weeks. A project you haven't touched recently gets no verdict at all — it isn't on pace for anything, and guessing would just cry wolf.
+
+Projects that are over, or heading over, also show up as Assistant nudges and in your email digest.
+
+## Email digests
+
+Under **Settings → Tracking → Email digests**:
+
+- **Morning briefing** — yesterday's hours by project, budgets worth a look, anything waiting for review, and a short paragraph on where the time went.
+- **Weekly summary** — the same for the week just gone, sent Monday.
+
+Pick the hour they arrive (your local time). Both are off until you turn them on. **Send one now** mails you one immediately, so you can decide whether you want it before committing to a daily email.
+
+## Ask your AI assistant (MCP)
+
+Connect Claude, ChatGPT, or any other MCP client to your workspace and ask about your time in plain language — *"which clients were most profitable per hour last quarter?"*, *"is the Meridian project going to blow its budget?"*, *"what did I actually work on last Thursday?"*
+
+Under **Settings → Workspace → MCP connector**:
+
+1. Copy the **server URL** (`https://timetracker.run/mcp`).
+2. Create a key. **Read only** lets the assistant look at projects, clients, entries, summaries, budgets and drafts. **Read + write** also lets it start and stop timers, log entries, and draft a day.
+3. Paste both into your client — it authenticates with `Authorization: Bearer <your key>`.
+
+The key is shown **once** and can't be recovered; if you lose it, revoke it and make another. Revoking takes effect immediately.
+
 ## Organizing work: clients, projects, tasks, tags
 
 - **Clients** hold contact details and notes; each client's detail page shows its projects and recent activity.
@@ -103,6 +165,7 @@ The Assistant is built in, reachable from the sparkle button in the top bar, the
 - a meeting starting soon
 - a timer that's been running suspiciously long
 - a weekday with nothing tracked
+- a budgeted project that's over, or on pace to overrun
 
 Dismissals stick per-device. Turn nudge alerts on/off under Settings → Productivity.
 
@@ -199,10 +262,12 @@ Under **Settings → Account / Security / Danger zone**:
 | Data export | All-entries CSV | — |
 | Preferences | Default billable (used when an entry has no project), 12/24h time, currency, week start, show weekends | Billable: device · rest: account |
 | Productivity | Notifications, idle detection, reminders, nudge alerts, pomodoro | Device |
+| Email digests | Morning briefing, weekly summary, send hour, send one now | Account |
 | Assistant memory | Review/delete assistant memories | Workspace |
 | Recurring entries | Manage templates | Workspace |
 | Team | Members, roles, invites | Workspace |
 | Calendar sync | Google connect/disconnect, auto-track | Workspace |
+| MCP connector | Server URL, API keys (create/revoke) | Workspace |
 | Integrations | Workfront / Dynamics | Workspace |
 | Account | Profile, email verification | Account |
 | Security | Passkeys, connected accounts, sessions | Account |

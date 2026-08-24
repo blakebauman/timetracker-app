@@ -1,33 +1,13 @@
 import { betterAuth } from "better-auth";
 import { bearer, organization, admin, emailOTP, magicLink } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
-import { EmailMessage } from "cloudflare:email";
-import { createMimeMessage } from "mimetext";
-import { render, toPlainText } from "react-email";
-import type { ReactElement } from "react";
 import { WorkspaceInvitationEmail } from "./emails/workspace-invitation";
 import { VerificationOtpEmail } from "./emails/verification-otp";
 import { MagicLinkEmail } from "./emails/magic-link";
-
-const FROM_ADDRESS = "noreply@timetracker.run";
+import { sendEmail } from "./lib/mailer";
 
 function randomSlug(): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-}
-
-// The EMAIL binding's simulated builder overload isn't reliable in local dev
-// (Miniflare expects a raw MIME message), so build one directly — this works
-// identically in local dev and production.
-async function sendEmail(env: Env, to: string, subject: string, email: ReactElement) {
-  const html = await render(email);
-  const text = toPlainText(html);
-  const msg = createMimeMessage();
-  msg.setSender({ addr: FROM_ADDRESS });
-  msg.setRecipient(to);
-  msg.setSubject(subject);
-  msg.addMessage({ contentType: "text/plain", data: text });
-  msg.addMessage({ contentType: "text/html", data: html });
-  await env.EMAIL.send(new EmailMessage(FROM_ADDRESS, to, msg.asRaw()));
 }
 
 export function createAuth(env: Env, baseURL: string) {

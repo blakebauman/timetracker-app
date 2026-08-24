@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import { UpdateSettingsSchema } from "@shared/schemas";
+import { sendDigest, localDateAt, type DigestKind } from "../lib/digest";
 
 type Row = {
   currency: string;
@@ -10,6 +12,10 @@ type Row = {
   week_start: number;
   show_weekends: number;
   auto_assign_colors: number;
+  digest_daily: number;
+  digest_weekly: number;
+  digest_hour: number;
+  digest_tz_offset: number;
 };
 
 function toSettings(row: Row | null) {
@@ -21,10 +27,17 @@ function toSettings(row: Row | null) {
     weekStart: row?.week_start ?? 1,
     showWeekends: row?.show_weekends === undefined ? true : Boolean(row.show_weekends),
     autoAssignColors: Boolean(row?.auto_assign_colors),
+    digestDaily: Boolean(row?.digest_daily),
+    digestWeekly: Boolean(row?.digest_weekly),
+    digestHour: row?.digest_hour ?? 8,
+    digestTimezoneOffsetMinutes: row?.digest_tz_offset ?? 0,
   };
 }
 
-const SELECT = `SELECT currency, time_format, round_mode, round_minutes, week_start, show_weekends, auto_assign_colors FROM "user" WHERE id = ?`;
+const SELECT = `SELECT currency, time_format, round_mode, round_minutes, week_start,
+                       show_weekends, auto_assign_colors, digest_daily, digest_weekly,
+                       digest_hour, digest_tz_offset
+                FROM "user" WHERE id = ?`;
 
 // Per-user display settings (currency, time format, report rounding). Stored on
 // the better-auth `user` row so they persist server-side and follow the person
@@ -48,6 +61,10 @@ export const settingsRouter = new Hono<{
       weekStart,
       showWeekends,
       autoAssignColors,
+      digestDaily,
+      digestWeekly,
+      digestHour,
+      digestTimezoneOffsetMinutes,
     } = c.req.valid("json");
 
     const sets: string[] = [];
@@ -80,6 +97,22 @@ export const settingsRouter = new Hono<{
       sets.push("auto_assign_colors = ?");
       bindings.push(autoAssignColors ? 1 : 0);
     }
+    if (digestDaily !== undefined) {
+      sets.push("digest_daily = ?");
+      bindings.push(digestDaily ? 1 : 0);
+    }
+    if (digestWeekly !== undefined) {
+      sets.push("digest_weekly = ?");
+      bindings.push(digestWeekly ? 1 : 0);
+    }
+    if (digestHour !== undefined) {
+      sets.push("digest_hour = ?");
+      bindings.push(digestHour);
+    }
+    if (digestTimezoneOffsetMinutes !== undefined) {
+      sets.push("digest_tz_offset = ?");
+      bindings.push(digestTimezoneOffsetMinutes);
+    }
 
     if (sets.length > 0) {
       bindings.push(userId);
@@ -90,4 +123,51 @@ export const settingsRouter = new Hono<{
 
     const row = await c.env.DB.prepare(SELECT).bind(userId).first<Row>();
     return c.json(toSettings(row));
-  });
+  })
+  /**
+   * Send one digest immediately, to the signed-in user's own address.
+   *
+   * Exists because a scheduled email you have never seen is impossible to
+   * judge: nobody can decide whether they want a 7am briefing without reading
+   * one. Covers the same period the scheduled send would.
+   */
+  .post(
+    "/digest/send",
+    zValidator("json", z.object({ kind: z.enum(["daily", "weekly"]).default("daily") })),
+    async (c) => {
+      const userId = c.get("userId");
+      const workspaceId = c.get("workspaceId");
+      const kind = c.req.valid("json").kind as DigestKind;
+
+      const row = await c.env.DB.prepare(
+        `SELECT email, name, digest_tz_offset FROM "user" WHERE id = ?`
+      )
+        .bind(userId)
+        .first<{ email: string; name: string | null; digest_tz_offset: number }>();
+      if (!row?.email) return c.json({ error: "No email address on file" }, 400);
+
+      const offset = row.digest_tz_offset;
+      // The same period the scheduled send covers: yesterday, in the user's
+      // own local reckoning.
+      const yesterday = localDateAt(Date.now() - 86_400_000, offset);
+
+      try {
+        const content = await sendDigest(
+          c.env,
+          {
+            id: userId,
+            email: row.email,
+            name: row.name,
+            workspaceId,
+            timezoneOffsetMinutes: offset,
+          },
+          kind,
+          yesterday
+        );
+        return c.json({ sent: true, subject: content.subject });
+      } catch (e) {
+        console.error("digest: manual send failed", { userId, error: String(e) });
+        return c.json({ error: "Couldn't send the email — check the address is verified" }, 502);
+      }
+    }
+  );

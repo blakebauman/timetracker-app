@@ -18,7 +18,13 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ProjectForm } from "./ProjectForm";
 import { TaskList } from "./TaskList";
-import { useAllProjects, useDeleteProject, useUpdateProject } from "@/hooks/useProjects";
+import {
+  useAllProjects,
+  useDeleteProject,
+  useUpdateProject,
+  useProjectPacing,
+} from "@/hooks/useProjects";
+import { pacingLabel, pacingToneClass } from "@/lib/pacing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
@@ -39,6 +45,10 @@ import type { Project } from "@shared/schemas";
 
 export function ProjectList() {
   const { data: projects = [], isLoading } = useAllProjects();
+  // Pacing covers active projects only (an archived project has nothing left to
+  // pace), so the row falls back to the plain percentage when it's absent.
+  const { data: pacing = [] } = useProjectPacing();
+  const pacingByProject = new Map(pacing.map((p) => [p.projectId, p]));
   const currency = useUIStore((s) => s.currency);
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
@@ -146,6 +156,8 @@ export function ProjectList() {
                   )
                 )
               : null;
+          const projectPacing = pacingByProject.get(project.id);
+          const paceLabel = projectPacing ? pacingLabel(projectPacing) : null;
           const isExpanded = expandedTasks.has(project.id);
 
           return (
@@ -211,6 +223,20 @@ export function ProjectList() {
                         <span className="text-micro tabular-nums text-muted-foreground">
                           {formatDurationShort(project.trackedSeconds)} / {project.estimatedHours}h
                         </span>
+                      </div>
+                    )}
+                    {/* The percentage says where the project is; this says where
+                        it's going. Only rendered when there's something specific
+                        to report — a dormant project isn't "on pace" for
+                        anything, and inventing a verdict for it would cry wolf. */}
+                    {paceLabel && projectPacing && (
+                      <div
+                        className={cn(
+                          "mt-1 text-micro font-medium",
+                          pacingToneClass(projectPacing.status)
+                        )}
+                      >
+                        {paceLabel}
                       </div>
                     )}
                   </div>

@@ -1,5 +1,14 @@
 import { addPendingMutation } from "@/lib/idb";
-import type { Settings, AssistantMemory } from "@shared/schemas";
+import type {
+  Settings,
+  AssistantMemory,
+  ProjectPacing,
+  DraftEntry,
+  GenerateDraftsResult,
+  ApiKey,
+  ApiKeyScope,
+  CreatedApiKey,
+} from "@shared/schemas";
 
 const API_BASE = "/api";
 
@@ -196,6 +205,7 @@ export const api = {
       request<unknown>(`/projects/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete: (id: string) =>
       request<unknown>(`/projects/${id}`, { method: "DELETE" }),
+    pacing: () => request<ProjectPacing[]>("/projects/pacing"),
     recolor: () =>
       request<{ recolored: number; usedAI: boolean }>("/projects/recolor", {
         method: "POST",
@@ -351,6 +361,15 @@ export const api = {
     clearMemory: () => request<void>("/assistant/memory", { method: "DELETE" }),
   },
 
+  // ─── API keys (MCP + programmatic access) ─────────────────────────────────
+  apiKeys: {
+    list: () => request<ApiKey[]>("/keys"),
+    // The only response that ever carries the secret — it cannot be re-fetched.
+    create: (body: { name: string; scope: ApiKeyScope }) =>
+      request<CreatedApiKey>("/keys", { method: "POST", body: JSON.stringify(body) }),
+    revoke: (id: string) => request<{ ok: boolean }>(`/keys/${id}`, { method: "DELETE" }),
+  },
+
   // ─── Admin ────────────────────────────────────────────────────────────────
   admin: {
     removeUser: (id: string) =>
@@ -374,11 +393,42 @@ export const api = {
           | "weekStart"
           | "showWeekends"
           | "autoAssignColors"
+          | "digestDaily"
+          | "digestWeekly"
+          | "digestHour"
+          | "digestTimezoneOffsetMinutes"
         >
       >
     ) =>
       request<Settings>("/settings", {
         method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    sendDigest: (kind: "daily" | "weekly") =>
+      request<{ sent: boolean; subject: string }>("/settings/digest/send", {
+        method: "POST",
+        body: JSON.stringify({ kind }),
+      }),
+  },
+
+  // ─── Drafted entries ──────────────────────────────────────────────────────
+  drafts: {
+    list: (date: string) => request<DraftEntry[]>(`/drafts?date=${date}`),
+    listRange: (since: string, until: string) =>
+      request<DraftEntry[]>(`/drafts?since=${since}&until=${until}`),
+    generate: (body: { date: string; timezoneOffsetMinutes: number }) =>
+      request<GenerateDraftsResult>("/drafts/generate", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    update: (id: string, body: Record<string, unknown>) =>
+      request<DraftEntry>(`/drafts/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    discard: (id: string) => request<{ ok: boolean }>(`/drafts/${id}`, { method: "DELETE" }),
+    discardDay: (date: string) =>
+      request<{ deleted: number }>(`/drafts?date=${date}`, { method: "DELETE" }),
+    confirm: (body: { ids: string[]; reportedTotalSeconds?: number | null }) =>
+      request<{ confirmed: number; totalSeconds: number }>("/drafts/confirm", {
+        method: "POST",
         body: JSON.stringify(body),
       }),
   },
