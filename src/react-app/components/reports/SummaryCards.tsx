@@ -112,10 +112,13 @@ export function SummaryCards({
       label: "Billable",
       value: formatDurationShort(billableSeconds),
       extra: (
-        <div className="mt-2 flex items-center gap-2">
+        // `flex-1` gave the bar zero width once the tile became a single row on
+        // mobile, so the percentage survived and the bar it explains vanished.
+        // A floor keeps it a bar in both layouts.
+        <div className="mt-2 flex items-center gap-2 sm:mt-2">
           <Progress
             value={billablePercent}
-            className="h-1.5 flex-1 bg-success/15 [&>div]:bg-success"
+            className="h-1.5 w-16 flex-1 bg-success/15 sm:w-auto [&>div]:bg-success"
             aria-hidden
           />
           <span className="text-xs tabular-nums text-muted-foreground">
@@ -146,21 +149,39 @@ export function SummaryCards({
 
   const shown = tiles.filter((t) => visible[t.key]);
 
-  // One framed strip divided by 1px gaps (bg-border shows through). Flex-wrap
-  // with grow so the last row's tiles stretch to fill — no orphaned cell at any
-  // width, for any number of visible metrics.
+  // One framed strip divided by 1px gaps (bg-border shows through).
+  //
+  // Below `sm` it is a stacked list, not a grid, and that is the whole point.
+  // Wrapping five tiles into two columns has no good answer: `flex-1` on the
+  // last row made "Avg / day" — the least important metric — the widest cell on
+  // the screen, and a fixed half-basis left a dead grey cell beside it. Both are
+  // the shape DESIGN.md's KPI-strip exception exists to avoid, one inverting
+  // emphasis and one orphaning a cell. A single column has neither: every metric
+  // gets the same row, label left and value right, and it is *shorter* than the
+  // two-column reflow was because each row is one line instead of two.
   return (
-    <div className="flex animate-fade-up flex-wrap gap-px overflow-hidden rounded-xl border bg-border">
+    <div className="flex animate-fade-up flex-col gap-px overflow-hidden rounded-xl border bg-border sm:flex-row sm:flex-wrap">
       {shown.map(({ key, icon: Icon, label, value, extra }) => (
-        <div key={key} className="min-w-37.5 flex-1 bg-card p-4">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <div
+          key={key}
+          className="flex items-center justify-between gap-3 bg-card px-4 py-2.5 sm:min-w-37.5 sm:flex-1 sm:flex-col sm:items-stretch sm:p-4"
+        >
+          <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Icon className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{label}</span>
           </div>
-          <p className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight">
-            {value}
-          </p>
-          {extra}
+          <div className="flex shrink-0 items-center gap-2 [&>div]:mt-0 sm:mt-1.5 sm:block sm:[&>div]:mt-2">
+            {/* `data-slot` follows the convention the ui/ primitives already
+                use, and gives this value a hook that does not break every time
+                the tile's wrapper changes shape for a breakpoint. */}
+            <p
+              data-slot="stat-value"
+              className="text-xl font-semibold tabular-nums tracking-tight"
+            >
+              {value}
+            </p>
+            {extra}
+          </div>
         </div>
       ))}
     </div>

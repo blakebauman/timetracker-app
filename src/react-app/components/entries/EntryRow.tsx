@@ -288,8 +288,29 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             </button>
           )}
 
-          {/* Project + tags row */}
+          {/* Project + tags row. Below `sm` this line also carries the time
+              range: the row's horizontal rail has no space for it there (adding
+              it pushed the row to 568px inside a 390px viewport and clipped the
+              duration off the end), but correcting "that meeting started at
+              14:00, not 13:30" is the single most likely edit on a phone, and
+              dropping the control entirely meant it could not be made from the
+              list at all. One of the two instances is always `hidden`, so it
+              adds no tab stop. */}
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
+            <span className="relative inline-flex sm:hidden">
+              <TimeRangePopover
+                start={entry.start}
+                stop={entry.stop}
+                onChange={handleRangeChange}
+                triggerClassName="flex items-center gap-1 rounded-sm px-1 text-micro text-muted-foreground"
+              >
+                <span>{formatEntryTime(entry.start, timeFormat)}</span>
+                <span>–</span>
+                <span>
+                  {entry.stop ? formatEntryTime(entry.stop, timeFormat) : "…"}
+                </span>
+              </TimeRangePopover>
+            </span>
             {entry.projectName ? (
               <ProjectBadge name={entry.projectName} color={entry.projectColor} />
             ) : (
@@ -384,7 +405,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             start={entry.start}
             stop={entry.stop}
             onChange={handleRangeChange}
-            triggerClassName="hidden text-xs text-muted-foreground sm:flex items-center gap-1 px-1"
+            triggerClassName="flex items-center gap-1 px-1 text-xs text-muted-foreground"
           >
             <span>{formatEntryTime(entry.start, timeFormat)}</span>
             <span>–</span>

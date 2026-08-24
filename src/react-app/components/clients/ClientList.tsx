@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Users, MoreHorizontal, Archive, Edit2, ChevronRight } from "lucide-react";
+import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useClientStats } from "@/hooks/useClientStats";
 import {
@@ -95,7 +96,14 @@ function ClientFigures({
         {/* The headline figure: the one number a consultant is actually here
             for, so it gets the weight and the semantic colour that means
             "billable" everywhere else in the app. */}
-        <span className="text-sm font-semibold tabular-nums text-success-ink md:block md:text-right">
+        {/* Green is the billable colour, so a green $0.00 reads as a positive
+            outcome for a client that has earned nothing. Zero is neutral. */}
+        <span
+          className={cn(
+            "text-sm font-semibold tabular-nums md:block md:text-right",
+            stats.billableAmount > 0 ? "text-success-ink" : "text-muted-foreground"
+          )}
+        >
           {formatCurrency(stats.billableAmount, currency)}
         </span>
       </span>
@@ -127,25 +135,22 @@ export function ClientList() {
 
   return (
     <div className="p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Clients</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {clients.length > 0 && (
+      <CollectionHeader title="Clients">
+        {clients.length > 0 && (
+          <>
             <SegmentedControl
               label="Period"
               options={[...CLIENT_PERIODS]}
               value={period}
               onChange={setPeriod}
             />
-          )}
-          {clients.length > 0 && (
             <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" />
               New client
             </Button>
-          )}
-        </div>
-      </div>
+          </>
+        )}
+      </CollectionHeader>
 
       {/* Column headings for the numeric columns. A client list is a comparison
           table — the whole point is reading down a column — so the numbers get

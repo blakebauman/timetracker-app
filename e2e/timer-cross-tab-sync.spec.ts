@@ -67,12 +67,16 @@ test.describe("cross-tab timer sync", () => {
     const tabB = await openSecondTab(page);
 
     await tabB.goto("/reports");
-    // The stat tile's value is the <p> alongside its "Entries" label. Scoped to
-    // <main> because the command palette carries the same word.
+    // The stat tile's value, found by walking up to the tile from its "Entries"
+    // label and back down to the value slot — the tile's wrapper markup changes
+    // shape between breakpoints, so a fixed `../../p` hop breaks on layout
+    // work that is otherwise correct. Scoped to <main> because the command
+    // palette carries the same word.
     const entriesCount = tabB
       .locator("main")
       .getByText("Entries", { exact: true })
-      .locator("xpath=../../p");
+      .locator('xpath=ancestor::div[.//p[@data-slot="stat-value"]][1]')
+      .locator('p[data-slot="stat-value"]');
     await expect(entriesCount).toHaveText("0");
 
     await startTimer(page, "Entry for reports");

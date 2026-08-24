@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -97,13 +98,14 @@ export function TaskBoardList() {
   const isEmpty = sections.length === 0;
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
-        <h1 className="text-sm font-semibold">Tasks</h1>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="flex h-full min-h-0 flex-col p-6 pb-0">
+      {/* Same header shape as Projects and Clients. This used to be a bordered
+          toolbar with a `text-sm` <h1> — a page title rendered at body size,
+          6px under every sibling page's, in the one collection page that also
+          centred itself in a 768px column. */}
+      <CollectionHeader title="Tasks" className="shrink-0">
           <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-            <SelectTrigger className="h-8 w-28 text-xs" aria-label="Filter by status">
+            <SelectTrigger className="h-8 w-28" aria-label="Filter by status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -114,7 +116,7 @@ export function TaskBoardList() {
           </Select>
 
           <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-            <SelectTrigger className="h-8 w-36 text-xs" aria-label="Group by">
+            <SelectTrigger className="h-8 w-36" aria-label="Group by">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -125,7 +127,7 @@ export function TaskBoardList() {
           </Select>
 
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-            <SelectTrigger className="h-8 w-36 text-xs" aria-label="Sort by">
+            <SelectTrigger className="h-8 w-36" aria-label="Sort by">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -137,13 +139,12 @@ export function TaskBoardList() {
           </Select>
 
           {!isEmpty && (
-            <Button size="sm" className="h-8 gap-1.5" onClick={() => setAddOpen(true)}>
+            <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" />
               Add task
             </Button>
           )}
-        </div>
-      </div>
+      </CollectionHeader>
 
       {isLoading ? (
         <div className="space-y-2 p-4">
@@ -165,8 +166,8 @@ export function TaskBoardList() {
           }
         />
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl space-y-6 p-4">
+        <div className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+          <div className="space-y-6">
             {sections.map((section) => (
               <div key={section.key}>
                 <div className="mb-1 flex items-center gap-2 px-2">
