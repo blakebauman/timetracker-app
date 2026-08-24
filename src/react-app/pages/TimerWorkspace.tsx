@@ -19,6 +19,7 @@ import { TIMER_PANEL_ID, timerTabId } from "@/components/timer/timerTabs";
 import { AddEntryDialog } from "@/components/entries/AddEntryDialog";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { useEntriesRange } from "@/hooks/useEntries";
+import { useDraftRange, useGenerateDrafts } from "@/hooks/useDrafts";
 import { resolveListRange } from "@/lib/dateUtils";
 import {
   useUIStore,
@@ -32,6 +33,14 @@ import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 import type { LoggedSegment } from "@/components/timer/TimerWorkspaceHeader";
 import { Spinner } from "@/components/ui/spinner";
+
+// Review pulls in the project picker and the entry controls; it's only ever
+// opened deliberately, so it shouldn't sit in the Timer landing chunk.
+const DraftReviewDialog = lazy(() =>
+  import("@/components/drafts/DraftReviewDialog").then((m) => ({
+    default: m.DraftReviewDialog,
+  }))
+);
 
 // FullCalendar (~270 kB) and the timesheet grid load only when their view is
 // selected, keeping the eager Timer landing route lean.
@@ -142,6 +151,46 @@ export function TimerWorkspace() {
   const [addEntryOpen, setAddEntryOpen] = useState(false);
 
   /**
+   * Which day drafting and review act on.
+   *
+   * Today when the visible period contains it, otherwise the first day of the
+   * period. Drafting tomorrow is meaningless (nothing has happened yet), and
+   * silently drafting a day the user isn't looking at would be worse.
+   */
+  const reviewDate = format(
+    today >= since && today <= until ? today : since,
+    "yyyy-MM-dd"
+  );
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewDay, setReviewDay] = useState<string>(reviewDate);
+  const generateDrafts = useGenerateDrafts(reviewDate);
+  const { data: periodDrafts = [] } = useDraftRange(
+    format(since, "yyyy-MM-dd"),
+    format(until, "yyyy-MM-dd")
+  );
+
+  const openReview = (day: string) => {
+    setReviewDay(day);
+    setReviewOpen(true);
+  };
+
+  // Drafting and reviewing are one button: propose what's missing, then show
+  // the result. When proposals are already waiting, skip straight to them
+  // rather than making the user ask for more of what they haven't looked at.
+  const handleDraftDay = () => {
+    const waiting = periodDrafts.filter((d) => d.localDate === reviewDate);
+    if (waiting.length > 0) {
+      openReview(reviewDate);
+      return;
+    }
+    generateDrafts.mutate(undefined, {
+      onSuccess: (result) => {
+        if (result.drafts.length > 0) openReview(reviewDate);
+      },
+    });
+  };
+
+  /**
    * Carry the period across a view switch.
    *
    * The list scopes by an explicit range; the grid views step by week/month/day.
@@ -226,6 +275,7 @@ export function TimerWorkspace() {
       showWeekends={showWeekends}
       showGaps={showGaps}
       showEmptyState={view !== "split"}
+      onReviewDay={openReview}
     />
   );
   const list = (
@@ -304,6 +354,9 @@ export function TimerWorkspace() {
         onToday={() => setAnchorOverride(null)}
         onAddEntry={() => setAddEntryOpen(true)}
         onAiQuickAdd={openQuickAdd}
+        onDraftDay={handleDraftDay}
+        draftPending={generateDrafts.isPending}
+        draftCount={periodDrafts.length}
         calendarView={effectiveCalendarView}
         requestedCalendarView={calendarView}
         onCalendarViewChange={setCalendarView}
@@ -335,6 +388,19 @@ export function TimerWorkspace() {
         visibleRange={{ since, until }}
         onRevealDate={revealDate}
       />
+
+      {reviewOpen && (
+        <Suspense fallback={null}>
+          <DraftReviewDialog
+            // Keyed by day: opening review on a different date remounts it, so
+            // the card index and the total field start clean without an effect.
+            key={reviewDay}
+            open={reviewOpen}
+            localDate={reviewDay}
+            onClose={() => setReviewOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

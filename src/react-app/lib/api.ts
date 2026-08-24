@@ -1,5 +1,11 @@
 import { addPendingMutation } from "@/lib/idb";
-import type { Settings, AssistantMemory, ProjectPacing } from "@shared/schemas";
+import type {
+  Settings,
+  AssistantMemory,
+  ProjectPacing,
+  DraftEntry,
+  GenerateDraftsResult,
+} from "@shared/schemas";
 
 const API_BASE = "/api";
 
@@ -380,6 +386,28 @@ export const api = {
     ) =>
       request<Settings>("/settings", {
         method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+  },
+
+  // ─── Drafted entries ──────────────────────────────────────────────────────
+  drafts: {
+    list: (date: string) => request<DraftEntry[]>(`/drafts?date=${date}`),
+    listRange: (since: string, until: string) =>
+      request<DraftEntry[]>(`/drafts?since=${since}&until=${until}`),
+    generate: (body: { date: string; timezoneOffsetMinutes: number }) =>
+      request<GenerateDraftsResult>("/drafts/generate", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    update: (id: string, body: Record<string, unknown>) =>
+      request<DraftEntry>(`/drafts/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    discard: (id: string) => request<{ ok: boolean }>(`/drafts/${id}`, { method: "DELETE" }),
+    discardDay: (date: string) =>
+      request<{ deleted: number }>(`/drafts?date=${date}`, { method: "DELETE" }),
+    confirm: (body: { ids: string[]; reportedTotalSeconds?: number | null }) =>
+      request<{ confirmed: number; totalSeconds: number }>("/drafts/confirm", {
+        method: "POST",
         body: JSON.stringify(body),
       }),
   },

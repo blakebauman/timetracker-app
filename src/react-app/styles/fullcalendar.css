@@ -132,6 +132,19 @@
   border-style: solid;
 }
 
+/* Draft = a proposed entry awaiting review. Dashed like a ghost, but tinted
+   with its proposed project's colour so a drafted week still reads as a week of
+   work rather than a row of grey placeholders. Solidifies on hover — the block
+   is a door into review. */
+.tt-calendar .fc-event.tt-event-draft {
+  border-style: dashed;
+  cursor: pointer;
+}
+.tt-calendar .fc-event.tt-event-draft:hover {
+  border-style: solid;
+  filter: brightness(1.05);
+}
+
 /* Now-indicator line + arrow. */
 .tt-calendar .fc .fc-timegrid-now-indicator-line {
   border-color: var(--primary);

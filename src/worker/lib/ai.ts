@@ -275,6 +275,120 @@ ${projects.map((p) => `- "${p.name}"`).join("\n")}`;
 // The grounding block it feeds the model is still buildAssistantContext() in
 // lib/assistant.ts.
 
+// ─── Day-draft enrichment ────────────────────────────────────────────────────
+
+const DayDraftSchema = z.object({
+  entries: z.array(
+    z.object({
+      index: z.number(),
+      description: z.string(),
+      projectName: z.string().nullable(),
+      billable: z.boolean().nullable().default(null),
+    })
+  ),
+});
+
+export interface DraftEnrichmentCandidate {
+  /** Position in the caller's candidate array — the model echoes it back. */
+  index: number;
+  /** Local clock range, e.g. "09:15–10:00". */
+  when: string;
+  /** Everything known about the slot: event title, neighbouring work, history. */
+  signal: string;
+}
+
+export interface DraftEnrichment {
+  description: string;
+  projectId: string | null;
+  projectName: string | null;
+  billable: boolean | null;
+}
+
+/**
+ * Turn a day's draft candidates into plain-language entries attributed to a
+ * known project.
+ *
+ * This is the only AI step in the drafting pipeline, and it is strictly an
+ * enrichment: the candidates (what happened, when, for how long) are derived
+ * deterministically before this runs, and every field the model returns is
+ * validated against the workspace's real projects before it is used. A failed,
+ * empty or hallucinated response costs the day its prose — never its entries.
+ *
+ * Returns a map keyed by candidate index; absent keys keep the caller's own
+ * deterministic seed values.
+ */
+export async function runDayDraftEnrichment(
+  ai: Ai,
+  dayContext: string,
+  candidates: DraftEnrichmentCandidate[],
+  projects: ProjectGrounding[]
+): Promise<Map<number, DraftEnrichment>> {
+  const out = new Map<number, DraftEnrichment>();
+  if (!candidates.length) return out;
+
+  const projectLines = projects.length
+    ? projects
+        .map((p) => `- "${p.name}" [${p.billable ? "billable" : "non-billable"} by default]`)
+        .join("\n")
+    : "(no active projects)";
+
+  const system = `You write a consultant's timesheet entries for one day from signals captured while they worked, so they can confirm the day instead of reconstructing it from memory.
+
+For each numbered slot below, write:
+- "description": ONE specific sentence in past tense naming the actual work, as the person would write it themselves. Draw only on the slot's own signal and the day's context. No filler ("worked on tasks", "various activities"), no pleading ("possibly", "may have"), no time or duration (the entry already carries those). Under 120 characters.
+- "projectName": the ONE project the slot belongs to, chosen ONLY as an exact name from the list below, or null. A match must be evident from the signal — a client or project name, an engagement code, an obvious abbreviation. Generic slots ("1:1", "Lunch", "Admin", an unexplained gap) are null. Prefer null over a guess: a wrong project is worse than none.
+- "billable": true/false only when the signal makes it explicit, otherwise null to inherit the project's default.
+
+Never invent work that no signal supports. For a slot whose signal says only that time is unaccounted for, describe it as untracked work on the neighbouring task rather than inventing a new one.
+
+Output ONLY JSON of the form { "entries": [ { "index": <number>, "description": "...", "projectName": "..." | null, "billable": true | false | null } ] }, one object per slot, echoing each slot's index exactly.
+
+Known active projects:
+${projectLines}`;
+
+  const user = `Context for the day:
+${dayContext}
+
+Slots to describe:
+${candidates.map((c) => `[${c.index}] ${c.when} — ${c.signal}`).join("\n")}`;
+
+  let raw: unknown;
+  try {
+    raw = await ai.run(
+      QUICK_ENTRY_MODEL,
+      {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: z.toJSONSchema(DayDraftSchema),
+        },
+      },
+      { gateway: GATEWAY }
+    );
+  } catch {
+    return out; // AI unavailable — the caller's deterministic drafts stand.
+  }
+
+  const parsed = DayDraftSchema.safeParse(extractJson(raw));
+  if (!parsed.success) return out;
+
+  const valid = new Set(candidates.map((c) => c.index));
+  for (const e of parsed.data.entries) {
+    if (!valid.has(e.index) || out.has(e.index)) continue;
+    const project = e.projectName ? bestMatch(e.projectName, projects, (p) => p.name) : undefined;
+    out.set(e.index, {
+      description: e.description.trim().slice(0, 200),
+      projectId: project?.id ?? null,
+      projectName: project?.name ?? null,
+      billable: e.billable ?? null,
+    });
+  }
+  return out;
+}
+
 // ─── Project color assignment ─────────────────────────────────────────────────
 
 const ProjectColorSchema = z.object({

@@ -362,6 +362,76 @@ export const BulkDeleteTimeEntriesSchema = z.object({
   ids: z.array(z.string()).min(1),
 });
 
+// ─── Drafted entries ─────────────────────────────────────────────────────────
+
+// A proposed time entry the app wrote for a day, waiting for the user to
+// confirm it. Drafts live in their own table and are NOT time: they never reach
+// a report, an invoice, a project total or an integration push until confirmed.
+export const DraftSourceSchema = z.enum([
+  "calendar", // a calendar event that ended without being tracked
+  "gap", // an uncovered stretch between the day's activity
+  "pattern", // work this person logs on this weekday most weeks
+]);
+
+export const DraftEntrySchema = z.object({
+  id: z.string(),
+  localDate: z.string(),
+  projectId: z.string().nullable(),
+  projectName: z.string().nullable(),
+  projectColor: z.string().nullable(),
+  taskId: z.string().nullable(),
+  taskName: z.string().nullable(),
+  description: z.string(),
+  start: z.string(),
+  stop: z.string(),
+  duration: z.number(),
+  billable: z.boolean(),
+  source: DraftSourceSchema,
+  confidence: z.enum(["high", "medium", "low"]),
+  /** Why this was proposed, in plain language — shown on the review card. */
+  reason: z.string().nullable(),
+  calendarEventId: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const GenerateDraftsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  // The client's own UTC offset, so "the day" means the user's day.
+  timezoneOffsetMinutes: z.number().int().min(-900).max(900),
+});
+
+export const UpdateDraftSchema = z
+  .object({
+    description: z.string().max(2000).optional(),
+    projectId: z.string().nullable().optional(),
+    taskId: z.string().nullable().optional(),
+    start: z.string().optional(),
+    stop: z.string().optional(),
+    billable: z.boolean().optional(),
+  })
+  .refine((d) => !d.start || !d.stop || new Date(d.stop) > new Date(d.start), {
+    message: "Stop time must be after start time",
+    path: ["stop"],
+  });
+
+export const ConfirmDraftsSchema = z.object({
+  ids: z.array(z.string()).min(1).max(50),
+  /**
+   * The total the user actually stands behind for the day, in seconds. When
+   * present, the confirmed drafts are scaled proportionally to hit it — the
+   * last step of review, where the day's number is corrected once instead of
+   * entry by entry. Omit to confirm the drafts exactly as they stand.
+   */
+  reportedTotalSeconds: z.number().int().min(0).max(24 * 3600).nullable().optional(),
+});
+
+export const GenerateDraftsResultSchema = z.object({
+  drafts: z.array(DraftEntrySchema),
+  created: z.number(),
+  /** False when the AI enrichment step was skipped or rejected. */
+  enriched: z.boolean(),
+});
+
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
 // Optional comma-separated list of IDs → string[] (e.g. "a,b,c"). Undefined when absent.
@@ -420,6 +490,12 @@ export const CreateSavedReportSchema = z.object({
   config: z.record(z.string(), z.unknown()),
 });
 
+export type DraftSource = z.infer<typeof DraftSourceSchema>;
+export type DraftEntry = z.infer<typeof DraftEntrySchema>;
+export type GenerateDrafts = z.infer<typeof GenerateDraftsSchema>;
+export type UpdateDraft = z.infer<typeof UpdateDraftSchema>;
+export type ConfirmDrafts = z.infer<typeof ConfirmDraftsSchema>;
+export type GenerateDraftsResult = z.infer<typeof GenerateDraftsResultSchema>;
 export type SavedReport = z.infer<typeof SavedReportSchema>;
 export type CreateSavedReport = z.infer<typeof CreateSavedReportSchema>;
 

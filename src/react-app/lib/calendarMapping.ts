@@ -1,5 +1,5 @@
 import type { EventInput } from "@fullcalendar/core";
-import type { TimeEntry } from "@shared/schemas";
+import type { TimeEntry, DraftEntry } from "@shared/schemas";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { hexToRgba } from "@/lib/colorUtils";
 
@@ -23,6 +23,9 @@ export interface CalendarEventExtendedProps {
   // An untracked gap between two entries the user can click to fill.
   gap?: boolean;
   gapRange?: { start: string; stop: string };
+  // A proposed entry awaiting review. Carries its own draft so the click
+  // handler can open review on the right day without a lookup.
+  draft?: DraftEntry;
 }
 
 const GHOST_COLOR = "#94a3b8"; // slate-400 — muted, project-agnostic
@@ -78,6 +81,27 @@ export function buildGapEvents(
     });
   }
   return gaps;
+}
+
+/**
+ * Map a drafted entry to a proposal block.
+ *
+ * Painted in its proposed project's colour but at a lower alpha than a real
+ * entry, dashed, and not draggable — it has to read as "this is what I think
+ * you did", never as tracked time. Confirming it is what makes it solid.
+ */
+export function draftToEvent(draft: DraftEntry): EventInput {
+  const color = draft.projectColor ?? DEFAULT_PROJECT_COLOR;
+  return {
+    id: `draft:${draft.id}`,
+    start: draft.start,
+    end: draft.stop,
+    editable: false,
+    display: "block",
+    backgroundColor: hexToRgba(color, 0.08),
+    borderColor: hexToRgba(color, 0.65),
+    extendedProps: { running: false, draft } satisfies CalendarEventExtendedProps,
+  };
 }
 
 // Map an external calendar event to a dashed, non-editable ghost block.

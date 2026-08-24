@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TimerViewSwitcher } from "./TimerViewSwitcher";
+import { DraftDayButton } from "@/components/drafts/DraftDayButton";
 import { CalendarViewOptions } from "./CalendarViewOptions";
 import { ListRangePicker } from "./ListRangePicker";
 import type { TimerView } from "@/stores/uiStore";
@@ -54,6 +55,11 @@ interface TimerWorkspaceHeaderProps {
   onToday: () => void;
   onAddEntry: () => void;
   onAiQuickAdd: () => void;
+  /** Draft the visible day's missing entries, then open review. */
+  onDraftDay: () => void;
+  draftPending: boolean;
+  /** Drafts already waiting on the visible period — turns the button into "Review N". */
+  draftCount: number;
   // Calendar sub-controls — only rendered for calendar/split views.
   calendarView: CalendarViewType;
   /** What the user picked; the pane may be rendering something narrower. */
@@ -91,6 +97,9 @@ export function TimerWorkspaceHeader({
   onToday,
   onAddEntry,
   onAiQuickAdd,
+  onDraftDay,
+  draftPending,
+  draftCount,
   calendarView,
   requestedCalendarView,
   onCalendarViewChange,
@@ -223,6 +232,12 @@ export function TimerWorkspaceHeader({
               onToggleGaps={onToggleGaps}
             />
           )}
+
+          <DraftDayButton
+            onClick={onDraftDay}
+            pending={draftPending}
+            pendingCount={draftCount}
+          />
 
           <TimerViewSwitcher view={view} onChange={onViewChange} allowSplit={allowSplit} />
 

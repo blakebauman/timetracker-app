@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { EventContentArg } from "@fullcalendar/core";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Wand2 } from "lucide-react";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
@@ -8,7 +8,7 @@ import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 // Custom renderer for a calendar block. Passed to FullCalendar's `eventContent`.
 // Kept intentionally compact so short (15–30 min) blocks stay legible.
 export function CalendarEventContent(arg: EventContentArg) {
-  const { entry, running, ghost, external, gap } =
+  const { entry, running, ghost, external, gap, draft } =
     arg.event.extendedProps as Partial<CalendarEventExtendedProps>;
 
   // Untracked gap between two entries — reads as a subtle "fill me" affordance.
@@ -17,6 +17,34 @@ export function CalendarEventContent(arg: EventContentArg) {
       <div className="tt-on-tint-muted flex h-full items-center gap-1 overflow-hidden px-1 text-left leading-tight">
         <CalendarPlus className="h-3 w-3 shrink-0" />
         <span className="truncate text-xs font-medium">Track {arg.timeText}</span>
+      </div>
+    );
+  }
+
+  // Draft = a proposed entry waiting for review. Reads like a real block (it
+  // carries a project and a description) but with the wand marking it as
+  // something the app wrote rather than something the user tracked.
+  if (draft) {
+    const draftColor = draft.projectColor ?? DEFAULT_PROJECT_COLOR;
+    return (
+      <div className="flex h-full flex-col gap-0.5 overflow-hidden text-left leading-tight">
+        <div className="flex items-center gap-1">
+          <Wand2 className="tt-on-tint-muted h-3 w-3 shrink-0" />
+          <span className="truncate text-xs font-medium">
+            {draft.description || "Untracked time"}
+          </span>
+        </div>
+        <span className="tt-on-tint-muted truncate text-micro">
+          {arg.timeText} · draft
+        </span>
+        {draft.projectName && (
+          <span
+            className="tt-swatch-ink truncate text-micro font-medium"
+            style={{ "--swatch": draftColor } as CSSProperties}
+          >
+            {draft.projectName}
+          </span>
+        )}
       </div>
     );
   }

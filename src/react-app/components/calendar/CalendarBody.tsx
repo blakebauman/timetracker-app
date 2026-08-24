@@ -25,9 +25,12 @@ import { useUIStore } from "@/stores/uiStore";
 import {
   buildEvents,
   buildGapEvents,
+  draftToEvent,
   externalEventToEvent,
   type CalendarEventExtendedProps,
 } from "@/lib/calendarMapping";
+import { useDraftRange } from "@/hooks/useDrafts";
+import { localDayKey } from "@/lib/dateUtils";
 
 import "@/styles/fullcalendar.css";
 
@@ -46,6 +49,11 @@ interface CalendarBodyProps {
    * words, read as a rendering fault rather than an explanation.
    */
   showEmptyState?: boolean;
+  /**
+   * Open review for a local day. Absent means drafts aren't painted at all —
+   * a proposal you can't act on is just clutter on the grid.
+   */
+  onReviewDay?: (localDate: string) => void;
 }
 
 // The FullCalendar grid, externally driven by the shared period + view.
@@ -59,6 +67,7 @@ export function CalendarBody({
   showWeekends,
   showGaps,
   showEmptyState = true,
+  onReviewDay,
 }: CalendarBodyProps) {
   // date-fns wants a 0–6 literal; the setting is validated to that range.
   const wso = weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -126,6 +135,14 @@ export function CalendarBody({
     range.end.toISOString()
   );
 
+  // Drafts are stored against the user's LOCAL date, so the range is asked for
+  // in those terms rather than as UTC instants.
+  const { data: drafts = [] } = useDraftRange(
+    localDayKey(range.start.toISOString()),
+    localDayKey(range.end.toISOString()),
+    Boolean(onReviewDay)
+  );
+
   const { events, ghostCount } = useMemo(() => {
     const real = buildEvents(entries, runningEntry, range, nowIso);
     const confirmed = new Set(
@@ -133,11 +150,23 @@ export function CalendarBody({
     );
     const unconfirmed = externalEvents.filter((ext) => !confirmed.has(ext.calendarEventId));
     const ghosts = unconfirmed.map(externalEventToEvent);
+    // A drafted meeting and its ghost are the same hour twice — the draft is the
+    // better of the two (it carries a project and a description), so it wins.
+    const draftedEventIds = new Set(
+      drafts.map((d) => d.calendarEventId).filter(Boolean) as string[]
+    );
+    const visibleGhosts = ghosts.filter(
+      (g) => !draftedEventIds.has(String(g.id).replace(/^ghost:/, ""))
+    );
+    const draftBlocks = drafts.map(draftToEvent);
     // Gaps only make sense on the time grid, not the month overview.
     const gaps =
       showGaps && calendarView !== "dayGridMonth" ? buildGapEvents(entries, nowIso) : [];
-    return { events: [...gaps, ...real, ...ghosts], ghostCount: unconfirmed.length };
-  }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView]);
+    return {
+      events: [...gaps, ...draftBlocks, ...real, ...visibleGhosts],
+      ghostCount: unconfirmed.length - (ghosts.length - visibleGhosts.length),
+    };
+  }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView, drafts]);
 
   const convertRange = useConvertCalendarRange();
   const handleConvertAll = () =>
@@ -195,6 +224,10 @@ export function CalendarBody({
 
   const handleEventClick = (arg: EventClickArg) => {
     const props = arg.event.extendedProps as CalendarEventExtendedProps;
+    if (props.draft) {
+      onReviewDay?.(props.draft.localDate);
+      return;
+    }
     if (props.gap && props.gapRange) {
       setCreateRange({ start: props.gapRange.start, stop: props.gapRange.stop });
       setCreateOpen(true);

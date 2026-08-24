@@ -11,6 +11,7 @@ import { tagsRouter } from "./routes/tags";
 import { tasksRouter } from "./routes/tasks";
 import { favoritesRouter } from "./routes/favorites";
 import { recurringRouter } from "./routes/recurring";
+import { draftsRouter } from "./routes/drafts";
 import { reportsRouter } from "./routes/reports";
 import { savedReportsRouter } from "./routes/saved-reports";
 import { plannerRouter } from "./routes/planner";
@@ -87,6 +88,8 @@ const app = new Hono<{ Bindings: Env }>()
   // above its 5-min cadence. (Assistant chat streams via the ChatAgent DO, not here.)
   .use("/api/assistant/track-event", aiRateLimit)
   .use("/api/assistant/nudges", nudgesRateLimit)
+  // Drafting a day costs one Workers AI call plus a Google Calendar read-through.
+  .use("/api/drafts/generate", aiRateLimit)
   .use("/api/integrations/*", outboundRateLimit)
   .use("/api/calendar/convert", outboundRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
@@ -96,6 +99,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/tasks", tasksRouter)
   .route("/api/favorites", favoritesRouter)
   .route("/api/recurring", recurringRouter)
+  .route("/api/drafts", draftsRouter)
   .route("/api/reports", reportsRouter)
   .route("/api/saved-reports", savedReportsRouter)
   .route("/api/planner", plannerRouter)
