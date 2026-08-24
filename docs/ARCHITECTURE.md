@@ -31,18 +31,22 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 | Mount | File | Notes |
 |---|---|---|
 | `/api/time_entries` | `time-entries.ts` | CRUD, `/current` (running), `/suggestions`, bulk ops, `/:id/stop` |
-| `/api/projects` | `projects.ts` | CRUD + `POST /recolor` (AI color assignment) |
+| `/api/projects` | `projects.ts` | CRUD + `POST /recolor` (AI color assignment) + `GET /pacing` (budget burn/projection) |
 | `/api/clients`, `/api/tasks`, `/api/tags`, `/api/favorites`, `/api/recurring` | one file each | plain CRUD (tags: rename/recolor/delete only — created implicitly via entries) |
+| `/api/drafts` | `drafts.ts` | drafted entries awaiting review: `GET ?date=` / `?since&until` (local dates), `POST /generate`, `PATCH /:id`, `POST /confirm` (with optional total reconciliation), `DELETE /:id`, `DELETE ?date=` |
 | `/api/reports` | `reports.ts` | `summary`, `grouped` (group→subGroup), `weekly`, `detailed`; rounding applied in SQL |
 | `/api/saved-reports` | `saved-reports.ts` | per-user saved report configs |
 | `/api/planner` | `planner.ts` | per-user planned allocations (project+task per day): `GET ?since&until`, `PUT /` cell upsert (0 deletes), `POST /bulk` (CSV import / copy-week) |
-| `/api/settings` | `settings.ts` | per-user prefs stored on the Better Auth `user` row |
+| `/api/settings` | `settings.ts` | per-user prefs stored on the Better Auth `user` row, incl. digest preferences; `POST /digest/send` mails one immediately |
+| `/api/keys` | `api-keys.ts` | workspace API keys for MCP/programmatic access — list/create/revoke. Session-only: a credential that can mint credentials must not be reachable from `/mcp` |
 | `/api/calendar` | `calendar.ts` | Google OAuth connect/callback/status/disconnect, `GET /events` (read-through), `PATCH /auto-track`, `POST /convert` |
 | `/api/ai` | `ai.ts` | `POST /quick-entry` (NL→entry), `POST /summary` (AI report draft); rate-limited |
 | `/api/assistant` | `assistant.ts` | `GET /nudges`, `POST /track-event`, memory list/delete. **Chat is NOT here** — see the Assistant below |
 | `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push` (takes the client's IANA `timezone`; the route resolves each entry's work date with `lib/local-date.ts` before handing it to an adapter), SSRF-guarded, outbound rate limits |
 | `/api/admin` | `admin.ts` | `DELETE /users/:id` (site-admin user removal + orphan cleanup); list/ban/impersonate go through Better Auth's admin plugin client-side |
 | `/api/ws` | `websocket.ts` | upgrade → `TimerRoom` (`idFromName(workspaceId)`) |
+
+`/mcp` is **not** a Hono route: like `/agents/*` it is intercepted in `index.ts` before the app, authenticated by API key rather than session, and handed to `agents/mcp`'s `createMcpHandler`. See MCP below.
 
 `db/queries.ts` holds the shared SQL helpers — `ENTRY_SELECT` is the canonical time-entry JOIN; `broadcast()` fans WebSocket events out through the DO; `upsertTags()` implicitly creates tags with deterministic colors.
 
@@ -76,14 +80,40 @@ Notable decisions:
 
 ## Cron (`scheduled()`, every 5 minutes)
 
-Two independent, idempotent materializers, both iterating workspaces and swallowing per-workspace errors so one bad connection never blocks the sweep:
+Three independent, idempotent jobs, each iterating its own subjects and swallowing per-subject errors so one bad connection or address never blocks the sweep:
 
 - **Calendar auto-track** (`lib/calendar-autotrack.ts`) — for workspaces with Google connected + auto-track on, converts *ended* calendar events into entries. Idempotent via `time_entries.calendar_event_id`.
 - **Recurring entries** (`lib/recurring.ts`) — materializes each active template once its scheduled UTC time passes. Idempotent via `last_materialized` (UTC date). Schedules stored as UTC weekday + minutes-of-day; the client converts to local time (`react-app/lib/recurrence.ts`).
+- **Email digests** (`lib/digest.ts`) — the morning briefing and the Monday weekly summary, for users who opted in. The cron has no request to read a timezone from, so it works off `user.digest_tz_offset` (reconciled client-side by `useHydrateSettings` whenever it drifts, so a DST change doesn't send an hour off for months). The 5-minute cron ticks twelve times inside the target hour, so the send is exactly-once by comparing `digest_daily_sent`/`digest_weekly_sent` against the user's **local** date rather than by locking.
+
+## Drafting a day (`lib/drafts.ts`)
+
+Turns the signals the app already holds into proposed entries a person confirms. Three stages, in this order:
+
+1. **Candidates — deterministic.** Calendar events that ended untracked; uncovered stretches inside the day's own working window (busy = tracked entries ∪ all calendar events ∪ outstanding drafts, so a meeting is never proposed twice — once as itself and once as the hole it left); work logged on this weekday in ≥3 of the last 8 weeks. When something happened and how long it lasted are facts, not model output.
+2. **One AI call** (`runDayDraftEnrichment` in `lib/ai.ts`) adds a plain-language description and a project, grounded to the workspace's real projects with the same fuzzy-resolution guards as quick-entry.
+3. **Validation.** Everything the model returns is checked before storage; any failure keeps the deterministic seed. A gap whose AI step didn't run arrives as a blank slot to fill.
+
+Drafts live in their **own table**, not behind a `status` column on `time_entries`. A draft is a proposal, not time: it must never reach a report, an invoice, a client roll-up, a project total, or an integration push. A status column would put that guarantee in the hands of every query that aggregates entries, forever; a separate table makes it structural. Confirming inserts a real entry and deletes the draft. Regeneration is idempotent by unique index on both `(workspace_id, user_id, calendar_event_id)` and `(workspace_id, user_id, start, stop)`.
+
+`POST /confirm` optionally takes `reportedTotalSeconds` and scales the batch proportionally (`scaleDurations`) — the last step of review, where the day's number is corrected once instead of entry by entry. Scaling moves an entry's **end**, never its start.
+
+## Project pacing (`lib/pacing.ts`)
+
+Deliberately AI-free — pacing goes in front of a client, so it must be reproducible from the entries alone. Per active project: share of budget spent, burn per **working** day over a trailing 14-day window (calendar days understate the rate by ~30% and turn every real overrun into "on track"), working days left to `end_date`, and the projected total at that rate. One computation feeds three surfaces — `GET /api/projects/pacing`, the `budget_risk` assistant nudge, and the emailed digest — so they cannot disagree. A dormant project gets no verdict rather than a fabricated one.
+
+## MCP server (`mcp/server.ts`, `lib/api-keys.ts`)
+
+`/mcp` speaks Streamable HTTP via `agents/mcp`'s `createMcpHandler` — stateless, no Durable Object. A fresh `McpServer` is built per request, bound to the workspace resolved from the API key.
+
+- **Eleven tools**, each a thin wrapper over the helpers the REST API already uses (report builder, pacing, draft pipeline), so a chat answer and a Reports page answer come from one implementation.
+- **No tool takes a workspace id** — it is fixed at construction, so nothing a model can invent reaches a tenant boundary.
+- **Write tools are registered only for a `read_write` key.** A read key isn't shown them at all; a tool a client can see but can never call is worse than one never advertised.
+- **Auth is a workspace API key** (`tt_live_…`), not a session bearer: only the SHA-256 is stored, the plaintext is shown once and is unrecoverable, and membership is re-verified against `member` on every call (a key outlives the session that minted it).
 
 ## Data model (D1)
 
-Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy ordering rule). Core tables: `workspaces`, `clients`, `projects` (rate, budget, color), `tasks`, `time_entries` (+ `calendar_event_id`), `tags` + `time_entry_tags` (tag colors), `favorites`, `recurring_entries`, `saved_reports`, `project_allocations` (per-user planned hours; `task_id` uses `''` for "no task" so the 5-column UNIQUE supports `ON CONFLICT` upserts), `integrations` (encrypted tokens — AES-GCM keyed by `AUTH_SECRET`, `lib/crypto.ts`), `assistant_memory`, plus the Better Auth tables (user/session/account/organization/invitation/twoFactor/passkey).
+Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy ordering rule). Core tables: `workspaces`, `clients`, `projects` (rate, budget, color), `tasks`, `time_entries` (+ `calendar_event_id`), `tags` + `time_entry_tags` (tag colors), `favorites`, `recurring_entries`, `saved_reports`, `project_allocations` (per-user planned hours; `task_id` uses `''` for "no task" so the 5-column UNIQUE supports `ON CONFLICT` upserts), `integrations` (encrypted tokens — AES-GCM keyed by `AUTH_SECRET`, `lib/crypto.ts`), `assistant_memory`, `draft_entries` (proposals awaiting review — never aggregated anywhere), `api_keys` (SHA-256 only), plus the Better Auth tables (user/session/account/organization/invitation/twoFactor/passkey).
 
 **Seed data is not a migration.** `seeds/dev-seed.sql` is local-only (`npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql`); migrations 0005/0006 were retroactively no-op'd so remote applies can never seed demo credentials into prod.
 
