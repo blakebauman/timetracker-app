@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,19 +13,18 @@ import { TaskPicker } from "@/components/entries/TaskPicker";
 import { AssistantButton } from "@/components/assistant/AssistantButton";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
-import { useTimer, useTimerLifecycle } from "@/hooks/useTimer";
+import { useTimer, useTimerLifecycle, type StartTimerInput } from "@/hooks/useTimer";
+import { useProjects } from "@/hooks/useProjects";
 import { useUpdateEntry } from "@/hooks/useEntries";
 import { useTagColors } from "@/hooks/useProjects";
+import { BillableToggle } from "./BillableToggle";
+import { getDefaultBillable } from "@/lib/billable";
 import { cn } from "@/lib/utils";
 import type { EntrySuggestion } from "@shared/schemas";
 
 export function TimerBar() {
   const { runningEntry } = useTimerStore();
   const { startTimer, stopTimer, discardTimer } = useTimer();
-  // Owns the tick loop, mount-restore, and Alt+Shift+S/X hotkeys — must be
-  // called exactly once (TimerBar is always mounted), not from every
-  // component that just needs the action functions above.
-  useTimerLifecycle();
   const updateEntry = useUpdateEntry();
   // Shared with the Alt+Shift+X hotkey (registered in useTimerLifecycle) so
   // both the trash-icon button and the keyboard shortcut open the same
@@ -39,7 +39,13 @@ export function TimerBar() {
   // entry). The bar has no tag *picker* — chips are removable but only ever
   // added via suggestions/favorites; full editing lives in the entry sheet.
   const [tags, setTags] = useState<string[]>([]);
+  // Whether this hour is invoiceable. `billable` is the only column reports read
+  // to compute revenue, and until this control existed the bar had no way to say
+  // — so every timer started here was written non-billable regardless of the
+  // project. Seeded from the project on selection, overridable by the user.
+  const [billable, setBillable] = useState(getDefaultBillable);
   const tagColor = useTagColors();
+  const { data: projects = [] } = useProjects();
   const descRef = useRef<HTMLInputElement>(null);
 
   const isRunning = Boolean(runningEntry);
@@ -60,6 +66,9 @@ export function TimerBar() {
   );
   const tagsKey = (runningEntry?.tags ?? []).join("\0");
   const [syncedTagsKey, setSyncedTagsKey] = useState(tagsKey);
+  const [syncedBillable, setSyncedBillable] = useState(
+    runningEntry?.billable ?? false
+  );
   if (syncedEntryId !== (runningEntry?.id ?? null)) {
     setSyncedEntryId(runningEntry?.id ?? null);
     setSyncedProjectId(runningEntry?.projectId ?? null);
@@ -69,6 +78,10 @@ export function TimerBar() {
     setProjectId(runningEntry?.projectId ?? null);
     setTaskId(runningEntry?.taskId ?? null);
     setTags(runningEntry?.tags ?? []);
+    // On stop (runningEntry → null) the bar resets to the user's preference,
+    // not to a hard false — otherwise "Default billable" silently applied to
+    // the first timer of a session and nothing after it.
+    setBillable(runningEntry?.billable ?? getDefaultBillable());
   } else if (runningEntry) {
     // Same entry, but its project/task may have been reassigned elsewhere
     // (e.g. from the entries list). Keep the bar's pickers in sync. Description
@@ -86,18 +99,46 @@ export function TimerBar() {
       setSyncedTagsKey(tagsKey);
       setTags(runningEntry.tags ?? []);
     }
+    if (syncedBillable !== runningEntry.billable) {
+      setSyncedBillable(runningEntry.billable);
+      setBillable(runningEntry.billable);
+    }
   }
 
-  // Debounced description update while running
+  // Debounced description update while running. A rejected save used to be
+  // completely silent — the bar kept showing text the server never stored, and
+  // the user found out when the stopped entry turned up blank.
   useEffect(() => {
     if (!runningEntry || description === runningEntry.description) return;
     const t = setTimeout(() => {
-      updateEntry.mutate({ id: runningEntry.id, data: { description } });
+      updateEntry.mutate(
+        { id: runningEntry.id, data: { description } },
+        {
+          onError: () =>
+            toast.error("Couldn't save the description", {
+              description: "It hasn't been stored on this entry yet.",
+            }),
+        }
+      );
     }, 800);
     return () => clearTimeout(t);
   }, [description, runningEntry?.id]);
 
-  const handleStart = () => startTimer({ description, projectId, taskId, tags });
+  // The single definition of "what the bar would start", handed to both the
+  // button below and the Alt+Shift+S hotkey inside `useTimerLifecycle`. That
+  // hotkey used to call `startTimer()` with no arguments at all — starting a
+  // blank, project-less, non-billable entry, whose sync then wiped the staged
+  // description and project off the screen. The button and the shortcut it
+  // advertises now start the same entry.
+  const draft: StartTimerInput = { description, projectId, taskId, tags, billable };
+
+  // Owns the tick loop, mount-restore, and Alt+Shift+S/X hotkeys — must be
+  // called exactly once (TimerBar is always mounted), not from every component
+  // that just needs the action functions above. Takes the draft so the start
+  // shortcut commits what's on screen rather than an empty entry.
+  useTimerLifecycle(draft);
+
+  const handleStart = () => startTimer(draft);
   const handleStop = () => stopTimer();
   const handleSubmit = () => {
     if (isRunning) handleStop();
@@ -113,6 +154,11 @@ export function TimerBar() {
     setProjectId(s.projectId);
     setTaskId(s.taskId);
     setTags(s.tags);
+    // `billable` was the one field of the combo the bar dropped, even though the
+    // server computes it per description×project×task and ships it in the
+    // suggestion. "Make it like last time" has to include whether last time was
+    // invoiceable.
+    setBillable(s.billable);
     if (runningEntry) {
       updateEntry.mutate({
         id: runningEntry.id,
@@ -121,6 +167,7 @@ export function TimerBar() {
           projectId: s.projectId,
           taskId: s.taskId,
           tags: s.tags,
+          billable: s.billable,
         },
       });
     }
@@ -132,10 +179,24 @@ export function TimerBar() {
   // stop/discard anyway). PUT replaces the entry's whole tag set, so send the
   // filtered list.
   const removeTag = (name: string) => {
+    const previous = tags;
     const next = tags.filter((t) => t !== name);
     setTags(next);
     if (runningEntry) {
-      updateEntry.mutate({ id: runningEntry.id, data: { tags: next } });
+      updateEntry.mutate(
+        { id: runningEntry.id, data: { tags: next } },
+        {
+          // Without this the chip vanished from the bar while the tag stayed on
+          // the entry — the bar and the server silently disagreeing about what
+          // is being tracked, with nothing on screen to say so.
+          onError: () => {
+            setTags(previous);
+            toast.error(`Couldn't remove the tag "${name}"`, {
+              description: "It's still on this entry. Try again.",
+            });
+          },
+        }
+      );
     }
   };
 
@@ -211,7 +272,7 @@ export function TimerBar() {
           `basis-28` is the load-bearing part: flex wraps a line *before* it
           shrinks anything, so chips sized by their content (178px + 184px for a
           real project name) pushed the control cluster onto a row of its own at
-          every width below `xl`. Sizing them from a 7rem basis and letting them
+          every width below `lg`. Sizing them from a 7rem basis and letting them
           grow into the leftover keeps chips and controls on one line down to
           768px, and the same 7rem as `min-w` stops them collapsing into
           unreadable slivers when they genuinely don't fit. */}
@@ -220,13 +281,28 @@ export function TimerBar() {
         onChange={(id) => {
           setProjectId(id);
           setTaskId(null);
+          // Picking a project answers "is this invoiceable?" for the user —
+          // that's what the project's own billable flag is for. An explicit
+          // toggle afterwards still wins; this only sets the starting point,
+          // and matches what the server does for callers that say nothing.
+          // Precedence: an explicit toggle beats the project's flag, which
+          // beats the user's "Default billable" preference. Clearing the
+          // project falls back to that preference rather than hard false.
+          const next = id
+            ? (projects.find((p) => p.id === id)?.billable ?? getDefaultBillable())
+            : getDefaultBillable();
+          setBillable(next);
           if (runningEntry) {
-            updateEntry.mutate({ id: runningEntry.id, data: { projectId: id, taskId: null } });
+            updateEntry.mutate({
+              id: runningEntry.id,
+              data: { projectId: id, taskId: null, billable: next },
+            });
           }
         }}
         compact
         className="tt-touch shrink max-xl:min-w-28 max-xl:grow max-xl:basis-28"
       />
+
 
       {/* Task picker — only when a project is selected */}
       <TaskPicker
@@ -240,6 +316,20 @@ export function TimerBar() {
         }}
         compact
         className="tt-touch shrink max-xl:min-w-28 max-xl:grow max-xl:basis-28"
+      />
+
+      {/* Billable toggle. Last in the draft sequence — description, then what
+          it's against, then whether it's invoiceable — and using the same bare
+          `$` glyph and --primary-ink the entry row uses for its billable
+          indicator, so the two surfaces read as one vocabulary. */}
+      <BillableToggle
+        value={billable}
+        onChange={(next) => {
+          setBillable(next);
+          if (runningEntry) {
+            updateEntry.mutate({ id: runningEntry.id, data: { billable: next } });
+          }
+        }}
       />
 
       {/* Control cluster. One shrink-0 unit, pushed right by `ml-auto`: it wraps
@@ -270,7 +360,7 @@ export function TimerBar() {
 
         {/* Favorites: one-click start from a saved preset */}
         {!isRunning && (
-          <FavoritesMenu current={{ description, projectId, taskId, tags }} />
+          <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
         )}
 
         {/* Combined elapsed + Start/Stop capsule */}

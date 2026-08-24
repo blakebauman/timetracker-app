@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
@@ -25,6 +25,21 @@ function rangeContains(key: readonly unknown[], start: string): boolean {
   const [, since, until] = key;
   if (typeof since !== "string" || typeof until !== "string") return true;
   return start >= since && start < until;
+}
+
+/**
+ * What the timer bar would start. Shared by `startTimer` and the Alt+Shift+S
+ * hotkey so the button and the shortcut it advertises can never diverge.
+ *
+ * `billable` is deliberately optional: omitted means "inherit from the project"
+ * server-side, which is not the same as an explicit `false`.
+ */
+export interface StartTimerInput {
+  description?: string;
+  projectId?: string | null;
+  taskId?: string | null;
+  billable?: boolean;
+  tags?: string[];
 }
 
 export function useTimer() {
@@ -71,19 +86,17 @@ export function useTimer() {
 
   // ─── Start timer ─────────────────────────────────────────────────────────
   const startMutation = useMutation({
-    mutationFn: async (partial: {
-      description?: string;
-      projectId?: string | null;
-      taskId?: string | null;
-      billable?: boolean;
-      tags?: string[];
-    }) => {
+    mutationFn: async (partial: StartTimerInput) => {
       return api.timeEntries.create({
         description: partial.description ?? "",
         projectId: partial.projectId ?? null,
         taskId: partial.taskId ?? null,
         start: new Date().toISOString(),
-        billable: partial.billable ?? false,
+        // Passed through undefined rather than coerced to false: the server
+        // reads "unspecified" as "inherit this project's billable flag"
+        // (resolveBillable in routes/time-entries.ts). Coercing here is how
+        // every API-started timer used to come out non-billable.
+        billable: partial.billable,
         tags: partial.tags ?? [],
       }) as Promise<TimeEntry>;
     },
@@ -286,15 +299,7 @@ export function useTimer() {
   });
 
   const startTimer = useCallback(
-    (
-      partial: {
-        description?: string;
-        projectId?: string | null;
-        taskId?: string | null;
-        billable?: boolean;
-        tags?: string[];
-      } = {}
-    ) => startMutation.mutate(partial),
+    (partial: StartTimerInput = {}) => startMutation.mutate(partial),
     [startMutation]
   );
 
@@ -341,9 +346,18 @@ export function useTimer() {
 // entry's elapsed time, which is exactly what produced the visible
 // 00:00:00-flickers-a-few-times bug on a hard refresh. Call this hook
 // exactly once, from TimerBar (always mounted).
-export function useTimerLifecycle() {
+export function useTimerLifecycle(draft?: StartTimerInput) {
   const { runningEntry, localStartTime, setElapsed, setRunningEntry } = useTimerStore();
   const { startTimer, stopTimer } = useTimer();
+
+  // The hotkey fires from outside React's render cycle, so it needs the last
+  // *painted* draft — which is also what the user can see on screen when they
+  // press the keys. Kept in a ref so the shortcut isn't re-registered on every
+  // keystroke in the description field.
+  const draftRef = useRef<StartTimerInput>({});
+  useEffect(() => {
+    draftRef.current = draft ?? {};
+  });
 
   // ─── Tick loop + tab title ───────────────────────────────────────────────
   useEffect(() => {
@@ -427,10 +441,17 @@ export function useTimerLifecycle() {
   }, [setRunningEntry]);
 
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────
+  // `enableOnFormTags` is not optional here: react-hotkeys-hook skips form
+  // elements by default, so this shortcut did nothing in the description input
+  // — the field the user is in every time they are about to start a timer.
+  // And `getDraft` is what it starts: calling `startTimer()` bare began a
+  // blank, project-less, non-billable entry, then the bar's running-entry sync
+  // overwrote the typed description and picked project from that empty entry.
+  // The advertised shortcut destroyed the work it was meant to commit.
   useHotkeys(
     "alt+shift+s",
-    () => (runningEntry ? stopTimer() : startTimer()),
-    { preventDefault: true },
+    () => (runningEntry ? stopTimer() : startTimer(draftRef.current)),
+    { preventDefault: true, enableOnFormTags: ["INPUT", "TEXTAREA"] },
     [runningEntry, stopTimer, startTimer]
   );
   // Routes through the same confirm dialog as the trash-icon button (owned by
@@ -441,7 +462,7 @@ export function useTimerLifecycle() {
     () => {
       if (runningEntry) useUIStore.getState().setDiscardConfirmOpen(true);
     },
-    { preventDefault: true },
+    { preventDefault: true, enableOnFormTags: ["INPUT", "TEXTAREA"] },
     [runningEntry]
   );
 }

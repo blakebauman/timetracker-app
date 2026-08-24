@@ -29,6 +29,37 @@ import {
 const clientId = (c: { req: { header: (n: string) => string | undefined } }) =>
   c.req.header("X-Client-Id") ?? null;
 
+/**
+ * Decide an entry's billable flag when the caller didn't state one.
+ *
+ * `billable` is the only column reports read to compute both billable seconds
+ * and invoiced amount (`reports.ts`), and nothing derives it from the project at
+ * read time. While `CreateTimeEntrySchema` defaulted it to `false`, every entry
+ * created without an explicit flag — the timer bar, the extension, the AI
+ * quick-add — landed non-billable no matter which project it was logged
+ * against, so a workspace could track a full week on a billable retainer and
+ * report zero revenue.
+ *
+ * An explicit `true`/`false` from the caller always wins; this only fills the
+ * gap. A project id that doesn't resolve (deleted, or another workspace's)
+ * falls back to false rather than throwing — an unbillable entry is recoverable,
+ * a rejected timer start is not.
+ */
+async function resolveBillable(
+  db: D1Database,
+  workspaceId: string,
+  explicit: boolean | undefined,
+  projectId: string | null | undefined
+): Promise<boolean> {
+  if (explicit !== undefined) return explicit;
+  if (!projectId) return false;
+  const row = await db
+    .prepare(`SELECT billable FROM projects WHERE id = ? AND workspace_id = ?`)
+    .bind(projectId, workspaceId)
+    .first<{ billable: number }>();
+  return Boolean(row?.billable);
+}
+
 export const timeEntriesRouter = new Hono<{
   Bindings: Env;
   Variables: { workspaceId: string };
@@ -153,6 +184,7 @@ export const timeEntriesRouter = new Hono<{
     const data = c.req.valid("json");
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
+    const billable = await resolveBillable(c.env.DB, workspaceId, data.billable, data.projectId);
 
     // Stop any running entry
     if (!data.stop) {
@@ -177,7 +209,7 @@ export const timeEntriesRouter = new Hono<{
       data.stop
         ? Math.round((new Date(data.stop).getTime() - new Date(data.start).getTime()) / 1000)
         : null,
-      data.billable ? 1 : 0,
+      billable ? 1 : 0,
       data.calendarEventId ?? null,
       now, now
     ).run();
