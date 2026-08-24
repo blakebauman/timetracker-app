@@ -23,6 +23,7 @@
 		"@fullcalendar/react": "^6.1.21",
 		"@fullcalendar/timegrid": "^6.1.21",
 		"@hono/zod-validator": "^0.8.0",
+		"@modelcontextprotocol/sdk": "1.29.0",
 		"@tanstack/react-query": "^5.101.2",
 		"@tanstack/react-query-devtools": "^5.101.2",
 		"agents": "^0.17.4",

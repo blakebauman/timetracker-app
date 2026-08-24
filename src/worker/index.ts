@@ -21,12 +21,16 @@ import { calendarRouter } from "./routes/calendar";
 import { aiRouter } from "./routes/ai";
 import { assistantRouter } from "./routes/assistant";
 import { adminRouter } from "./routes/admin";
+import { apiKeysRouter } from "./routes/api-keys";
 import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
 import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
 import { runDigests } from "./lib/digest";
 import { routeAgentRequest } from "agents";
+import { createMcpHandler } from "agents/mcp";
+import { buildMcpServer } from "./mcp/server";
+import { resolveApiKey, touchApiKey } from "./lib/api-keys";
 export { TimerRoom } from "./durable-objects/TimerRoom";
 export { ChatAgent } from "./durable-objects/ChatAgent";
 
@@ -115,6 +119,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/ai", aiRouter)
   .route("/api/assistant", assistantRouter)
   .route("/api/admin", adminRouter)
+  .route("/api/keys", apiKeysRouter)
   .route("/api/ws", websocketRouter);
 
 export type AppType = typeof app;
@@ -149,10 +154,69 @@ async function handleAgentRequest(request: Request, env: Env): Promise<Response>
   return wrapped;
 }
 
+/**
+ * The MCP endpoint: /mcp, Streamable HTTP, authenticated by a workspace API key.
+ *
+ * Deliberately NOT behind the session middleware. An MCP client is a program
+ * with no cookie jar, and it holds a long-lived credential the user can see and
+ * revoke in Settings — which is a different, and more revocable, thing than a
+ * browser session token. `resolveApiKey` refuses anything that isn't one of our
+ * keys rather than quietly accepting a session bearer, so a caller who thinks
+ * they are presenting an API key is told when they aren't.
+ *
+ * A fresh server is built per request, bound to the resolved workspace: no tool
+ * ever takes a workspace id as an argument, so nothing a model can invent
+ * reaches a tenant boundary.
+ */
+async function handleMcpRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  const resolved = await resolveApiKey(env.DB, request.headers.get("Authorization"));
+  if (!resolved) {
+    return new Response(
+      JSON.stringify({
+        error: "Unauthorized",
+        message:
+          "Send an API key as `Authorization: Bearer tt_live_…`. Create one in Settings → Workspace → API keys.",
+      }),
+      {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+          // Names the scheme so a compliant client knows what to send back.
+          "WWW-Authenticate": 'Bearer realm="timetracker"',
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  }
+
+  ctx.waitUntil(touchApiKey(env.DB, resolved.id));
+
+  const server = buildMcpServer({
+    env,
+    workspaceId: resolved.workspaceId,
+    userId: resolved.userId,
+    scope: resolved.scope,
+  });
+  const response = await createMcpHandler(server, { route: "/mcp" })(request, env, ctx);
+
+  // Same no-store policy as /api/*, minus the WebSocket case MCP never hits.
+  const wrapped = new Response(response.body, response);
+  wrapped.headers.set("Cache-Control", "no-store");
+  return wrapped;
+}
+
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
-    if (new URL(request.url).pathname.startsWith("/agents/")) {
+    const { pathname } = new URL(request.url);
+    if (pathname.startsWith("/agents/")) {
       return handleAgentRequest(request, env);
+    }
+    if (pathname === "/mcp" || pathname.startsWith("/mcp/")) {
+      return handleMcpRequest(request, env, ctx);
     }
     return app.fetch(request, env, ctx);
   },

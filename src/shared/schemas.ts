@@ -545,6 +545,33 @@ export type Allocation = z.infer<typeof AllocationSchema>;
 export type UpsertAllocation = z.infer<typeof UpsertAllocationSchema>;
 export type BulkUpsertAllocations = z.infer<typeof BulkUpsertAllocationsSchema>;
 
+// ─── API keys ────────────────────────────────────────────────────────────────
+
+// The credential an outside program presents instead of a browser session —
+// today, an MCP client. The plaintext key is returned ONCE, at creation, and is
+// unrecoverable afterwards; everything else only ever sees the display prefix.
+export const ApiKeyScopeSchema = z.enum(["read", "read_write"]);
+
+export const ApiKeySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  prefix: z.string(),
+  scope: ApiKeyScopeSchema,
+  lastUsedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const CreateApiKeySchema = z.object({
+  name: z.string().min(1).max(120),
+  scope: ApiKeyScopeSchema.default("read"),
+});
+
+// Creation is the only response that ever carries the secret.
+export const CreatedApiKeySchema = z.object({
+  key: ApiKeySchema,
+  plaintext: z.string(),
+});
+
 // ─── Integrations ──────────────────────────────────────────────────────────────
 
 export const IntegrationTypeSchema = z.enum(["workfront", "dynamics"]);
@@ -759,6 +786,10 @@ export type UpdateClient = z.infer<typeof UpdateClientSchema>;
 export type ClientStats = z.infer<typeof ClientStatsSchema>;
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
+export type ApiKeyScope = z.infer<typeof ApiKeyScopeSchema>;
+export type ApiKey = z.infer<typeof ApiKeySchema>;
+export type CreateApiKey = z.infer<typeof CreateApiKeySchema>;
+export type CreatedApiKey = z.infer<typeof CreatedApiKeySchema>;
 export type IntegrationType = z.infer<typeof IntegrationTypeSchema>;
 export type Integration = z.infer<typeof IntegrationSchema>;
 export type CreateIntegration = z.infer<typeof CreateIntegrationSchema>;

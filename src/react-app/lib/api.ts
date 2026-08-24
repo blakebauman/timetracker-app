@@ -5,6 +5,9 @@ import type {
   ProjectPacing,
   DraftEntry,
   GenerateDraftsResult,
+  ApiKey,
+  ApiKeyScope,
+  CreatedApiKey,
 } from "@shared/schemas";
 
 const API_BASE = "/api";
@@ -356,6 +359,15 @@ export const api = {
     deleteMemory: (key: string) =>
       request<void>(`/assistant/memory/${encodeURIComponent(key)}`, { method: "DELETE" }),
     clearMemory: () => request<void>("/assistant/memory", { method: "DELETE" }),
+  },
+
+  // ─── API keys (MCP + programmatic access) ─────────────────────────────────
+  apiKeys: {
+    list: () => request<ApiKey[]>("/keys"),
+    // The only response that ever carries the secret — it cannot be re-fetched.
+    create: (body: { name: string; scope: ApiKeyScope }) =>
+      request<CreatedApiKey>("/keys", { method: "POST", body: JSON.stringify(body) }),
+    revoke: (id: string) => request<{ ok: boolean }>(`/keys/${id}`, { method: "DELETE" }),
   },
 
   // ─── Admin ────────────────────────────────────────────────────────────────
