@@ -137,7 +137,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 flex items-center justify-center gap-2">
@@ -147,7 +147,7 @@ export function LoginPage() {
 
         <Card>
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Welcome back, clock-watcher</CardTitle>
+            <CardTitle as="h1" className="text-xl">Welcome back, clock-watcher</CardTitle>
             <CardDescription>
               Those billable hours won't track themselves. Sign in and let's
               make time accountable.
@@ -274,6 +274,6 @@ export function LoginPage() {
           </CardFooter>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

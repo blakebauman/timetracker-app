@@ -24,8 +24,10 @@ test.describe("reports charts", () => {
     await page.getByRole("tab", { name: "Weekly" }).click();
     const weekly = page.getByRole("tabpanel");
     await expect(weekly.locator('[data-slot="chart"]')).toBeVisible();
-    await expect(weekly.getByText("Total", { exact: true })).toBeVisible();
+    // The weekly chart stacks the two halves of a day's time rather than
+    // drawing "total" beside "billable" (billable was always a subset of it).
     await expect(weekly.getByText("Billable", { exact: true })).toBeVisible();
+    await expect(weekly.getByText("Non-billable", { exact: true })).toBeVisible();
   });
 
   test("detailed report: row selection reveals the bulk action bar", async ({ page }) => {
@@ -45,12 +47,18 @@ test.describe("reports charts", () => {
   test("exposes filters, rounding, saved reports & export formats", async ({ page }) => {
     await page.goto("/reports");
 
-    // Filter bar: description search + billable filter default.
+    // Search stays in the toolbar; the five dimension filters live behind one
+    // Filters control so the setup for reading a report doesn't crowd out the
+    // reading. The billable default is inside it.
     await expect(page.getByPlaceholder("Search description…")).toBeVisible();
+    await expect(page.getByText("All entries")).toHaveCount(0);
+    await page.getByRole("button", { name: /^Filters/ }).click();
     await expect(page.getByText("All entries")).toBeVisible();
+    await page.keyboard.press("Escape");
 
-    // Toolbar: rounding, saved reports, export.
+    // Toolbar: rounding, metrics, saved reports, export.
     await expect(page.getByRole("button", { name: "Rounding" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Choose metrics" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
 
     // Export menu offers CSV, Excel, and Print/PDF.

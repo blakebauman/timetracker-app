@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { useAssistantNudges } from "@/hooks/useAssistant";
+import { useTimer } from "@/hooks/useTimer";
 import { notify } from "@/lib/notify";
 
 // How many nudges may toast in one poll cycle — a backlog (first login of the
@@ -22,6 +23,19 @@ export function AssistantNudgeNotifier() {
   const dismissed = useAssistantStore((s) => s.dismissed);
   const markSeen = useAssistantStore((s) => s.markSeen);
   const setOpen = useAssistantStore((s) => s.setOpen);
+
+  // A toast outlives the render that created it, so its action must not close
+  // over `stopTimer`. The running entry is restored asynchronously on mount, so
+  // the notifier can fire before the timer store holds it — and `stopTimer`
+  // guards on `runningEntry`, so the captured copy would be a permanent no-op.
+  // Re-marking the nudge as seen means the toast is never rebuilt with a fresher
+  // closure, so the button would sit there doing nothing. A ref reads the
+  // current one at click time instead.
+  const { stopTimer } = useTimer();
+  const stopTimerRef = useRef(stopTimer);
+  useEffect(() => {
+    stopTimerRef.current = stopTimer;
+  }, [stopTimer]);
 
   // Relay dismissals to the browser extension (content script → service
   // worker) so its badge count excludes nudges dismissed in the app — the
@@ -46,7 +60,15 @@ export function AssistantNudgeNotifier() {
         id: n.id,
         description: n.body,
         duration: 12_000,
-        action: { label: "Open Assistant", onClick: () => setOpen(true) },
+        // A stale timer is the one nudge whose fix is a single call, so the
+        // toast performs it rather than routing to a chat window. `stopTimer`
+        // no-ops when nothing is running, which covers the case where another
+        // tab stopped it during the toast's 12s. Everything else still opens
+        // the panel, where the nudge card carries its own action.
+        action:
+          n.kind === "long_timer"
+            ? { label: "Stop timer", onClick: () => stopTimerRef.current() }
+            : { label: "Open Assistant", onClick: () => setOpen(true) },
       });
       // The toast is invisible when the tab is backgrounded — that's exactly
       // when the OS-level notification earns its keep. No-op unless granted.

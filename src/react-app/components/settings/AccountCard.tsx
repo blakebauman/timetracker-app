@@ -167,7 +167,7 @@ export function AccountCard() {
                 <BadgeCheck className="h-3 w-3 text-success" /> Verified
               </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1 text-micro text-warning">
+              <Badge variant="outline" className="gap-1 text-micro text-warning-ink">
                 <MailWarning className="h-3 w-3" /> Unverified
               </Badge>
             )}

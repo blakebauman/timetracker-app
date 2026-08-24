@@ -64,7 +64,7 @@ const TONE_SHELL: Record<Tone, string> = {
 const TONE_ICON: Record<Tone, string> = {
   muted: "text-muted-foreground",
   ok: "text-success",
-  warn: "text-warning",
+  warn: "text-warning-ink",
   error: "text-destructive",
 };
 

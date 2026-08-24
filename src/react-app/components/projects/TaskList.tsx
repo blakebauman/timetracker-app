@@ -98,7 +98,7 @@ export function TaskList({ projectId }: TaskListProps) {
               onClick={() => handleToggleDone(task)}
               aria-label={task.active ? "Mark task done" : "Mark task not done"}
               aria-pressed={!task.active}
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart ${
                 !task.active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-muted-foreground/40 hover:border-primary"
@@ -150,10 +150,10 @@ export function TaskList({ projectId }: TaskListProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className="mt-0.5 flex w-full items-center gap-1.5 hover:opacity-70 transition-opacity"
+                      className="mt-0.5 flex w-full items-center gap-1.5 hover:opacity-70 transition-opacity duration-fast ease-out-quart"
                       onClick={() => handleStartEditTime(task)}
                     >
-                      <Progress value={progress} className="h-1 flex-1" />
+                      <Progress value={progress} className="h-1 flex-1" aria-hidden />
                       <span className="text-micro tabular-nums text-muted-foreground">
                         {formatDurationShort(task.trackedSeconds)} /{" "}
                         {formatDurationShort(task.estimatedSeconds!)}
@@ -165,7 +165,7 @@ export function TaskList({ projectId }: TaskListProps) {
               ) : task.trackedSeconds > 0 ? (
                 <button
                   // gap-1.5 so the dashed underline isn't flush against the "·".
-                  className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground hover:opacity-70 transition-opacity"
+                  className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground hover:opacity-70 transition-opacity duration-fast ease-out-quart"
                   onClick={() => handleStartEditTime(task)}
                 >
                   <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
@@ -175,7 +175,7 @@ export function TaskList({ projectId }: TaskListProps) {
                 <button
                   // `block`: a bare <button> is inline-block and ran onto the task
                   // name's line. The other two states are flex and drop below.
-                  className="mt-0.5 block text-micro text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors hover:text-muted-foreground!"
+                  className="mt-0.5 block text-micro text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors duration-fast ease-out-quart hover:text-muted-foreground!"
                   onClick={() => handleStartEditTime(task)}
                 >
                   add estimate

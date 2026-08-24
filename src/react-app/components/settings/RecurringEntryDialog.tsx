@@ -142,7 +142,7 @@ export function RecurringEntryDialog({ open, onClose, editing }: RecurringEntryD
                   aria-pressed={days.includes(d)}
                   onClick={() => toggleDay(d)}
                   className={cn(
-                    "h-8 w-11 rounded-md border text-xs font-medium transition-colors",
+                    "h-8 w-11 rounded-md border text-xs font-medium transition-colors duration-fast ease-out-quart",
                     days.includes(d)
                       ? "border-primary bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground"

@@ -34,17 +34,17 @@ export function AcceptInvitePage() {
 
   if (!invitationId) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <main className="flex min-h-screen items-center justify-center px-4">
         <p className="text-sm text-muted-foreground">Missing invitation.</p>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Joining workspace…</CardTitle>
+          <CardTitle as="h1" className="text-xl">Joining workspace…</CardTitle>
         </CardHeader>
         <CardContent>
           {status === "error" ? (
@@ -54,6 +54,6 @@ export function AcceptInvitePage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

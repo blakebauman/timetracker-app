@@ -5,6 +5,7 @@ import type { ReportFilters } from "@/components/reports/ReportFilterBar";
 interface DailyData {
   date: string;
   totalSeconds: number;
+  billableSeconds: number;
   entryCount: number;
 }
 

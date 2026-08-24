@@ -7,6 +7,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { isSameDay, isToday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -119,6 +120,12 @@ export function TimerWorkspaceHeader({
   const periodSummary = summarizePeriod(since, until, wso);
   const now = new Date();
   const periodIncludesToday = now >= since && now <= until;
+  // When the period *is* today, the label beside this button already reads
+  // "Today" (formatPeriodLabel collapses a single day to that word), so the
+  // button rendered as the literal "Today Today". Disabling it wasn't enough —
+  // the duplicated word is the defect. Keep the box so the toolbar doesn't
+  // reflow as you step through days, but take the word out of it.
+  const todayIsRedundant = isSameDay(since, until) && isToday(since);
 
   return (
     <div className="border-b">
@@ -133,7 +140,7 @@ export function TimerWorkspaceHeader({
             />
           ) : (
             <>
-              <div className="flex items-center">
+              <div className="flex items-center" data-slot="period-nav">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -161,21 +168,31 @@ export function TimerWorkspaceHeader({
                   <TooltipContent>Next {periodNoun}</TooltipContent>
                 </Tooltip>
               </div>
-              {/* Redundant once the visible period already contains now — and
-                  in the forced day view it rendered as the literal "Today Today"
-                  beside the period label. Disabled rather than hidden so the
-                  toolbar doesn't reflow as you step through weeks. */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={onToday}
-                disabled={periodIncludesToday}
-              >
-                Today
-              </Button>
             </>
           )}
+          {/* One "back to now" control for every view, including the list —
+              which previously had none, so leaving Split stranded it on
+              "Custom range · Monday, Aug 17" with the dropdown as the only way
+              home. "Today" has always meant "the period containing today"
+              (it returns a week view to this week), so pointing the list at
+              This week is the same promise, not a new one.
+
+              Redundant once the visible period already contains now. Disabled
+              rather than hidden so the toolbar doesn't reflow as you step
+              through periods; `invisible` (not `hidden`) when the label itself
+              already says "Today" — same reserved box, no duplicated word, and
+              out of the a11y tree. */}
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn("h-8", todayIsRedundant && "invisible")}
+            onClick={isListView ? () => onListRangeChange("thisWeek") : onToday}
+            disabled={periodIncludesToday}
+            aria-hidden={todayIsRedundant}
+            tabIndex={todayIsRedundant ? -1 : undefined}
+          >
+            Today
+          </Button>
           <h1 className="ml-1 text-sm font-semibold tracking-tight tabular-nums">
             {isListView
               ? formatListRangeLabel(listRangeKey, since, until, wso)
@@ -257,7 +274,7 @@ export function TimerWorkspaceHeader({
             implying there's a value to read. */}
         <div
           className={cn(
-            "flex flex-1 overflow-hidden rounded-full bg-muted transition-all",
+            "flex flex-1 overflow-hidden rounded-full bg-muted transition-all duration-fast ease-out-quart",
             totalSeconds > 0 ? "h-2" : "h-px"
           )}
         >
@@ -288,7 +305,7 @@ export function TimerWorkspaceHeader({
         </span>
         <Link
           to="/reports"
-          className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="relative flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] hover:text-foreground"
         >
           View reports
           <ArrowRight className="h-3 w-3" />

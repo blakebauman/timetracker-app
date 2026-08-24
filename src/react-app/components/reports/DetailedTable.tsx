@@ -244,11 +244,14 @@ export function DetailedTable({ entries }: DetailedTableProps) {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border">
-        <Table>
+      <div className="rounded-lg border">
+        {/* Its own scroll region so the column headers survive a 500-row report
+            and the tabs/filters above stay put. Print unbounds it so the whole
+            table still flows onto pages. */}
+        <Table containerClassName="max-h-[60vh] overflow-y-auto print:max-h-none print:overflow-visible">
           <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="w-8 print:hidden">
+            <TableRow className="[&>th]:sticky [&>th]:top-0 [&>th]:z-sticky [&>th]:bg-muted [&>th]:shadow-[inset_0_-1px_0_var(--border)] hover:bg-transparent">
+              <TableHead className="w-8 rounded-tl-lg print:hidden">
                 <input
                   type="checkbox"
                   aria-label="Select all"
@@ -277,7 +280,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                   </button>
                 </TableHead>
               ))}
-              <TableHead className="w-8 print:hidden" />
+              <TableHead className="w-8 rounded-tr-lg print:hidden" />
             </TableRow>
           </TableHeader>
           <TableBody>

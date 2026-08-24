@@ -128,6 +128,7 @@ export function ProjectList() {
                           <TooltipTrigger asChild>
                             <Progress
                               value={budgetPercent}
+                              aria-label={`${Math.round(budgetPercent)}% of budget used`}
                               className={cn(
                                 "h-1.5 flex-1",
                                 budgetPercent >= 100

@@ -132,12 +132,12 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
         <form className="space-y-4 py-2" onSubmit={handleSubmit} noValidate>
           {/* Type */}
           <div className="space-y-1.5">
-            <Label>System</Label>
+            <Label htmlFor="integration-type">System</Label>
             {isEdit ? (
               <p className="text-sm text-muted-foreground">{TYPE_LABELS[type]}</p>
             ) : (
               <Select value={type} onValueChange={(v) => setType(v as IntegrationType)}>
-                <SelectTrigger>
+                <SelectTrigger id="integration-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

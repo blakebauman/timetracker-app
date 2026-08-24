@@ -113,7 +113,11 @@ export function TeamCard() {
                             value={member.role}
                             onValueChange={(role) => handleRoleChange(member.id, role)}
                           >
-                            <SelectTrigger size="sm" className="h-7 w-24 text-xs">
+                            <SelectTrigger
+                              size="sm"
+                              className="h-7 w-24 text-xs"
+                              aria-label={`Role for ${member.user?.name ?? member.user?.email}`}
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

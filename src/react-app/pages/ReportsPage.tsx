@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { ReportHeader, type ExportFormat } from "@/components/reports/ReportHeader";
 import { AiSummaryDialog } from "@/components/reports/AiSummaryDialog";
-import { SummaryCards } from "@/components/reports/SummaryCards";
+import { SummaryCards, SummaryMetricsMenu } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
-import { CumulativeAreaChart } from "@/components/reports/CumulativeAreaChart";
 import { BreakdownCard } from "@/components/reports/BreakdownCard";
 import { SummaryTree } from "@/components/reports/SummaryTree";
 import { RoundingControl } from "@/components/reports/RoundingControl";
@@ -38,6 +37,7 @@ import {
   type SubGroupDimension,
 } from "@/hooks/useReports";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useSummaryMetrics } from "@/hooks/useSummaryMetrics";
 import { useUIStore } from "@/stores/uiStore";
 import { useUpdateSettings } from "@/hooks/useSettings";
 import { getDateRangePresets } from "@/lib/dateUtils";
@@ -65,6 +65,7 @@ export function ReportsPage() {
   const [filters, setFilters] = useState<ReportFilters>(EMPTY_FILTERS);
   const [groupDim, setGroupDim] = useState<GroupDimension>("project");
   const [subGroupDim, setSubGroupDim] = useState<SubGroupDimension>("none");
+  const { visible: visibleMetrics, toggle: toggleMetric } = useSummaryMetrics();
 
   // Rounding is a persisted per-user preference (hydrated into the UI store).
   const roundMode = useUIStore((s) => s.roundMode);
@@ -148,7 +149,7 @@ export function ReportsPage() {
           if (subGroupDim === dim) setSubGroupDim("none");
         }}
       >
-        <SelectTrigger className="h-7 w-24 text-xs">
+        <SelectTrigger className="h-7 w-24 text-xs" aria-label="Group by">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -164,7 +165,7 @@ export function ReportsPage() {
         value={subGroupDim}
         onValueChange={(v) => setSubGroupDim(v as SubGroupDimension)}
       >
-        <SelectTrigger className="h-7 w-28 text-xs">
+        <SelectTrigger className="h-7 w-32 text-xs" aria-label="Sub-group by">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -180,7 +181,7 @@ export function ReportsPage() {
   );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-6">
       <ReportHeader
         range={range}
         onRangeChange={setRange}
@@ -192,6 +193,7 @@ export function ReportsPage() {
         <ReportFilterBar filters={filters} onChange={setFilters} />
         <div className="flex items-center gap-2">
           <RoundingControl value={rounding} onChange={setRounding} />
+          <SummaryMetricsMenu visible={visibleMetrics} toggle={toggleMetric} />
           <SavedReportsMenu current={currentConfig} onLoad={loadConfig} />
         </div>
       </div>
@@ -221,6 +223,7 @@ export function ReportsPage() {
                   : Math.max(1, Math.round((untilMs - sinceMs) / 86400000) + 1);
               return summary.totalSeconds / daysInRange;
             })()}
+            visible={visibleMetrics}
           />
 
           <Tabs defaultValue="summary">
@@ -238,7 +241,11 @@ export function ReportsPage() {
             </TabsList>
 
             <TabsContent value="summary" className="mt-4 space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
+              {/* [&>*]:min-w-0 — grid items default to min-width:auto, so a card
+                  containing a chart inherits the chart's min-content width and
+                  refuses to shrink. Without this the Summary column measured
+                  441px inside a 342px track at 390px wide. */}
+              <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
                 <DailyBarChart data={summary.daily} />
                 {subGrouped && grouped ? (
                   <SummaryTree data={grouped} showAmount header={groupControls} />
@@ -256,8 +263,7 @@ export function ReportsPage() {
                   />
                 )}
               </div>
-              <CumulativeAreaChart data={summary.daily} />
-            </TabsContent>
+                </TabsContent>
 
             <TabsContent value="weekly" className="mt-4">
               {weeklyLoading ? (

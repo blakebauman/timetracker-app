@@ -43,10 +43,12 @@ export function ClientList() {
             {clients.length} client{clients.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5">
-          <Plus className="h-4 w-4" />
-          New client
-        </Button>
+        {clients.length > 0 && (
+          <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            New client
+          </Button>
+        )}
       </div>
 
       <div className="space-y-1.5">

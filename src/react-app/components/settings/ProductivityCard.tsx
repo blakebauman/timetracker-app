@@ -26,10 +26,14 @@ function MinuteSelect({
   value,
   onChange,
   disabled,
+  label,
 }: {
   value: number;
   onChange: (v: number) => void;
   disabled?: boolean;
+  /** Required: the row's visible <Label> names its Switch, not this Select, so
+      without one a screen reader announces four identical bare "button"s. */
+  label: string;
 }) {
   return (
     <Select
@@ -37,7 +41,7 @@ function MinuteSelect({
       onValueChange={(v) => onChange(Number(v))}
       disabled={disabled}
     >
-      <SelectTrigger className="w-28 text-sm">
+      <SelectTrigger className="w-28 text-sm" aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -94,16 +98,17 @@ export function ProductivityCard() {
         )}
 
         {/* Idle detection */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="pr-2">
             <Label htmlFor="pref-idle">Idle detection</Label>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Prompt to keep or discard time when you step away while tracking.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
             <MinuteSelect
               value={p.idleThresholdMinutes}
+              label="Idle threshold in minutes"
               onChange={(v) => setProductivity({ idleThresholdMinutes: v })}
               disabled={!p.idleEnabled}
             />
@@ -118,16 +123,17 @@ export function ProductivityCard() {
         <Separator />
 
         {/* Tracking reminders */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="pr-2">
             <Label htmlFor="pref-reminder">Not-tracking reminders</Label>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Nudge me when no timer is running.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
             <MinuteSelect
               value={p.reminderIntervalMinutes}
+              label="Reminder interval in minutes"
               onChange={(v) => setProductivity({ reminderIntervalMinutes: v })}
               disabled={!p.reminderEnabled}
             />
@@ -142,7 +148,7 @@ export function ProductivityCard() {
         <Separator />
 
         {/* Assistant nudge alerts */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="pr-2">
             <Label htmlFor="pref-aski-alerts">Assistant nudge alerts</Label>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
@@ -160,22 +166,24 @@ export function ProductivityCard() {
         <Separator />
 
         {/* Pomodoro */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="pr-2">
             <Label htmlFor="pref-pomodoro">Pomodoro</Label>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Focus / break cycle alerts while a timer runs.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <MinuteSelect
               value={p.pomodoroWorkMinutes}
+              label="Pomodoro focus length in minutes"
               onChange={(v) => setProductivity({ pomodoroWorkMinutes: v })}
               disabled={!p.pomodoroEnabled}
             />
             <span className="text-xs text-muted-foreground">/</span>
             <MinuteSelect
               value={p.pomodoroBreakMinutes}
+              label="Pomodoro break length in minutes"
               onChange={(v) => setProductivity({ pomodoroBreakMinutes: v })}
               disabled={!p.pomodoroEnabled}
             />

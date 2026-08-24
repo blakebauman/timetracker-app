@@ -68,6 +68,16 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background md:flex-row">
+      {/* Every page load costs a keyboard user ~12 tab stops through the nav
+          before the timer input — the one field the whole app exists around.
+          Visually hidden until focused, then pinned above everything. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:z-portal focus:fixed focus:top-3 focus:left-3 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-md focus:outline-none focus:ring-[3px] focus:ring-ring/50"
+      >
+        Skip to content
+      </a>
+
       <div className="contents print:hidden">
         <Sidebar />
       </div>
@@ -89,7 +99,7 @@ export function AppShell() {
         </div>
 
         {/* Page content */}
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto">
           <Suspense fallback={<PageFallback />}>
             {/* Keyed by route so each page crossfades in on navigation. */}
             <div key={location.pathname} className="h-full animate-fade-in">

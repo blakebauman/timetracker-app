@@ -33,7 +33,7 @@ test("calendar: month view renders", async ({ page }) => {
 
 test("settings: productivity + calendar preferences render", async ({ page }) => {
   await signUp(page);
-  await page.goto("/settings");
+  await page.goto("/settings?tab=tracking");
 
   await expect(page.getByText("Productivity", { exact: true })).toBeVisible();
   await expect(page.getByText("Idle detection")).toBeVisible();
@@ -42,7 +42,8 @@ test("settings: productivity + calendar preferences render", async ({ page }) =>
   // Every default (incl. the 25-min work interval) must resolve to a menu option.
   await expect(page.getByRole("combobox").filter({ hasText: "25 min" })).toBeVisible();
 
-  // Calendar preferences live in the Preferences card.
+  // Calendar preferences live in the Preferences card, under General.
+  await page.getByRole("tab", { name: "General" }).click();
   await expect(page.getByText("Week starts on")).toBeVisible();
   await expect(page.getByText("Show weekends")).toBeVisible();
 });

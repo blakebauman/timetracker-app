@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FirstProjectPrompt } from "./FirstProjectPrompt";
 import {
   useGroupedEntriesRange,
   useBulkDeleteEntries,
@@ -14,6 +15,7 @@ import {
   useCreateEntry,
 } from "@/hooks/useEntries";
 import { useIntegrations, usePushEntries } from "@/hooks/useIntegrations";
+import { useProjects } from "@/hooks/useProjects";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { toCreatePayload } from "@/lib/entryUtils";
@@ -35,6 +37,9 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
     until.toISOString()
   );
   const { runningEntry } = useTimerStore();
+  // Cached app-wide (the pickers and header already subscribe), so this is a
+  // read of existing state rather than a first-run-only fetch.
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const bulkDelete = useBulkDeleteEntries();
   const bulkUpdate = useBulkUpdateEntries();
@@ -121,6 +126,12 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
   }
 
   if (days.length === 0 && !runningEntry) {
+    // A workspace with no projects at all is a first run, not a quiet week —
+    // and the two want different advice. Wait for the projects query so the
+    // prompt doesn't flash before the list is known to be genuinely empty.
+    if (!projectsLoading && projects.length === 0) {
+      return <FirstProjectPrompt onAddEntry={onAddEntry} />;
+    }
     return (
       <EmptyState
         icon={Clock}

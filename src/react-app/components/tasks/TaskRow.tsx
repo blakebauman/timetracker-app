@@ -61,7 +61,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
         onClick={() => updateTask.mutate({ id: task.id, data: { active: !task.active } })}
         aria-label={task.active ? "Mark task done" : "Mark task not done"}
         aria-pressed={!task.active}
-        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart ${
           !task.active
             ? "border-primary bg-primary text-primary-foreground"
             : "border-muted-foreground/40 hover:border-primary"
@@ -113,10 +113,10 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
           </div>
         ) : progress !== null ? (
           <button
-            className="mt-0.5 flex w-full max-w-xs items-center gap-1.5 transition-opacity hover:opacity-70"
+            className="mt-0.5 flex w-full max-w-xs items-center gap-1.5 transition-opacity duration-fast ease-out-quart hover:opacity-70"
             onClick={startEditTime}
           >
-            <Progress value={progress} className="h-1 flex-1" />
+            <Progress value={progress} className="h-1 flex-1" aria-hidden />
             <span className="text-micro tabular-nums text-muted-foreground">
               {formatDurationShort(task.trackedSeconds)} / {formatDurationShort(task.estimatedSeconds!)}
             </span>
@@ -126,7 +126,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
             // gap-1.5, not gap-1: the trailing space in the text node is swallowed
             // at the flex-item boundary, so the dashed underline started hard
             // against the "·" and read tighter than the spaces around it.
-            className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground transition-opacity hover:opacity-70"
+            className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground transition-opacity duration-fast ease-out-quart hover:opacity-70"
             onClick={startEditTime}
           >
             <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
@@ -137,7 +137,7 @@ export function TaskRow({ task, showProject = true, onRequestDelete, onLogTime }
             // `block`: a bare <button> is inline-block, so this ran onto the same
             // line as the task name ("Data mappingadd estimate"). The other two
             // states are flex and already drop below; mt-0.5 shows this meant to.
-            className="mt-0.5 block text-micro text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50 hover:text-muted-foreground!"
+            className="mt-0.5 block text-micro text-muted-foreground/0 transition-colors duration-fast ease-out-quart group-hover:text-muted-foreground/50 hover:text-muted-foreground!"
             onClick={startEditTime}
           >
             add estimate

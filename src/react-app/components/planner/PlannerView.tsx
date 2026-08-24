@@ -20,6 +20,8 @@ import { AddTimesheetRowDialog } from "@/components/timesheet/AddTimesheetRowDia
 import { PlannerImportDialog } from "./PlannerImportDialog";
 import type { Allocation } from "@shared/schemas";
 
+const PLANNER_LOCKED_HELP_ID = "planner-locked-cell-help";
+
 interface PlannerViewProps {
   weekStart: Date;
 }
@@ -236,8 +238,13 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
     </>
   );
 
-  // Planned on top (editable), actual beneath; amber only when over plan —
-  // being on/under plan is normal, not a state to celebrate or punish.
+  // Planned on top (editable), actual beneath; warned only when over an actual
+  // plan — being on/under plan is normal, not a state to celebrate or punish.
+  //
+  // The `planned > 0` guard is the whole point: without it every tracked cell
+  // on a fresh Planner rendered amber, because `actual > 0 > planned = 0` reads
+  // as "over plan". Day one of the Planner was a full grid of warning colour
+  // for the crime of having worked. You can't be over a plan you never made.
   const renderPair = (cell: PlanCell, opts?: { alignRight?: boolean; strong?: boolean }) => (
     <span
       className={cn("flex flex-col leading-tight", opts?.alignRight ? "items-end" : "items-center")}
@@ -249,8 +256,8 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
         <span
           className={cn(
             "text-micro tabular-nums",
-            cell.actual > cell.planned
-              ? "text-amber-600 dark:text-amber-500"
+            cell.planned > 0 && cell.actual > cell.planned
+              ? "text-warning-ink"
               : "text-muted-foreground"
           )}
         >
@@ -262,13 +269,16 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
 
   return (
     <div className="flex h-full flex-col overflow-auto">
+      <span id={PLANNER_LOCKED_HELP_ID} className="sr-only">
+        Assign a project to this row before planning hours against it.
+      </span>
       <table className="w-full min-w-[760px] border-collapse text-sm">
-        <thead className="sticky top-0 z-20 bg-background">
+        <thead className="sticky top-0 z-overlay bg-background">
           <tr className="border-b text-xs text-muted-foreground">
-            <th className="sticky left-0 z-10 w-[132px] min-w-[132px] bg-background px-3 py-2 text-left font-medium">
+            <th className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 text-left font-medium">
               Task
             </th>
-            <th className="sticky left-[132px] z-10 w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
+            <th className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
               Project
             </th>
             {days.map((d, i) => (
@@ -328,10 +338,10 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
                   key={row.key}
                   className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
-                  <td className="sticky left-0 z-10 w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
                     {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
                   </td>
-                  <td className="sticky left-[132px] z-10 w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
                     <span className="flex items-center gap-1.5">
                       <ColorDot color={row.projectColor} />
                       <span className={cn(!row.projectName && "text-muted-foreground")}>
@@ -358,24 +368,30 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
                         ) : (
                           <button
                             type="button"
-                            disabled={!plannable}
+                            // See the timesheet's matching cell: aria-disabled
+                            // keeps the control reachable so its explanation is
+                            // actually announced.
+                            aria-disabled={!plannable || undefined}
+                            aria-describedby={!plannable ? PLANNER_LOCKED_HELP_ID : undefined}
                             title={
-                              plannable
-                                ? cell.planned > 0 || cell.actual > 0
-                                  ? `Planned ${formatDurationShort(cell.planned)} · Tracked ${formatDurationShort(cell.actual)}`
-                                  : undefined
-                                : "Assign a project to plan these hours"
+                              plannable && (cell.planned > 0 || cell.actual > 0)
+                                ? `Planned ${formatDurationShort(cell.planned)} · Tracked ${formatDurationShort(cell.actual)}`
+                                : undefined
                             }
                             onClick={() => {
+                              if (!plannable) return;
                               setDraft(formatTimeInput(cell.planned || null));
                               setEditing({ row: row.key, day: dayIndex });
                             }}
                             className={cn(
-                              "mx-auto flex h-11 w-16 items-center justify-center rounded border text-xs transition-colors",
+                              "mx-auto flex h-11 w-16 items-center justify-center rounded border text-xs transition-colors duration-fast ease-out-quart",
                               cell.planned > 0
                                 ? "border-border"
                                 : "border-transparent text-muted-foreground/40 hover:border-border",
-                              plannable ? "hover:bg-muted" : "cursor-default border-dashed"
+                              // Dashed is reserved for "empty, click to fill".
+                              plannable
+                                ? "hover:bg-muted"
+                                : "cursor-not-allowed opacity-50"
                             )}
                           >
                             {renderPair(cell)}
@@ -396,7 +412,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
           <tfoot>
             <tr className="border-t-2 font-medium">
               <td
-                className="sticky left-0 z-10 w-[280px] min-w-[280px] border-r border-border-strong bg-background px-3 py-2 text-muted-foreground"
+                className="sticky left-0 z-sticky w-[280px] min-w-[280px] border-r border-border-strong bg-background px-3 py-2 text-muted-foreground"
                 colSpan={2}
               >
                 <span className="flex flex-col leading-tight">
@@ -417,7 +433,12 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
         )}
       </table>
 
-      <div className="flex items-center gap-2 p-3">{actionButtons}</div>
+      {/* The empty state owns the actions while the body is empty — rendering
+          them here as well put the same labels twice on one screen, 84px
+          apart, which reads as a rendering bug. One rule, four screens. */}
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 p-3">{actionButtons}</div>
+      )}
 
       <AddTimesheetRowDialog
         open={addOpen}

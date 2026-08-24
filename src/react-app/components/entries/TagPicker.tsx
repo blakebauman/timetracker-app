@@ -21,9 +21,19 @@ interface TagPickerProps {
   value: string[];
   onChange: (tags: string[]) => void;
   className?: string;
+  /**
+   * Render the trigger as a form field — bordered, full width — instead of the
+   * ghost chip used in dense toolbars. See ProjectPicker.
+   */
+  field?: boolean;
 }
 
-export function TagPicker({ value, onChange, className }: TagPickerProps) {
+export function TagPicker({
+  value,
+  onChange,
+  className,
+  field = false,
+}: TagPickerProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   // Tag name currently being recolored via the inline swatch row, if any.
@@ -67,7 +77,8 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
+          type="button"
+          variant={field ? "outline" : "ghost"}
           size="sm"
           // The visible label counts tags without naming them ("2 tags"), which
           // tells a screen-reader user nothing about what's applied.
@@ -75,6 +86,7 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
           className={cn(
             "h-7 gap-1.5 px-2 text-sm text-muted-foreground",
             value.length > 0 && "text-foreground",
+            field && "h-9 w-full justify-start px-3 font-normal",
             className
           )}
         >
@@ -106,7 +118,7 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                         type="button"
                         aria-label={`Recolor ${tag}`}
                         onClick={() => setRecoloring((cur) => (cur === tag ? null : tag))}
-                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-offset-1 transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-offset-1 transition-transform duration-fast ease-out-quart hover:scale-125 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                         style={{ backgroundColor: colorOf(tag) }}
                       />
                     </TooltipTrigger>
@@ -123,7 +135,7 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                   type="button"
                   onClick={() => removeTag(tag)}
                   aria-label={`Remove ${tag}`}
-                  className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="rounded-sm text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   <X className="h-2.5 w-2.5" />
                 </button>
@@ -147,7 +159,7 @@ export function TagPicker({ value, onChange, className }: TagPickerProps) {
                       setRecoloring(null);
                     }}
                     className={cn(
-                      "h-5 w-5 rounded-full ring-2 ring-offset-1 transition-transform hover:scale-110",
+                      "h-5 w-5 rounded-full ring-2 ring-offset-1 transition-transform duration-fast ease-out-quart hover:scale-110",
                       colorOf(recoloring) === c ? "ring-foreground" : "ring-transparent"
                     )}
                     style={{ backgroundColor: c }}

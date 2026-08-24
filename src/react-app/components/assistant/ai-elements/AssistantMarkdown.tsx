@@ -23,7 +23,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
       );
     } else {
       nodes.push(
-        <code key={`${keyPrefix}-c${i}`} className="rounded bg-muted px-1 py-0.5 text-[0.85em]">
+        <code key={`${keyPrefix}-c${i}`} className="rounded bg-muted px-1 py-0.5 text-xs">
           {token.slice(1, -1)}
         </code>
       );
