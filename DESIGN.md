@@ -128,6 +128,8 @@ Charts encode **billable**, not category: both bar charts stack `--success` (the
 ### Named Rules
 **The One Accent Rule.** The brand red appears in at most one or two places on any given screen — the running state and the primary action. It is never used as a large background fill or decoration.
 
+**Running is `--primary`; destructive is `--destructive`; they are not the same red.** `--primary` (0.588 / 0.207) and `--destructive` (0.577 / 0.245) are close enough to look like one colour and far enough apart to *be* two, and the timer bar used to spend the destructive one on the running state — capsule tint, pulse ring, elapsed readout and the Stop disc — while the Discard button beside it, the only genuinely destructive control in the bar, was `--muted-foreground`. Red meant "recording" and "destroy" within 200px. Stopping a timer *saves* the entry; it is not a destructive act, and the Stop disc is `variant="default"` like Start. `--destructive` in the timer bar belongs to Discard and nothing else.
+
 **The Warm-Neutral Rule.** Every neutral token (background, surface, muted, border) carries a slight chroma nudge toward the brand's own red hue (light mode) or a cool 265° tint (dark mode). Neutrals are never chroma-0 gray and never generic cream.
 
 ## 3. Typography
@@ -155,7 +157,7 @@ Charts encode **billable**, not category: both bar charts stack `--success` (the
 
 ## 4. Elevation
 
-The system is flat-by-default with tonal layering, not shadow-driven. Depth is conveyed by a one-step lightness shift between background and surface (card/popover), plus a 1px border — not by drop shadows implying physical height. The timer Start/Stop control is the one place that gets a distinct treatment, and it earns it with *color and motion* rather than dimension: a flat destructive-tinted capsule with a ring breathing outward behind the disc (see §8).
+The system is flat-by-default with tonal layering, not shadow-driven. Depth is conveyed by a one-step lightness shift between background and surface (card/popover), plus a 1px border — not by drop shadows implying physical height. The timer Start/Stop control is the one place that gets a distinct treatment, and it earns it with *color and motion* rather than dimension: a flat brand-tinted capsule with a ring breathing outward behind the disc (see §8).
 
 ### Shadow Vocabulary
 - **Card rest** (`shadow-sm`): the default resting shadow on cards and popovers — barely-there, present mainly to separate a surface from the page on light backgrounds.
@@ -232,7 +234,7 @@ Stock `ease-out` / `ease-in-out` / `ease` and Tailwind's default curve are not p
 
 The one motion the product is allowed to spend attention on, because "am I still tracking?" is the question the whole app exists to answer. It has **two forms and one cadence** — both loop at 1.6s, so when they share a screen (the sidebar readout sits directly under the timer bar) they breathe together instead of drifting against each other.
 
-- **The signature** (`animate-recording-pulse`): a flat destructive-tinted ring scales outward from behind the Stop disc while the disc itself stays put — the visual equivalent of a recording light. Only ever on that one control. Keeps `ease-out-quart` because it *travels*.
+- **The signature** (`animate-recording-pulse`): a flat `--primary` ring scales outward from behind the Stop disc while the disc itself stays put — the visual equivalent of a recording light. Only ever on that one control. Keeps `ease-out-quart` because it *travels*.
 - **The quiet one** (`animate-running-dot`): a small dot breathing in place, for dense surfaces — the sidebar's running readout, a running block on the calendar grid. Opacity only, because these sit inside rows where a scaling dot would nudge its neighbours. On `ease-in-out`, per the curve rule above.
 
 These are the only infinite animations in the product. Adding a third form of "running" is the wrong move — extend one of these two.

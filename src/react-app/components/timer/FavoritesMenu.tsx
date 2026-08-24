@@ -67,11 +67,20 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={cn(
-                "tt-touch h-8 w-8 text-muted-foreground hover:text-foreground",
-                favorites.length > 0 && "text-amber-500 hover:text-amber-500"
-              )}
-              aria-label="Favorites"
+              // `text-amber-500` was a raw Tailwind palette value with no token
+              // behind it — a third saturated colour in a bar the One Accent
+              // Rule allows one or two in — and it measured 2.11:1 against card
+              // in light mode, under the 3:1 a state-carrying graphic needs.
+              // Fill vs. outline is what a star means everywhere, so state
+              // needs no colour of its own here; both states stay muted so the
+              // Start disc keeps the bar's only strong mark. The count is in
+              // the accessible name rather than carried by hue.
+              className="tt-touch h-8 w-8 text-muted-foreground hover:text-foreground"
+              aria-label={
+                favorites.length > 0
+                  ? `Favorites — ${favorites.length} saved`
+                  : "Favorites"
+              }
             >
               <Star className={cn("h-4 w-4", favorites.length > 0 && "fill-current")} />
             </Button>
