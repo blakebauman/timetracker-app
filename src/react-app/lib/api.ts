@@ -234,6 +234,8 @@ export const api = {
         : "";
       return request<unknown[]>(`/clients${qs ? `?${qs}` : ""}`);
     },
+    stats: (params: { since: string; until: string }) =>
+      request<unknown[]>(`/clients/stats?${new URLSearchParams(params).toString()}`),
     get: (id: string) => request<unknown>(`/clients/${id}`),
     create: (body: Record<string, unknown>) =>
       request<unknown>("/clients", { method: "POST", body: JSON.stringify(body) }),

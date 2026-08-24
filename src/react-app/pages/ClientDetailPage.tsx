@@ -13,6 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { useClientStats } from "@/hooks/useClientStats";
+import {
+  CLIENT_PERIODS,
+  resolveClientPeriod,
+  type ClientPeriod,
+} from "@/lib/clientPeriod";
+import { formatCurrency } from "@/lib/currency";
+import { useUIStore } from "@/stores/uiStore";
 import {
   Collapsible,
   CollapsibleContent,
@@ -31,6 +40,14 @@ export function ClientDetailPage() {
   const { data: allProjects = [] } = useAllProjects();
   const [showEdit, setShowEdit] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Same period vocabulary and the same aggregation as the Clients list, so
+  // the drill-down continues the sentence the row started instead of
+  // restating it in different units.
+  const [period, setPeriod] = useState<ClientPeriod>("thisMonth");
+  const { since, until } = resolveClientPeriod(period);
+  const { byClient, isLoading: statsLoading } = useClientStats(since, until);
+  const currency = useUIStore((s) => s.currency);
+  const stats = id ? byClient.get(id) : undefined;
 
   const toggle = (projectId: string) =>
     setExpanded((prev) => {
@@ -132,6 +149,54 @@ export function ClientDetailPage() {
         </Button>
       </div>
 
+      {/* The same four figures the list row shows, in the framed strip the
+          reports summary already uses — one internal-divider strip rather than
+          a grid of little cards, so a missing metric can't orphan a cell. */}
+      <div className="mb-6 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Activity</h2>
+          <SegmentedControl
+            label="Period"
+            options={[...CLIENT_PERIODS]}
+            value={period}
+            onChange={setPeriod}
+          />
+        </div>
+        {statsLoading ? (
+          <Skeleton className="h-20 w-full rounded-xl" />
+        ) : (
+          <div className="flex animate-fade-up flex-wrap gap-px overflow-hidden rounded-xl border bg-border">
+            {[
+              { label: "Projects", value: String(stats?.projectCount ?? 0) },
+              { label: "Tracked", value: formatDurationShort(stats?.totalSeconds ?? 0) },
+              { label: "Billable", value: formatDurationShort(stats?.billableSeconds ?? 0) },
+              {
+                label: "Billable amount",
+                value: formatCurrency(stats?.billableAmount ?? 0, currency),
+                accent: true,
+              },
+            ].map((m) => (
+              <div key={m.label} className="min-w-37.5 flex-1 bg-card p-4">
+                <div className="text-xs font-medium text-muted-foreground">{m.label}</div>
+                <p
+                  className={cn(
+                    "mt-1.5 text-xl font-semibold tabular-nums tracking-tight",
+                    m.accent && "text-success-ink"
+                  )}
+                >
+                  {m.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        {!statsLoading && !stats && (
+          <p className="text-xs text-muted-foreground">
+            No time tracked for this client in this period.
+          </p>
+        )}
+      </div>
+
       {/* Projects */}
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">
@@ -139,7 +204,7 @@ export function ClientDetailPage() {
         </h2>
         {totalTracked > 0 && (
           <span className="text-xs text-muted-foreground">
-            {formatDurationShort(totalTracked)} tracked total
+            {formatDurationShort(totalTracked)} tracked all time
           </span>
         )}
       </div>
@@ -175,7 +240,7 @@ export function ClientDetailPage() {
                     </div>
                     {project.trackedSeconds > 0 && (
                       <div className="mt-0.5 text-xs text-muted-foreground">
-                        {formatDurationShort(project.trackedSeconds)} tracked
+                        {formatDurationShort(project.trackedSeconds)} all time
                       </div>
                     )}
                   </div>

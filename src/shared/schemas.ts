@@ -55,6 +55,15 @@ export const ClientSchema = z.object({
   createdAt: z.string(),
 });
 
+export const ClientStatsSchema = z.object({
+  clientId: z.string(),
+  totalSeconds: z.number(),
+  billableSeconds: z.number(),
+  billableAmount: z.number(),
+  projectCount: z.number(),
+  lastTracked: z.string().nullable(),
+});
+
 export const CreateClientSchema = z.object({
   name: z.string().min(1).max(255),
   notes: z.string().max(2000).nullable().optional(),
@@ -615,6 +624,7 @@ export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
 export type CreateClient = z.infer<typeof CreateClientSchema>;
 export type UpdateClient = z.infer<typeof UpdateClientSchema>;
+export type ClientStats = z.infer<typeof ClientStatsSchema>;
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
 export type IntegrationType = z.infer<typeof IntegrationTypeSchema>;
