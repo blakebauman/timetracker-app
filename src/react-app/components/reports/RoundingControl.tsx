@@ -51,12 +51,12 @@ export function RoundingControl({ value, onChange }: RoundingControlProps) {
       </PopoverTrigger>
       <PopoverContent className="w-56 space-y-3" align="end">
         <div className="space-y-1.5">
-          <Label className="text-xs">Mode</Label>
+          <Label className="text-xs" htmlFor="rounding-mode">Mode</Label>
           <Select
             value={value.mode}
             onValueChange={(v) => onChange({ ...value, mode: v as RoundMode })}
           >
-            <SelectTrigger className="h-8 text-sm">
+            <SelectTrigger className="h-8 text-sm" id="rounding-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -69,13 +69,13 @@ export function RoundingControl({ value, onChange }: RoundingControlProps) {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Increment (minutes)</Label>
+          <Label className="text-xs" htmlFor="rounding-increment">Increment (minutes)</Label>
           <Select
             value={String(value.minutes)}
             onValueChange={(v) => onChange({ ...value, minutes: Number(v) })}
             disabled={value.mode === "off"}
           >
-            <SelectTrigger className="h-8 text-sm">
+            <SelectTrigger className="h-8 text-sm" id="rounding-increment">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

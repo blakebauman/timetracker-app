@@ -97,7 +97,7 @@ export function CalendarViewOptions({
                     aria-checked={requestedCalendarView === value}
                     onClick={() => onCalendarViewChange(value)}
                     className={cn(
-                      "rounded px-1 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "rounded px-1 py-1 text-xs transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                       requestedCalendarView === value
                         ? "bg-background font-medium text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"

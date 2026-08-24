@@ -70,7 +70,7 @@ export function AiSummaryDialog({ since, until }: AiSummaryDialogProps) {
         <div className="space-y-4 py-2">
           <div className="flex items-center gap-2">
             <Select value={style} onValueChange={(v) => setStyle(v as "bullets" | "narrative")}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40" aria-label="Summary style">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

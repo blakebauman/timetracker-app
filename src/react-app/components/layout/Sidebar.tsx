@@ -64,7 +64,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
               onClick={handleOpenCommand}
               aria-label="Open command palette (Command or Control K)"
               className={cn(
-                "flex w-full items-center rounded-md border bg-background text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "flex w-full items-center rounded-md border bg-background text-sm text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5"
               )}
             >
@@ -125,7 +125,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
       )}
 
       {/* Nav */}
-      <nav className="flex-1 space-y-0.5 p-2 pt-3">
+      <nav aria-label="Main" className="flex-1 space-y-0.5 p-2 pt-3">
         {items.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -135,7 +135,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 collapsed ? "justify-center gap-0" : "gap-3",
                 isActive
                   ? "bg-primary/10 text-primary-ink"
@@ -164,7 +164,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                 <UserAvatar name={user.name} email={user.email} image={user.image} />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium">{user.name}</p>
-                  <p className="truncate text-micro text-muted-foreground">{user.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </div>
             )}
@@ -192,7 +192,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
               onClick={handleOpenShortcuts}
               aria-label="Keyboard shortcuts"
               className={cn(
-                "flex w-full items-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "flex w-full items-center rounded-md text-xs text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 collapsed ? "justify-center p-2" : "gap-2 px-2 py-1.5"
               )}
             >
@@ -253,6 +253,7 @@ export function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside
+        aria-label="Sidebar"
         className={cn(
           "hidden h-full flex-col overflow-hidden border-r bg-card transition-all duration-base ease-out-quart md:flex",
           sidebarCollapsed ? "w-14" : "w-56"
@@ -273,7 +274,7 @@ export function Sidebar() {
                   type="button"
                   onClick={toggleSidebar}
                   aria-label="Expand sidebar"
-                  className="flex h-full w-full items-center justify-center transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  className="flex h-full w-full items-center justify-center transition-colors duration-fast ease-out-quart hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
                 >
                   <BrandMark className="h-5 w-5 shrink-0" />
                 </button>

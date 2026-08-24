@@ -1,39 +1,35 @@
-import { Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
+const OPTIONS = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+] as const;
+
+type ThemeValue = (typeof OPTIONS)[number]["value"];
+
+/**
+ * Theme is a three-state setting, so it shows all three states.
+ *
+ * It used to be a single unlabelled sun icon opening a menu: you could change
+ * the theme but not see which of light/dark/system was active without opening
+ * it — and the row directly below it on the same Settings card (time format)
+ * was already a segmented control. Same shape for the same kind of choice.
+ *
+ * No mounted-guard here: the usual next-themes dance exists for server-rendered
+ * apps, and this is a pure client-rendered SPA — the provider has already read
+ * storage by the time anything renders.
+ */
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="relative">
-          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")} className={theme === "light" ? "font-medium" : ""}>
-          <Sun className="mr-2 h-4 w-4" />
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")} className={theme === "dark" ? "font-medium" : ""}>
-          <Moon className="mr-2 h-4 w-4" />
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")} className={theme === "system" ? "font-medium" : ""}>
-          <Monitor className="mr-2 h-4 w-4" />
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <SegmentedControl
+      label="Theme"
+      options={[...OPTIONS]}
+      value={(theme as ThemeValue) ?? "system"}
+      onChange={setTheme}
+    />
   );
 }

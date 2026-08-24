@@ -149,16 +149,25 @@ export function TimerWorkspace() {
    * dates and the header total (38h 30m → 6h 30m) with nothing to mark it — the
    * single most corrosive defect for someone about to put that number on an
    * invoice. Now the period follows the user in both directions, so in the common
-   * case the two views agree, and when the range genuinely can't be expressed as
-   * a grid period (Last 30 days, All dates) the grid at least opens on the range's
-   * first week rather than jumping back to today.
+   * case the two views agree.
+   *
+   * A grid period is usually narrower than the list range, so leaving the list
+   * has to choose *which* part of it to land on. Prefer the one containing today
+   * — a list showing this week opens Split on today, not on Monday, and "All
+   * dates" opens on this week rather than on the epoch. Only when the range is
+   * entirely in the past (or future) does the grid fall back to its first day.
+   *
+   * The today-preference used to live in CalendarBody as a grid-only override,
+   * which is how the desync got in: the grid jumped to today while the header,
+   * the "Logged" strip, the totals and the entry pane all stayed on the range
+   * start. It belongs here, where moving the anchor moves all four together.
    */
   const changeView = (next: TimerView) => {
     const leavingList = effectiveView === "list" && next !== "list";
     const enteringList = effectiveView !== "list" && next === "list";
 
     if (leavingList) {
-      setAnchorOverride(since);
+      setAnchorOverride(today >= since && today <= until ? today : since);
     } else if (enteringList && !belowMd) {
       // Name the period if it's one the picker can express, else keep the exact
       // dates as a custom range.
@@ -206,7 +215,9 @@ export function TimerWorkspace() {
     };
   }, [entries]);
 
-  const calendar = (
+  // In split the entry list sits beside the grid and explains an empty period
+  // itself, so the grid's own overlay would just say it twice.
+  const calendarFor = (view: TimerView) => (
     <CalendarBody
       periodStart={since}
       calendarView={effectiveCalendarView}
@@ -214,6 +225,7 @@ export function TimerWorkspace() {
       weekStartsOn={weekStart}
       showWeekends={showWeekends}
       showGaps={showGaps}
+      showEmptyState={view !== "split"}
     />
   );
   const list = (
@@ -225,7 +237,7 @@ export function TimerWorkspace() {
     body = (
       <Suspense fallback={<BodyFallback />}>
         <div ref={calendarPaneRef} className="flex min-h-0 flex-1 flex-col">
-          {calendar}
+          {calendarFor("calendar")}
         </div>
       </Suspense>
     );
@@ -247,7 +259,7 @@ export function TimerWorkspace() {
       <Suspense fallback={<BodyFallback />}>
         <div className="grid min-h-0 flex-1 grid-cols-1 divide-x lg:grid-cols-2">
           <div ref={calendarPaneRef} className="flex min-h-0 flex-col">
-            {calendar}
+            {calendarFor("split")}
           </div>
           <div className="flex min-h-0 flex-col overflow-hidden">{list}</div>
         </div>

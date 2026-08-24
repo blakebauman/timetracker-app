@@ -8,7 +8,8 @@ test.describe("client details", () => {
   });
 
   test("creates a client with contact fields that persist across reload", async ({ page }) => {
-    await page.getByRole("button", { name: "New client" }).click();
+    // Empty list: the empty state carries the create action, not the header.
+    await page.getByRole("button", { name: "Add your first client" }).click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "New Client" })).toBeVisible();
@@ -23,6 +24,13 @@ test.describe("client details", () => {
     await expect(dialog).not.toBeVisible();
 
     await expect(page.getByText("Acme Corp")).toBeVisible();
+
+    // Now that the list has content the header button takes over, so exactly one
+    // create action is on screen in either state — never both at once.
+    await expect(page.getByRole("button", { name: "New client" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Add your first client" })
+    ).toHaveCount(0);
 
     // Open the detail page and confirm the contact fields round-tripped through the API.
     await page.getByText("Acme Corp").click();
@@ -40,7 +48,7 @@ test.describe("client details", () => {
   });
 
   test("edits an existing client's details from the row menu", async ({ page }) => {
-    await page.getByRole("button", { name: "New client" }).click();
+    await page.getByRole("button", { name: "Add your first client" }).click();
     let dialog = page.getByRole("dialog");
     await dialog.getByPlaceholder("Client name").fill("Globex");
     await dialog.getByRole("button", { name: "Create client" }).click();

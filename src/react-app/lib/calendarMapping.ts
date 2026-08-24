@@ -31,10 +31,19 @@ const GAP_COLOR = "#94a3b8";
 // Build clickable "untracked gap" blocks: the empty stretches between two
 // consecutive completed entries on the same day. Surfaces time you likely forgot
 // to track. Only past gaps at least `minGapMs` long are shown.
+/**
+ * `minGapMs` defaults to 30 minutes, not 15.
+ *
+ * At 15 a normal week painted ten or more dashed "Track hh:mm" blocks — one in
+ * every seam between meetings — and each one truncated the only fact it
+ * carried. A quarter-hour between two entries is a coffee, not lost billable
+ * time; half an hour is worth asking about. The affordance is only useful if it
+ * isn't striping every column.
+ */
 export function buildGapEvents(
   entries: TimeEntry[],
   nowIso: string,
-  minGapMs = 15 * 60_000
+  minGapMs = 30 * 60_000
 ): EventInput[] {
   const now = new Date(nowIso).getTime();
   const done = entries

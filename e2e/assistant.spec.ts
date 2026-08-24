@@ -36,18 +36,21 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   const nudgeToast = page.locator("[data-sonner-toast]");
   await expect(nudgeToast).toContainText("Timer still running");
 
-  // Scoped to the timer bar — the toast's action button is also named "Open Assistant".
   const launcher = page.locator("header").getByRole("button", { name: /Open Assistant/ });
   await expect(launcher).toBeVisible();
   await expect(launcher).toHaveAccessibleName(/\d+ nudge/);
 
-  // The toast carries an Open Assistant action; open the panel via the launcher
-  // (clicking the toast itself would race its auto-dismiss timer).
-  await expect(nudgeToast.getByRole("button", { name: "Open Assistant" })).toBeVisible();
+  // A stale timer is the one nudge whose fix is a single call, so its toast
+  // performs it rather than routing to a chat window (every other kind still
+  // offers "Open Assistant"). Open the panel via the launcher rather than the
+  // toast — clicking the toast would race its auto-dismiss timer.
+  await expect(nudgeToast.getByRole("button", { name: "Stop timer" })).toBeVisible();
   await launcher.click();
   const panel = page.getByRole("dialog");
   await expect(panel).toContainText("Assistant");
   await expect(panel.getByText("Timer still running")).toBeVisible();
+  // The card carries the same fix, so the alarm never dead-ends in a chat.
+  await expect(panel.getByRole("button", { name: "Stop timer", exact: true })).toBeVisible();
   // Opening lands focus on the composer — input-first.
   await expect(page.getByPlaceholder("Ask the assistant…")).toBeFocused();
   await expect(page.getByRole("button", { name: "Send message" })).toBeVisible();

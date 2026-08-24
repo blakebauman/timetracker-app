@@ -60,7 +60,7 @@ export function SummaryTree({ data, showAmount = true, header }: SummaryTreeProp
                     {hasSub ? (
                       <ChevronRight
                         className={cn(
-                          "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
+                          "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-fast ease-out-quart",
                           open && "rotate-90",
                           !g.subGroups?.length && "opacity-0"
                         )}

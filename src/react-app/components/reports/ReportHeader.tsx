@@ -52,10 +52,7 @@ export function ReportHeader({
 
   return (
     <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-xl font-semibold">Reports</h1>
-        <p className="text-sm text-muted-foreground">{range.label}</p>
-      </div>
+      <h1 className="text-xl font-semibold">Reports</h1>
 
       <div className="flex items-center gap-2 print:hidden">
         {range.label === "Custom range" && (

@@ -11,17 +11,15 @@ import { formatDurationShort } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ColorDot } from "@/components/ColorDot";
+import { DISTINCT_COLORS } from "@/lib/colorUtils";
 import { useUIStore } from "@/stores/uiStore";
 import type { BreakdownRow } from "@/hooks/useReports";
 
-// Palette for dimensions whose rows have no intrinsic color (client/task/tag).
-const PALETTE = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
+// Palette for dimensions whose rows have no intrinsic colour (client/task/tag).
+// Deliberately the same hue-alternated set projects and tags use: a second
+// five-colour chart palette meant a client donut and a project donut spoke
+// different colour languages for the same kind of thing.
+const PALETTE = DISTINCT_COLORS;
 
 interface BreakdownCardProps {
   title: string;

@@ -165,6 +165,7 @@ export const reportsRouter = new Hono<{
       SELECT
         date(te.start) as date,
         ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id
@@ -210,6 +211,7 @@ export const reportsRouter = new Hono<{
       daily: daily.map((r) => ({
         date: r.date as string,
         totalSeconds: r.total_seconds as number,
+        billableSeconds: (r.billable_seconds as number) ?? 0,
         entryCount: r.entry_count as number,
       })),
     });

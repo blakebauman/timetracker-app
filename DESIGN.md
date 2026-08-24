@@ -98,6 +98,7 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 
 ### Primary
 - **Ledger Red** (`oklch(0.588 0.207 27.33)` light / `oklch(0.65 0.207 27.33)` dark): primary buttons, the running-timer indicator and pulse, active nav item, links. Used sparingly — most screens show it in one or two places, never as a background fill.
+- **`--primary-foreground` is pure white**, not `oklch(0.985 0 0)`. On the brand red, `#fafafa` measures 4.40:1 and fails AA for every primary button label; white measures 4.59:1 — and `#ffffff` is what the button-primary spec below already documented, so the token had drifted off its own page.
 - **Ledger Red as text** (`--primary-ink`, `oklch(0.5 0.19 27.33)` light / `oklch(0.76 0.19 27.33)` dark): the same brand red retuned for small text. `--primary` is calibrated as a *fill* behind white and fails WCAG AA as 11–12px type (3.59:1 on its own `/10` tint in light, 4.27:1 in dark). `--primary-ink` holds the hue and chroma and moves only lightness. Use it for the active nav label, the running-timer elapsed readout, and the billable indicator — anywhere the brand red is the text rather than the ground.
 
 ### Secondary
@@ -105,12 +106,21 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 
 ### Tertiary
 - **Semantic status** — success (`oklch(0.596 0.145 163.225)`, billable progress / confirmations), warning (`oklch(0.666 0.179 58.318)`, avg/day and caution states), destructive (`oklch(0.577 0.245 27.325)`, delete / discard actions and error states). Each has a paired `-foreground` token for on-color text.
+- **`--warning-ink`** (`oklch(0.505 0.179 58.318)` light / same as `--warning` dark): warning used as *text*, exactly as `--primary-ink` is for the brand red. `--warning` is calibrated as a fill and fails AA as small type — 3.15:1 on card (the "Unverified" badge), 2.77:1 on its own `/10` tint (the warning Alert). Holds hue and chroma, moves lightness only. Worst measured ground is that `/10` tint at 5.36:1.
+
+### Chart marks
+Charts encode **billable**, not category: both bar charts stack `--success` (the part you invoice) under `--chart-ink-soft` (the remainder). Green means the same thing it means on the KPI strip's billable bar.
+
+- **`--chart-ink-soft`** (`oklch(0.84 0.012 30)` light / `oklch(0.40 0.014 265)` dark) is the de-emphasized half of that stack. It must stay distinguishable from `--success` on **luminance alone**, since hue is the channel a colour-blind reader loses: measured 2.23:1 greyscale in light, 3.74:1 in dark, with stack position and a legend carrying the rest.
+- There is **no `--chart-1..5`**. Those were stock shadcn values acting as a second categorical palette against `DISTINCT_COLORS`, and `--chart-1` flipped hue family between themes (orange in light, blue-violet in dark). Categorical colour comes from `DISTINCT_COLORS` everywhere, including the breakdown donut's client/task/tag fallback.
+- Projects created without an explicit colour are assigned the first unused `DISTINCT_COLORS` entry **server-side** (`routes/projects.ts`). The schema deliberately has no colour default: a fixed one meant every project created via API, extension or seed came out the same sky blue.
 
 ### Neutral
 - **Ground** (`oklch(0.988 0.0015 30)` light / `oklch(0.185 0.006 265)` dark): the page background. Warm-tinted off-white in light; soft charcoal with a faint cool tint in dark — never pure white or near-black.
 - **Surface** (`oklch(0.995 0.001 30)` light / `oklch(0.228 0.007 265)` dark): cards, popovers, dropdowns — one step lighter (light mode) or one step lighter-than-ground (dark mode) so surfaces read as gently layered.
 - **Ink** (`oklch(0.22 0.006 30)` light / `oklch(0.96 0.003 265)` dark): body text, eased off pure black/white for a softer read.
 - **Muted** (`oklch(0.965 0.003 30)` light / `oklch(0.28 0.008 265)` dark): secondary surfaces (sidebar, toolbars — a second neutral layer, per product-register convention), disabled fills.
+- **`--muted-foreground` is tuned against its *worst* ground, not the page background.** At L 0.552 it measured 4.66:1 on background but only 4.36:1 on muted/accent — which is where secondary text mostly sits (toolbars, sidebar, tab tracks, count badges). L 0.543 clears AA on all four: 4.84 / 4.94 / 4.53 / 4.53.
 - **Border** (`oklch(0.912 0.004 30)` light / `9% white` dark): input outlines, card edges — always subtle, never a structural color.
 - **Border-strong** (`oklch(0.78 0.004 30)` light / `22% white` dark): row dividers in the dense surfaces only (entry list, timesheet grid). The card hairline measures 1.26:1 against the ground, which effectively vanishes across a 30-row list at low vision. This sits at ~2:1 — deliberately short of the 3:1 non-text target, because a 3:1 divider reads as a structural rule and breaks the quiet-ledger feel. Never use it for cards, panels, or inputs.
 
@@ -132,12 +142,13 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 - **Body** (400 weight, 14px / `text-sm`, 1.5 line-height): default UI text, descriptions, table cells. 65–75ch cap where prose appears (AI summary output); dense tabular data runs narrower.
 - **Label** (500 weight, 12px / `text-xs`, 1.3 line-height): muted metadata, timestamps, badge text, form labels.
 - **Micro** (500 weight, 10px / `text-micro`): the floor of the ramp, for chrome-level detail only — `kbd` shortcut chips, dense inline badges (entry-row tags, session badges), counts, and micro-metadata inside 16–20px-tall elements. Never for content the user reads as text; anything sentence-shaped belongs at Label or above.
+- **Subtitle** (600 weight, 18px / `text-lg`): the step between Headline and Title, for dialog and alert-dialog titles and the timer's elapsed readout. Documented because five call sites already used it and the ramp pretended it didn't exist; `text-lg` is a named, greppable step, which is what the Named-Step Rule actually asks for.
 - **Mono/Data** (500 weight, tabular-nums, Geist Mono): durations (`2h 15m`), elapsed timers, currency amounts — anywhere a column of numbers needs to align.
 
 ### Named Rules
 **The Tabular Rule.** Any number that appears in a list or column (durations, currency, percentages) uses `tabular-nums` so digits align vertically. This is non-negotiable in reports and entry lists.
 
-**The Named-Step Rule.** Every size above comes from a named utility — `text-xl`, `text-base`, `text-sm`, `text-xs`, `text-micro`. An arbitrary size anywhere in the app is drift by definition, even when the pixel value happens to match a step: it can't be changed centrally and it defeats the design-system check. There are now **zero** arbitrary font sizes in the app; keep it that way. (Write sizes in words in Markdown files — Tailwind scans them, and class syntax in prose emits real dead CSS.)
+**The Named-Step Rule.** Every size above comes from a named utility — `text-xl`, `text-base`, `text-sm`, `text-xs`, `text-micro`. An arbitrary size anywhere in the app is drift by definition, even when the pixel value happens to match a step: it can't be changed centrally and it defeats the design-system check. There are now **zero** arbitrary font sizes in the app, and ESLint fails the build if one comes back (`no-restricted-syntax` in `packages/eslint-config/base.js`). This rule had been swept clean by hand more than once and grew back each time, because nothing failed when it did. (Write sizes in words in Markdown files — Tailwind scans them, and class syntax in prose emits real dead CSS.)
 
 **The Two-Tier Rule.** Where a dense element stacks a heading over its metadata — calendar blocks, table column headers, tool cards, entry rows — the heading is Label (12px) and everything beneath it is Micro (10px). No in-between size: an 11px middle tier is a near-miss that reads as sloppy rather than hierarchical, which is exactly what the app accumulated before this rule existed. The exception is a block whose *only* content is that one line (the calendar's untracked-gap affordance, a `<code>` value you may need to read exactly) — that line is the heading tier, so it takes Label.
 
@@ -182,7 +193,11 @@ The system is flat-by-default with tonal layering, not shadow-driven. Depth is c
 
 ### Navigation
 - **Sidebar:** icon + label nav items, `rounded-md` active/hover states, active item gets a `bg-primary/10` fill with primary-colored text and icon (not a full-color fill — this is the "One Accent Rule" applied to navigation). Collapses to a 56px icon rail; the collapsed state shows the brand mark itself as the expand control (no separate arrow button) — the logo never disappears when collapsed.
-- **Tabs** (Reports Summary/Weekly/Detailed, Timer view switcher): segmented control, `bg-muted/40` track, active segment lifts to `bg-background` with a subtle shadow.
+- **Tabs** (Reports Summary/Weekly/Detailed, Timer view switcher, Settings sections): segmented control, `bg-muted/40` track, active segment lifts to `bg-background` with a subtle shadow. Settings uses them to break 15 cards into four named groups, with the active tab in the query string so `/settings?tab=account` is linkable.
+- **`SegmentedControl`** (`ui/segmented-control.tsx`): the same segmented shape for a *value* rather than a panel — theme and time format. Use it instead of hand-rolling a pill group; Settings had two of these diverging, one of which (theme) was a lone icon that never showed which of its three states was active.
+
+### The Dashed Rule
+A dashed border means exactly one thing: **empty, click to fill.** The assign-project chip, the calendar's ghost and untracked-gap blocks, and empty-state containers. It is never a "you can't" signal — locked cells (a multi-entry timesheet cell, a planner row with no project) read as `opacity-50` + `cursor-not-allowed`, and they use `aria-disabled` rather than `disabled` so they stay in the tab order and their `aria-describedby` explanation is actually announced. A `title` on a `disabled` button reaches nobody.
 
 ### Calendar Event Block (signature component)
 Real tracked entries render as a translucent fill (16% opacity of the project/tag color) with a solid left-accent border in the same color — not a solid block, so overlapping context (now-indicator, grid lines) stays legible through it. Three distinct block styles share the same grid: **real entries** (solid border, translucent fill), **unconfirmed calendar "ghost" events** (dashed border, near-transparent, cursor pointer, "click to track" affordance), and **untracked-gap blocks** (dashed, barely-there, "Track hh:mm–hh:mm" label) — all three read as fundamentally different weights of interactivity at a glance without needing a legend.
@@ -207,7 +222,7 @@ Numeric utilities (`duration-200`) still compile, but the named steps are the co
 
 `--ease-out-quart` (`cubic-bezier(0.25, 1, 0.5, 1)`) is **the** curve. Everything decelerating into place uses it; there is no separate "enter" and "exit" curve. `--ease-out-quint` is reserved for the single largest move — the timer control's width change — where a flatter tail keeps a wide element from appearing to overshoot. Looping opacity pulses (`animate-running-dot`) stay on `ease-in-out`, because a symmetric breathe wants a symmetric curve.
 
-Stock `ease-out` / `ease-in-out` / `ease` and Tailwind's default curve are not part of the system. A bare `transition-colors` silently falls back to that default — always pair a transition with a duration and `ease-out-quart`.
+Stock `ease-out` / `ease-in-out` / `ease` and Tailwind's default curve are not part of the system. A bare `transition-colors` silently falls back to that default — always pair a transition with a duration and `ease-out-quart`. **ESLint enforces this** (`no-restricted-syntax`): a transition utility in a class string without `ease-out-qu` fails the build. Two hand sweeps had already closed this and it grew back both times.
 
 ### The Running State
 
@@ -225,6 +240,8 @@ Two different states, two different components, and they are not interchangeable
 - **`Spinner`** (`components/ui/spinner.tsx`) — *this specific action is working*. Sizes are `sm` (14px, compact controls and row actions), `default` (16px, inside a default button), `lg` (20px, a whole panel or route). Never hand-roll `<Loader2 className="animate-spin" />`; that is how five sizes appeared for three jobs.
 - **`Skeleton`** — *this surface hasn't loaded yet*. Preferred for anything with a known shape (lists, cards, tables) because it holds the layout instead of collapsing it and then shoving content in.
 
+There is no third busy form. The assistant's "Thinking…" used to be a `bg-clip-text` gradient sweep — a one-off reimplementation of `Spinner` wearing a paint job §7 explicitly forbids. It is a `Spinner` now, and the component, its keyframe and its token are gone.
+
 ### Named Rules
 
 **The Confirmation Rule.** Motion confirms something the user did, or reports something that changed. It never decorates, never celebrates, and never delays access to content.
@@ -235,7 +252,20 @@ Two different states, two different components, and they are not interchangeable
 
 **The Reduced-Motion Rule.** `prefers-reduced-motion: reduce` collapses every animation and transition globally (`index.css`). Any effect whose *timing is coordinated in JS* — a row that waits for its exit animation before unmounting, a highlight that clears on a timer — must read the preference too and shorten itself; the CSS rule cannot reach a `setTimeout`. A running state must always survive the preference as colour and iconography, never as motion alone.
 
-## 7. Do's and Don'ts
+## 7. Layering
+
+Four named tiers, registered in `index.css` as `--z-index-*`. The values are the ones the app already used by convention; naming them means a new surface picks a *meaning* rather than a number, and the order is greppable in one place.
+
+| Token | Value | For |
+|---|---|---|
+| `z-sticky` | 10 | Headers and frozen first columns inside a scrolling grid. |
+| `z-overlay` | 20 | Something covering a pane but not the app — the calendar's error wash, the ghost-count button, a sticky corner cell that has to win against its sticky neighbours. |
+| `z-portal` | 50 | Dialogs, sheets, popovers, dropdowns, selects. |
+| `z-tooltip` | 60 | Above portal on purpose: a tooltip on a control *inside* a dialog was previously the same 50 as the dialog and relied on DOM order to be visible at all. |
+
+A raw `z-10` / `z-20` / `z-50` fails ESLint. Sonner manages the toast layer itself and is left alone.
+
+## 8. Do's and Don'ts
 
 ### Do:
 - **Do** keep the brand red to one or two elements per screen — the running-timer state and the primary action (**The One Accent Rule**).
@@ -253,7 +283,7 @@ Two different states, two different components, and they are not interchangeable
 - **Don't** pair an icon-only button's `size="icon"` with an ad-hoc height/width override; use the size token so it matches its labeled siblings.
 - **Don't** visually clone Toggl. Feature parity (calendar view, favorites, auto-track) is a gap-closing strategy — the soft-tone, red-accent identity is this product's own.
 
-## 8. Brand Mark & App Icons
+## 9. Brand Mark & App Icons
 
 The brand mark is a **circled analog clock reading ~10:10** (the classic "watch ad" angle): a brand-red circle, a white ring at 90% opacity, two rounded white hands, and a center dot. It is the one place the brand red appears as a fill.
 

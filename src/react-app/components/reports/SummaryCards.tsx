@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Clock,
   DollarSign,
@@ -22,6 +21,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { formatDurationShort } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
+import {
+  ALL_METRICS,
+  type MetricKey,
+} from "@/hooks/useSummaryMetrics";
 
 interface SummaryCardsProps {
   totalSeconds: number;
@@ -29,9 +32,8 @@ interface SummaryCardsProps {
   billableAmount: number;
   entryCount: number;
   avgSeconds: number;
+  visible: Record<MetricKey, boolean>;
 }
-
-type MetricKey = "total" | "billable" | "amount" | "entries" | "avg";
 
 interface Tile {
   key: MetricKey;
@@ -41,30 +43,46 @@ interface Tile {
   extra?: React.ReactNode;
 }
 
-const ALL_METRICS: { key: MetricKey; label: string }[] = [
-  { key: "total", label: "Total tracked" },
-  { key: "billable", label: "Billable" },
-  { key: "amount", label: "Billable amount" },
-  { key: "entries", label: "Entries" },
-  { key: "avg", label: "Avg / day" },
-];
-
-const STORAGE_KEY = "reports_summary_metrics";
-const DEFAULT_VISIBLE: Record<MetricKey, boolean> = {
-  total: true,
-  billable: true,
-  amount: true,
-  entries: true,
-  avg: true,
-};
-
-function loadVisible(): Record<MetricKey, boolean> {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    return { ...DEFAULT_VISIBLE, ...saved };
-  } catch {
-    return DEFAULT_VISIBLE;
-  }
+export function SummaryMetricsMenu({
+  visible,
+  toggle,
+}: {
+  visible: Record<MetricKey, boolean>;
+  toggle: (key: MetricKey) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground"
+              aria-label="Choose metrics"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Choose metrics</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Summary metrics</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {ALL_METRICS.map((m) => (
+          <DropdownMenuCheckboxItem
+            key={m.key}
+            checked={visible[m.key]}
+            onCheckedChange={() => toggle(m.key)}
+            onSelect={(e) => e.preventDefault()}
+          >
+            {m.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function SummaryCards({
@@ -73,16 +91,9 @@ export function SummaryCards({
   billableAmount,
   entryCount,
   avgSeconds,
+  visible,
 }: SummaryCardsProps) {
   const currency = useUIStore((s) => s.currency);
-  const [visible, setVisible] = useState<Record<MetricKey, boolean>>(loadVisible);
-
-  const toggle = (key: MetricKey) =>
-    setVisible((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
 
   const billablePercent = totalSeconds
     ? Math.round((billableSeconds / totalSeconds) * 100)
@@ -105,6 +116,7 @@ export function SummaryCards({
           <Progress
             value={billablePercent}
             className="h-1.5 flex-1 bg-success/15 [&>div]:bg-success"
+            aria-hidden
           />
           <span className="text-xs tabular-nums text-muted-foreground">
             {billablePercent}%
@@ -134,59 +146,23 @@ export function SummaryCards({
 
   const shown = tiles.filter((t) => visible[t.key]);
 
+  // One framed strip divided by 1px gaps (bg-border shows through). Flex-wrap
+  // with grow so the last row's tiles stretch to fill — no orphaned cell at any
+  // width, for any number of visible metrics.
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground"
-                  aria-label="Metrics"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Choose metrics</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Summary metrics</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {ALL_METRICS.map((m) => (
-              <DropdownMenuCheckboxItem
-                key={m.key}
-                checked={visible[m.key]}
-                onCheckedChange={() => toggle(m.key)}
-                onSelect={(e) => e.preventDefault()}
-              >
-                {m.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* One framed strip divided by 1px gaps (bg-border shows through). Flex-wrap
-          with grow so the last row's tiles stretch to fill — no orphaned cell at
-          any width, for any number of visible metrics. */}
-      <div className="flex animate-fade-up flex-wrap gap-px overflow-hidden rounded-xl border bg-border">
-        {shown.map(({ key, icon: Icon, label, value, extra }) => (
-          <div key={key} className="min-w-37.5 flex-1 bg-card p-4">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{label}</span>
-            </div>
-            <p className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight">
-              {value}
-            </p>
-            {extra}
+    <div className="flex animate-fade-up flex-wrap gap-px overflow-hidden rounded-xl border bg-border">
+      {shown.map(({ key, icon: Icon, label, value, extra }) => (
+        <div key={key} className="min-w-37.5 flex-1 bg-card p-4">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{label}</span>
           </div>
-        ))}
-      </div>
+          <p className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight">
+            {value}
+          </p>
+          {extra}
+        </div>
+      ))}
     </div>
   );
 }

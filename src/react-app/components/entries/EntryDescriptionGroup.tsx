@@ -89,7 +89,7 @@ export function EntryDescriptionGroup({
     <Collapsible open={open} onOpenChange={setOpen}>
       <div
         className={cn(
-          "group flex animate-fade-up items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors hover:bg-accent/40",
+          "group flex animate-fade-up items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors duration-fast ease-out-quart hover:bg-accent/40",
           someSelected && "bg-accent/60"
         )}
       >
@@ -105,7 +105,7 @@ export function EntryDescriptionGroup({
               // Matches EntryRow: the 16x16 box fails WCAG 2.2 AA's 24px floor
               // (SC 2.5.8), so ::before expands the hit target to 28x28 without
               // changing the checkbox's visual weight.
-              "relative flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "relative flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               allSelected
                 ? "border-primary bg-primary text-primary-foreground"
                 : someSelected

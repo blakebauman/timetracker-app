@@ -213,7 +213,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     <>
       <div
         className={cn(
-          "group flex items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors hover:bg-accent/40",
+          "group flex items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors duration-fast ease-out-quart hover:bg-accent/40",
           removing
             ? "pointer-events-none animate-out fade-out slide-out-to-right-4 fill-mode-forwards duration-base ease-out-quart"
             : highlighted
@@ -233,7 +233,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             // The 16×16 box is the only control here that failed even WCAG 2.2
             // AA's 24px floor (SC 2.5.8). The ::before expands the hit target to
             // 28×28 without changing the visual weight of the checkbox itself.
-            className={`relative flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+            className={`relative flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
               isSelected
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-muted-foreground/40 tt-reveal hover:border-primary"
@@ -277,7 +277,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
               // Use the system focus ring rather than a bare underline: a third
               // focus vocabulary in one page means keyboard users have to relearn
               // "where am I" per control.
-              className="rounded-sm text-left text-sm transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="relative rounded-sm text-left text-sm transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={() => setEditingDesc(true)}
             >
               {entry.description || (
@@ -423,7 +423,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             <SavedTick saved={savedDuration.saved} />
             <button
               onClick={handleStartEditDuration}
-              className="min-w-20 rounded-sm text-right font-mono text-sm tabular-nums transition-colors hover:text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="relative min-w-20 rounded-sm text-right font-mono text-sm tabular-nums transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               {entry.duration ? formatDurationShort(entry.duration) : "–"}
             </button>

@@ -42,7 +42,7 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mb-2">
       {/* Day header — acts as collapse trigger */}
-      <CollapsibleTrigger className="flex w-full items-center justify-between bg-muted/50 px-4 py-1.5 hover:bg-muted/70 transition-colors">
+      <CollapsibleTrigger className="flex w-full items-center justify-between bg-muted/50 px-4 py-1.5 hover:bg-muted/70 transition-colors duration-fast ease-out-quart">
         <div className="flex items-center gap-2">
           <ChevronDown
             className={cn(

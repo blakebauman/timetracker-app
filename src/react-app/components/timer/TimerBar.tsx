@@ -140,7 +140,7 @@ export function TimerBar() {
   };
 
   return (
-    <header className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm md:h-14 md:flex-nowrap md:gap-3 md:py-0">
+    <header aria-label="Timer" className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm md:h-14 md:flex-nowrap md:gap-3 md:py-0">
       {/* Description input, with autocomplete over the last 90 days of entries */}
       <DescriptionAutocomplete
         inputRef={descRef}
@@ -154,7 +154,13 @@ export function TimerBar() {
           // because the element is focusable and labelled, just invisible when
           // focused. An inset ring keeps the borderless look in the bar while
           // still marking focus.
-          "basis-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:flex-1 md:basis-auto",
+          //
+          // The one deliberate deviation from the house ring: `inset`, because
+          // an outset ring on a full-bleed borderless input clips against the
+          // bar, and full opacity rather than /50, because with `border-0` this
+          // ring is the *only* focus signal — the canonical pairing leans on
+          // `border-ring` for half its contrast. Width follows the scale.
+          "basis-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset md:flex-1 md:basis-auto",
           isRunning && "font-medium"
         )}
       />
@@ -178,7 +184,7 @@ export function TimerBar() {
                 type="button"
                 aria-label={`Remove tag ${tag}`}
                 onClick={() => removeTag(tag)}
-                className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="rounded-sm text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 <X className="h-3 w-3" />
               </button>

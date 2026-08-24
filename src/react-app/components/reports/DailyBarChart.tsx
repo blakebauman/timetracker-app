@@ -20,6 +20,7 @@ import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
 interface DailyData {
   date: string;
   totalSeconds: number;
+  billableSeconds: number;
   entryCount: number;
 }
 
@@ -27,8 +28,20 @@ interface DailyBarChartProps {
   data: DailyData[];
 }
 
+/*
+ * Same encoding as the weekly chart: the bar height is the day's total, and the
+ * split says how much of it you can invoice. One colour language across both
+ * charts, and green means the same thing here that it means on the KPI strip's
+ * billable bar.
+ *
+ * These bars used to be painted in the brand red — 500x400px of it, beside a
+ * project-coloured donut of the same data. DESIGN.md reserves red for the
+ * running state and the primary action, so a wall of red bars made the accent
+ * mean nothing while encoding nothing itself.
+ */
 const chartConfig = {
-  hours: { label: "Hours", color: "var(--primary)" },
+  billable: { label: "Billable", color: "var(--success)" },
+  nonBillable: { label: "Non-billable", color: "var(--chart-ink-soft)" },
 } satisfies ChartConfig;
 
 function formatXLabel(dateStr: string, useDayOfWeek: boolean): string {
@@ -57,9 +70,14 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
 
   const useDayOfWeek = data.length > 14;
 
+  const toHours = (seconds: number) => parseFloat((seconds / 3600).toFixed(2));
   const chartData = data.map((d) => ({
     ...d,
-    hours: parseFloat((d.totalSeconds / 3600).toFixed(2)),
+    hours: toHours(d.totalSeconds),
+    billable: toHours(d.billableSeconds),
+    // Derived rather than queried: the stack has to sum to the day's total, and
+    // clamping guards against rounding pushing billable past it.
+    nonBillable: toHours(Math.max(0, d.totalSeconds - d.billableSeconds)),
     label: formatXLabel(d.date, useDayOfWeek),
   }));
 
@@ -81,12 +99,12 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `${v}h`}
@@ -100,16 +118,29 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
                       ? formatPlainDate((payload[0].payload as DailyData).date)
                       : ""
                   }
-                  formatter={(_value, _name, item) => {
+                  formatter={(value, name, item) => {
                     const d = item.payload as DailyData;
+                    const label = name === "billable" ? "Billable" : "Non-billable";
                     return (
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-muted-foreground">
-                          {formatDurationShort(d.totalSeconds)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {d.entryCount} entries
-                        </span>
+                      <div className="flex w-full flex-col gap-0.5">
+                        <div className="flex w-full items-center gap-2">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                            style={{ background: `var(--color-${name})` }}
+                          />
+                          <span className="text-muted-foreground">{label}</span>
+                          <span className="ml-auto font-mono font-medium tabular-nums text-foreground">
+                            {formatDurationShort(Number(value) * 3600)}
+                          </span>
+                        </div>
+                        {/* Only under the last segment, so the day's total and
+                            entry count appear once rather than per series. */}
+                        {name === "nonBillable" && (
+                          <span className="mt-1 border-t pt-1 text-xs text-muted-foreground">
+                            {formatDurationShort(d.totalSeconds)} · {d.entryCount}{" "}
+                            {d.entryCount === 1 ? "entry" : "entries"}
+                          </span>
+                        )}
                       </div>
                     );
                   }}
@@ -124,9 +155,18 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
                 strokeOpacity={0.6}
               />
             )}
+            {/* Billable at the baseline: a stack reads from the bottom up, and
+                that is the part the day is measured on. */}
             <Bar
-              dataKey="hours"
-              fill="var(--color-hours)"
+              dataKey="billable"
+              stackId="hours"
+              fill="var(--color-billable)"
+              maxBarSize={40}
+            />
+            <Bar
+              dataKey="nonBillable"
+              stackId="hours"
+              fill="var(--color-nonBillable)"
               radius={[3, 3, 0, 0]}
               maxBarSize={40}
             />

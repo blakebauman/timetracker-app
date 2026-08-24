@@ -25,6 +25,8 @@ import { toCreatePayload } from "@/lib/entryUtils";
 import { AddTimesheetRowDialog } from "./AddTimesheetRowDialog";
 import type { TimeEntry } from "@shared/schemas";
 
+const TIMESHEET_LOCKED_HELP_ID = "timesheet-locked-cell-help";
+
 interface TimesheetViewProps {
   weekStart: Date; // Monday
 }
@@ -235,16 +237,19 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
 
   return (
     <div className="flex h-full flex-col overflow-auto">
+      <span id={TIMESHEET_LOCKED_HELP_ID} className="sr-only">
+        This day has several entries — edit them in the list or calendar view.
+      </span>
       {/* min-w forces a horizontal scroller instead of letting seven day columns
           squeeze below legibility; the Task/Project pair stays pinned so a
           narrow screen never loses track of which row it's scrolling. */}
       <table className="w-full min-w-[760px] border-collapse text-sm">
-        <thead className="sticky top-0 z-20 bg-background">
+        <thead className="sticky top-0 z-overlay bg-background">
           <tr className="border-b text-xs text-muted-foreground">
-            <th className="sticky left-0 z-10 w-[132px] min-w-[132px] bg-background px-3 py-2 text-left font-medium">
+            <th className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 text-left font-medium">
               Task
             </th>
-            <th className="sticky left-[132px] z-10 w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
+            <th className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
               Project
             </th>
             {days.map((d, i) => (
@@ -315,10 +320,10 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                   key={row.key}
                   className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
-                  <td className="sticky left-0 z-10 w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
                     {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
                   </td>
-                  <td className="sticky left-[132px] z-10 w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
                     <span className="flex items-center gap-1.5">
                       <ColorDot color={row.projectColor} />
                       <span className={cn(!row.projectName && "text-muted-foreground")}>
@@ -346,18 +351,30 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                         ) : (
                           <button
                             type="button"
-                            disabled={multi}
-                            title={multi ? "Multiple entries — edit in list or calendar" : undefined}
+                            // aria-disabled rather than disabled: a `disabled`
+                            // button leaves the tab order, which took its own
+                            // explanation with it — the reason was in a `title`
+                            // that no keyboard or screen-reader user could reach.
+                            aria-disabled={multi || undefined}
+                            aria-describedby={multi ? TIMESHEET_LOCKED_HELP_ID : undefined}
                             onClick={() => {
+                              if (multi) return;
                               setDraft(formatTimeInput(cell.seconds || null));
                               setEditing({ row: row.key, day: dayIndex });
                             }}
                             className={cn(
-                              "mx-auto flex h-8 w-16 items-center justify-center rounded border text-xs tabular-nums transition-colors",
+                              "mx-auto flex h-8 w-16 items-center justify-center rounded border text-xs tabular-nums transition-colors duration-fast ease-out-quart",
                               cell.seconds > 0
                                 ? "border-border font-medium"
                                 : "border-transparent text-muted-foreground/40 hover:border-border",
-                              multi ? "cursor-default border-dashed" : "hover:bg-muted"
+                              // Dashed means "empty, click to fill" everywhere
+                              // else in the app (the assign-project chip, the
+                              // calendar's ghost and gap blocks). Using it for
+                              // "you can't" made one border mean two opposite
+                              // things; locked reads as dimmed instead.
+                              multi
+                                ? "cursor-not-allowed opacity-50"
+                                : "hover:bg-muted"
                             )}
                           >
                             {cell.seconds > 0 ? formatDurationShort(cell.seconds) : "–"}
@@ -378,7 +395,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
           <tfoot>
             <tr className="border-t-2 font-medium">
               <td
-                className="sticky left-0 z-10 w-[280px] min-w-[280px] border-r border-border-strong bg-background px-3 py-2 text-muted-foreground"
+                className="sticky left-0 z-sticky w-[280px] min-w-[280px] border-r border-border-strong bg-background px-3 py-2 text-muted-foreground"
                 colSpan={2}
               >
                 Total
@@ -396,7 +413,11 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
         )}
       </table>
 
-      <div className="flex items-center gap-2 p-3">
+      {/* The empty state owns the actions while the body is empty — rendering
+          them here as well put the same labels twice on one screen, 84px
+          apart, which reads as a rendering bug. One rule, four screens. */}
+      {rows.length > 0 && (
+      <div className="flex flex-wrap items-center gap-2 p-3">
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" />
           Add row
@@ -412,6 +433,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
           Copy last week
         </Button>
       </div>
+      )}
 
       <AddTimesheetRowDialog
         open={addOpen}

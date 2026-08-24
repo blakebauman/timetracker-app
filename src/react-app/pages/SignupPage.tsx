@@ -118,7 +118,7 @@ export function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 flex items-center justify-center gap-2">
@@ -128,7 +128,7 @@ export function SignupPage() {
 
         <Card>
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Where does the time go?</CardTitle>
+            <CardTitle as="h1" className="text-xl">Where does the time go?</CardTitle>
             <CardDescription>
               Create an account and finally find out. Spoiler: it was
               "meetings."
@@ -264,6 +264,6 @@ export function SignupPage() {
           </form>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

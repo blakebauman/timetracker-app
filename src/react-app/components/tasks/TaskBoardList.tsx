@@ -136,10 +136,12 @@ export function TaskBoardList() {
             </SelectContent>
           </Select>
 
-          <Button size="sm" className="h-8 gap-1.5" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add task
-          </Button>
+          {!isEmpty && (
+            <Button size="sm" className="h-8 gap-1.5" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add task
+            </Button>
+          )}
         </div>
       </div>
 

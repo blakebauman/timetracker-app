@@ -9,7 +9,11 @@
   --fc-page-bg-color: var(--card);
   --fc-neutral-bg-color: var(--muted);
   --fc-neutral-text-color: var(--muted-foreground);
-  --fc-today-bg-color: color-mix(in oklab, var(--primary) 6%, transparent);
+  /* Neutral, not brand red: this washed the entire today column full-height,
+     which is the accent as a large background fill (the One Accent Rule
+     forbids exactly that) and muddied red project blocks sitting on it. The
+     now-indicator line below stays red — that one is precise and earned. */
+  --fc-today-bg-color: color-mix(in oklab, var(--foreground) 4%, transparent);
   --fc-now-indicator-color: var(--primary);
   --fc-highlight-color: color-mix(in oklab, var(--primary) 14%, transparent);
   --fc-event-selected-overlay-color: color-mix(in oklab, var(--foreground) 8%, transparent);

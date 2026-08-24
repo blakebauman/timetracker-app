@@ -25,15 +25,12 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-ink: var(--warning-ink);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  --color-chart-ink-soft: var(--chart-ink-soft);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -55,6 +52,23 @@
      (Don't write the arbitrary form in this comment — Tailwind scans CSS
      comments too and will emit a dead utility for it.) */
   --text-micro: 0.625rem;
+
+  /* Layering. The values are the ones already in use (10/20/50) — this names
+     the three tiers that existed by convention so a new surface picks a
+     meaning rather than a number, and so the order is greppable in one place.
+
+       sticky   — headers and frozen first columns inside a scrolling grid
+       overlay  — something covering a pane but not the app (calendar error
+                  wash, the ghost-count button, a sticky corner cell that has to
+                  win against its sticky neighbours)
+       portal   — dialogs, sheets, popovers, dropdowns, selects
+       tooltip  — above portal on purpose: a tooltip on a control *inside* a
+                  dialog was previously the same 50 as the dialog and relied on
+                  DOM order to be visible at all. */
+  --z-index-sticky: 10;
+  --z-index-overlay: 20;
+  --z-index-portal: 50;
+  --z-index-tooltip: 60;
 
   /* Motion — natural deceleration curves (no bounce/elastic).
      `--ease-out-quart` is the default: everything uses it unless it has a
@@ -106,9 +120,6 @@
     fade-up var(--transition-duration-base) var(--ease-out-quart) both,
     row-flash 1.4s var(--ease-out-quart) both;
 
-  /* Assistant "thinking" — a soft highlight sweeps across muted text while the
-     assistant streams (utility: animate-shimmer, pair with the shimmer bg). */
-  --animate-shimmer: shimmer 1.6s linear infinite;
 }
 
 @keyframes fade-in {
@@ -122,12 +133,6 @@
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: none; }
-}
-/* Shimmer sweep for the assistant's streaming/thinking text. Used with a
-   clipped background-image gradient (see Shimmer component). */
-@keyframes shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
 }
 /* Just-stopped row flash — a primary wash blooms then recedes, with a left rail
    accent that draws attention to the row without shifting layout. */
@@ -174,11 +179,19 @@
   --popover: oklch(0.995 0.001 30);
   --popover-foreground: oklch(0.22 0.006 30);
   --primary: oklch(0.588 0.207 27.33);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Pure white, not 0.985: on the brand red #fafafa measures 4.40:1 and fails
+     AA for every primary button label. White measures 4.59:1, and #ffffff is
+     what DESIGN.md's button-primary spec already documents. */
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.965 0.003 30);
   --secondary-foreground: oklch(0.26 0.006 30);
   --muted: oklch(0.965 0.003 30);
-  --muted-foreground: oklch(0.552 0.008 30);
+  /* Tuned against the *worst* ground it lands on, not the page background.
+     At L 0.552 it measured 4.66:1 on background but only 4.36:1 on muted and
+     accent — and muted/accent is where secondary text mostly sits (toolbars,
+     sidebar, tab tracks, count badges). L 0.543 clears AA on all four: 4.84 /
+     4.94 / 4.53 / 4.53. */
+  --muted-foreground: oklch(0.543 0.008 30);
   --accent: oklch(0.965 0.004 30);
   --accent-foreground: oklch(0.26 0.006 30);
   --destructive: oklch(0.577 0.245 27.325);
@@ -187,6 +200,12 @@
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.666 0.179 58.318);
   --warning-foreground: oklch(0.985 0 0);
+  /* Warning used as TEXT, exactly as --primary-ink is for the brand red.
+     --warning is calibrated as a fill; as small text it measured 3.15:1 on card
+     (the "Unverified" badge) and 2.77:1 on its own /10 tint (the warning Alert).
+     Holds hue and chroma, moves lightness only. Worst measured ground is the
+     /10 tint at 5.36:1, and 4.52:1 for the alert description's /90 text. */
+  --warning-ink: oklch(0.505 0.179 58.318);
   --border: oklch(0.912 0.004 30);
   /* Dense row dividers only (entry list, timesheet). --border is tuned as a
      card hairline and measures 1.26:1, which effectively disappears across a
@@ -213,11 +232,20 @@
      This holds the brand hue and chroma and moves only lightness — down toward
      ink in light, up in dark. Measured ceilings: light L ≤ 0.52, dark L ≥ 0.74. */
   --primary-ink: oklch(0.5 0.19 27.33);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* The only chart-specific colour left.
+     --chart-1..5 were stock shadcn values doing two things wrong: they were a
+     *second* categorical palette competing with the 18-colour DISTINCT_COLORS
+     the rest of the app uses for projects and tags, and chart-1 flipped hue
+     family between themes (orange in light, blue-violet in dark). Categorical
+     colour now comes from DISTINCT_COLORS everywhere, and both bar charts encode
+     billable with --success — the same meaning it carries on the KPI strip.
+
+     This is the de-emphasized half of those part-of-whole stacks: the
+     non-billable remainder above the billable green. It has to stay
+     distinguishable from --success on luminance alone, since hue is the one
+     channel a colour-blind reader loses — measured 2.23:1 greyscale in light,
+     3.74:1 in dark, with stack position and a legend carrying the rest. */
+  --chart-ink-soft: oklch(0.84 0.012 30);
 }
 
 .dark {
@@ -245,6 +273,10 @@
   --success-foreground: oklch(0.16 0.006 265);
   --warning: oklch(0.769 0.188 70.08);
   --warning-foreground: oklch(0.16 0.006 265);
+  /* Dark ink is light, so the fill value already clears AA as text here
+     (6.36:1 worst ground, 6.06:1 on its own /20 tint). Same value, declared so
+     call sites can use one class in both themes. */
+  --warning-ink: oklch(0.769 0.188 70.08);
   --border: oklch(1 0 0 / 9%);
   --border-strong: oklch(1 0 0 / 22%);
   --input: oklch(1 0 0 / 13%);
@@ -252,11 +284,9 @@
   /* Dark ink is light, so more of the swatch survives before contrast suffers. */
   --swatch-ink-mix: 55%;
   --primary-ink: oklch(0.76 0.19 27.33);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  /* Dark ground inverts which end is "muted": the soft mark goes darker than
+     the card, not lighter. Same role, same hue discipline as light. */
+  --chart-ink-soft: oklch(0.40 0.014 265);
 }
 
 @layer base {

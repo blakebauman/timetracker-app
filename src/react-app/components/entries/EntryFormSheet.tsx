@@ -106,6 +106,7 @@ export function EntryFormSheet({
           <div className="space-y-1.5">
             <Label>Project</Label>
             <ProjectPicker
+              field
               value={d.projectId}
               onChange={(id) => patch({ projectId: id, taskId: null })}
             />
@@ -115,6 +116,7 @@ export function EntryFormSheet({
             <div className="space-y-1.5">
               <Label>Task</Label>
               <TaskPicker
+                field
                 projectId={d.projectId}
                 value={d.taskId}
                 onChange={(id) => patch({ taskId: id })}
@@ -124,7 +126,7 @@ export function EntryFormSheet({
 
           <div className="space-y-1.5">
             <Label>Tags</Label>
-            <TagPicker value={d.tags} onChange={(tags) => patch({ tags })} />
+            <TagPicker field value={d.tags} onChange={(tags) => patch({ tags })} />
           </div>
 
           <div className="space-y-1.5">

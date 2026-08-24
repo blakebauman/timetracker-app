@@ -35,10 +35,14 @@ export function IntegrationsCard() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Integrations</CardTitle>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={openNew}>
-          <Plus className="h-4 w-4" />
-          Add integration
-        </Button>
+        {/* Same rule as Planner/Timesheet/Tasks/Clients: while the body is
+            empty, the empty state owns the action. */}
+        {integrations.length > 0 && (
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={openNew}>
+            <Plus className="h-4 w-4" />
+            Add integration
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
@@ -50,6 +54,13 @@ export function IntegrationsCard() {
           <EmptyState
             icon={Plug}
             title="No integrations yet"
+            description="Connect one to push tracked time straight into your client's system."
+            action={
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={openNew}>
+                <Plus className="h-4 w-4" />
+                Add integration
+              </Button>
+            }
             className="rounded-md border border-dashed py-8"
           />
         ) : (

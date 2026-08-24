@@ -14,6 +14,7 @@ import {
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Sheet,
   SheetContent,
@@ -27,7 +28,6 @@ import { useUIStore } from "@/stores/uiStore";
 import { useAssistantNudges, useTrackNudgeEvent } from "@/hooks/useAssistant";
 import { useTimer } from "@/hooks/useTimer";
 import type { AssistantNudge } from "@shared/schemas";
-import { Shimmer } from "./ai-elements/Shimmer";
 import { SuggestionChips } from "./ai-elements/SuggestionChips";
 import { ToolCard } from "./ai-elements/ToolCard";
 import { AssistantMarkdown } from "./ai-elements/AssistantMarkdown";
@@ -89,7 +89,7 @@ function useContextualSuggestions(): string[] {
 function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   const dismissNudge = useAssistantStore((s) => s.dismissNudge);
   const trackNudgeEvent = useTrackNudgeEvent();
-  const { startTimer } = useTimer();
+  const { startTimer, stopTimer } = useTimer();
   const Icon = NUDGE_ICONS[nudge.kind];
 
   const trackEvent = () => {
@@ -110,13 +110,24 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
     dismissNudge(nudge.id);
   };
 
+  // "Your timer has been running for 18h — still on it?" used to offer nothing
+  // but a chat window. The nudge names the problem, so it should carry the fix:
+  // stopping is the whole answer, and the entry survives it (unlike Discard),
+  // so it needs no confirmation — same grammar as the timer bar's own Stop.
+  const stopFromNudge = () => {
+    stopTimer();
+    dismissNudge(nudge.id);
+  };
+
   return (
     <div className="flex items-start gap-2.5 rounded-lg border bg-card p-3 shadow-sm">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{nudge.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">{nudge.body}</p>
-        {(nudge.kind === "untracked_meeting" || nudge.kind === "meeting_now") && (
+        {(nudge.kind === "untracked_meeting" ||
+          nudge.kind === "meeting_now" ||
+          nudge.kind === "long_timer") && (
           <div className="mt-2">
             {nudge.kind === "untracked_meeting" ? (
               <Button
@@ -126,6 +137,10 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
                 disabled={trackNudgeEvent.isPending}
               >
                 {trackNudgeEvent.isPending ? "Adding…" : "Add to timesheet"}
+              </Button>
+            ) : nudge.kind === "long_timer" ? (
+              <Button variant="outline" size="sm" onClick={stopFromNudge}>
+                Stop timer
               </Button>
             ) : (
               <Button variant="outline" size="sm" onClick={startFromEvent}>
@@ -328,9 +343,9 @@ export function AssistantPanel() {
               ))}
 
               {showThinking && (
-                <div className="mr-4 flex items-center gap-2 text-sm">
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <Shimmer>Thinking…</Shimmer>
+                <div className="mr-4 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Spinner size="sm" />
+                  <span>Thinking…</span>
                 </div>
               )}
             </div>

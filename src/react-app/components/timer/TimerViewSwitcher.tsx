@@ -84,8 +84,8 @@ export function TimerViewSwitcher({
             title={label}
             onClick={() => onChange(value)}
             className={cn(
-              "flex h-7 w-8 items-center justify-center rounded transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex h-7 w-8 items-center justify-center rounded transition-colors duration-fast ease-out-quart",
+              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

@@ -28,9 +28,18 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+// `as` is opt-in and defaults to the original div, so existing cards are
+// unchanged. It exists because a card that *is* the page — the auth pages —
+// needs its title to be a real heading: rendered as a div, /login had no
+// h1..h4 at all, which axe flags (page-has-heading-one) and which leaves a
+// screen-reader user no way to identify the page.
+function CardTitle({
+  className,
+  as: Tag = "div",
+  ...props
+}: React.ComponentProps<"div"> & { as?: "div" | "h1" | "h2" | "h3" }) {
   return (
-    <div
+    <Tag
       data-slot="card-title"
       className={cn("leading-none font-semibold", className)}
       {...props}

@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -31,6 +34,9 @@ import { SessionsCard } from "@/components/settings/SessionsCard";
 import { ConnectedAccountsCard } from "@/components/settings/ConnectedAccountsCard";
 import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { DangerZoneCard } from "@/components/settings/DangerZoneCard";
+
+const TABS = ["general", "tracking", "workspace", "account"] as const;
+type Tab = (typeof TABS)[number];
 
 // ── Preferences helpers ──────────────────────────────────────────────────────
 
@@ -95,24 +101,49 @@ export function SettingsPage() {
     updateSettings.mutate({ autoAssignColors: checked });
   };
 
+  // The active tab lives in the query string so a settings link can point at a
+  // section and a reload lands where you were. Unknown values fall back rather
+  // than rendering an empty page.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get("tab");
+  const tab = TABS.includes(requested as Tab) ? (requested as Tab) : "general";
+  const setTab = (next: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="mt-1 text-sm leading-normal text-muted-foreground">
-          App preferences and data management
-        </p>
-      </div>
+    <div className="space-y-4 p-6">
+      <h1 className="text-xl font-semibold">Settings</h1>
 
+      {/*
+        Fifteen cards used to stack into one 3,808px scroll with 41 controls and
+        no sectioning — the "config-everything settings screen" PRODUCT.md
+        rejects by name. Four groups named for what you came to do, not for
+        which subsystem owns the setting.
+
+        The tab lives in the URL so /settings?tab=account is linkable and a
+        reload doesn't dump you back at the top of General.
+      */}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="tracking">Tracking</TabsTrigger>
+          <TabsTrigger value="workspace">Workspace</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="mt-4 space-y-4">
       {/* Appearance */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Appearance</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Theme</Label>
               <p className="mt-1 text-xs leading-normal text-muted-foreground">
@@ -125,7 +156,7 @@ export function SettingsPage() {
           <Separator />
 
           {/* Auto-assign colors */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="pr-2">
               <Label htmlFor="pref-autocolor" className="flex items-center gap-1.5">
                 <Palette className="h-3.5 w-3.5" />
@@ -182,27 +213,6 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Data export */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Data export</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-3 text-sm text-muted-foreground">
-            Export all your time entries as a CSV file.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={handleExportAll}
-          >
-            <Download className="h-4 w-4" />
-            Export all entries (CSV)
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Preferences */}
       <Card>
         <CardHeader>
@@ -210,7 +220,7 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Default billable */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label htmlFor="pref-billable">Default billable</Label>
               <p className="mt-1 text-xs leading-normal text-muted-foreground">
@@ -227,51 +237,36 @@ export function SettingsPage() {
           <Separator />
 
           {/* Time display format */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label>Time display format</Label>
               <p className="mt-1 text-xs leading-normal text-muted-foreground">
                 How times are shown throughout the app
               </p>
             </div>
-            <div className="flex items-center gap-1 rounded-md border p-0.5">
-              <button
-                type="button"
-                onClick={() => handleTimeFormatChange("24h")}
-                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-                  timeFormat === "24h"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                24h
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTimeFormatChange("12h")}
-                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-                  timeFormat === "12h"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                12h
-              </button>
-            </div>
+            <SegmentedControl
+              label="Time display format"
+              options={[
+                { value: "24h", label: "24h" },
+                { value: "12h", label: "12h" },
+              ]}
+              value={timeFormat}
+              onChange={handleTimeFormatChange}
+            />
           </div>
 
           <Separator />
 
           {/* Currency */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <Label>Currency</Label>
+              <Label htmlFor="pref-currency">Currency</Label>
               <p className="mt-1 text-xs leading-normal text-muted-foreground">
                 Used for billable amounts in reports
               </p>
             </div>
             <Select value={currency} onValueChange={handleCurrencyChange}>
-              <SelectTrigger className="w-48 text-sm">
+              <SelectTrigger className="w-48 text-sm" id="pref-currency">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -287,15 +282,15 @@ export function SettingsPage() {
           <Separator />
 
           {/* Week start */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <Label>Week starts on</Label>
+              <Label htmlFor="pref-week-start">Week starts on</Label>
               <p className="mt-1 text-xs leading-normal text-muted-foreground">
                 First day of the week in the calendar and timesheet
               </p>
             </div>
             <Select value={String(weekStart)} onValueChange={handleWeekStartChange}>
-              <SelectTrigger className="w-48 text-sm">
+              <SelectTrigger className="w-48 text-sm" id="pref-week-start">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -309,7 +304,7 @@ export function SettingsPage() {
           <Separator />
 
           {/* Show weekends */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Label htmlFor="pref-weekends">Show weekends</Label>
               <p className="mt-1 text-xs leading-normal text-muted-foreground">
@@ -325,34 +320,48 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Productivity */}
-      <ProductivityCard />
+        </TabsContent>
 
-      {/* Assistant memory */}
-      <AssistantMemoryCard />
+        <TabsContent value="tracking" className="mt-4 space-y-4">
+          <ProductivityCard />
+          <RecurringEntriesCard />
+          <AssistantMemoryCard />
+        </TabsContent>
 
-      {/* Recurring entries */}
-      <RecurringEntriesCard />
+        <TabsContent value="workspace" className="mt-4 space-y-4">
+          <TeamCard />
+          <GoogleCalendarCard />
+          <IntegrationsCard />
 
-      {/* Team */}
-      <TeamCard />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Data export</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Export all your time entries as a CSV file.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={handleExportAll}
+              >
+                <Download className="h-4 w-4" />
+                Export all entries (CSV)
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Calendar sync */}
-      <GoogleCalendarCard />
-
-      {/* Integrations */}
-      <IntegrationsCard />
-
-      {/* Account */}
-      <AccountCard />
-
-      {/* Security */}
-      <PasskeysCard />
-      <ConnectedAccountsCard />
-      <SessionsCard />
-
-      {/* Danger zone */}
-      <DangerZoneCard />
+        <TabsContent value="account" className="mt-4 space-y-4">
+          <AccountCard />
+          <PasskeysCard />
+          <ConnectedAccountsCard />
+          <SessionsCard />
+          <DangerZoneCard />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

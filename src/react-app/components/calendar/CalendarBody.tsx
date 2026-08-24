@@ -7,7 +7,8 @@ import {
   startOfWeek,
   startOfMonth,
   endOfMonth,
-  isWithinInterval,
+  startOfDay,
+  endOfDay,
 } from "date-fns";
 import { CalendarPlus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +40,12 @@ interface CalendarBodyProps {
   weekStartsOn: number; // 0=Sun … 6=Sat
   showWeekends: boolean;
   showGaps: boolean;
+  /**
+   * False in split view, where the entry list beside this grid renders its own
+   * "nothing tracked" state. Two of them side by side, in near-identical
+   * words, read as a rendering fault rather than an explanation.
+   */
+  showEmptyState?: boolean;
 }
 
 // The FullCalendar grid, externally driven by the shared period + view.
@@ -51,6 +58,7 @@ export function CalendarBody({
   weekStartsOn,
   showWeekends,
   showGaps,
+  showEmptyState = true,
 }: CalendarBodyProps) {
   // date-fns wants a 0–6 literal; the setting is validated to that range.
   const wso = weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -63,7 +71,17 @@ export function CalendarBody({
   const [initialDate] = useState<Date>(periodStart);
 
   // Fetch range: the whole month grid (incl. leading/trailing days) for month
-  // view, otherwise the full week — day/5-day views just show fewer columns.
+  // view, the single day for the day view, otherwise the full week — the 5-day
+  // view just shows fewer columns of the week its header names.
+  //
+  // The day view must scope to `periodStart` alone, and the grid must open on
+  // it rather than on today. It used to fetch the containing week and then
+  // `gotoDate(today)` whenever today fell anywhere inside it, while the header,
+  // the "Logged" strip, the totals and the entry pane all stayed on
+  // `periodStart` — so entering Split on a past day showed "Mon, Aug 17 ·
+  // Logged 5h" beside an empty Sunday grid, and the user couldn't tell which
+  // pane was lying. TimerWorkspace already narrows the shared period to
+  // startOfDay/endOfDay for this view, so following it is all that's needed.
   const range = useMemo(() => {
     if (calendarView === "dayGridMonth") {
       return {
@@ -71,25 +89,19 @@ export function CalendarBody({
         end: endOfWeek(endOfMonth(periodStart), { weekStartsOn: wso }),
       };
     }
+    if (calendarView === "timeGridDay") {
+      return { start: startOfDay(periodStart), end: endOfDay(periodStart) };
+    }
     return { start: periodStart, end: endOfWeek(periodStart, { weekStartsOn: wso }) };
   }, [periodStart, calendarView, wso]);
 
-  // For day view, focus today when it falls in the period, else the period start.
-  const focusDate = useMemo(() => {
-    if (calendarView !== "timeGridDay") return periodStart;
-    const today = new Date();
-    return isWithinInterval(today, { start: range.start, end: range.end })
-      ? today
-      : periodStart;
-  }, [calendarView, periodStart, range.start, range.end]);
-
-  // Drive FullCalendar imperatively when the shared week or view changes.
+  // Drive FullCalendar imperatively when the shared period or view changes.
   useEffect(() => {
     const a = api();
     if (!a) return;
     if (a.view.type !== calendarView) a.changeView(calendarView);
-    a.gotoDate(focusDate);
-  }, [calendarView, focusDate]);
+    a.gotoDate(periodStart);
+  }, [calendarView, periodStart]);
 
   // Advance "now" every minute so the running entry's live block grows.
   const [nowIso, setNowIso] = useState(() => new Date().toISOString());
@@ -204,7 +216,7 @@ export function CalendarBody({
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-2">
       {entriesLoading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+        <div className="absolute inset-0 z-sticky flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
           <Spinner size="lg" className="text-muted-foreground" />
         </div>
       )}
@@ -213,7 +225,7 @@ export function CalendarBody({
           identical to a week with nothing tracked. Overlay rather than replace,
           so the dates stay on screen as context. */}
       {entriesError && !entriesLoading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/85 p-4 backdrop-blur-[1px]">
+        <div className="absolute inset-0 z-overlay flex items-center justify-center bg-background/85 p-4 backdrop-blur-[1px]">
           <EmptyState
             icon={AlertTriangle}
             title="Couldn't load this period"
@@ -230,8 +242,8 @@ export function CalendarBody({
 
       {/* Nothing tracked: the grid alone gives no hint that it's empty *because
           you haven't logged anything*, versus still loading or broken. */}
-      {!entriesLoading && !entriesError && events.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
+      {showEmptyState && !entriesLoading && !entriesError && events.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-sticky flex items-center justify-center p-4">
           <div className="pointer-events-auto">
             <EmptyState
               icon={CalendarPlus}
@@ -247,7 +259,7 @@ export function CalendarBody({
         <Button
           variant="secondary"
           size="sm"
-          className="absolute right-4 top-3 z-20 gap-1.5 shadow-sm"
+          className="absolute right-4 top-3 z-overlay gap-1.5 shadow-sm"
           onClick={handleConvertAll}
           disabled={convertRange.isPending}
           title="Add every calendar event in view as a time entry"

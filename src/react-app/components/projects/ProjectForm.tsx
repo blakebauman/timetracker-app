@@ -134,7 +134,7 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
                   aria-pressed={color === c}
                   title={PROJECT_COLOR_NAMES[c] ?? c}
                   className={cn(
-                    "h-6 w-6 rounded-full ring-2 ring-offset-2 transition-all focus-visible:outline-none focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "h-6 w-6 rounded-full ring-2 ring-offset-2 transition-all duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-ring focus-visible:ring-offset-2",
                     color === c ? "scale-110 ring-foreground" : "ring-transparent hover:scale-105"
                   )}
                   style={{ backgroundColor: c }}
@@ -146,9 +146,9 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
 
           {/* Client */}
           <div className="space-y-1.5">
-            <Label>Client</Label>
+            <Label htmlFor="project-client">Client</Label>
             <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger>
+              <SelectTrigger id="project-client">
                 <SelectValue placeholder="No client" />
               </SelectTrigger>
               <SelectContent>
@@ -222,9 +222,9 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
           {integrations.length > 0 && (
             <div className="space-y-3 border-t pt-4">
               <div className="space-y-1.5">
-                <Label>Integration</Label>
+                <Label htmlFor="project-integration">Integration</Label>
                 <Select value={integrationId} onValueChange={setIntegrationId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="project-integration">
                     <SelectValue placeholder="No integration" />
                   </SelectTrigger>
                   <SelectContent>

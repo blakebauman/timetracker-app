@@ -29,7 +29,7 @@ test("tag colors: recolor an existing tag in the entry dialog", async ({ page })
 
 test("recurring entries: create a template in settings", async ({ page }) => {
   await signUp(page);
-  await page.goto("/settings");
+  await page.goto("/settings?tab=tracking");
 
   await expect(page.getByText("Recurring entries")).toBeVisible();
   const card = page.locator("div").filter({ hasText: /^Recurring entries/ }).first();

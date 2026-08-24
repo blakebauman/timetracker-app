@@ -25,9 +25,23 @@ interface WeeklyBarChartProps {
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/*
+ * Billable is a *part* of total, not a sibling of it, so the two used to be
+ * drawn as adjacent bars where one was always a subset of the other — and in
+ * the brand red plus a stock teal, neither of which meant anything.
+ *
+ * Stacked, the segments sum to the total (the bar height still reads as "hours
+ * that week") and the colour finally encodes something: green is the half you
+ * invoice, the muted remainder is the half you don't. Green for billable is the
+ * same meaning --success already carries on the KPI strip's billable bar.
+ *
+ * A stack also survives colour-blindness better than two hue-only bars: the
+ * segments are positional and legended, and the two fills are separated on
+ * luminance as well as hue (see the --chart-ink-soft note in index.css).
+ */
 const chartConfig = {
-  total: { label: "Total", color: "var(--primary)" },
-  billable: { label: "Billable", color: "var(--chart-2)" },
+  billable: { label: "Billable", color: "var(--success)" },
+  nonBillable: { label: "Non-billable", color: "var(--chart-ink-soft)" },
 } satisfies ChartConfig;
 
 function weekRangeLabel(days: WeeklyDay[]): string {
@@ -65,7 +79,7 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
 
   // Single week: one bar group per weekday (Sun–Sat, zero-filled).
   // Multi-week: one bar group per week, labeled by date range.
-  let chartData: { label: string; total: number; billable: number }[];
+  let chartData: { label: string; billable: number; nonBillable: number }[];
   let title: string;
   let maxBarSize: number;
 
@@ -76,20 +90,26 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
     );
     chartData = DAY_NAMES.map((name) => {
       const d = dayMap.get(name);
+      const total = d ? d.totalSeconds : 0;
+      const billable = d ? d.billableSeconds : 0;
       return {
         label: name,
-        total: d ? toHours(d.totalSeconds) : 0,
-        billable: d ? toHours(d.billableSeconds) : 0,
+        billable: toHours(billable),
+        nonBillable: toHours(Math.max(0, total - billable)),
       };
     });
     title = `Weekly breakdown — ${weekRangeLabel(week.days)}`;
     maxBarSize = 40;
   } else {
-    chartData = data.map((w) => ({
-      label: weekRangeLabel(w.days),
-      total: toHours(w.days.reduce((s, d) => s + d.totalSeconds, 0)),
-      billable: toHours(w.days.reduce((s, d) => s + d.billableSeconds, 0)),
-    }));
+    chartData = data.map((w) => {
+      const total = w.days.reduce((s, d) => s + d.totalSeconds, 0);
+      const billable = w.days.reduce((s, d) => s + d.billableSeconds, 0);
+      return {
+        label: weekRangeLabel(w.days),
+        billable: toHours(billable),
+        nonBillable: toHours(Math.max(0, total - billable)),
+      };
+    });
     title = "Weekly breakdown";
     maxBarSize = 48;
   }
@@ -105,12 +125,12 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `${v}h`}
@@ -137,16 +157,18 @@ export function WeeklyBarChart({ data }: WeeklyBarChartProps) {
               }
             />
             <ChartLegend content={<ChartLegendContent />} />
+            {/* Billable sits at the bottom of the stack: it is the part being
+                measured, and a stack reads from the baseline up. */}
             <Bar
-              dataKey="total"
-              fill="var(--color-total)"
-              radius={[3, 3, 0, 0]}
+              dataKey="billable"
+              stackId="hours"
+              fill="var(--color-billable)"
               maxBarSize={maxBarSize}
             />
             <Bar
-              dataKey="billable"
-              fill="var(--color-billable)"
-              fillOpacity={0.5}
+              dataKey="nonBillable"
+              stackId="hours"
+              fill="var(--color-nonBillable)"
               radius={[3, 3, 0, 0]}
               maxBarSize={maxBarSize}
             />

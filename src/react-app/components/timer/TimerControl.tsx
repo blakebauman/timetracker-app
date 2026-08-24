@@ -89,7 +89,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
                 type="button"
                 onClick={handleStartEditElapsed}
                 aria-label="Edit elapsed time"
-                className="rounded px-1 transition-colors hover:bg-accent/50"
+                className="rounded px-1 transition-colors duration-fast ease-out-quart hover:bg-accent/50"
               >
                 <TimerDisplay
                   seconds={elapsed}
