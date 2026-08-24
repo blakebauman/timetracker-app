@@ -35,7 +35,9 @@ Sign-in is passwordless: a **6-digit email code**, a **magic link**, **Google**,
 
 There are five ways to get time into your timesheet:
 
-- **Live timer** — type a description in the top bar, pick project/task/tags/billable, press start. Press stop when done. The elapsed time of a *running* timer can be edited in place from the top bar if you started it late.
+- **Live timer** — type a description in the top bar, pick project/task/tags, press start. Press stop when done. The elapsed time of a *running* timer can be edited in place from the top bar if you started it late.
+
+  Whether the time is **billable** is shown by the `$` toggle in the bar, and it answers itself: picking a project adopts that project's billable setting, and with no project it falls back to **Settings → Preferences → Default billable**. Click the toggle to override either way — while a timer is running, the change applies to the running entry immediately. Billable is the only thing Reports uses to work out billable hours and invoiced amounts, so a timer that starts on a billable project now reports as billable without you having to remember.
 - **Manual entry** — **Add Entry** on the Timer page for time you've already spent; pick start/end or a duration.
 - **AI Quick Add** — describe the entry in plain language ("45 min standup for Acme this morning, billable") and the app parses it into a real entry, matched against your actual projects and tasks. It warns you when it isn't sure about a match.
 - **Timesheet grid** — the Timesheet view is a weekly grid: one row per project/task combination, type hours directly into day cells.
@@ -68,7 +70,7 @@ The **Planner** view (Timer tab, last icon in the view switcher) is a weekly gri
 ## Organizing work: clients, projects, tasks, tags
 
 - **Clients** hold contact details and notes; each client's detail page shows its projects and recent activity.
-- **Projects** belong to a client (optionally), carry a **color**, an optional **billing rate**, and an optional budget. Rate × billable hours = the amounts you see in Reports.
+- **Projects** belong to a client (optionally), carry a **color**, a **billable** flag, an optional **billing rate**, and an optional budget. Rate × billable hours = the amounts you see in Reports. The billable flag is the default for new time on that project — the timer bar adopts it when you pick the project, and any entry created without an explicit flag (the browser extension, AI Quick Add, the API) inherits it too.
 - **Tasks** belong to projects; the Tasks page is a board-style list where you can also log time directly against a task.
 - **Tags** are freeform labels; new tags automatically get a distinct color (editable later, along with renames, on the fly from any tag picker).
 
@@ -76,6 +78,7 @@ The **Planner** view (Timer tab, last icon in the view switcher) is a weekly gri
 
 ## Favorites & recurring entries
 
+- **Continue last** — the ↺ button in the top bar picks up whatever you tracked most recently, with its project, task, tags and billable flag. It's there because three of the five Timer views (calendar, timesheet, planner) show no entry rows, so the per-row **Continue** isn't reachable from them. It only appears when there's something to continue.
 - **Favorites** — save a description + project + task + billable combo and start it with one click from the star menu in the top bar.
 - **Recurring entries** (Settings → Recurring entries) — templates like "Weekly team sync, Mondays 30 min" that materialize automatically as real entries on schedule, even while you're not in the app. Edit or pause them any time.
 
@@ -194,7 +197,7 @@ Under **Settings → Account / Security / Danger zone**:
 | Appearance | Theme (light/dark/system), auto-assign colors + AI recolor | Theme: device · colors: account |
 | Keyboard shortcuts | Reference card | — |
 | Data export | All-entries CSV | — |
-| Preferences | Default billable, 12/24h time, currency, week start, show weekends | Billable: device · rest: account |
+| Preferences | Default billable (used when an entry has no project), 12/24h time, currency, week start, show weekends | Billable: device · rest: account |
 | Productivity | Notifications, idle detection, reminders, nudge alerts, pomodoro | Device |
 | Assistant memory | Review/delete assistant memories | Workspace |
 | Recurring entries | Manage templates | Workspace |

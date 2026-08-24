@@ -355,6 +355,20 @@
   }
 }
 
+/* ─── Touch targets ─────────────────────────────────────────────────────────
+   Gated on input capability, not viewport width — same reasoning as .tt-reveal
+   above. The timer bar's dense controls sit at 28–32px, which is right under a
+   trackpad and misses under a thumb, and the device that decides is the one
+   with the thumb: a 900px-wide tablet is not a desktop. Only the hit area
+   grows; the visual chip keeps its designed height, so the bar doesn't turn
+   chunky on a pointer device that merely reports coarse. */
+@media (pointer: coarse) {
+  .tt-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 /* Secondary text sitting on a swatch tint. --muted-foreground is tuned against
    the flat background and washes out over a colored fill (3.81:1 worst case),
    so step it toward ink. Measured ceiling 80% in both themes. */

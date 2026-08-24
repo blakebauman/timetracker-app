@@ -283,7 +283,13 @@ export const CreateTimeEntrySchema = z
     taskId: z.string().nullable().optional(),
     start: z.string(),
     stop: z.string().nullable().optional(),
-    billable: z.boolean().default(false),
+    // Deliberately optional rather than `.default(false)`: with a default the
+    // server cannot tell "the caller did not say" from "the caller said no",
+    // and every entry created from the timer bar, the extension, the AI
+    // quick-add or a seed arrived as non-billable regardless of the project it
+    // was logged against. Omitted means "inherit from the project"; an explicit
+    // true/false always wins. See resolveBillable in routes/time-entries.ts.
+    billable: z.boolean().optional(),
     tags: z.array(z.string().max(100)).max(50).default([]),
     calendarEventId: z.string().nullable().optional(),
   })

@@ -35,14 +35,9 @@ import { ConnectedAccountsCard } from "@/components/settings/ConnectedAccountsCa
 import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { DangerZoneCard } from "@/components/settings/DangerZoneCard";
 
+import { getDefaultBillable, setDefaultBillable } from "@/lib/billable";
 const TABS = ["general", "tracking", "workspace", "account"] as const;
 type Tab = (typeof TABS)[number];
-
-// ── Preferences helpers ──────────────────────────────────────────────────────
-
-function getDefaultBillable(): boolean {
-  return localStorage.getItem("pref_defaultBillable") === "true";
-}
 
 // ── Settings page ────────────────────────────────────────────────────────────
 
@@ -50,7 +45,7 @@ export function SettingsPage() {
   const { data: entries = [] } = useEntries(365);
 
   // — Preferences state
-  const [defaultBillable, setDefaultBillable] = useState<boolean>(getDefaultBillable);
+  const [defaultBillable, setDefaultBillableState] = useState<boolean>(getDefaultBillable);
   const timeFormat = useUIStore((s) => s.timeFormat);
   const setTimeFormatStore = useUIStore((s) => s.setTimeFormat);
   const currency = useUIStore((s) => s.currency);
@@ -71,8 +66,8 @@ export function SettingsPage() {
   };
 
   const handleDefaultBillableChange = (checked: boolean) => {
+    setDefaultBillableState(checked);
     setDefaultBillable(checked);
-    localStorage.setItem("pref_defaultBillable", String(checked));
   };
 
   const handleTimeFormatChange = (value: "24h" | "12h") => {
@@ -224,7 +219,7 @@ export function SettingsPage() {
             <div>
               <Label htmlFor="pref-billable">Default billable</Label>
               <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                New time entries are billable by default
+                New timers start billable unless the project says otherwise
               </p>
             </div>
             <Switch

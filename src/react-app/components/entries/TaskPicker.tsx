@@ -85,14 +85,18 @@ export function TaskPicker({
           className={cn(
             "gap-1.5 text-sm",
             !selected && "text-muted-foreground",
-            compact && "h-7 px-2",
+            // Height comes from `size="sm"` (32px, the toolbar step) — the
+            // old `h-7` put these chips at 28px against 32px neighbours, which
+            // is the near-miss that reads as sloppy rather than hierarchical.
+            // Only the horizontal padding tightens for density.
+            compact && "px-2",
             field && "w-full justify-start font-normal",
             className
           )}
         >
           <CheckSquare className="h-3.5 w-3.5 shrink-0" />
           {selected ? (
-            <span className="max-w-30 truncate">{selected.name}</span>
+            <span className="min-w-0 max-w-30 truncate">{selected.name}</span>
           ) : (
             !compact && <span>No task</span>
           )}
