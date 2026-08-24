@@ -100,7 +100,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
                 type="button"
                 onClick={handleStartEditElapsed}
                 aria-label="Edit elapsed time"
-                className="tt-touch rounded px-1 transition-colors duration-fast ease-out-quart hover:bg-accent/50"
+                className="tt-touch flex h-8 items-center rounded px-1.5 transition-colors duration-fast ease-out-quart hover:bg-accent/50"
               >
                 <TimerDisplay
                   seconds={elapsed}
@@ -126,9 +126,13 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
             )}
             <Button
               variant="default"
-              size="icon"
+              // `size="icon"` + `h-10 w-10` is the override DESIGN.md §8 bans by
+              // name: it renders the same 40px as `icon-lg` until someone
+              // retunes the token, at which point this control silently stops
+              // matching every other 40px button in the app.
+              size="icon-lg"
               onClick={isRunning ? onStop : onStart}
-              className="tt-touch relative h-10 w-10 cursor-pointer rounded-full"
+              className="tt-touch relative cursor-pointer rounded-full"
               aria-label={isRunning ? "Stop timer" : "Start timer"}
             >
               {isRunning ? (

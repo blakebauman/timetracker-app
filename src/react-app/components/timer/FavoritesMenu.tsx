@@ -66,7 +66,10 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon"
+              // `icon-sm`, not `size="icon"` + `h-8 w-8` — the ad-hoc override
+              // DESIGN.md §8 bans, and it is what let this button drift to a
+              // different height from its neighbours in the first place.
+              size="icon-sm"
               // `text-amber-500` was a raw Tailwind palette value with no token
               // behind it — a third saturated colour in a bar the One Accent
               // Rule allows one or two in — and it measured 2.11:1 against card
@@ -75,7 +78,7 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
               // needs no colour of its own here; both states stay muted so the
               // Start disc keeps the bar's only strong mark. The count is in
               // the accessible name rather than carried by hue.
-              className="tt-touch h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="tt-touch text-muted-foreground hover:text-foreground"
               aria-label={
                 favorites.length > 0
                   ? `Favorites — ${favorites.length} saved`

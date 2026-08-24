@@ -234,7 +234,12 @@ export function TimerBar() {
           // `min-w-0` is what lets `flex-1` actually yield at `xl`; without it
           // the input's intrinsic min-width fights the row and the overflow
           // comes out of whatever sits furthest right.
-          "basis-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset xl:min-w-0 xl:flex-1 xl:basis-auto",
+          // `dark:bg-transparent` is not redundant: `Input` carries a
+          // `dark:bg-input/30` fill, so the same control read as a bare label in
+          // light mode and a bordered field in dark. The bar's design is a
+          // full-bleed borderless input in both — the placeholder and the inset
+          // focus ring are what mark it as a field.
+          "tt-touch basis-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset dark:bg-transparent xl:min-w-0 xl:flex-1 xl:basis-auto",
           isRunning && "font-medium"
         )}
       />

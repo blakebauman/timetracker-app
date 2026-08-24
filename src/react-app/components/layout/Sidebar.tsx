@@ -233,7 +233,7 @@ export function Sidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+                <Button variant="ghost" size="icon-lg" className="tt-touch" aria-label="Open navigation menu">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
