@@ -381,12 +381,21 @@ export const api = {
           | "weekStart"
           | "showWeekends"
           | "autoAssignColors"
+          | "digestDaily"
+          | "digestWeekly"
+          | "digestHour"
+          | "digestTimezoneOffsetMinutes"
         >
       >
     ) =>
       request<Settings>("/settings", {
         method: "PATCH",
         body: JSON.stringify(body),
+      }),
+    sendDigest: (kind: "daily" | "weekly") =>
+      request<{ sent: boolean; subject: string }>("/settings/digest/send", {
+        method: "POST",
+        body: JSON.stringify({ kind }),
       }),
   },
 

@@ -24,6 +24,15 @@ export const SettingsSchema = z.object({
   showWeekends: z.boolean(),
   // When on, new projects get a distinct palette color instead of the default.
   autoAssignColors: z.boolean(),
+  // Email digests: a morning briefing on yesterday, and a Monday summary of the
+  // week just gone. Both off by default.
+  digestDaily: z.boolean(),
+  digestWeekly: z.boolean(),
+  digestHour: z.number().int().min(0).max(23),
+  // The user's own UTC offset (JS getTimezoneOffset sign: west of UTC is
+  // positive), so the cron knows when their morning is. Refreshed by the client
+  // whenever it drifts — a DST change would otherwise send an hour off for months.
+  digestTimezoneOffsetMinutes: z.number().int(),
 });
 
 export const UpdateSettingsSchema = z
@@ -35,6 +44,10 @@ export const UpdateSettingsSchema = z
     weekStart: z.coerce.number().int().min(0).max(6),
     showWeekends: z.boolean(),
     autoAssignColors: z.boolean(),
+    digestDaily: z.boolean(),
+    digestWeekly: z.boolean(),
+    digestHour: z.coerce.number().int().min(0).max(23),
+    digestTimezoneOffsetMinutes: z.coerce.number().int().min(-900).max(900),
   })
   .partial();
 

@@ -149,6 +149,46 @@ ${styleInstruction} Do not invent work not listed above. Output only the summary
   return summary;
 }
 
+/**
+ * One short paragraph for the morning briefing.
+ *
+ * Deliberately NOT `runSummaryGeneration`: that one writes outward-facing copy
+ * for a client ("we held a scope call to review the estimate…"), which is the
+ * wrong voice entirely for an email telling one person what they themselves did
+ * yesterday. Same model, same grounding discipline — different reader.
+ *
+ * Best-effort: returns null rather than throwing, because a briefing without a
+ * paragraph is still a briefing.
+ */
+export async function runBriefNarrative(
+  ai: Ai,
+  entries: SummaryEntryInput[],
+  period: "day" | "week"
+): Promise<string | null> {
+  if (!entries.length) return null;
+  const lines = entries.slice(0, 120).map((e) => {
+    const hours = ((e.duration ?? 0) / 3600).toFixed(2);
+    return `${e.start.slice(0, 10)} | ${e.projectName ?? "No project"} | ${hours}h | ${e.description || "(no description)"}`;
+  });
+
+  const prompt = `Below are the time entries one person logged over the past ${period === "week" ? "week" : "day"} (date | project | hours | description):
+
+${lines.join("\n")}
+
+Write ONE short paragraph, at most three sentences, telling that person where their time went. Address them as "you". Be concrete: name the projects and the work that took the most time, and note anything striking about the shape of the ${period} (a project that took most of it, an unusual amount of meetings, a ${period} split across many things). Do not invent work that isn't listed, do not moralise, do not give advice, and do not open with a greeting. Output only the paragraph.`;
+
+  try {
+    const raw = (await ai.run(
+      SUMMARY_MODEL,
+      { messages: [{ role: "user", content: prompt }] },
+      { gateway: GATEWAY }
+    )) as { response?: string };
+    return raw.response?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Active projects (+tasks) shaped for AI grounding. Shared by the AI routes,
  *  calendar materialization, and the assistant's track-event action. */
 export async function loadGroundingProjects(

@@ -25,6 +25,7 @@ import { websocketRouter } from "./routes/websocket";
 import { createAuth } from "./auth";
 import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
+import { runDigests } from "./lib/digest";
 import { routeAgentRequest } from "agents";
 export { TimerRoom } from "./durable-objects/TimerRoom";
 export { ChatAgent } from "./durable-objects/ChatAgent";
@@ -44,6 +45,10 @@ const nudgesRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 6, 60_000);
 // third-party host — cap them so an authenticated caller can't use the worker as
 // a request amplifier. Relaxed in dev for the Playwright suite.
 const outboundRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 30, 60_000);
+// "Send me a digest now" costs an outbound email and an AI call. Deliberately
+// tighter than the other limits: the endpoint mails a real inbox, so an
+// authenticated caller shouldn't be able to use it as a flooding primitive.
+const emailRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 5, 60_000);
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
@@ -90,6 +95,7 @@ const app = new Hono<{ Bindings: Env }>()
   .use("/api/assistant/nudges", nudgesRateLimit)
   // Drafting a day costs one Workers AI call plus a Google Calendar read-through.
   .use("/api/drafts/generate", aiRateLimit)
+  .use("/api/settings/digest/send", emailRateLimit)
   .use("/api/integrations/*", outboundRateLimit)
   .use("/api/calendar/convert", outboundRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
@@ -150,9 +156,11 @@ export default {
     }
     return app.fetch(request, env, ctx);
   },
-  // Cron (*/5): materialize finished calendar events for auto-track workspaces
-  // and any due recurring-entry occurrences.
+  // Cron (*/5): materialize finished calendar events for auto-track workspaces,
+  // any due recurring-entry occurrences, and any digest whose local send hour
+  // has arrived. Each sweep swallows its own per-workspace/per-user errors, so
+  // one broken connection can't stop the others.
   scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(Promise.all([runAutoTrack(env), runRecurring(env)]));
+    ctx.waitUntil(Promise.all([runAutoTrack(env), runRecurring(env), runDigests(env)]));
   },
 } satisfies ExportedHandler<Env>;

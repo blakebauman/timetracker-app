@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -56,6 +56,27 @@ export function useHydrateSettings() {
     setAutoAssignColors,
   ]);
 
+  /**
+   * Keep the stored UTC offset honest.
+   *
+   * The digest cron has no request to read a timezone from, so it works off the
+   * offset stored on the user row. Left alone, a DST change would send the
+   * briefing an hour early or late for months — and nobody re-opens Settings to
+   * fix a thing they haven't noticed. Reconciled here instead, where every app
+   * open passes through, and only when digests are actually on.
+   */
+  const reconciled = useRef(false);
+  const updateSettings = useUpdateSettings();
+  const digestOn = Boolean(query.data?.digestDaily || query.data?.digestWeekly);
+  const storedOffset = query.data?.digestTimezoneOffsetMinutes;
+  useEffect(() => {
+    if (!digestOn || reconciled.current || storedOffset === undefined) return;
+    const actual = new Date().getTimezoneOffset();
+    if (actual === storedOffset) return;
+    reconciled.current = true;
+    updateSettings.mutate({ digestTimezoneOffsetMinutes: actual });
+  }, [digestOn, storedOffset, updateSettings]);
+
   return query;
 }
 
@@ -80,5 +101,15 @@ export function useUpdateSettings() {
       setAutoAssignColors(settings.autoAssignColors);
     },
     onError: () => toast.error("Failed to save settings"),
+  });
+}
+
+/** Send one digest to the signed-in user's own address, right now. */
+export function useSendDigest() {
+  return useMutation({
+    mutationFn: (kind: "daily" | "weekly") => api.settings.sendDigest(kind),
+    onSuccess: () => toast.success("Sent — check your inbox"),
+    onError: (error: Error) =>
+      toast.error(error.message || "Couldn't send the digest"),
   });
 }

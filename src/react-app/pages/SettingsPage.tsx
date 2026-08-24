@@ -26,6 +26,7 @@ import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { GoogleCalendarCard } from "@/components/settings/GoogleCalendarCard";
 import { ProductivityCard } from "@/components/settings/ProductivityCard";
+import { DigestCard } from "@/components/settings/DigestCard";
 import { AssistantMemoryCard } from "@/components/settings/AssistantMemoryCard";
 import { RecurringEntriesCard } from "@/components/settings/RecurringEntriesCard";
 import { TeamCard } from "@/components/settings/TeamCard";
@@ -326,6 +327,7 @@ export function SettingsPage() {
 
         <TabsContent value="tracking" className="mt-4 space-y-4">
           <ProductivityCard />
+          <DigestCard />
           <RecurringEntriesCard />
           <AssistantMemoryCard />
         </TabsContent>
