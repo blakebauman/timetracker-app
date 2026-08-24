@@ -63,7 +63,7 @@ const TONE_SHELL: Record<Tone, string> = {
 };
 const TONE_ICON: Record<Tone, string> = {
   muted: "text-muted-foreground",
-  ok: "text-success",
+  ok: "text-success-ink",
   warn: "text-warning-ink",
   error: "text-destructive",
 };
@@ -208,7 +208,7 @@ function renderResult(name: string, input: Rec, out: Rec): React.ReactNode {
               {projects.slice(0, 8).map((p, i) => (
                 <li key={i} className="flex items-center gap-1.5 truncate">
                   <span className="truncate text-foreground/90">{p.name ?? "?"}</span>
-                  {p.billable && <span className="text-micro text-success">billable</span>}
+                  {p.billable && <span className="text-micro text-success-ink">billable</span>}
                 </li>
               ))}
               {projects.length > 8 && (

@@ -164,7 +164,7 @@ export function AccountCard() {
             <span className="text-sm">{user?.email ?? "—"}</span>
             {emailVerified ? (
               <Badge variant="secondary" className="gap-1 text-micro">
-                <BadgeCheck className="h-3 w-3 text-success" /> Verified
+                <BadgeCheck className="h-3 w-3 text-success-ink" /> Verified
               </Badge>
             ) : (
               <Badge variant="outline" className="gap-1 text-micro text-warning-ink">

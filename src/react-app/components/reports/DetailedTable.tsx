@@ -251,13 +251,13 @@ export function DetailedTable({ entries }: DetailedTableProps) {
         <Table containerClassName="max-h-[60vh] overflow-y-auto print:max-h-none print:overflow-visible">
           <TableHeader>
             <TableRow className="[&>th]:sticky [&>th]:top-0 [&>th]:z-sticky [&>th]:bg-muted [&>th]:shadow-[inset_0_-1px_0_var(--border)] hover:bg-transparent">
-              <TableHead className="w-8 rounded-tl-lg print:hidden">
+              <TableHead className="w-8 rounded-tl-lg print:hidden" aria-label="Select">
                 <input
                   type="checkbox"
                   aria-label="Select all"
                   checked={allSelected}
                   onChange={toggleAll}
-                  className="size-3.5 accent-primary"
+                  className="relative size-3.5 accent-primary before:absolute before:-inset-[5px] before:content-['']"
                 />
               </TableHead>
               {cols.map((c) => (
@@ -266,7 +266,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                     type="button"
                     onClick={() => setSortKey(c.key)}
                     className={cn(
-                      "inline-flex items-center gap-1 transition-colors duration-fast ease-out-quart hover:text-foreground",
+                      "relative inline-flex items-center gap-1 transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-foreground",
                       c.align === "right" && "flex-row-reverse"
                     )}
                   >
@@ -280,7 +280,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                   </button>
                 </TableHead>
               ))}
-              <TableHead className="w-8 rounded-tr-lg print:hidden" />
+              <TableHead className="w-8 rounded-tr-lg print:hidden" aria-label="Actions" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -292,7 +292,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                     aria-label={`Select ${entry.description || "entry"}`}
                     checked={selected.has(entry.id)}
                     onChange={() => toggleSelect(entry.id)}
-                    className="size-3.5 accent-primary"
+                    className="relative size-3.5 accent-primary before:absolute before:-inset-[5px] before:content-['']"
                   />
                 </TableCell>
                 {cols.map((c) => (
@@ -311,7 +311,16 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                 <TableCell className="py-2.5 print:hidden">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground"
+                        // One per row, so an unnamed trigger is 32 nameless
+                        // buttons on a full report. EntryRow's equivalent has
+                        // always been labelled "Entry actions"; this was drift.
+                        aria-label={`Actions for ${entry.description || "entry"}`}
+                        title="Entry actions"
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

@@ -44,8 +44,13 @@ export default tseslint.config(
 						"Pair every transition with a duration token and ease-out-quart (DESIGN.md §6).",
 				},
 				{
+					// Also matches a *bare* `ring-1`/`ring-2` in a class string that
+					// mentions focus — ProjectForm.tsx:137 wrote `ring-2 …
+					// focus-visible:ring-ring` and slipped past the first version
+					// of this rule, which only looked for the `focus-visible:`
+					// prefix on the width itself.
 					selector:
-						"Literal[value=/focus-visible:ring-[12]\\b|focus:ring-[12]\\b|focus:outline-hidden/]",
+						"Literal[value=/focus-visible:ring-[12]\\b|focus:ring-[12]\\b|focus:outline-hidden|(?=[\\s\\S]*focus)[\\s\\S]*(?:^|\\s)ring-[12]\\b/]",
 					message:
 						"Use the house focus ring: `focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50` (DESIGN.md §5, 'one focus vocabulary everywhere').",
 				},

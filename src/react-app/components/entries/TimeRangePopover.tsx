@@ -59,7 +59,10 @@ export function TimeRangePopover({ start, stop, onChange, children, triggerClass
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn("rounded transition-colors duration-fast ease-out-quart hover:bg-accent/50", triggerClassName)}
+          className={cn(
+            "relative rounded transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:bg-accent/50",
+            triggerClassName
+          )}
         >
           {children}
         </button>

@@ -13,6 +13,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
@@ -155,6 +157,14 @@ export function DailyBarChart({ data }: DailyBarChartProps) {
                 strokeOpacity={0.6}
               />
             )}
+            {/* Not optional: --chart-ink-soft sits at 2.23:1 greyscale against
+                --success in light mode, so without a legend hue is doing all the
+                work and a colour-blind reader has nothing. The weekly chart has
+                always had one; this one shipped without, while DESIGN.md §2
+                cited "stack position and a legend" as the justification for the
+                colour pair. */}
+            <ChartLegend content={<ChartLegendContent />} />
+
             {/* Billable at the baseline: a stack reads from the bottom up, and
                 that is the part the day is measured on. */}
             <Bar

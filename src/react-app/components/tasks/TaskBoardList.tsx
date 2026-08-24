@@ -171,7 +171,10 @@ export function TaskBoardList() {
               <div key={section.key}>
                 <div className="mb-1 flex items-center gap-2 px-2">
                   {groupBy === "project" && <ColorDot color={section.color} />}
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {/* Sentence case at Label weight. Uppercase + tracking on every group
+                      heading is the eyebrow pattern PRODUCT.md and DESIGN.md §8 both
+                      reject by name; the ColorDot and count already do the work. */}
+                  <h2 className="text-xs font-medium text-muted-foreground">
                     {section.label}
                   </h2>
                   <span className="text-xs text-muted-foreground/70">

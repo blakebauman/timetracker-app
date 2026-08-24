@@ -321,12 +321,25 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                   className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
                   <td className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
-                    {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
+                    <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>
+                      {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
+                    </div>
                   </td>
                   <td className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
-                    <span className="flex items-center gap-1.5">
+                    {/* A fixed-width block, not just `truncate`: a <td>'s width is
+                        advisory in auto table layout, so the min-content of a long
+                        consultancy project name still expanded the column and pushed
+                        the day columns and Total off the pane (measured 1387px inside
+                        1056px). Bounding the content is what actually caps it. */}
+                    <span className="flex w-[124px] items-center gap-1.5">
                       <ColorDot color={row.projectColor} />
-                      <span className={cn(!row.projectName && "text-muted-foreground")}>
+                      <span
+                        title={row.projectName ?? "Without project"}
+                        className={cn(
+                          "truncate",
+                          !row.projectName && "text-muted-foreground"
+                        )}
+                      >
                         {row.projectName ?? "Without project"}
                       </span>
                     </span>
