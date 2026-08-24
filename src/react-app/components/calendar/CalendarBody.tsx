@@ -160,8 +160,21 @@ export function CalendarBody({
     );
     const draftBlocks = drafts.map(draftToEvent);
     // Gaps only make sense on the time grid, not the month overview.
-    const gaps =
+    const allGaps =
       showGaps && calendarView !== "dayGridMonth" ? buildGapEvents(entries, nowIso) : [];
+    // A gap that has already been drafted is the same hour asking to be filled
+    // twice — once as "Track 09:00–11:30" and once as the proposal that answers
+    // it. The proposal wins: it carries a project, a description, and a way to
+    // confirm. Left in, the two blocks also split the column and truncated each
+    // other's only label.
+    const gaps = allGaps.filter((gap) => {
+      const gapStart = new Date(gap.start as string).getTime();
+      const gapStop = new Date(gap.end as string).getTime();
+      return !drafts.some(
+        (d) =>
+          gapStart < new Date(d.stop).getTime() && gapStop > new Date(d.start).getTime()
+      );
+    });
     return {
       events: [...gaps, ...draftBlocks, ...real, ...visibleGhosts],
       ghostCount: unconfirmed.length - (ghosts.length - visibleGhosts.length),
