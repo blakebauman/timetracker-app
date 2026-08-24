@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimerControl } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
+import { ResumeLastButton } from "./ResumeLastButton";
 import { DescriptionAutocomplete } from "./DescriptionAutocomplete";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
@@ -363,9 +364,30 @@ export function TimerBar() {
           </Tooltip>
         )}
 
-        {/* Favorites: one-click start from a saved preset */}
+        {/* Resume the last thing tracked, and one-click start from a saved
+            preset. Both are idle-only: neither means anything while a timer is
+            already running, and the slot they leave is what the Discard button
+            takes above. */}
         {!isRunning && (
-          <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
+          <>
+            <ResumeLastButton
+              // Starts directly rather than routing through `handleSuggestion`:
+              // that one focuses the description input, which reopens the
+              // suggestion popover over a timer that has just started. The
+              // running-entry sync refills the bar's fields from the created
+              // entry anyway.
+              onResume={(s) =>
+                startTimer({
+                  description: s.description,
+                  projectId: s.projectId,
+                  taskId: s.taskId,
+                  tags: s.tags,
+                  billable: s.billable,
+                })
+              }
+            />
+            <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
+          </>
         )}
 
         {/* Combined elapsed + Start/Stop capsule */}

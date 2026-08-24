@@ -78,6 +78,7 @@ The **Planner** view (Timer tab, last icon in the view switcher) is a weekly gri
 
 ## Favorites & recurring entries
 
+- **Continue last** — the ↺ button in the top bar picks up whatever you tracked most recently, with its project, task, tags and billable flag. It's there because three of the five Timer views (calendar, timesheet, planner) show no entry rows, so the per-row **Continue** isn't reachable from them. It only appears when there's something to continue.
 - **Favorites** — save a description + project + task + billable combo and start it with one click from the star menu in the top bar.
 - **Recurring entries** (Settings → Recurring entries) — templates like "Weekly team sync, Mondays 30 min" that materialize automatically as real entries on schedule, even while you're not in the app. Edit or pause them any time.
 
