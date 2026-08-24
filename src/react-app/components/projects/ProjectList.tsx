@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, MoreHorizontal, Archive, Edit2, ChevronDown, FolderOpen } from "lucide-react";
+import { Plus, MoreHorizontal, Archive, Edit2, ChevronDown, FolderOpen, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,17 @@ import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
 import { cn } from "@/lib/utils";
+import { CollectionHeader } from "@/components/layout/CollectionHeader";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type ProjectSort = "name" | "client" | "tracked" | "rate";
 import type { Project } from "@shared/schemas";
 
 export function ProjectList() {
@@ -34,6 +45,12 @@ export function ProjectList() {
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  // Two critiques flagged the same gap: at 30 projects this page was a scroll
+  // with no way to narrow it, while Clients had a period control and Tasks had
+  // three selects. Search matches the client name too — "everything for EY" is
+  // how a consultant thinks about their project list.
+  const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<ProjectSort>("name");
 
   const toggleTasks = (id: string) =>
     setExpandedTasks((prev) => {
@@ -41,6 +58,28 @@ export function ProjectList() {
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
+    });
+
+  const q = query.trim().toLowerCase();
+  const visible = projects
+    .filter(
+      (p) =>
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.clientName ?? "").toLowerCase().includes(q)
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "tracked":
+          return (b.trackedSeconds ?? 0) - (a.trackedSeconds ?? 0);
+        case "client":
+          return (a.clientName ?? "\uffff").localeCompare(b.clientName ?? "\uffff")
+            || a.name.localeCompare(b.name);
+        case "rate":
+          return (b.rate ?? -1) - (a.rate ?? -1) || a.name.localeCompare(b.name);
+        default:
+          return a.name.localeCompare(b.name);
+      }
     });
 
   if (isLoading) {
@@ -55,21 +94,49 @@ export function ProjectList() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Projects</h1>
-          <p className="text-sm text-muted-foreground">
-            {projects.filter((p) => p.active).length} active
-          </p>
-        </div>
+      <CollectionHeader
+        title="Projects"
+        // While a search is narrowing the list, the count has to describe what
+        // is on screen — "4 active" above zero visible rows reads as a bug.
+        subtitle={
+          q
+            ? `${visible.length} of ${projects.length} shown`
+            : `${projects.filter((p) => p.active).length} active`
+        }
+      >
+        {projects.length > 0 && (
+          <>
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search projects…"
+                aria-label="Search projects by name or client"
+                className="h-8 w-48 pl-8"
+              />
+            </div>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as ProjectSort)}>
+              <SelectTrigger className="h-8 w-36" aria-label="Sort projects">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Sort: Name</SelectItem>
+                <SelectItem value="client">Sort: Client</SelectItem>
+                <SelectItem value="tracked">Sort: Tracked</SelectItem>
+                <SelectItem value="rate">Sort: Rate</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        )}
         <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5">
           <Plus className="h-4 w-4" />
           New project
         </Button>
-      </div>
+      </CollectionHeader>
 
       <div className="space-y-1.5">
-        {projects.map((project) => {
+        {visible.map((project) => {
           const budgetPercent =
             project.estimatedHours && project.trackedSeconds !== undefined
               ? Math.min(
@@ -215,6 +282,21 @@ export function ProjectList() {
               <Button size="sm" onClick={() => setShowCreate(true)}>
                 <Plus className="h-3.5 w-3.5" />
                 Create your first project
+              </Button>
+            }
+          />
+        )}
+
+        {/* Filtered to nothing is a different state from having nothing, and it
+            wants a different way out — clear the query, not create a project. */}
+        {projects.length > 0 && visible.length === 0 && (
+          <EmptyState
+            icon={Search}
+            title={`No projects match "${query.trim()}"`}
+            description="Search looks at the project name and its client."
+            action={
+              <Button variant="outline" size="sm" onClick={() => setQuery("")}>
+                Clear search
               </Button>
             }
           />

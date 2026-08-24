@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Users, MoreHorizontal, Archive, Edit2, ChevronRight } from "lucide-react";
+import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useClientStats } from "@/hooks/useClientStats";
 import {
@@ -127,25 +128,22 @@ export function ClientList() {
 
   return (
     <div className="p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Clients</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {clients.length > 0 && (
+      <CollectionHeader title="Clients">
+        {clients.length > 0 && (
+          <>
             <SegmentedControl
               label="Period"
               options={[...CLIENT_PERIODS]}
               value={period}
               onChange={setPeriod}
             />
-          )}
-          {clients.length > 0 && (
             <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" />
               New client
             </Button>
-          )}
-        </div>
-      </div>
+          </>
+        )}
+      </CollectionHeader>
 
       {/* Column headings for the numeric columns. A client list is a comparison
           table — the whole point is reading down a column — so the numbers get
