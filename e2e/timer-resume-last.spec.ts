@@ -15,7 +15,7 @@ test("the idle bar can continue the last thing tracked", async ({ page }) => {
   ).json();
 
   await page.goto("/");
-  const bar = page.locator('header[aria-label="Timer"]');
+  const bar = page.locator('header[aria-label="Timer controls"]');
   await bar.waitFor();
 
   // A brand-new workspace has nothing to continue, so the control stays away
@@ -33,7 +33,7 @@ test("the idle bar can continue the last thing tracked", async ({ page }) => {
     headers: { origin },
   });
   await page.reload();
-  await page.waitForSelector('header[aria-label="Timer"]');
+  await page.waitForSelector('header[aria-label="Timer controls"]');
 
   // The accessible name carries the payload — not a bare "Continue".
   const resume = bar.getByRole("button", {

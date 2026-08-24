@@ -20,7 +20,7 @@ test("Alt+Shift+S starts the staged draft, from inside the description field", a
   });
 
   await page.goto("/");
-  await page.waitForSelector('header[aria-label="Timer"]');
+  await page.waitForSelector('header[aria-label="Timer controls"]');
 
   const input = page.getByPlaceholder("What are you working on?");
   await input.fill("Client call — Q3 scoping");

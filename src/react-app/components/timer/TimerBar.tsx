@@ -211,7 +211,7 @@ export function TimerBar() {
     // in portrait or a laptop at half width. Single row is now `xl` only, where
     // the numbers actually fit, and the controls are one shrink-0 unit that
     // wraps whole rather than being pushed off.
-    <header aria-label="Timer" className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm xl:h-14 xl:flex-nowrap xl:gap-3 xl:py-0">
+    <header aria-label="Timer controls" className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2 shadow-sm xl:h-14 xl:flex-nowrap xl:gap-3 xl:py-0">
       {/* Description input, with autocomplete over the last 90 days of entries */}
       <DescriptionAutocomplete
         inputRef={descRef}

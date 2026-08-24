@@ -24,7 +24,7 @@ test.describe("billable time survives the timer bar", () => {
     });
 
     await page.goto("/");
-    await page.waitForSelector('header[aria-label="Timer"]');
+    await page.waitForSelector('header[aria-label="Timer controls"]');
 
     // Nothing picked yet: non-billable, and the control says so.
     const toggle = page.getByRole("button", { name: "Billable", exact: true });
@@ -142,7 +142,7 @@ test("the Default billable preference actually applies", async ({ page }) => {
   await expect(page.getByLabel("Default billable")).toBeChecked();
 
   await page.goto("/");
-  await page.waitForSelector('header[aria-label="Timer"]');
+  await page.waitForSelector('header[aria-label="Timer controls"]');
   const toggle = page.getByRole("button", { name: "Billable", exact: true });
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
 

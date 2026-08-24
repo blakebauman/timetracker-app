@@ -14,7 +14,7 @@ const WIDTHS = [320, 390, 430, 600, 768, 820, 900, 1024, 1280, 1440];
 
 async function boundsOf(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
-    const bar = document.querySelector('header[aria-label="Timer"]') as HTMLElement;
+    const bar = document.querySelector('header[aria-label="Timer controls"]') as HTMLElement;
     const vw = document.documentElement.clientWidth;
     return {
       vw,
@@ -53,7 +53,7 @@ test("every timer bar control stays on screen at every width", async ({ page }) 
   });
 
   await page.goto("/");
-  await page.waitForSelector('header[aria-label="Timer"]');
+  await page.waitForSelector('header[aria-label="Timer controls"]');
   await page.getByPlaceholder("What are you working on?").fill("Discovery workshop prep");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Select project" }).click();

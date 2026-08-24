@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { TimerDisplay } from "./TimerDisplay";
 import { useTimerStore } from "@/stores/timerStore";
 import { useTimer } from "@/hooks/useTimer";
-import { formatSeconds, parseTimeInput } from "@/lib/dateUtils";
+import { formatDurationShort, formatSeconds, parseTimeInput } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 
 interface TimerControlProps {
@@ -99,7 +99,13 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
               <button
                 type="button"
                 onClick={handleStartEditElapsed}
-                aria-label="Edit elapsed time"
+                // Names the value, not just the verb. "Edit elapsed time" alone
+                // told a screen-reader user there was a control here but never
+                // what the timer actually read — the one number the whole app
+                // exists to report. Read from `formatDurationShort` rather than
+                // the HH:MM:SS display, which a screen reader renders as three
+                // unrelated numbers.
+                aria-label={`${formatDurationShort(elapsed)} elapsed — edit`}
                 className="tt-touch flex h-8 items-center rounded px-1.5 transition-colors duration-fast ease-out-quart hover:bg-accent/50"
               >
                 <TimerDisplay
