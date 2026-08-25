@@ -70,8 +70,29 @@ test("mcp: a read-only key gets the read tools and none of the write tools", asy
       })
     ).text()
   );
-  expect((init.result as { serverInfo: { name: string } }).serverInfo.name).toBe(
-    "timetracker"
+  // Identity a client renders in its connector list. `name` is the wire
+  // identifier clients key their config off, so it is asserted separately from
+  // the display `title` — swapping one for the other would break existing
+  // configs while looking like a cosmetic change.
+  const info = (init.result as {
+    serverInfo: {
+      name: string;
+      title?: string;
+      websiteUrl?: string;
+      icons?: { src: string; mimeType?: string }[];
+    };
+  }).serverInfo;
+  expect(info.name).toBe("timetracker");
+  expect(info.title).toBe("TimeTracker");
+  expect(info.websiteUrl).toBe("https://timetracker.run");
+  expect(info.icons?.length).toBeGreaterThan(0);
+  // Icons must be absolute and on our own origin — a relative src is
+  // unresolvable to a client that only ever saw the /mcp endpoint.
+  for (const icon of info.icons ?? []) {
+    expect(icon.src).toMatch(/^https:\/\/timetracker\.run\//);
+  }
+  expect((init.result as { instructions?: string }).instructions).toContain(
+    "timezoneOffsetMinutes"
   );
 
   const tools = parseRpc(
@@ -85,6 +106,14 @@ test("mcp: a read-only key gets the read tools and none of the write tools", asy
   const names = (tools.result as { tools: { name: string }[] }).tools.map((t) => t.name);
   expect(names).toContain("get_time_summary");
   expect(names).toContain("get_project_pacing");
+
+  // Every read tool must advertise itself as read-only, so a client can badge
+  // it and skip the approval prompt it would otherwise raise.
+  for (const tool of (tools.result as { tools: { name: string; title?: string; annotations?: Record<string, boolean> }[] }).tools) {
+    expect(tool.title, `${tool.name} needs a display title`).toBeTruthy();
+    expect(tool.annotations?.readOnlyHint, `${tool.name} should be read-only`).toBe(true);
+    expect(tool.annotations?.openWorldHint).toBe(false);
+  }
   // A read key isn't shown the write tools at all — not shown-then-refused.
   expect(names).not.toContain("start_timer");
   expect(names).not.toContain("log_time");

@@ -110,6 +110,7 @@ Deliberately AI-free — pacing goes in front of a client, so it must be reprodu
 - **No tool takes a workspace id** — it is fixed at construction, so nothing a model can invent reaches a tenant boundary.
 - **Write tools are registered only for a `read_write` key.** A read key isn't shown them at all; a tool a client can see but can never call is worse than one never advertised.
 - **Auth is a workspace API key** (`tt_live_…`), not a session bearer: only the SHA-256 is stored, the plaintext is shown once and is unrecoverable, and membership is re-verified against `member` on every call (a key outlives the session that minted it).
+- **Identity**: `serverInfo` carries `title` "TimeTracker", `websiteUrl`, a description and `icons` pointing at the app's own public assets, so a connector list renders it properly. `name` stays the lowercase wire identifier `timetracker` — clients key config off it. `instructions` carry the operating rules the schemas can't express (pass `timezoneOffsetMinutes`; drafts aren't tracked time; a project with no rate contributes 0 rather than "earned nothing"). Every tool declares `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint`.
 
 ## Data model (D1)
 
