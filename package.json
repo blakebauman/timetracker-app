@@ -93,7 +93,8 @@
 		"email:dev": "email dev --dir src/worker/emails --port 3333",
 		"lint": "eslint .",
 		"preview": "pnpm run build && vite preview",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"seed:demo": "node scripts/seed-feature-demo.mjs"
 	},
 	"type": "module"
 }
