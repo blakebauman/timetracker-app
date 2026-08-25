@@ -129,6 +129,8 @@ Under **Settings → Workspace → MCP connector**:
 
 The key is shown **once** and can't be recovered; if you lose it, revoke it and make another. Revoking takes effect immediately.
 
+**[docs/MCP.md](MCP.md)** has step-by-step setup for Claude Code, Claude Desktop and other clients, the full tool reference, and troubleshooting.
+
 ## Organizing work: clients, projects, tasks, tags
 
 - **Clients** hold contact details and notes; each client's detail page shows its projects and recent activity.

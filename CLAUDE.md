@@ -123,7 +123,7 @@ Two WebSocket surfaces: `/api/ws` upgrades to `TimerRoom` (frontend connects on 
 
 ## Docs
 
-`docs/ARCHITECTURE.md` is the internal deep-dive (request lifecycle, auth model, DO/cron/data-model detail); `docs/USER_GUIDE.md` is the end-user feature guide — update both when shipping user-facing or architectural changes. `docs/CALENDAR_SYNC.md` covers Google Calendar setup + auto-track; `ROADMAP.md` tracks deferred work (keep it honest — move items out when they ship).
+`docs/ARCHITECTURE.md` is the internal deep-dive (request lifecycle, auth model, DO/cron/data-model detail); `docs/USER_GUIDE.md` is the end-user feature guide — update both when shipping user-facing or architectural changes. `docs/CALENDAR_SYNC.md` covers Google Calendar setup + auto-track; `docs/MCP.md` covers the MCP connector (key creation, per-client setup incl. the Claude Desktop `mcp-remote` bridge, tool reference, troubleshooting); `ROADMAP.md` tracks deferred work (keep it honest — move items out when they ship).
 
 ## Design context
 
