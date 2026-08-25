@@ -25,6 +25,7 @@ import {
   useProjectPacing,
 } from "@/hooks/useProjects";
 import { pacingLabel, pacingToneClass } from "@/lib/pacing";
+import { Target } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDurationShort, formatPlainDate } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
@@ -69,6 +70,21 @@ export function ProjectList() {
       else next.add(id);
       return next;
     });
+
+  /**
+   * Pacing is invisible until a project has a time budget, which reads as the
+   * feature being broken rather than unconfigured — there is no bar, no verdict,
+   * and nothing on screen saying what would produce one.
+   *
+   * Said ONCE above the list rather than per row: a hint on every unbudgeted
+   * project would stripe the page and nag about a thing that is optional. It
+   * clears itself the moment any project gets a budget, and stays hidden for a
+   * workspace with nothing tracked yet, where it would be noise on top of an
+   * empty state.
+   */
+  const anyBudgeted = projects.some((p) => p.estimatedHours);
+  const anyTracked = projects.some((p) => (p.trackedSeconds ?? 0) > 0);
+  const showBudgetHint = !isLoading && !anyBudgeted && anyTracked;
 
   const q = query.trim().toLowerCase();
   const visible = projects
@@ -144,6 +160,18 @@ export function ProjectList() {
           New project
         </Button>
       </CollectionHeader>
+
+      {showBudgetHint && (
+        <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-dashed px-3.5 py-2.5">
+          <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <p className="text-xs leading-normal text-muted-foreground">
+            <span className="font-medium text-foreground">No budgets set.</span> Add{" "}
+            <span className="font-medium">Estimated hours</span> to a project and it
+            starts reporting how fast it&apos;s burning and whether it lands over — here,
+            in the assistant, and in your briefing. Hours only; no rates involved.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         {visible.map((project) => {
