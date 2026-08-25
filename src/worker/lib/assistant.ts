@@ -5,9 +5,8 @@
 // half, grounded in the same facts (see routes/assistant.ts).
 
 import type { AssistantNudge } from "@shared/schemas";
-import { encryptJSON } from "./crypto";
-import { ensureAccessToken, listEvents, type ExternalEvent } from "./google-calendar";
-import { loadGoogleConnection } from "./calendar-autotrack";
+import { fetchWorkspaceEvents } from "./calendar-connections";
+import type { ExternalEvent } from "./calendar-providers";
 import { atRiskProjects, loadProjectPacing, type ProjectPacing } from "./pacing";
 
 // How far ahead a meeting can be and still get a "starts soon" nudge.
@@ -112,9 +111,10 @@ async function loadTodayFacts(
 }
 
 /**
- * Today's calendar events via the same read-through (with token refresh
- * persistence) as routes/calendar.ts. Returns [] when no calendar is connected
- * or Google errors — the assistant degrades to timer-only nudges.
+ * Today's calendar events, across every connected calendar, via the same
+ * read-through (with token refresh persistence) as routes/calendar.ts. Returns
+ * [] when nothing is connected or a provider errors — the assistant degrades to
+ * timer-only nudges rather than failing.
  */
 export async function loadTodayEvents(
   env: Env,
@@ -122,22 +122,8 @@ export async function loadTodayEvents(
   dayStartIso: string,
   dayEndIso: string
 ): Promise<ExternalEvent[]> {
-  if (!env.GOOGLE_CALENDAR_CLIENT_ID || !env.GOOGLE_CALENDAR_CLIENT_SECRET) return [];
   try {
-    const conn = await loadGoogleConnection(env.DB, env.AUTH_SECRET, workspaceId);
-    if (!conn) return [];
-    const { accessToken, refreshed } = await ensureAccessToken(
-      conn.tokens,
-      env.GOOGLE_CALENDAR_CLIENT_ID,
-      env.GOOGLE_CALENDAR_CLIENT_SECRET
-    );
-    if (refreshed) {
-      const credentials = await encryptJSON(env.AUTH_SECRET, conn.tokens);
-      await env.DB.prepare(`UPDATE integrations SET credentials = ? WHERE id = ?`)
-        .bind(credentials, conn.id)
-        .run();
-    }
-    const events = await listEvents({ accessToken, since: dayStartIso, until: dayEndIso });
+    const events = await fetchWorkspaceEvents(env, workspaceId, dayStartIso, dayEndIso);
     // Drop all-day blocks and zero-length artifacts — they aren't meetings.
     return events.filter((e) => {
       const len = new Date(e.stop).getTime() - new Date(e.start).getTime();

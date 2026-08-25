@@ -24,3 +24,13 @@ GOOGLE_CLIENT_SECRET=GOCSPX-replace-with-client-secret
 # Optional — calendar sync is disabled until both are set.
 GOOGLE_CALENDAR_CLIENT_ID=1234567890-calendar.apps.googleusercontent.com
 GOOGLE_CALENDAR_CLIENT_SECRET=GOCSPX-replace-with-calendar-client-secret
+
+# Outlook / Microsoft 365 calendar sync — Entra ID app registration.
+# Independent of Google: set either, both, or neither.
+#   Redirect URI: http://localhost:5173/api/calendar/microsoft/callback
+#   Delegated permission: Calendars.Read (plus offline_access, openid, email)
+MICROSOFT_CALENDAR_CLIENT_ID=00000000-0000-0000-0000-000000000000
+MICROSOFT_CALENDAR_CLIENT_SECRET=replace-with-entra-client-secret
+# "common" (work/school/personal), "organizations", "consumers", or a tenant id.
+# A SINGLE-TENANT registration must set its own tenant id here.
+MICROSOFT_CALENDAR_TENANT=common

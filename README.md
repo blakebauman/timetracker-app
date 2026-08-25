@@ -8,7 +8,7 @@ A Toggl-like time tracking app built on Cloudflare Workers, Hono, React 19, and 
 
 - **Time tracking** — one-click start/stop, projects, tasks, clients, tags, billable flags, and inline editing (including editing a running timer's elapsed time from the top bar). Manual entry, a weekly timesheet grid, AI quick-add from natural language, favorites for one-click starts, and recurring entry templates that materialize on schedule.
 - **Timer workspace** — five views behind one header: list, Toggl-style calendar (FullCalendar week/5-day/day/month), split, timesheet, and planner — with clickable untracked-gap blocks between entries.
-- **Google Calendar sync** — read-only: events show as ghost blocks you click to track, and an optional **auto-track** cron converts ended meetings into entries automatically ([docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md)).
+- **Calendar sync (Google + Outlook / Microsoft 365)** — read-only, and both can be connected at once: events show as ghost blocks you click to track, and an optional **auto-track** cron converts ended meetings into entries automatically ([docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md)).
 - **Draft your day** — proposes the entries you're missing from calendar events that ended untracked, uncovered stretches in the day, and work you log on that weekday most weeks; you confirm them one card at a time, ending on a total that rescales the batch. Proposals are never counted as tracked time until confirmed.
 - **Budget pacing** — share of budget spent, burn rate per working day, and whether the current rate overruns before the end date ("on pace to overrun by 14h · 12 working days left"). No AI — reproducible from the entries alone.
 - **Email digests** — an opt-in morning briefing and Monday weekly summary: hours by project, budgets worth a look, anything awaiting review, and one AI-written paragraph.
@@ -37,7 +37,7 @@ See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for the full feature guide.
 |---|---|
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Every feature, by task — for users |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Internal deep-dive: routing, auth, DOs, cron, data model |
-| [docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md) | Google Calendar setup, sync design, auto-track |
+| [docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md) | Calendar setup (Google + Microsoft), sync design, auto-track |
 | [docs/MCP.md](docs/MCP.md) | MCP connector: API keys, per-client setup, tool reference, troubleshooting |
 | [CLAUDE.md](CLAUDE.md) | Commands, conventions, deploy sequence |
 | [PRODUCT.md](PRODUCT.md) / [DESIGN.md](DESIGN.md) | Product register + design system (source of truth for UI) |
@@ -66,7 +66,7 @@ Secrets are loaded from `.dev.vars` (copy from `.dev.vars.example` if present):
 AUTH_SECRET=<random string>   # also used to encrypt stored integration tokens
 ```
 
-Optional Google Calendar sync needs `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET` — see [docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md). The app runs fine without them; the feature just stays disabled.
+Optional calendar sync needs `GOOGLE_CALENDAR_CLIENT_ID` / `_SECRET` and/or `MICROSOFT_CALENDAR_CLIENT_ID` / `_SECRET` — see [docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md). The app runs fine without them; the feature just stays disabled.
 
 Run the Playwright e2e suite (spins up `pnpm dev` against localhost:5173):
 
