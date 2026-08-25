@@ -10,6 +10,19 @@ import type {
   CreatedApiKey,
 } from "@shared/schemas";
 
+export type CalendarProviderId = "google" | "microsoft";
+
+/** What `GET /api/calendar/status` returns for each supported provider. */
+export interface CalendarProviderStatus {
+  provider: CalendarProviderId;
+  label: string;
+  /** False when this deployment has no OAuth client configured for it. */
+  configured: boolean;
+  connected: boolean;
+  accountEmail: string | null;
+  autoTrack: boolean;
+}
+
 const API_BASE = "/api";
 
 const MUTABLE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -305,17 +318,13 @@ export const api = {
 
   // ─── Calendar sync (Google) ────────────────────────────────────────────────
   calendar: {
-    status: () =>
-      request<{
-        configured: boolean;
-        connected: boolean;
-        accountEmail?: string | null;
-        autoTrack?: boolean;
-      }>("/calendar/status"),
-    setAutoTrack: (enabled: boolean) =>
+    // One row per calendar provider the server supports — a workspace can hold
+    // a work calendar and a personal one at the same time.
+    status: () => request<CalendarProviderStatus[]>("/calendar/status"),
+    setAutoTrack: (provider: CalendarProviderId, enabled: boolean) =>
       request<{ ok: boolean; autoTrack: boolean }>("/calendar/auto-track", {
         method: "PATCH",
-        body: JSON.stringify({ enabled }),
+        body: JSON.stringify({ enabled, provider }),
       }),
     convert: (params: { since: string; until: string }) =>
       request<{ created: number }>("/calendar/convert", {
@@ -330,7 +339,8 @@ export const api = {
         { calendarEventId: string; title: string; start: string; stop: string }[]
       >(`/calendar/events?${qs}`);
     },
-    disconnect: () => request<{ ok: boolean }>("/calendar/google", { method: "DELETE" }),
+    disconnect: (provider: CalendarProviderId) =>
+      request<{ ok: boolean }>(`/calendar/${provider}`, { method: "DELETE" }),
   },
 
   // ─── AI ───────────────────────────────────────────────────────────────────

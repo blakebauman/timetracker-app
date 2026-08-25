@@ -10,7 +10,7 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 - [Draft your day & review](#draft-your-day--review)
 - [Organizing work: clients, projects, tasks, tags](#organizing-work-clients-projects-tasks-tags)
 - [Favorites & recurring entries](#favorites--recurring-entries)
-- [Google Calendar sync & auto-track](#google-calendar-sync--auto-track)
+- [Calendar sync & auto-track (Google + Outlook)](#calendar-sync--auto-track-google--outlook)
 - [The Assistant](#the-assistant)
 - [Budgets & pacing](#budgets--pacing)
 - [Email digests](#email-digests)
@@ -146,15 +146,19 @@ The key is shown **once** and can't be recovered; if you lose it, revoke it and 
 - **Favorites** — save a description + project + task + billable combo and start it with one click from the star menu in the top bar.
 - **Recurring entries** (Settings → Recurring entries) — templates like "Weekly team sync, Mondays 30 min" that materialize automatically as real entries on schedule, even while you're not in the app. Edit or pause them any time.
 
-## Google Calendar sync & auto-track
+## Calendar sync & auto-track (Google + Outlook)
 
-Connect under **Settings → Calendar sync** (read-only access — the app never writes to your calendar). Once connected:
+Connect **Google Calendar**, **Outlook / Microsoft 365**, or both under **Settings → Calendar sync** (read-only access — the app never writes to your calendar). Connecting both is the normal case when work and personal calendars are separate; their events simply appear together. Once connected:
 
 - Your events appear as dashed **ghost blocks** on the Calendar view. Click one → confirm the project → it becomes a tracked entry.
 - **Auto-track** (toggle on the same Settings card): every few minutes, meetings that have *ended* are automatically turned into time entries — no clicking needed. Each event is only ever converted once.
 - You can also convert a whole date range at once ("convert visible events").
 
-Declined, cancelled, and all-day events are ignored. See [CALENDAR_SYNC.md](CALENDAR_SYNC.md) for setup details if you self-host.
+Declined, cancelled, and all-day events are ignored, and each calendar has its own auto-track switch.
+
+**Work accounts:** many companies require an administrator to approve third-party apps. If Microsoft says "Need admin approval" when you connect, that's your organisation's policy — your IT team has to approve the app before the connection can be made.
+
+See [CALENDAR_SYNC.md](CALENDAR_SYNC.md) for setup details if you self-host.
 
 ## The Assistant
 

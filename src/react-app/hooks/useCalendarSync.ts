@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, type CalendarProviderId } from "@/lib/api";
 export type { ExternalEvent } from "@/lib/calendarMapping";
 
-/** Google Calendar connection status for the Settings card. */
+/** Per-provider calendar connection status for the Settings card. */
 export function useCalendarStatus() {
   return useQuery({
     queryKey: ["calendar", "status"],
@@ -18,7 +18,7 @@ export function useCalendarEvents(sinceIso: string, untilIso: string, enabled = 
     queryKey: ["calendar-events", sinceIso, untilIso],
     queryFn: () => api.calendar.events({ since: sinceIso, until: untilIso }),
     enabled,
-    // Calendar data changes slowly; avoid hammering Google on every re-render.
+    // Calendar data changes slowly; avoid hammering the providers on every re-render.
     staleTime: 60_000,
   });
 }
@@ -26,7 +26,7 @@ export function useCalendarEvents(sinceIso: string, untilIso: string, enabled = 
 export function useDisconnectCalendar() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => api.calendar.disconnect(),
+    mutationFn: (provider: CalendarProviderId) => api.calendar.disconnect(provider),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["calendar", "status"] });
       queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
@@ -38,8 +38,9 @@ export function useDisconnectCalendar() {
 export function useSetAutoTrack() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (enabled: boolean) => api.calendar.setAutoTrack(enabled),
-    onSuccess: (_data, enabled) => {
+    mutationFn: ({ provider, enabled }: { provider: CalendarProviderId; enabled: boolean }) =>
+      api.calendar.setAutoTrack(provider, enabled),
+    onSuccess: (_data, { enabled }) => {
       queryClient.invalidateQueries({ queryKey: ["calendar", "status"] });
       toast.success(enabled ? "Auto-tracking calendar events" : "Auto-track turned off");
     },

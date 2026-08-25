@@ -39,7 +39,7 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 | `/api/planner` | `planner.ts` | per-user planned allocations (project+task per day): `GET ?since&until`, `PUT /` cell upsert (0 deletes), `POST /bulk` (CSV import / copy-week) |
 | `/api/settings` | `settings.ts` | per-user prefs stored on the Better Auth `user` row, incl. digest preferences; `POST /digest/send` mails one immediately |
 | `/api/keys` | `api-keys.ts` | workspace API keys for MCP/programmatic access — list/create/revoke. Session-only: a credential that can mint credentials must not be reachable from `/mcp` |
-| `/api/calendar` | `calendar.ts` | Google OAuth connect/callback/status/disconnect, `GET /events` (read-through), `PATCH /auto-track`, `POST /convert` |
+| `/api/calendar` | `calendar.ts` | Multi-provider (Google, Microsoft): `GET /:provider/connect`, `GET /:provider/callback`, `DELETE /:provider`, `GET /status` (one row per provider), `GET /events` (merged read-through), `PATCH /auto-track`, `POST /convert` |
 | `/api/ai` | `ai.ts` | `POST /quick-entry` (NL→entry), `POST /summary` (AI report draft); rate-limited |
 | `/api/assistant` | `assistant.ts` | `GET /nudges`, `POST /track-event`, memory list/delete. **Chat is NOT here** — see the Assistant below |
 | `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push` (takes the client's IANA `timezone`; the route resolves each entry's work date with `lib/local-date.ts` before handing it to an adapter), SSRF-guarded, outbound rate limits |
@@ -82,7 +82,7 @@ Notable decisions:
 
 Three independent, idempotent jobs, each iterating its own subjects and swallowing per-subject errors so one bad connection or address never blocks the sweep:
 
-- **Calendar auto-track** (`lib/calendar-autotrack.ts`) — for workspaces with Google connected + auto-track on, converts *ended* calendar events into entries. Idempotent via `time_entries.calendar_event_id`.
+- **Calendar auto-track** (`lib/calendar-autotrack.ts`) — for workspaces with any calendar connected + auto-track on, converts *ended* events into entries. Provider-agnostic (`lib/calendar-connections.ts`); idempotent via `time_entries.calendar_event_id`.
 - **Recurring entries** (`lib/recurring.ts`) — materializes each active template once its scheduled UTC time passes. Idempotent via `last_materialized` (UTC date). Schedules stored as UTC weekday + minutes-of-day; the client converts to local time (`react-app/lib/recurrence.ts`).
 - **Email digests** (`lib/digest.ts`) — the morning briefing and the Monday weekly summary, for users who opted in. The cron has no request to read a timezone from, so it works off `user.digest_tz_offset` (reconciled client-side by `useHydrateSettings` whenever it drifts, so a DST change doesn't send an hour off for months). The 5-minute cron ticks twelve times inside the target hour, so the send is exactly-once by comparing `digest_daily_sent`/`digest_weekly_sent` against the user's **local** date rather than by locking.
 

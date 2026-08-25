@@ -24,7 +24,7 @@ import { useUpdateSettings } from "@/hooks/useSettings";
 import { useRecolorProjects } from "@/hooks/useProjects";
 import { CURRENCIES } from "@/lib/currency";
 import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
-import { GoogleCalendarCard } from "@/components/settings/GoogleCalendarCard";
+import { CalendarSyncCard } from "@/components/settings/CalendarSyncCard";
 import { ProductivityCard } from "@/components/settings/ProductivityCard";
 import { DigestCard } from "@/components/settings/DigestCard";
 import { McpConnectorCard } from "@/components/settings/McpConnectorCard";
@@ -335,7 +335,7 @@ export function SettingsPage() {
 
         <TabsContent value="workspace" className="mt-4 space-y-4">
           <TeamCard />
-          <GoogleCalendarCard />
+          <CalendarSyncCard />
           <McpConnectorCard />
           <IntegrationsCard />
 

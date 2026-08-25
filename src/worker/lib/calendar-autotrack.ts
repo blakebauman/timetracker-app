@@ -1,45 +1,15 @@
-// Shared logic for turning Google Calendar events into tracked time entries —
-// used both by the user-triggered "Convert all" endpoint and the Cron-driven
-// auto-track scheduler. Read-through of Google's API mirrors routes/calendar.ts.
+// Turning calendar events into tracked time entries — used both by the
+// user-triggered "Convert all" endpoint and the cron-driven auto-track
+// scheduler. Provider-agnostic: it asks lib/calendar-connections.ts for the
+// workspace's events and never knows which calendar they came from.
 
-import { encryptJSON, decryptJSON } from "./crypto";
-import {
-  ensureAccessToken,
-  listEvents,
-  type GoogleCalendarTokens,
-  type ExternalEvent,
-} from "./google-calendar";
 import { broadcast } from "../db/queries";
 import { inferEventProjects, type InferredEventProject } from "./ai";
-
-interface GoogleConnection {
-  id: string;
-  workspaceId: string;
-  autoTrack: boolean;
-  tokens: GoogleCalendarTokens;
-}
-
-/** Load a workspace's decrypted Google Calendar connection, or null. */
-export async function loadGoogleConnection(
-  db: D1Database,
-  secret: string,
-  workspaceId: string
-): Promise<GoogleConnection | null> {
-  const row = await db
-    .prepare(
-      `SELECT id, auto_track, credentials FROM integrations
-       WHERE workspace_id = ? AND type = 'google_calendar' LIMIT 1`
-    )
-    .bind(workspaceId)
-    .first<{ id: string; auto_track: number; credentials: string }>();
-  if (!row) return null;
-  return {
-    id: row.id,
-    workspaceId,
-    autoTrack: Boolean(row.auto_track),
-    tokens: await decryptJSON<GoogleCalendarTokens>(secret, row.credentials),
-  };
-}
+import {
+  fetchWorkspaceEvents,
+  workspacesWithAutoTrack,
+} from "./calendar-connections";
+import type { ExternalEvent } from "./calendar-providers";
 
 /** Insert entries for events not already confirmed in [since, until]. Returns count. */
 async function insertEvents(
@@ -107,31 +77,19 @@ async function insertEvents(
  * Materialize calendar events in [since, until] into time entries for one
  * workspace. `onlyEnded` restricts to events that have already finished (used by
  * the scheduler so we don't create entries with a stop time in the future).
+ * `onlyAutoTrack` restricts to calendars the user opted into auto-tracking —
+ * the cron's business, not the "Convert all" button's.
  */
 export async function convertRange(
   env: Env,
   workspaceId: string,
   since: string,
   until: string,
-  opts: { onlyEnded?: boolean } = {}
+  opts: { onlyEnded?: boolean; onlyAutoTrack?: boolean } = {}
 ): Promise<number> {
-  if (!env.GOOGLE_CALENDAR_CLIENT_ID || !env.GOOGLE_CALENDAR_CLIENT_SECRET) return 0;
-  const conn = await loadGoogleConnection(env.DB, env.AUTH_SECRET, workspaceId);
-  if (!conn) return 0;
-
-  const { accessToken, refreshed } = await ensureAccessToken(
-    conn.tokens,
-    env.GOOGLE_CALENDAR_CLIENT_ID,
-    env.GOOGLE_CALENDAR_CLIENT_SECRET
-  );
-  if (refreshed) {
-    const credentials = await encryptJSON(env.AUTH_SECRET, conn.tokens);
-    await env.DB.prepare(`UPDATE integrations SET credentials = ? WHERE id = ?`)
-      .bind(credentials, conn.id)
-      .run();
-  }
-
-  let events = await listEvents({ accessToken, since, until });
+  let events = await fetchWorkspaceEvents(env, workspaceId, since, until, {
+    onlyAutoTrack: opts.onlyAutoTrack,
+  });
   if (opts.onlyEnded) {
     const nowMs = Date.now();
     events = events.filter((e) => new Date(e.stop).getTime() <= nowMs);
@@ -143,37 +101,36 @@ export async function convertRange(
 }
 
 /**
- * Cron entry point: for every workspace with auto-track enabled, materialize
- * calendar events that finished in the last hour. Dedup keeps it idempotent, so
+ * Cron entry point: for every workspace with an auto-track calendar, materialize
+ * events that finished in the last hour. Dedup keeps it idempotent, so
  * overlapping runs are safe.
  */
 export async function runAutoTrack(env: Env): Promise<void> {
-  if (!env.GOOGLE_CALENDAR_CLIENT_ID || !env.GOOGLE_CALENDAR_CLIENT_SECRET) return;
-
-  const { results } = await env.DB.prepare(
-    `SELECT workspace_id FROM integrations
-     WHERE type = 'google_calendar' AND auto_track = 1`
-  ).all<{ workspace_id: string }>();
+  const workspaceIds = await workspacesWithAutoTrack(env);
+  if (!workspaceIds.length) return;
 
   const now = Date.now();
   const since = new Date(now - 60 * 60 * 1000).toISOString();
   const until = new Date(now + 60 * 1000).toISOString();
 
   // Bounded concurrency: a serial sweep head-of-line-blocks every workspace
-  // behind one slow Google response; unbounded Promise.all would breach the
+  // behind one slow provider response; unbounded Promise.all would breach the
   // 6-simultaneous-connection limit. Chunks of 5 keep the sweep O(n/5).
   const CONCURRENCY = 5;
-  for (let i = 0; i < results.length; i += CONCURRENCY) {
+  for (let i = 0; i < workspaceIds.length; i += CONCURRENCY) {
     await Promise.all(
-      results.slice(i, i + CONCURRENCY).map(async (row) => {
+      workspaceIds.slice(i, i + CONCURRENCY).map(async (workspaceId) => {
         try {
-          await convertRange(env, row.workspace_id, since, until, { onlyEnded: true });
+          await convertRange(env, workspaceId, since, until, {
+            onlyEnded: true,
+            onlyAutoTrack: true,
+          });
         } catch (e) {
-          // One workspace failing (revoked token, transient Google error) must
+          // One workspace failing (revoked token, transient provider error) must
           // not abort the rest of the sweep — but a persistent failure means
           // that workspace's entries silently stop materializing, so log it.
           console.error("autotrack: workspace sweep failed", {
-            workspaceId: row.workspace_id,
+            workspaceId,
             error: String(e),
           });
         }
