@@ -68,6 +68,8 @@ Full-stack TypeScript time tracker (Toggl-like) running entirely on Cloudflare's
 
 `/mcp` is intercepted in `index.ts` **before** Hono (like `/agents/*`), authenticated by an API key rather than a session, and served by `agents/mcp`'s `createMcpHandler` — Streamable HTTP, stateless, no Durable Object. A fresh `McpServer` is built per request bound to the resolved workspace. Two invariants: **no tool takes a workspace id** (it's fixed at construction, so nothing a model invents reaches a tenant boundary), and **write tools are registered only for a `read_write` key** (a read key isn't shown them at all). Every tool wraps a helper the REST API already uses, so a chat answer and a Reports answer can't disagree.
 
+The server advertises `title` "TimeTracker", `websiteUrl`, a description and `icons` (absolute URLs to the app's own public assets — the mark reads on light and dark, so no `theme` variants), plus `instructions` telling a model the things the tool schemas can't: pass `timezoneOffsetMinutes` or ranges silently mean UTC days, look up project ids rather than guessing, and a draft is a proposal rather than tracked time. `serverInfo.name` stays the lowercase `timetracker` — clients key their config off it, so it must not follow the display name. Every tool carries `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` so clients can badge them and soften approval prompts for reads.
+
 ### Cron (`scheduled()` handler, `*/5 * * * *`)
 
 Configured in `wrangler.jsonc` under `triggers.crons`. Three independent jobs run every 5 minutes:

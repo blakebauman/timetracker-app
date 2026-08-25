@@ -23,8 +23,70 @@ import type { ApiKeyScope } from "../lib/api-keys";
 /** Cap on rows any single tool returns, so one call can't blow the context window. */
 const ROW_LIMIT = 200;
 
+/**
+ * Behaviour hints clients use to badge a tool and decide how loudly to ask
+ * before running it. Every tool here reads or writes this one workspace's own
+ * database and never reaches the open internet, hence `openWorldHint: false`
+ * throughout — that is a claim about blast radius, so it should stay accurate
+ * if a tool ever grows an outbound call.
+ */
+const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const;
+const MUTATES = {
+  readOnlyHint: false,
+  // Nothing here deletes or overwrites tracked time: the write tools create
+  // entries, stop a timer, or propose drafts.
+  destructiveHint: false,
+  openWorldHint: false,
+} as const;
+
+// The wire identifier — stable, lowercase, and NOT for display. Clients key
+// their config off it, so it must not change with the display name.
 const SERVER_NAME = "timetracker";
-const SERVER_VERSION = "1.0.0";
+const SERVER_VERSION = "1.1.0";
+const SITE_URL = "https://timetracker.run";
+
+/**
+ * What a client shows next to the connector: display name, site, blurb, icons.
+ *
+ * Deliberately no light/dark `theme` variants — the mark is a white clock on a
+ * brand-red ground, so it reads on either. Declaring the same file twice under
+ * two themes would be noise, and a theme-tagged icon that doesn't actually
+ * change is worse than an untagged one.
+ *
+ * Icons are absolute URLs to the app's own public assets rather than data URIs:
+ * they're already served (and cached) at the edge, and inlining ~35KB of base64
+ * into every initialize response to save one cacheable request is a bad trade.
+ */
+const SERVER_INFO = {
+  name: SERVER_NAME,
+  title: "TimeTracker",
+  version: SERVER_VERSION,
+  websiteUrl: SITE_URL,
+  description:
+    "Your tracked time, projects and budgets — ask about them in plain language, or start and stop timers.",
+  icons: [
+    { src: `${SITE_URL}/logo.svg`, mimeType: "image/svg+xml", sizes: ["any"] },
+    { src: `${SITE_URL}/logo192.png`, mimeType: "image/png", sizes: ["192x192"] },
+    { src: `${SITE_URL}/logo512.png`, mimeType: "image/png", sizes: ["512x512"] },
+  ],
+};
+
+/**
+ * Sent to the client on connect and typically prepended to the model's context.
+ *
+ * Worth its length: each line here is a mistake the tools would otherwise
+ * invite. The timezone one in particular — without it a model passes bare dates
+ * and silently reads a UTC day, which for a user west of UTC quietly includes
+ * the previous evening and drops their own.
+ */
+const SERVER_INSTRUCTIONS = `TimeTracker holds one workspace's tracked time: entries, projects, clients, budgets and timers.
+
+Working with it:
+- Date ranges are the USER'S local calendar days. Pass \`timezoneOffsetMinutes\` (JS getTimezoneOffset sign: west of UTC is positive) on any tool that takes one, or the range silently means UTC days.
+- Call \`list_projects\` before anything that takes a project id; ids are opaque and must never be guessed.
+- Use \`get_time_summary\` for "how much" and \`list_time_entries\` for "what was worked on".
+- Money comes from each project's own hourly rate. A project with no rate contributes 0 to any amount — report that as "no rate set", never as "earned nothing".
+- Drafted entries are PROPOSALS, not tracked time. They appear in no report and no total until a person reviews and confirms them in the app; \`draft_day\` creates them, it does not log time.`;
 
 /** MCP tool results are text; JSON is the most reliably parsed shape for one. */
 function json(value: unknown) {
@@ -85,7 +147,7 @@ export interface McpContext {
 export function buildMcpServer(ctx: McpContext): McpServer {
   const { env, workspaceId, scope } = ctx;
   const db = env.DB;
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
+  const server = new McpServer(SERVER_INFO, { instructions: SERVER_INSTRUCTIONS });
 
   // ─── Read ─────────────────────────────────────────────────────────────────
 
@@ -96,6 +158,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       description:
         "Every active project in the workspace with its client, billable default, hourly rate, time budget and total tracked time. Call this first when a question names a project or client.",
       inputSchema: {},
+      annotations: READ_ONLY,
     },
     async () => {
       const { results } = await db
@@ -135,6 +198,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "List clients",
       description: "Every client in the workspace, with how many projects each has.",
       inputSchema: {},
+      annotations: READ_ONLY,
     },
     async () => {
       const { results } = await db
@@ -173,6 +237,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .describe("Which dimension to break the total down by"),
         timezoneOffsetMinutes: TimezoneArg,
       },
+      annotations: READ_ONLY,
     },
     async ({ since, until, groupBy, timezoneOffsetMinutes }) => {
       const { sinceIso, untilIso } = rangeToIso(since, until, timezoneOffsetMinutes);
@@ -269,6 +334,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .describe("Optional case-insensitive substring of the entry description"),
         timezoneOffsetMinutes: TimezoneArg,
       },
+      annotations: READ_ONLY,
     },
     async ({ since, until, search, timezoneOffsetMinutes }) => {
       const { sinceIso, untilIso } = rangeToIso(since, until, timezoneOffsetMinutes);
@@ -312,6 +378,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       description:
         "For every budgeted project: how much of the budget is spent, the recent burn rate per working day, working days left before the end date, and whether the current rate overruns the budget. Use this for 'which projects are at risk' and 'am I going to blow the budget on X'.",
       inputSchema: {},
+      annotations: READ_ONLY,
     },
     async () => {
       const pacing = await loadProjectPacing(db, workspaceId);
@@ -340,6 +407,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Check the running timer",
       description: "The timer running right now, if any, and how long it has been going.",
       inputSchema: {},
+      annotations: READ_ONLY,
     },
     async () => {
       const row = await db
@@ -373,6 +441,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       description:
         "Proposed time entries waiting for review on a given day, with why each was proposed. Drafts are NOT tracked time and do not appear in any report until a person confirms them in the app.",
       inputSchema: { date: DateArg.describe("The local day to inspect, YYYY-MM-DD") },
+      annotations: READ_ONLY,
     },
     async ({ date }) => {
       const drafts = await listDrafts(db, workspaceId, ctx.userId, date);
@@ -413,7 +482,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .optional()
           .describe("A project id from list_projects; omit if the work has no project"),
       },
-      annotations: { destructiveHint: false },
+      annotations: MUTATES,
     },
     async ({ description, projectId }) => {
       const now = new Date().toISOString();
@@ -462,6 +531,8 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Stop the running timer",
       description: "Stop whatever timer is currently running and keep the entry.",
       inputSchema: {},
+      // Calling it twice is a no-op ("No timer is running"), not a second stop.
+      annotations: { ...MUTATES, idempotentHint: true },
     },
     async () => {
       const now = new Date().toISOString();
@@ -508,6 +579,9 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .optional()
           .describe("Omit to inherit the project's billable default"),
       },
+      // Deliberately NOT idempotent: a second identical call logs a second
+      // entry, which is sometimes exactly what the user means.
+      annotations: MUTATES,
     },
     async ({ description, start, stop, projectId, billable }) => {
       const startMs = new Date(start).getTime();
@@ -565,6 +639,9 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         date: DateArg.describe("The local day to draft, YYYY-MM-DD"),
         timezoneOffsetMinutes: TimezoneArg,
       },
+      // Idempotent by unique index on both the calendar event and the slot —
+      // re-drafting a day proposes only what is still missing.
+      annotations: { ...MUTATES, idempotentHint: true },
     },
     async ({ date, timezoneOffsetMinutes }) => {
       const result = await generateDrafts(
