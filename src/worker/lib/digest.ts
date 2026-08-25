@@ -49,6 +49,19 @@ function formatLocalDate(localDate: string, withWeekday = true): string {
   return withWeekday ? `${weekday}, ${stamp}` : stamp;
 }
 
+/**
+ * "Good morning" / "Good afternoon" / "Good evening" for the recipient's own
+ * clock — not the server's, and not an assumption that a digest only ever
+ * arrives at breakfast. The manual "send one now" button can fire at any hour,
+ * and greeting someone with "Good morning" at 8pm is a small thing that makes
+ * the whole email feel automated at them rather than for them.
+ */
+export function greetingFor(nowMs: number, offsetMinutes: number, firstName: string | null): string {
+  const localHour = new Date(nowMs - offsetMinutes * 60_000).getUTCHours();
+  const part = localHour < 12 ? "morning" : localHour < 18 ? "afternoon" : "evening";
+  return firstName ? `Good ${part}, ${firstName}` : `Good ${part}`;
+}
+
 /** The user's local calendar date at an instant. */
 export function localDateAt(ms: number, offsetMinutes: number): string {
   return new Date(ms - offsetMinutes * 60_000).toISOString().slice(0, 10);
@@ -228,7 +241,11 @@ export async function sendDigest(
     user.email,
     content.subject,
     DailyBriefEmail({
-      greetingName: user.name?.split(" ")[0] ?? null,
+      greeting: greetingFor(
+        Date.now(),
+        user.timezoneOffsetMinutes,
+        user.name?.split(" ")[0] ?? null
+      ),
       periodLabel: content.periodLabel,
       totalLabel: formatSeconds(content.totalSeconds),
       billableLabel:

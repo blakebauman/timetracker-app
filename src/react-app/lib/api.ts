@@ -407,7 +407,12 @@ export const api = {
     sendDigest: (kind: "daily" | "weekly") =>
       request<{ sent: boolean; subject: string }>("/settings/digest/send", {
         method: "POST",
-        body: JSON.stringify({ kind }),
+        // The server has no other way to know which day "yesterday" is for
+        // this person, or whether it's their morning.
+        body: JSON.stringify({
+          kind,
+          timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        }),
       }),
   },
 

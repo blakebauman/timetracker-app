@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { UpdateSettingsSchema } from "@shared/schemas";
-import { sendDigest, localDateAt, type DigestKind } from "../lib/digest";
+import { sendDigest, localDateAt } from "../lib/digest";
 
 type Row = {
   currency: string;
@@ -133,11 +133,23 @@ export const settingsRouter = new Hono<{
    */
   .post(
     "/digest/send",
-    zValidator("json", z.object({ kind: z.enum(["daily", "weekly"]).default("daily") })),
+    zValidator(
+      "json",
+      z.object({
+        kind: z.enum(["daily", "weekly"]).default("daily"),
+        /**
+         * The caller's own UTC offset. Sent by the client because this is the
+         * one moment we can learn it for certain — and without it "yesterday"
+         * is computed in UTC, which for a user west of UTC reports *today's*
+         * hours under a "Yesterday" heading.
+         */
+        timezoneOffsetMinutes: z.number().int().min(-900).max(900).optional(),
+      })
+    ),
     async (c) => {
       const userId = c.get("userId");
       const workspaceId = c.get("workspaceId");
-      const kind = c.req.valid("json").kind as DigestKind;
+      const { kind, timezoneOffsetMinutes } = c.req.valid("json");
 
       const row = await c.env.DB.prepare(
         `SELECT email, name, digest_tz_offset FROM "user" WHERE id = ?`
@@ -146,7 +158,17 @@ export const settingsRouter = new Hono<{
         .first<{ email: string; name: string | null; digest_tz_offset: number }>();
       if (!row?.email) return c.json({ error: "No email address on file" }, 400);
 
-      const offset = row.digest_tz_offset;
+      // Prefer what the client just told us over what we last stored, and
+      // persist it: a preview is often the first time a user touches digests at
+      // all, so it is also the first chance to learn which timezone their "8am"
+      // means before anything is ever scheduled.
+      const offset = timezoneOffsetMinutes ?? row.digest_tz_offset;
+      if (timezoneOffsetMinutes !== undefined && timezoneOffsetMinutes !== row.digest_tz_offset) {
+        await c.env.DB.prepare(`UPDATE "user" SET digest_tz_offset = ? WHERE id = ?`)
+          .bind(timezoneOffsetMinutes, userId)
+          .run();
+      }
+
       // The same period the scheduled send covers: yesterday, in the user's
       // own local reckoning.
       const yesterday = localDateAt(Date.now() - 86_400_000, offset);

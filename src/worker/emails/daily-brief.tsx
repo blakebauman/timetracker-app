@@ -16,7 +16,8 @@ export interface BriefBudgetLine {
 }
 
 export interface DailyBriefEmailProps {
-  greetingName: string | null;
+  /** Built by the sender, where the recipient's timezone is known. */
+  greeting: string;
   /** "Yesterday · Monday, Aug 24" or "Last week · Aug 17 – 23". */
   periodLabel: string;
   totalLabel: string;
@@ -48,7 +49,7 @@ function formatSeconds(seconds: number): string {
  * people stop opening.
  */
 export function DailyBriefEmail({
-  greetingName,
+  greeting,
   periodLabel,
   totalLabel,
   billableLabel,
@@ -64,7 +65,7 @@ export function DailyBriefEmail({
   return (
     <EmailLayout preview={`${periodLabel} — ${totalLabel} tracked`}>
       <Heading as="h1" style={headingStyle}>
-        {greetingName ? `Good morning, ${greetingName}` : "Good morning"}
+        {greeting}
       </Heading>
       <Text style={{ ...bodyTextStyle, margin: "0 0 24px" }}>{periodLabel}</Text>
 
@@ -186,7 +187,7 @@ export function DailyBriefEmail({
 }
 
 DailyBriefEmail.PreviewProps = {
-  greetingName: "Blake",
+  greeting: "Good evening, Blake",
   periodLabel: "Yesterday · Monday, Aug 24",
   totalLabel: "6h 45m",
   billableLabel: "5h 15m",
