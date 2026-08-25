@@ -156,6 +156,7 @@ No unit test framework — the suite is Playwright e2e (`e2e/`) against `pnpm de
 | `docs/ARCHITECTURE.md` | devs | this file |
 | `docs/USER_GUIDE.md` | end users | every feature, by task |
 | `docs/CALENDAR_SYNC.md` | devs/self-hosters | Google Calendar setup + sync/auto-track design |
+| `docs/MCP.md` | users/devs | MCP connector: API keys, per-client setup, tool reference, troubleshooting |
 | `PRODUCT.md` / `DESIGN.md` | design work | product register, design system (source of truth for UI) |
 | `ROADMAP.md` | devs | deferred/planned work |
 | `extension/*.md` | devs/publishers | extension architecture, security audit, store publishing, privacy policy |
