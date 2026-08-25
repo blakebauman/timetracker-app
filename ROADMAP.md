@@ -3,26 +3,31 @@
 Planned and deferred work. Shipped features live in git history and
 [docs/USER_GUIDE.md](docs/USER_GUIDE.md), not here.
 
-*Last audited against the tree at `8495f91` (2026-08-10) — every item below was
+*Last audited against the tree at `7dced14` (2026-08-25) — every item below was
 re-verified as still open at that commit.*
 
 ---
 
 ## Calendar sync — later phases
 
-**Status:** Google sync is live and past "phase 1": manual click-to-confirm
-(PR #22), plus the **auto-track cron** (`*/5 * * * *` `scheduled()` handler)
-that materializes ended meetings into entries, and range conversion
-(`POST /api/calendar/convert`). See [docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md)
-for the shipped behaviour. Still deferred:
+**Status:** Sync is live for **both Google and Outlook / Microsoft 365** (PR
+#115), each optional and connectable at the same time. Manual click-to-confirm
+(PR #22), the **auto-track cron** (`*/5 * * * *` `scheduled()` handler) that
+materializes ended meetings into entries, and range conversion
+(`POST /api/calendar/convert`) all work provider-agnostically through
+`lib/calendar-connections.ts`. See
+[docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md) for the shipped behaviour and the
+Entra registration steps. Still deferred:
 
-- **Outlook / Microsoft Graph** — same adapter shape as Google
-  (`Calendars.Read`, delta queries). Nothing Microsoft-side exists yet; the
-  `integrations` row provider column is the extension point.
-- **Multi-calendar selection** — beyond the Google `primary` calendar.
-  `lib/google-calendar.ts` hardcodes `calendars/primary/events`; this needs a
-  calendar-list fetch, a per-workspace selection stored on the integration, and
-  a fan-out over the selected ids in both the read-through and the cron.
+- **A real Graph round-trip has never run.** The OAuth shape, the state guards
+  and the refactor are verified, but no event has actually been fetched from
+  Microsoft — the local-naive timestamp handling (`Prefer: outlook.timezone`) is
+  reasoned and commented rather than observed. First connection should check an
+  event's grid position against Outlook.
+- **Multi-calendar selection** — both providers read only the default calendar
+  (`calendars/primary/events`, `me/calendar/calendarView`). Needs a calendar-list
+  fetch, a per-connection selection stored on the integration row, and a fan-out
+  over the selected ids in both the read-through and the cron.
 - **Dismiss / ignore state for ghost events** — hide specific unconfirmed
   events on the calendar grid (needs a small table). The assistant's *nudge* dismissals
   exist but are client-side only and don't hide calendar ghosts.
@@ -31,11 +36,60 @@ for the shipped behaviour. Still deferred:
 - **Bidirectional** — push tracked time back out as calendar events.
 
 ### Reuses (already in the codebase)
-The `integrations` table + workspace scoping, `encryptJSON`/`decryptJSON`
-(`src/worker/lib/crypto.ts`), the `scheduled()` cron handler + per-workspace
-sweep pattern (`lib/calendar-autotrack.ts`), the calendar view +
-`CalendarCreateDialog`, the `calendar_event_id` link on `time_entries`, and the
-WebSocket `broadcast` for live refresh.
+The provider seam (`lib/calendar-providers.ts` registry +
+`lib/calendar-connections.ts`) — a third provider is a new module and one
+registry entry, nothing else. Plus the `integrations` table + workspace scoping,
+`encryptJSON`/`decryptJSON` (`src/worker/lib/crypto.ts`), the `scheduled()` cron
+handler + per-workspace sweep pattern (`lib/calendar-autotrack.ts`), the calendar
+view + `CalendarCreateDialog`, the `calendar_event_id` link on `time_entries`,
+and the WebSocket `broadcast` for live refresh.
+
+---
+
+## Drafting, pacing, digests and MCP — next phases
+
+**Status:** all four shipped 2026-08-24/25 (PRs #108, #111, #112, #114) and are
+deployed. What's deferred is mostly *depth*, and the first item is a caveat
+rather than a feature.
+
+- **None of it has been exercised much in production.** Zero drafts have been
+  created, digests have only ever been sent as manual previews (never on the
+  schedule), and no project carries a budget so pacing reports `no_budget` for
+  everything. Three of the five bugs found on launch night came from running the
+  features against realistic data (`pnpm seed:demo`) and from actually reading a
+  delivered email — build on top of these only after they've been used.
+- **Learning from corrections** — persist `signal keyword → project` every time a
+  drafted entry is reassigned, and let the deterministic map win before the model
+  runs (same precedence as `runProjectColorAssignment`). This is what stops
+  drafting being annoying by week three. Genuinely worthless until drafting has
+  real usage to learn from.
+- **Activity categories** — a two-level, cross-project work-type tree
+  (Design / Client meetings / Revisions / Admin), auto-assigned from the entry
+  description. Answers "where is time going" *across* clients, which the
+  project/client/tag grouping can't. Tags are the weak version of this.
+- **Extension as a capture signal** — opt-in: the browser extension records
+  active tab domain + title in ~2-minute buckets and posts them to a signals
+  endpoint, feeding the draft pipeline. Must ship *with* its privacy primitives,
+  not after: per-domain allow/blocklist, one-tap pause, explicit retention, and
+  domain+title only — never page content.
+- **Project import** from spreadsheet / PDF / screenshot / pasted rows, with a
+  New / Updated / Existing / Not-importing diff preview before anything applies.
+  Workers AI handles text/CSV today; screenshots need a vision model.
+- **Timesheet flags** — threshold rules (added-time limit, % increase over
+  drafted, daily total cap) marking a day worth a second look.
+- **MCP: OAuth** — the server authenticates with a workspace API key, which every
+  header-capable client supports but Claude Desktop's built-in connector flow
+  does not (it expects OAuth, hence the `mcp-remote` bridge in
+  [docs/MCP.md](docs/MCP.md)). Implementing OAuth would remove that bridge.
+- **Public REST API v1** — the natural companion to the API keys that already
+  exist; `docs/MCP.md` describes the auth model it would reuse.
+
+### Explicitly rejected
+Desktop screen capture, meeting transcription, and enterprise identity (SCIM,
+Okta/Entra SSO, manager approval chains). The first two are the wrong stack and
+a privacy burden; the third has no audience — this workspace is one person
+tracking their own hours against engagement codes, not a firm billing clients
+through the app.
 
 ---
 

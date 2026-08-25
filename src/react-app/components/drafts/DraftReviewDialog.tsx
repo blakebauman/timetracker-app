@@ -6,6 +6,7 @@ import {
   Repeat,
   SquareDashed,
   Trash2,
+  CalendarPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import {
   useConfirmDrafts,
 } from "@/hooks/useDrafts";
 import { useEntriesRange } from "@/hooks/useEntries";
+import { useCalendarStatus } from "@/hooks/useCalendarSync";
 import { useUIStore } from "@/stores/uiStore";
 import {
   formatDurationShort,
@@ -97,6 +99,16 @@ export function DraftReviewDialog({ open, localDate, onClose }: DraftReviewDialo
   const confirmedSeconds = dayEntries
     .filter((e) => e.stop)
     .reduce((sum, e) => sum + (e.duration ?? 0), 0);
+
+  /**
+   * Drafting works without a calendar — it still finds uncovered stretches and
+   * weekday habits — but it is missing its strongest signal, and the user has no
+   * way to know that from a short list of proposals. Said once, at the bottom of
+   * review, and only when nothing is connected.
+   */
+  const { data: calendarProviders = [] } = useCalendarStatus();
+  const noCalendarConnected =
+    calendarProviders.length > 0 && !calendarProviders.some((p) => p.connected);
 
   const [index, setIndex] = useState(0);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -257,6 +269,17 @@ export function DraftReviewDialog({ open, localDate, onClose }: DraftReviewDialo
                 onBack={index > 0 ? goBack : undefined}
               />
             ) : null}
+
+            {noCalendarConnected && (
+              <p className="flex items-start gap-2 border-t pt-3 text-xs leading-normal text-muted-foreground">
+                <CalendarPlus className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  These come from gaps in your day and your weekly habits. Connect a
+                  calendar in <span className="font-medium">Settings</span> and meetings
+                  you didn&apos;t track get drafted too.
+                </span>
+              </p>
+            )}
           </>
         )}
       </DialogContent>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { useCalendarStatus } from "@/hooks/useCalendarSync";
 import type { DraftEntry } from "@shared/schemas";
 
 /**
@@ -43,6 +44,9 @@ function invalidateDay(
 
 export function useGenerateDrafts(localDate: string) {
   const queryClient = useQueryClient();
+  // Whether we can honestly claim the day looks covered — see below.
+  const { data: calendarProviders = [] } = useCalendarStatus();
+
   return useMutation({
     mutationFn: () =>
       api.drafts.generate({
@@ -52,7 +56,17 @@ export function useGenerateDrafts(localDate: string) {
     onSuccess: (result) => {
       queryClient.setQueryData<DraftEntry[]>(["drafts", localDate], result.drafts);
       if (result.drafts.length === 0) {
-        toast.success("Nothing left to draft — the day looks covered");
+        // "The day looks covered" is a claim about meetings too, and with no
+        // calendar connected we simply can't see them — so don't make it.
+        const canSeeMeetings = calendarProviders.some((p) => p.connected);
+        toast.success(
+          canSeeMeetings
+            ? "Nothing left to draft — the day looks covered"
+            : "Nothing to draft from gaps or your usual weekly work",
+          canSeeMeetings
+            ? undefined
+            : { description: "Connect a calendar in Settings to include meetings." }
+        );
       } else {
         toast.success(
           `${result.drafts.length} ${result.drafts.length === 1 ? "entry" : "entries"} drafted for review`
