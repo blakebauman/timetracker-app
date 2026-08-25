@@ -390,13 +390,23 @@ export async function generateDrafts(
     offsetMinutes,
     alreadyDescribed
   );
-  const occupied = mergeIntervals(busy);
+  // Claimed = what was already on the day PLUS everything proposed in this same
+  // run. Checking against `busy` alone was a real defect: a habit whose usual
+  // slot falls inside a gap proposed moments earlier got proposed on top of it,
+  // so a 2h30 hole came back as a 2h30 gap AND a 30m habit — 3h of proposals
+  // for 2h30 of missing time, and confirming both would overstate the day.
+  const claimed = mergeIntervals([
+    ...busy,
+    ...candidates.map((c) => ({
+      start: new Date(c.start).getTime(),
+      stop: new Date(c.stop).getTime(),
+    })),
+  ]);
   for (const p of patternCandidates) {
     const startMs = new Date(p.start).getTime();
     const stopMs = new Date(p.stop).getTime();
     if (stopMs > windowEnd) continue; // its usual slot hasn't passed yet today
-    // Don't drop a habit on top of something already there.
-    if (occupied.some((iv) => startMs < iv.stop && stopMs > iv.start)) continue;
+    if (claimed.some((iv) => startMs < iv.stop && stopMs > iv.start)) continue;
     candidates.push(p);
   }
 
