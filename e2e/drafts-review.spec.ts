@@ -125,3 +125,58 @@ test("drafts: proposals never count as tracked time until confirmed", async ({ p
   // is not time, and no report may see it before a person confirms it.
   expect(after.totalSeconds).toBe(before.totalSeconds);
 });
+
+test("drafts: two proposals never claim the same time", async ({ page }) => {
+  await signUp(page);
+  const origin = new URL(page.url()).origin;
+
+  const now = new Date();
+  const base = Math.min(now.getHours() - 4, 9);
+  test.skip(base < 1, "Too early in the local day to seed a past gap");
+
+  // A habit on this weekday for the last three weeks, timed to land INSIDE the
+  // hole the two entries below will leave. Both a gap proposal and a pattern
+  // proposal want that slot; only one may have it.
+  const habitHour = base + 1;
+  for (const weeksBack of [1, 2, 3]) {
+    const d = new Date();
+    d.setDate(d.getDate() - 7 * weeksBack);
+    d.setHours(habitHour, 0, 0, 0);
+    const stop = new Date(d.getTime() + 30 * 60_000);
+    await page.request.post("/api/time_entries", {
+      headers: { origin },
+      data: { description: "weekly planning", start: d.toISOString(), stop: stop.toISOString() },
+    });
+  }
+
+  for (const [startHour, stopHour] of [
+    [base, base + 0.5],
+    [base + 2.5, base + 3.5],
+  ]) {
+    await page.request.post("/api/time_entries", {
+      headers: { origin },
+      data: {
+        description: `seed ${startHour}`,
+        start: atLocalHour(Math.floor(startHour), (startHour % 1) * 60),
+        stop: atLocalHour(Math.floor(stopHour), (stopHour % 1) * 60),
+      },
+    });
+  }
+
+  const res = await page.request.post("/api/drafts/generate", {
+    headers: { origin },
+    data: { date: localToday(), timezoneOffsetMinutes: new Date().getTimezoneOffset() },
+  });
+  const { drafts } = (await res.json()) as { drafts: { start: string; stop: string }[] };
+
+  // The invariant, independent of which sources fired: a day's proposals must
+  // partition the missing time, never double-claim it. Overlapping proposals
+  // would have the user confirm more hours than the day actually had room for.
+  const sorted = [...drafts].sort((a, b) => a.start.localeCompare(b.start));
+  for (let i = 1; i < sorted.length; i++) {
+    expect(
+      new Date(sorted[i].start).getTime(),
+      `draft ${i} starts before draft ${i - 1} ends`
+    ).toBeGreaterThanOrEqual(new Date(sorted[i - 1].stop).getTime());
+  }
+});
