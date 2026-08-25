@@ -175,7 +175,13 @@ export async function runBriefNarrative(
 
 ${lines.join("\n")}
 
-Write ONE short paragraph, at most three sentences, telling that person where their time went. Address them as "you". Be concrete: name the projects and the work that took the most time, and note anything striking about the shape of the ${period} (a project that took most of it, an unusual amount of meetings, a ${period} split across many things). Do not invent work that isn't listed, do not moralise, do not give advice, and do not open with a greeting. Output only the paragraph.`;
+Write ONE short paragraph, at most three sentences, telling that person where their time went. Address them as "you".
+
+Name the projects and the work that took the most time, and note anything striking about the shape of the ${period} (one project dominating, an unusual amount of meetings, time split across many things).
+
+Do NOT state any number of hours, minutes or percentages. The email already shows the exact figures in a table directly above your paragraph; a number from you that disagrees with that table — even slightly — makes the reader distrust both. Describe the work qualitatively and let the table carry the arithmetic.
+
+Do not invent work that isn't listed, do not moralise, do not give advice, and do not open with a greeting. Output only the paragraph.`;
 
   try {
     const raw = (await ai.run(
