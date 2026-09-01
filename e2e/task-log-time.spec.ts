@@ -23,6 +23,8 @@ test("a task with an estimate seeds the span", async ({ page }) => {
   await seed(page);
   await page.goto("/tasks");
   await page.waitForLoadState("networkidle");
+  // Tasks opens on Today; these are undated, so they live under All.
+  await page.getByRole("radio", { name: "All" }).click();
   await page.waitForTimeout(1200);
 
   await page.getByRole("button", { name: "Log time to Cutover plan" }).click();
@@ -45,6 +47,8 @@ test("a task with no estimate is still convertible, with blank times", async ({ 
   await seed(page);
   await page.goto("/tasks");
   await page.waitForLoadState("networkidle");
+  // Tasks opens on Today; these are undated, so they live under All.
+  await page.getByRole("radio", { name: "All" }).click();
   await page.waitForTimeout(1200);
 
   await page.getByRole("button", { name: "Log time to Data mapping" }).click();

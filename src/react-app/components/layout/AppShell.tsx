@@ -26,6 +26,13 @@ const AssistantPanel = lazyWithReload(() =>
   import("@/components/assistant/AssistantPanel").then((m) => ({ default: m.AssistantPanel }))
 );
 
+// Mounted once, here, because the toast that opens it fires from the Tasks page,
+// the Timer rail and the timer's own stop handler. Lazy: it pulls the whole
+// entry form, and most sessions never log time this way.
+const LogTaskTimeSheet = lazyWithReload(() =>
+  import("@/components/tasks/LogTaskTimeSheet").then((m) => ({ default: m.LogTaskTimeSheet }))
+);
+
 export function AppShell() {
   useWebSocket();
   useHydrateSettings();
@@ -33,6 +40,7 @@ export function AppShell() {
   const location = useLocation();
   const quickAddOpen = useUIStore((s) => s.quickAddOpen);
   const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
+  const logTimeTaskId = useUIStore((s) => s.logTimeTaskId);
   const assistantOpen = useAssistantStore((s) => s.open);
   // Mount on first open and keep mounted after, so chat state and the sheet's
   // close animation survive re-closing. Latched during render (not in an
@@ -118,6 +126,11 @@ export function AppShell() {
       )}
       <AssistantNudgeNotifier />
       <AiQuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
+      {logTimeTaskId && (
+        <Suspense fallback={null}>
+          <LogTaskTimeSheet />
+        </Suspense>
+      )}
       <ProductivityManager />
       <Toaster richColors position="bottom-right" />
     </div>

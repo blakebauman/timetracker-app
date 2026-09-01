@@ -78,6 +78,18 @@ interface UIStore {
   editEntryId: string | null;
   openEntryEditor: (id: string) => void;
   closeEntryEditor: () => void;
+  /**
+   * Task whose "log time" sheet should open. Same trick as `editEntryId`: the
+   * prompt is raised by a toast that can fire from the Tasks page, the Timer
+   * rail or the stop handler, so the sheet is mounted once app-wide rather than
+   * three times with three copies of its state. Transient, never persisted.
+   */
+  logTimeTaskId: string | null;
+  openTaskLogTime: (id: string) => void;
+  closeTaskLogTime: () => void;
+  /** The task rail beside the Timer grid. Persisted — it's a workspace layout choice. */
+  taskRailOpen: boolean;
+  setTaskRailOpen: (v: boolean) => void;
 
   toggleSidebar: () => void;
   setSidebarCollapsed: (v: boolean) => void;
@@ -213,6 +225,11 @@ export const useUIStore = create<UIStore>()(
       clearPinnedEntry: () => set({ pinnedEntryId: null }),
       openEntryEditor: (id) => set({ editEntryId: id }),
       closeEntryEditor: () => set({ editEntryId: null }),
+      logTimeTaskId: null,
+      openTaskLogTime: (id) => set({ logTimeTaskId: id }),
+      closeTaskLogTime: () => set({ logTimeTaskId: null }),
+      taskRailOpen: false,
+      setTaskRailOpen: (v) => set({ taskRailOpen: v }),
       flashEntry: (id) => {
         clearTimeout(flashTimeout);
         set({ highlightedEntryId: id, pinnedEntryId: id });
@@ -236,6 +253,7 @@ export const useUIStore = create<UIStore>()(
       // Only persist real preferences — not transient UI like the palette.
       partialize: (s) => ({
         sidebarCollapsed: s.sidebarCollapsed,
+        taskRailOpen: s.taskRailOpen,
         theme: s.theme,
         timeFormat: s.timeFormat,
         currency: s.currency,

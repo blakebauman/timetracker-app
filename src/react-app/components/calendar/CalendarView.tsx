@@ -10,7 +10,7 @@ import type {
   DatesSetArg,
   EventDropArg,
 } from "@fullcalendar/core";
-import type { DateClickArg, EventResizeDoneArg } from "@fullcalendar/interaction";
+import type { DateClickArg, EventResizeDoneArg, DropArg } from "@fullcalendar/interaction";
 import { CalendarEventContent } from "./CalendarEventContent";
 import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 
@@ -35,6 +35,12 @@ interface CalendarViewProps {
   onEventResize: (arg: EventResizeDoneArg) => void;
   onEventClick: (arg: EventClickArg) => void;
   onDatesSet: (arg: DatesSetArg) => void;
+  /**
+   * An element dragged in from outside the grid (a task from the rail) was
+   * dropped on it. Absent means the grid isn't a drop target at all — the
+   * pointer shouldn't advertise an affordance that leads nowhere.
+   */
+  onExternalDrop?: (arg: DropArg) => void;
 }
 
 // Presentational FullCalendar wrapper. All persistence lives in the parent page;
@@ -56,6 +62,7 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
       onEventResize,
       onEventClick,
       onDatesSet,
+      onExternalDrop,
     },
     ref
   ) {
@@ -127,6 +134,8 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
           eventResize={onEventResize}
           eventClick={onEventClick}
           datesSet={onDatesSet}
+          droppable={Boolean(onExternalDrop)}
+          drop={onExternalDrop}
         />
       </div>
     );

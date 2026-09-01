@@ -53,6 +53,11 @@ const TimesheetView = lazy(() =>
 const PlannerView = lazy(() =>
   import("@/components/planner/PlannerView").then((m) => ({ default: m.PlannerView }))
 );
+// The rail pulls FullCalendar's Draggable, so it rides the same lazy boundary
+// as the grid it drags onto rather than the Timer landing chunk.
+const TaskRail = lazy(() =>
+  import("@/components/tasks/TaskRail").then((m) => ({ default: m.TaskRail }))
+);
 
 function BodyFallback() {
   return (
@@ -276,6 +281,9 @@ export function TimerWorkspace() {
       showGaps={showGaps}
       showEmptyState={view !== "split"}
       onReviewDay={openReview}
+      // The rail only renders at lg and up, and only beside a grid — below that
+      // there is nothing to drag from, so the grid shouldn't claim to accept one.
+      acceptTaskDrops={!belowLg}
     />
   );
   const list = (
@@ -373,13 +381,28 @@ export function TimerWorkspace() {
         onListRangeChange={setListRange}
       />
 
-      <div
-        id={TIMER_PANEL_ID}
-        role="tabpanel"
-        aria-labelledby={timerTabId(view)}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
-      >
-        {body}
+      {/* The rail sits beside the grid, not above or inside it: dragging a task
+          onto a time slot only works when the source and the target are on the
+          same screen, and a plan you can see beside the day is the whole reason
+          the rail exists. Grid views only — the timesheet and planner are their
+          own dense grids and a third column would crush them. */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div
+          id={TIMER_PANEL_ID}
+          role="tabpanel"
+          aria-labelledby={timerTabId(view)}
+          // min-w-0: FullCalendar's grid has an intrinsic width, so without it
+          // this pane refuses to shrink and the rail is pushed off the viewport
+          // edge — its collapse control and quick-add clipped by the window.
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        >
+          {body}
+        </div>
+        {isCalendarish && !belowLg && (
+          <Suspense fallback={null}>
+            <TaskRail />
+          </Suspense>
+        )}
       </div>
 
       <AddEntryDialog
