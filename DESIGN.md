@@ -286,6 +286,7 @@ A raw `z-10` / `z-20` / `z-50` fails ESLint. Sonner manages the toast layer itse
 - **Don't** use gradient-clipped text, tiny uppercase tracked eyebrows above every section, or identical stat-card grids that can orphan an empty cell.
 - **Don't** reach for enterprise-bloat density — an overloaded toolbar, a nested-card layout, or a settings screen exposing everything at once. Reveal what the task needs.
 - **Don't** add drop-shadow "lift" to cards, menus, or panels on hover — depth comes from tone and border, not shadow.
+- **Don't** tint a progress track with the fill colour. A `bg-primary/20` track makes an empty bar read as a full one (`0m / 1h` looked identical in shape to a spent estimate), and spends the accent on work that hasn't started. The track is neutral; only a track that *means* something — `bg-warning/20` past 80% of a budget — overrides it.
 - **Don't** pair an icon-only button's `size="icon"` with an ad-hoc height/width override; use the size token so it matches its labeled siblings.
 - **Don't** visually clone Toggl. Feature parity (calendar view, favorites, auto-track) is a gap-closing strategy — the soft-tone, red-accent identity is this product's own.
 

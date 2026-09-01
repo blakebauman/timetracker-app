@@ -12,7 +12,23 @@ function Progress({
     <ProgressPrimitive.Root
       data-slot="progress"
       className={cn(
-        "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
+        // Neutral track, not `bg-primary/20`.
+        //
+        // A tinted track is the same colour as the fill, so an *empty* bar reads
+        // as a full one: a task at `0m / 1h` rendered a full-width red channel,
+        // indistinguishable in shape from one that had burnt its whole estimate,
+        // and in dark mode — where --primary is the brighter red over a charcoal
+        // ground — the two were separated only by saturation. On a plan-vs-actual
+        // surface that is the one thing the bar exists to tell you apart.
+        //
+        // It also spent the accent on work that hadn't started, against the One
+        // Accent Rule (DESIGN.md §8): red marks the running timer and the primary
+        // action, not every unbegun estimate.
+        //
+        // Callers that mean something by their track still win — SummaryCards'
+        // `bg-success/15`, ProjectList's `bg-warning/20` past 80% of budget —
+        // because those come through `className` and merge over this.
+        "relative h-2 w-full overflow-hidden rounded-full bg-border",
         className
       )}
       {...props}
