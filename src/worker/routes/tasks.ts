@@ -13,6 +13,7 @@ function formatTask(row: Row) {
     projectName: (row.project_name as string | null) ?? null,
     projectColor: (row.project_color as string | null) ?? null,
     name: row.name as string,
+    description: (row.description as string | null) ?? null,
     active: Boolean(row.active),
     estimatedSeconds: (row.estimated_seconds as number | null) ?? null,
     trackedSeconds: (row.tracked_seconds as number) ?? 0,
@@ -138,14 +139,15 @@ export const tasksRouter = new Hono<{
 
     await c.env.DB.prepare(
       `INSERT INTO tasks
-         (id, workspace_id, project_id, name, active, estimated_seconds,
+         (id, workspace_id, project_id, name, description, active, estimated_seconds,
           due_date, priority, sort_order, parent_id, recur_rule, created_at)
-       VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       id,
       workspaceId,
       projectId,
       data.name,
+      data.description ?? null,
       data.estimatedSeconds ?? null,
       data.dueDate ?? null,
       data.priority ?? 4,
@@ -175,6 +177,7 @@ export const tasksRouter = new Hono<{
     const set = (col: string, value: unknown) => { fields.push(`${col} = ?`); values.push(value); };
 
     if (data.name !== undefined)             set("name", data.name);
+    if (data.description !== undefined)      set("description", data.description ?? null);
     if (data.estimatedSeconds !== undefined) set("estimated_seconds", data.estimatedSeconds ?? null);
     if (data.dueDate !== undefined)          set("due_date", data.dueDate ?? null);
     if (data.priority !== undefined)         set("priority", data.priority);
@@ -240,14 +243,16 @@ export const tasksRouter = new Hono<{
         const now = new Date().toISOString();
         await c.env.DB.prepare(
           `INSERT INTO tasks
-             (id, workspace_id, project_id, name, active, estimated_seconds,
+             (id, workspace_id, project_id, name, description, active, estimated_seconds,
               due_date, priority, sort_order, parent_id, recur_rule, created_at)
-           VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, NULL, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, NULL, ?, ?)`
         ).bind(
           spawnId,
           workspaceId,
           existing.project_id,
           existing.name,
+          // The notes describe what the task *is*, so every occurrence needs them.
+          existing.description ?? null,
           existing.estimated_seconds ?? null,
           due,
           existing.priority ?? 4,
@@ -258,7 +263,7 @@ export const tasksRouter = new Hono<{
 
         // A repeating checklist is only useful if the checklist comes back too.
         const { results: kids } = await c.env.DB.prepare(
-          `SELECT name, estimated_seconds, priority, sort_order
+          `SELECT name, description, estimated_seconds, priority, sort_order
              FROM tasks WHERE parent_id = ? AND workspace_id = ? ORDER BY sort_order ASC`
         ).bind(id, workspaceId).all<Row>();
 
@@ -267,14 +272,15 @@ export const tasksRouter = new Hono<{
             kids.map((k) =>
               c.env.DB.prepare(
                 `INSERT INTO tasks
-                   (id, workspace_id, project_id, name, active, estimated_seconds,
+                   (id, workspace_id, project_id, name, description, active, estimated_seconds,
                     due_date, priority, sort_order, parent_id, recur_rule, created_at)
-                 VALUES (?, ?, ?, ?, 1, ?, NULL, ?, ?, ?, NULL, ?)`
+                 VALUES (?, ?, ?, ?, ?, 1, ?, NULL, ?, ?, ?, NULL, ?)`
               ).bind(
                 crypto.randomUUID(),
                 workspaceId,
                 existing.project_id,
                 k.name,
+                k.description ?? null,
                 k.estimated_seconds ?? null,
                 k.priority ?? 4,
                 k.sort_order ?? 0,

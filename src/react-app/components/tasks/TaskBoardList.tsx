@@ -8,7 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -16,7 +15,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ColorDot } from "@/components/ColorDot";
 import { TaskRow } from "./TaskRow";
 import { QuickAddTask } from "./QuickAddTask";
-import { AddTaskDialog } from "./AddTaskDialog";
+import { TaskDialog } from "./TaskDialog";
+import { TaskViewTabs, type TaskView } from "./TaskViewTabs";
 import { useAllTasks, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort } from "@/lib/dateUtils";
@@ -36,7 +36,6 @@ import {
 import { cn } from "@/lib/utils";
 import type { Task } from "@shared/schemas";
 
-type TaskView = "today" | "upcoming" | "all";
 type StatusFilter = "all" | "active" | "done";
 type GroupBy = "project" | "status" | "due" | "none";
 type SortBy = "name" | "estimate" | "tracked" | "recent" | "plan";
@@ -63,12 +62,6 @@ const SORTERS: Record<SortBy, (a: Task, b: Task) => number> = {
   recent: (a, b) => b.createdAt.localeCompare(a.createdAt),
 };
 
-const VIEW_OPTIONS = [
-  { value: "today" as const, label: "Today" },
-  { value: "upcoming" as const, label: "Upcoming" },
-  { value: "all" as const, label: "All" },
-];
-
 /** Tracked total for a node and everything under it, without double-counting. */
 function nodeSeconds(node: TaskNode) {
   // `trackedSeconds` on a parent already rolls its children up (TASK_SELECT),
@@ -87,6 +80,7 @@ export function TaskBoardList() {
   const [groupBy, setGroupBy] = useState<GroupBy>("project");
   const [sortBy, setSortBy] = useState<SortBy>("plan");
   const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [subtaskParent, setSubtaskParent] = useState<string | null>(null);
@@ -243,6 +237,20 @@ export function TaskBoardList() {
   ).length;
   const undatedCount = tasks.filter((t) => !t.dueDate).length;
 
+  // Counts are of *top-level* tasks. A subtask has no due date of its own and
+  // rides its parent's row, so counting them would make "Today 3" disagree with
+  // the three rows underneath it.
+  const counts = useMemo(() => {
+    const top = tasks.filter((t) => !t.parentId && t.active);
+    const overdue = top.filter((t) => t.dueDate && compareLocalDates(t.dueDate, today) < 0).length;
+    return {
+      overdue,
+      today: overdue + top.filter((t) => t.dueDate === today).length,
+      upcoming: top.filter((t) => t.dueDate && compareLocalDates(t.dueDate, today) > 0).length,
+      all: top.length,
+    };
+  }, [tasks, today]);
+
   /** Commit a drag: one row's `sort_order` becomes the midpoint of its new neighbours. */
   const handleDrop = (ordered: Task[], toIndex: number) => {
     if (!dragId) return;
@@ -371,6 +379,7 @@ export function TaskBoardList() {
           expanded={open}
           onToggleExpanded={() => toggleCollapsed(node.task.id)}
           onRequestDelete={setDeleteTarget}
+          onEdit={setEditTarget}
           onLogTime={(t) => openTaskLogTime(t.id)}
           onAddSubtask={(t) => {
             setCollapsed((prev) => {
@@ -391,6 +400,7 @@ export function TaskBoardList() {
                 task={child}
                 nested
                 onRequestDelete={setDeleteTarget}
+                onEdit={setEditTarget}
                 onLogTime={(t) => openTaskLogTime(t.id)}
               />
             ))}
@@ -417,18 +427,18 @@ export function TaskBoardList() {
           6px under every sibling page's, in the one collection page that also
           centred itself in a 768px column. */}
       <CollectionHeader title="Tasks" className="shrink-0">
-        <SegmentedControl
-          value={view}
-          options={VIEW_OPTIONS}
-          onChange={setView}
-          label="Task view"
-        />
+        <TaskViewTabs view={view} counts={counts} onChange={setView} />
 
         {/* Grouping and status only mean anything in All — Today and Upcoming
             *are* a grouping, and stacking a second one on top reads as two
-            controls fighting over the same list. */}
+            controls fighting over the same list.
+            The rule separates navigation from filtering: without it the view
+            switcher read as a fourth dropdown in a row of four, and the one
+            control that changes *what page you are on* looked exactly as
+            important as the one that changes the sort. */}
         {view === "all" && (
           <>
+            <div className="mx-1 h-5 w-px bg-border" aria-hidden />
             <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
               <SelectTrigger className="h-8 w-28" aria-label="Filter by status">
                 <SelectValue />
@@ -529,7 +539,17 @@ export function TaskBoardList() {
         </div>
       )}
 
-      <AddTaskDialog open={addOpen} onClose={() => setAddOpen(false)} />
+      <TaskDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        defaultDueDate={view === "today" ? today : null}
+      />
+
+      <TaskDialog
+        open={!!editTarget}
+        task={editTarget}
+        onClose={() => setEditTarget(null)}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}

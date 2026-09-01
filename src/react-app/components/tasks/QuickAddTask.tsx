@@ -32,8 +32,8 @@ interface QuickAddTaskProps {
  * an open/fill/submit/reopen cycle. The field stays focused after each Enter, so
  * five tasks is five lines of typing.
  *
- * `AddTaskDialog` survives for the deliberate case (the empty state, and adding
- * from elsewhere with a project to choose).
+ * `TaskDialog` survives for the deliberate case (the empty state, and anything
+ * needing the fields this line can't express — notes, an estimate, a repeat).
  */
 export function QuickAddTask({
   defaultProjectId = null,

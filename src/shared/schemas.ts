@@ -195,6 +195,8 @@ export const TaskSchema = z.object({
   projectName: z.string().nullable(),
   projectColor: z.string().nullable(),
   name: z.string(),
+  /** The task's own notes. Not the time entry's description — see the migration. */
+  description: z.string().nullable(),
   active: z.boolean(),
   estimatedSeconds: z.number().nullable(),
   /** Own tracked time **plus** every subtask's — see TASK_SELECT. */
@@ -213,6 +215,7 @@ export const TaskSchema = z.object({
 
 export const CreateTaskSchema = z.object({
   name: z.string().min(1).max(255),
+  description: z.string().max(5000).nullable().optional(),
   projectId: z.string(),
   estimatedSeconds: z.number().nullable().optional(),
   dueDate: LocalDateSchema.nullable().optional(),
@@ -223,6 +226,7 @@ export const CreateTaskSchema = z.object({
 
 export const UpdateTaskSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  description: z.string().max(5000).nullable().optional(),
   active: z.boolean().optional(),
   estimatedSeconds: z.number().nullable().optional(),
   dueDate: LocalDateSchema.nullable().optional(),

@@ -75,6 +75,8 @@ interface TaskRowProps {
   expanded?: boolean;
   onToggleExpanded?: () => void;
   onRequestDelete: (task: Task) => void;
+  /** Open the full task form (notes, estimate, due date, priority, repeat). */
+  onEdit?: (task: Task) => void;
   /** Open the "log time to task" sheet; the list owns the sheet instance. */
   onLogTime: (task: Task) => void;
   onAddSubtask?: (task: Task) => void;
@@ -104,6 +106,7 @@ export function TaskRow({
   expanded = false,
   onToggleExpanded,
   onRequestDelete,
+  onEdit,
   onLogTime,
   onAddSubtask,
   dragHandlers,
@@ -287,11 +290,31 @@ export function TaskRow({
             className="h-6 py-0 text-sm"
           />
         ) : (
-          <span
-            className={`text-sm ${!task.active ? "text-muted-foreground line-through" : ""}`}
+          // Click-to-rename: the fast path for a typo, so the dialog is only for
+          // the things that actually need a form.
+          <button
+            type="button"
+            title="Click to rename"
+            onClick={() => {
+              setName(task.name);
+              setEditingName(true);
+            }}
+            className={cn(
+              "block max-w-full truncate text-left text-sm",
+              !task.active && "text-muted-foreground line-through"
+            )}
           >
             {task.name}
-          </span>
+          </button>
+        )}
+
+        {/* Notes sit under the name, clamped to one line: enough to recognise
+            what the task is about, never enough to turn the list into prose.
+            The full text is in the dialog and in the tooltip. */}
+        {task.description && (
+          <p className="mt-0.5 line-clamp-1 text-micro text-muted-foreground" title={task.description}>
+            {task.description}
+          </p>
         )}
 
         {editingTime ? (
@@ -429,15 +452,12 @@ export function TaskRow({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem
-                onSelect={() => {
-                  setName(task.name);
-                  setEditingName(true);
-                }}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Rename
-              </DropdownMenuItem>
+              {onEdit && (
+                <DropdownMenuItem onSelect={() => onEdit(task)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit task…
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
