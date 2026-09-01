@@ -135,10 +135,39 @@ The key is shown **once** and can't be recovered; if you lose it, revoke it and 
 
 - **Clients** hold contact details and notes; each client's detail page shows its projects and recent activity.
 - **Projects** belong to a client (optionally), carry a **color**, a **billable** flag, an optional **billing rate**, and an optional budget. The Projects page can be searched (by project *or* client name) and sorted by name, client, tracked time or rate. Rate × billable hours = the amounts you see in Reports. The billable flag is the default for new time on that project — the timer bar adopts it when you pick the project, and any entry created without an explicit flag (the browser extension, AI Quick Add, the API) inherits it too.
-- **Tasks** belong to projects; the Tasks page is a board-style list where you can also log time directly against a task.
+- **Tasks** belong to projects, and are the plan side of the timer. A task carries a **due date**, a **priority** (Urgent / High / Normal / None), an optional **estimate**, up to one level of **subtasks**, and an optional **repeat**. See "Planning with tasks" below.
 - **Tags** are freeform labels; new tags automatically get a distinct color (editable later, along with renames, on the fly from any tag picker).
 
 **Colors:** by default the app auto-assigns visually distinct colors to new projects and tags. Under Settings → Appearance you can toggle auto-assign and run **"Apply to existing"**, which uses AI to recolor your current projects sensibly (e.g. matching a project's name to a fitting hue) while keeping every color distinct.
+
+## Planning with tasks
+
+The Tasks page opens on **Today**: overdue work first, then what's due today, then what you've already finished today. **Upcoming** shows the next seven days a day at a time, and **All** is the full list with the grouping, sorting and status filters.
+
+**Capturing.** The field at the top of the list adds a task and stays open for the next one, so several go in as several lines of typing. It reads a few tokens out of what you type and strips them from the name:
+
+| You type | You get |
+|---|---|
+| `draft report tomorrow` | due tomorrow |
+| `send invoice fri` | due the coming Friday |
+| `renew certs 10d` | due in 10 days (`w` and `m` work too) |
+| `chase SOW p1` | priority Urgent (`p1`–`p4`) |
+| `review deck #meridian` | filed under a project whose name starts that way |
+
+The line under the field shows what it understood before you commit it.
+
+**Turning a task into time.** Four ways, all of them one gesture:
+
+- **Start a timer** — the ▷ on every row starts the clock with the task's name, project and task already set. While it runs the row shows a stop control instead.
+- **Drag it onto the calendar** — open the task rail beside the Timer's calendar view and drag a task onto a time slot. That logs a finished entry there, as long as its estimate (or half an hour if it has none), with an **Undo** in the toast.
+- **Log time already spent** — the clock icon opens the entry form prefilled from the task. Nothing is written until you submit. If the task was due before today, the form opens on the day it was due rather than on today.
+- **Tick it off** — and if nothing is tracked against it, the confirmation offers to log the time then and there. In the other direction, stopping a timer on a task that's due today or has used up its estimate offers to mark it done.
+
+**Subtasks.** A task can hold a checklist one level deep. Time is tracked against whichever one you actually worked on, and a parent's tracked total includes its subtasks'. Ticking a parent ticks its children with it.
+
+**Repeats.** A task can repeat daily, on weekdays, weekly on chosen days, or monthly on a date. The next occurrence is created **when you tick the current one off** — so a repeating task you never complete simply goes overdue rather than piling up copies. If it has subtasks, the fresh occurrence gets a fresh checklist.
+
+**The task rail.** In the Timer's calendar and split views (on wider screens) a rail on the right shows what's due today, so you can start or drag straight onto the grid you're tracking into. Collapse it with the control in its header.
 
 ## Favorites & recurring entries
 

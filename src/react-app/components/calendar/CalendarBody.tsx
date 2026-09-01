@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import type FullCalendar from "@fullcalendar/react";
 import type { EventClickArg, EventDropArg } from "@fullcalendar/core";
-import type { EventResizeDoneArg } from "@fullcalendar/interaction";
+import type { EventResizeDoneArg, DropArg } from "@fullcalendar/interaction";
 import {
   endOfWeek,
   startOfWeek,
@@ -18,7 +18,7 @@ import { EntryForm, type EditableEntry } from "@/components/entries/EntryForm";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { useEntriesRange, useUpdateEntry } from "@/hooks/useEntries";
+import { useEntriesRange, useUpdateEntry, useCreateEntry, useDeleteEntry } from "@/hooks/useEntries";
 import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarSync";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -30,7 +30,7 @@ import {
   type CalendarEventExtendedProps,
 } from "@/lib/calendarMapping";
 import { useDraftRange } from "@/hooks/useDrafts";
-import { localDayKey } from "@/lib/dateUtils";
+import { localDayKey, formatEntryTime } from "@/lib/dateUtils";
 
 import "@/styles/fullcalendar.css";
 
@@ -54,6 +54,12 @@ interface CalendarBodyProps {
    * a proposal you can't act on is just clutter on the grid.
    */
   onReviewDay?: (localDate: string) => void;
+  /**
+   * Accept tasks dragged in from the rail. Off in split view's second pane and
+   * anywhere the rail isn't on screen — a drop target with nothing to drop is
+   * just a cursor that lies.
+   */
+  acceptTaskDrops?: boolean;
 }
 
 // The FullCalendar grid, externally driven by the shared period + view.
@@ -68,6 +74,7 @@ export function CalendarBody({
   showGaps,
   showEmptyState = true,
   onReviewDay,
+  acceptTaskDrops = false,
 }: CalendarBodyProps) {
   // date-fns wants a 0–6 literal; the setting is validated to that range.
   const wso = weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -129,6 +136,8 @@ export function CalendarBody({
   const timeFormat = useUIStore((s) => s.timeFormat);
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const updateEntry = useUpdateEntry();
+  const createEntry = useCreateEntry();
+  const deleteEntry = useDeleteEntry();
 
   const { data: externalEvents = [] } = useCalendarEvents(
     range.start.toISOString(),
@@ -237,6 +246,52 @@ export function CalendarBody({
     );
   };
 
+  /**
+   * A task dropped on the grid becomes a completed entry at that slot.
+   *
+   * Written immediately, with an Undo toast — no confirm dialog. A gesture whose
+   * whole value is "one motion, done" cannot end in a form; the confirmation is
+   * that you can see where it landed, and take it back.
+   *
+   * Length is the task's estimate, falling back to the grid's own slot (30m) so
+   * the block matches the space the pointer was over. Month view has no time of
+   * day to drop onto, so it isn't a target.
+   */
+  const handleTaskDrop = (arg: DropArg) => {
+    const el = arg.draggedEl;
+    const taskId = el.getAttribute("data-task-id");
+    const projectId = el.getAttribute("data-project-id");
+    const name = el.getAttribute("data-task-name") ?? "";
+    if (!taskId || !projectId) return;
+
+    const estimate = Number(el.getAttribute("data-estimate")) || 30 * 60;
+    const start = arg.date;
+    const stop = new Date(start.getTime() + estimate * 1000);
+
+    createEntry.mutate(
+      {
+        description: name,
+        projectId,
+        taskId,
+        start: start.toISOString(),
+        stop: stop.toISOString(),
+        tags: [],
+      },
+      {
+        onSuccess: (entry) => {
+          toast.success(`Logged ${name}`, {
+            description: `${formatEntryTime(entry.start, timeFormat)} – ${formatEntryTime(
+              entry.stop!,
+              timeFormat
+            )}`,
+            action: { label: "Undo", onClick: () => deleteEntry.mutate(entry.id) },
+          });
+        },
+        onError: () => toast.error("Couldn't log that task"),
+      }
+    );
+  };
+
   const handleEventClick = (arg: EventClickArg) => {
     const props = arg.event.extendedProps as CalendarEventExtendedProps;
     if (props.draft) {
@@ -291,15 +346,17 @@ export function CalendarBody({
       {/* Nothing tracked: the grid alone gives no hint that it's empty *because
           you haven't logged anything*, versus still loading or broken. */}
       {showEmptyState && !entriesLoading && !entriesError && events.length === 0 && (
+        // The card is inert all the way through. It holds no controls, and
+        // sitting in the middle of an empty grid it swallowed exactly the two
+        // gestures it exists to invite: the click it tells you to make, and a
+        // task dragged from the rail onto the emptiest week you own.
         <div className="pointer-events-none absolute inset-0 z-sticky flex items-center justify-center p-4">
-          <div className="pointer-events-auto">
-            <EmptyState
-              icon={CalendarPlus}
-              title="Nothing tracked in this period"
-              description="Click any empty slot to log time, or start the timer to track as you work."
-              className="rounded-xl border bg-background/95 px-8 py-8 shadow-sm"
-            />
-          </div>
+          <EmptyState
+            icon={CalendarPlus}
+            title="Nothing tracked in this period"
+            description="Click any empty slot to log time, or start the timer to track as you work."
+            className="rounded-xl border bg-background/95 px-8 py-8 shadow-sm"
+          />
         </div>
       )}
 
@@ -335,6 +392,9 @@ export function CalendarBody({
         onEventResize={handleMoveOrResize}
         onEventClick={handleEventClick}
         onDatesSet={() => {}}
+        onExternalDrop={
+          acceptTaskDrops && calendarView !== "dayGridMonth" ? handleTaskDrop : undefined
+        }
       />
 
       <CalendarCreateDialog

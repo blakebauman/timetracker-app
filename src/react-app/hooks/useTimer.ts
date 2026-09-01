@@ -8,7 +8,8 @@ import { invalidateEntryDerived } from "@/hooks/useEntries";
 import { api } from "@/lib/api";
 import { formatSeconds, formatDurationShort } from "@/lib/dateUtils";
 import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
-import type { TimeEntry } from "@shared/schemas";
+import { compareLocalDates, todayLocalDate } from "@shared/task-recurrence";
+import type { TimeEntry, Task } from "@shared/schemas";
 
 /**
  * Does the range a `["time-entries", since, until]` cache holds contain `start`?
@@ -184,6 +185,54 @@ export function useTimer() {
   );
 
 
+  /**
+   * Offer to close a task out, when there's reason to think it's finished.
+   *
+   * Deliberately **not** on every stop against a task. Stopping mid-task is the
+   * common case, and a prompt there is noise that teaches you to dismiss the one
+   * that matters. Two signals count as evidence: the estimate has been met, or
+   * the task was due today or earlier. An undated, unestimated task says nothing
+   * about its own completion, so nothing is asked — that direction of the loop is
+   * carried by the checkbox on the row, and the opposite direction (ticked done
+   * with no tracked time) is carried by useCompleteTask.
+   */
+  const offerTaskDone = useCallback(
+    (entry: TimeEntry) => {
+      if (!entry.taskId) return;
+      let task: Task | undefined;
+      for (const [, data] of queryClient.getQueriesData<Task[]>({ queryKey: ["tasks"] })) {
+        const hit = data?.find((t) => t.id === entry.taskId);
+        if (hit) { task = hit; break; }
+      }
+      if (!task || !task.active) return;
+
+      const today = todayLocalDate();
+      const estimateMet =
+        task.estimatedSeconds !== null && task.trackedSeconds >= task.estimatedSeconds;
+      const dueNow = task.dueDate !== null && compareLocalDates(task.dueDate, today) <= 0;
+      if (!estimateMet && !dueNow) return;
+
+      const target = task;
+      toast(`Stopped ${formatDurationShort(entry.duration ?? 0)} on "${target.name}"`, {
+        description: estimateMet
+          ? `That's the whole ${formatDurationShort(target.estimatedSeconds!)} estimate.`
+          : "This task was due today.",
+        action: {
+          label: "Mark done",
+          onClick: () => {
+            void (api.tasks.update(target.id, {
+              active: false,
+              completedOn: todayLocalDate(),
+            }) as Promise<unknown>)
+              .then(() => queryClient.invalidateQueries({ queryKey: ["tasks"] }))
+              .catch(() => toast.error("Failed to update task"));
+          },
+        },
+      });
+    },
+    [queryClient]
+  );
+
   // Stop is silent on success: the row flashes and floats to the top of its day,
   // which is enough closure for the common case. The one thing worth interrupting
   // for is an entry that landed with no project — for a consultant that's an
@@ -191,15 +240,18 @@ export function useTimer() {
   const announceStopped = useCallback((entry: TimeEntry | undefined) => {
     if (!entry) return;
     useUIStore.getState().flashEntry(entry.id);
-    if (entry.projectId) return;
-    toast.warning(`Stopped ${formatDurationShort(entry.duration ?? 0)} with no project`, {
-      description: "Time without a project can't be billed.",
-      action: {
-        label: "Assign project",
-        onClick: () => useUIStore.getState().openEntryEditor(entry.id),
-      },
-    });
-  }, []);
+    if (!entry.projectId) {
+      toast.warning(`Stopped ${formatDurationShort(entry.duration ?? 0)} with no project`, {
+        description: "Time without a project can't be billed.",
+        action: {
+          label: "Assign project",
+          onClick: () => useUIStore.getState().openEntryEditor(entry.id),
+        },
+      });
+      return;
+    }
+    offerTaskDone(entry);
+  }, [offerTaskDone]);
 
   // ─── Stop timer ──────────────────────────────────────────────────────────
   const stopMutation = useMutation({

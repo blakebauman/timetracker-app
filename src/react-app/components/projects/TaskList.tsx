@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
-import { LogTaskTimeSheet } from "@/components/tasks/LogTaskTimeSheet";
+import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import type { Task } from "@shared/schemas";
 
@@ -27,7 +27,9 @@ export function TaskList({ projectId }: TaskListProps) {
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editEstimated, setEditEstimated] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
-  const [logTarget, setLogTarget] = useState<Task | null>(null);
+  // The log-time sheet is mounted once app-wide (AppShell) so the toast that
+  // offers it can fire from anywhere; this list just asks for it by id.
+  const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
 
   const handleCreate = () => {
     const name = newName.trim();
@@ -190,7 +192,7 @@ export function TaskList({ projectId }: TaskListProps) {
                 size="icon-xs"
                 aria-label={`Log time to ${task.name}`}
                 title="Log time to this task"
-                onClick={() => setLogTarget(task)}
+                onClick={() => openTaskLogTime(task.id)}
               >
                 <Clock className="h-3 w-3" />
               </Button>
@@ -237,12 +239,6 @@ export function TaskList({ projectId }: TaskListProps) {
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
-
-      <LogTaskTimeSheet
-        task={logTarget}
-        open={!!logTarget}
-        onClose={() => setLogTarget(null)}
-      />
 
       <ConfirmDialog
         open={!!deleteTarget}

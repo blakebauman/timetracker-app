@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseRecurRule } from "./task-recurrence";
 
 // ─── Workspace ───────────────────────────────────────────────────────────────
 
@@ -170,6 +171,23 @@ export const ProjectPacingSchema = z.object({
 
 // ─── Task ─────────────────────────────────────────────────────────────────────
 
+// A local calendar date. A due date is a *day*, not an instant — see
+// shared/task-recurrence.ts for why this never becomes a timestamp.
+export const LocalDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+
+// 1 = highest … 4 = none. Only 1 and 2 render as colour on a row (DESIGN.md's
+// One Accent Rule); 3 and 4 stay neutral, and 4 is the default.
+export const TaskPrioritySchema = z.number().int().min(1).max(4);
+
+// daily | weekdays | weekly:0,2,4 | monthly:15 — validated by the shared parser
+// rather than duplicated as a regex here.
+export const RecurRuleSchema = z
+  .string()
+  .max(64)
+  .refine((v) => parseRecurRule(v) !== null, "Unrecognised repeat rule");
+
 export const TaskSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
@@ -179,7 +197,17 @@ export const TaskSchema = z.object({
   name: z.string(),
   active: z.boolean(),
   estimatedSeconds: z.number().nullable(),
+  /** Own tracked time **plus** every subtask's — see TASK_SELECT. */
   trackedSeconds: z.number(),
+  dueDate: LocalDateSchema.nullable(),
+  priority: TaskPrioritySchema,
+  sortOrder: z.number(),
+  /** Non-null on a subtask. One level only: a subtask can never be a parent. */
+  parentId: z.string().nullable(),
+  completedAt: z.string().nullable(),
+  recurRule: z.string().nullable(),
+  subtaskTotal: z.number(),
+  subtaskDone: z.number(),
   createdAt: z.string(),
 });
 
@@ -187,12 +215,28 @@ export const CreateTaskSchema = z.object({
   name: z.string().min(1).max(255),
   projectId: z.string(),
   estimatedSeconds: z.number().nullable().optional(),
+  dueDate: LocalDateSchema.nullable().optional(),
+  priority: TaskPrioritySchema.optional(),
+  parentId: z.string().nullable().optional(),
+  recurRule: RecurRuleSchema.nullable().optional(),
 });
 
 export const UpdateTaskSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   active: z.boolean().optional(),
   estimatedSeconds: z.number().nullable().optional(),
+  dueDate: LocalDateSchema.nullable().optional(),
+  priority: TaskPrioritySchema.optional(),
+  /** Fractional index: the client sends the midpoint, so a drag writes one row. */
+  sortOrder: z.number().optional(),
+  parentId: z.string().nullable().optional(),
+  recurRule: RecurRuleSchema.nullable().optional(),
+  /**
+   * The completing client's own local date. Present only on the request that
+   * ticks a recurring task done, and it is what the next occurrence is measured
+   * from — the worker runs in UTC and must never guess this.
+   */
+  completedOn: LocalDateSchema.optional(),
 });
 
 // ─── Tag ─────────────────────────────────────────────────────────────────────
