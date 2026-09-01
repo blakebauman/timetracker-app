@@ -149,3 +149,68 @@ test("a subtask's tracked time rolls up into its parent", async ({ page }) => {
   const after = await (await page.request.get("/api/tasks?includeInactive=true")).json();
   expect(after.every((t: { active: boolean }) => !t.active)).toBe(true);
 });
+
+test("the view tabs carry counts, and overdue tints Today's", async ({ page }) => {
+  const { project, origin } = await seed(page);
+  const mk = (data: unknown) =>
+    page.request.post("/api/tasks", { data, headers: { origin } });
+
+  await mk({ name: "Weekly status report", projectId: project.id, dueDate: localDate(-2) });
+  const parent = await (
+    await page.request.post("/api/tasks", {
+      data: { name: "Phase 2 discovery", projectId: project.id, dueDate: localDate(0) },
+      headers: { origin },
+    })
+  ).json();
+  // Subtasks ride their parent's row and have no date of their own, so they must
+  // not be counted — "Today 2" has to match the two rows underneath it.
+  await mk({ name: "Data mapping", projectId: project.id, parentId: parent.id });
+  await mk({ name: "Prep board deck", projectId: project.id, dueDate: localDate(1) });
+  await mk({ name: "Backlog grooming", projectId: project.id });
+
+  await page.goto("/tasks");
+  await page.waitForTimeout(1000);
+
+  await expect(page.getByRole("tab", { name: "Today, 2 tasks, 1 overdue" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Upcoming, 1 task" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "All, 4 tasks" })).toBeVisible();
+
+  // Arrow keys move between tabs — it's a tablist, not a radiogroup.
+  await page.getByRole("tab", { name: /^Today/ }).press("ArrowRight");
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("tab", { name: /^Upcoming/ })).toHaveAttribute("aria-selected", "true");
+});
+
+test("a task carries notes, editable through the task dialog", async ({ page }) => {
+  const { project, origin } = await seed(page);
+  await page.request.post("/api/tasks", {
+    data: { name: "Reconcile Q3 invoices", projectId: project.id, dueDate: localDate(0) },
+    headers: { origin },
+  });
+
+  await page.goto("/tasks");
+  await page.waitForTimeout(1000);
+
+  const row = page.locator(".group", { hasText: "Reconcile Q3 invoices" }).first();
+  await row.hover();
+  await row.getByRole("button", { name: /More actions/ }).click();
+  await page.getByRole("menuitem", { name: "Edit task…" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Edit task" });
+  await expect(dialog).toBeVisible();
+  // The form opens on the task's real values, not on empty defaults.
+  await expect(dialog.getByLabel("Name")).toHaveValue("Reconcile Q3 invoices");
+  // Clear sits inside the dialog beside the date, not pushed off its edge.
+  await expect(dialog.getByRole("button", { name: "Clear due date" })).toBeVisible();
+
+  await dialog.getByLabel("Notes").fill("Check the August credit note before sending.");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.waitForTimeout(1000);
+
+  // Notes render as a second line on the row.
+  await expect(page.getByText("Check the August credit note before sending.")).toBeVisible();
+
+  const tasks = await (await page.request.get("/api/tasks")).json();
+  expect(tasks[0].description).toBe("Check the August credit note before sending.");
+});

@@ -135,7 +135,7 @@ The key is shown **once** and can't be recovered; if you lose it, revoke it and 
 
 - **Clients** hold contact details and notes; each client's detail page shows its projects and recent activity.
 - **Projects** belong to a client (optionally), carry a **color**, a **billable** flag, an optional **billing rate**, and an optional budget. The Projects page can be searched (by project *or* client name) and sorted by name, client, tracked time or rate. Rate × billable hours = the amounts you see in Reports. The billable flag is the default for new time on that project — the timer bar adopts it when you pick the project, and any entry created without an explicit flag (the browser extension, AI Quick Add, the API) inherits it too.
-- **Tasks** belong to projects, and are the plan side of the timer. A task carries a **due date**, a **priority** (Urgent / High / Normal / None), an optional **estimate**, up to one level of **subtasks**, and an optional **repeat**. See "Planning with tasks" below.
+- **Tasks** belong to projects, and are the plan side of the timer. A task carries a **due date**, a **priority** (Urgent / High / Normal / None), an optional **estimate**, free-text **notes**, up to one level of **subtasks**, and an optional **repeat**. See "Planning with tasks" below.
 - **Tags** are freeform labels; new tags automatically get a distinct color (editable later, along with renames, on the fly from any tag picker).
 
 **Colors:** by default the app auto-assigns visually distinct colors to new projects and tags. Under Settings → Appearance you can toggle auto-assign and run **"Apply to existing"**, which uses AI to recolor your current projects sensibly (e.g. matching a project's name to a fitting hue) while keeping every color distinct.
@@ -143,6 +143,8 @@ The key is shown **once** and can't be recovered; if you lose it, revoke it and 
 ## Planning with tasks
 
 The Tasks page opens on **Today**: overdue work first, then what's due today, then what you've already finished today. **Upcoming** shows the next seven days a day at a time, and **All** is the full list with the grouping, sorting and status filters.
+
+Each tab carries a count, so you can see whether a view is worth opening without opening it. Today's count turns red when part of it is overdue.
 
 **Capturing.** The field at the top of the list adds a task and stays open for the next one, so several go in as several lines of typing. It reads a few tokens out of what you type and strips them from the name:
 
@@ -162,6 +164,10 @@ The line under the field shows what it understood before you commit it.
 - **Drag it onto the calendar** — open the task rail beside the Timer's calendar view and drag a task onto a time slot. That logs a finished entry there, as long as its estimate (or half an hour if it has none), with an **Undo** in the toast.
 - **Log time already spent** — the clock icon opens the entry form prefilled from the task. Nothing is written until you submit. If the task was due before today, the form opens on the day it was due rather than on today.
 - **Tick it off** — and if nothing is tracked against it, the confirmation offers to log the time then and there. In the other direction, stopping a timer on a task that's due today or has used up its estimate offers to mark it done.
+
+**Notes.** A task can carry free-text notes — context, links, acceptance criteria, anything that isn't the name. They show as a single clamped line under the task on the list, in full in the task dialog. Notes belong to the *task* and are never copied onto a time entry, so internal detail can't end up on an invoice line.
+
+**Editing.** Click a task's name to rename it in place, or its due-date chip to re-date it. **⋯ → Edit task…** opens the full form — name, notes, project, estimate, due date, priority and repeat — which is the same form used to create one.
 
 **Subtasks.** A task can hold a checklist one level deep. Time is tracked against whichever one you actually worked on, and a parent's tracked total includes its subtasks'. Ticking a parent ticks its children with it.
 
