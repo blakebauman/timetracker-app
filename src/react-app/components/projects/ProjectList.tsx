@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SpentFigure } from "@/components/ui/spent-figure";
 import {
   Collapsible,
   CollapsibleContent,
@@ -294,12 +295,10 @@ export function ProjectList() {
                             {Math.round(budgetPercent)}% of budget used — all time
                           </TooltipContent>
                         </Tooltip>
-                        <span className="text-micro tabular-nums text-muted-foreground">
-                          {formatDurationShort(project.budgetSeconds)} / {project.estimatedHours}h
-                          {period !== "all" && (
-                            <span className="ml-1 normal-nums">all time</span>
-                          )}
-                        </span>
+                        <SpentFigure
+                          spent={formatDurationShort(project.budgetSeconds)}
+                          of={`${project.estimatedHours}h${period !== "all" ? " all time" : ""}`}
+                        />
                       </div>
                     )}
                     {/* The percentage says where the project is; this says where
