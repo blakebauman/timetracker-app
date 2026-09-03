@@ -23,10 +23,15 @@ interface SegmentedControlProps<T extends string> {
  * on the page never showed which of its three states was active. They sat two
  * rows apart.
  *
- * The active treatment follows the segmented style DESIGN.md §5 already
- * documents for tabs and the timer view switcher (`bg-muted` track, active
- * segment lifting to `bg-background` with a subtle shadow) rather than a
- * primary fill, so a settings row doesn't spend the one accent colour.
+ * The active segment is a solid --foreground pill on a --muted track. It is
+ * deliberately NOT the brand red: the one accent is spent on primary actions
+ * and the running timer, and a settings row is neither. Ink-on-track is the
+ * highest-contrast way to say "this one" without reaching for hue at all,
+ * which also means it survives a colour-blind reader unchanged.
+ *
+ * It replaced a lift-to-`bg-background`-with-a-shadow treatment, which stopped
+ * working once cards went borderless and recessed: the "lifted" segment and
+ * the page behind it were then the same value, so the control read as flat.
  */
 export function SegmentedControl<T extends string>({
   value,
@@ -40,7 +45,7 @@ export function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        "inline-flex w-fit items-center rounded-lg bg-muted p-[3px]",
+        "inline-flex w-fit items-center rounded-full bg-muted p-[3px]",
         className
       )}
     >
@@ -54,10 +59,10 @@ export function SegmentedControl<T extends string>({
             aria-checked={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "rounded px-3 py-1 text-xs font-medium transition-colors duration-fast ease-out-quart",
+              "rounded-full px-3 py-1 text-xs font-medium transition-colors duration-fast ease-out-quart",
               "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >

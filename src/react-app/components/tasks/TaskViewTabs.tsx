@@ -74,7 +74,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
       role="tablist"
       aria-label="Task view"
       onKeyDown={onKeyDown}
-      className="inline-flex h-8 items-center rounded-lg bg-muted p-[3px]"
+      className="inline-flex h-8 items-center rounded-full bg-muted p-[3px]"
     >
       {VIEWS.map(({ value, label }) => {
         const active = value === view;
@@ -98,11 +98,11 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
             }
             onClick={() => onChange(value)}
             className={cn(
-              "flex h-full items-center gap-1.5 rounded px-2.5 text-xs font-medium",
+              "flex h-full items-center gap-1.5 rounded-full px-3 text-xs font-medium",
               "transition-colors duration-fast ease-out-quart",
               "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -115,7 +115,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
                   late
                     ? "text-destructive"
                     : active
-                      ? "text-muted-foreground"
+                      ? "text-background/70"
                       : "text-muted-foreground/60"
                 )}
               >
