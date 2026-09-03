@@ -192,7 +192,7 @@ export function DraftReviewDialog({ open, localDate, onClose }: DraftReviewDialo
 
             {onTotalCard ? (
               <div className="space-y-4 py-2">
-                <div className="rounded-lg border bg-card p-4">
+                <div className="rounded-lg bg-card p-4">
                   <p className="text-sm font-medium">How much time should we report?</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {confirmedSeconds > 0 && (
@@ -324,7 +324,7 @@ function DraftCard({
 
   return (
     <div className="space-y-4 py-2">
-      <div className="rounded-lg border bg-card p-4">
+      <div className="rounded-lg bg-card p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <SourceIcon className="h-3.5 w-3.5" />
           <span>{SOURCE_LABEL[draft.source]}</span>

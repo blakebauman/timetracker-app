@@ -192,7 +192,7 @@ The system is flat-by-default with tonal layering, not shadow-driven. Depth is c
 - **The KPI-strip exception:** the Reports summary metrics render as one framed strip (flex-wrap, 1px internal dividers via `bg-border` gaps) rather than a grid of individual cards — this avoids the "identical card grid with an orphaned empty cell" anti-pattern when the visible metric count doesn't evenly divide the row.
 
 ### Inputs / Fields
-- **Style:** 1px border, `bg-background`, `rounded-full`, `shadow-xs`. **Textarea is the deliberate exception** — it keeps `rounded-xl`, because a pill forces the first and last lines of multi-line text into the curve.
+- **Style:** 1px border, `bg-background`, `rounded-full`, `shadow-xs`. `Input` carries `px-4` so text is not crowded into the curve; **`SelectTrigger` stays at `px-3`** because it is `w-fit` in tight toolbars and the extra 8px truncated its value ("No sub-grou…") — a chevron already gives it the breathing room the pill needs. **Textarea is the deliberate exception** to the shape — it keeps `rounded-xl`, because a pill forces the first and last lines of multi-line text into the curve.
 - **Focus:** border shifts to the ring color plus a 3px ring at 50% opacity — no glow, no scale change. **The focus ring is not the brand red.** `--ring` (`oklch(0.55 0.14 265)` light / `oklch(0.7 0.14 265)` dark) is deliberately a different hue from both `--primary` and `--destructive`: when they shared a value, a focused input read as a validation error and "Save changes" was the same color as "Discard". Hue 265 is the system's own cool tint from the dark ramp, not a stock blue. One focus vocabulary everywhere — no bare-underline substitutes.
 - **Error:** border and ring shift to the destructive color at reduced opacity.
 
@@ -211,7 +211,7 @@ Corner radius is chosen by **what an element is**, never by taste, and there are
 The boundary between the families is **density**. Pills on a thirty-row entry list would trade the app's actual job — scanning a day of tracked time — for a look, so the geometry stops at the edge of the data. If a new surface is dense, it belongs to the third family no matter how it is built.
 
 ### The Segmented Rule
-There are four segmented controls in the app — `SegmentedControl`, `Tabs` (default variant), `TaskViewTabs` and `TimerViewSwitcher` — and they must not diverge. The active segment is a solid `--foreground` pill with `--background` text, on a `--muted` track.
+There are five segmented controls in the app — `SegmentedControl`, `Tabs` (default variant), `TaskViewTabs`, `TimerViewSwitcher` and the calendar-view radiogroup inside `CalendarViewOptions` — and they must not diverge. That last one is the reason this is a written rule: it is a `grid`, not a flex row, so it did not match a search for the others and had been quietly drifting on its own. The active segment is a solid `--foreground` pill with `--background` text, on a `--muted` track.
 
 It is deliberately **not** the brand red: the one accent is spent on primary actions and the running timer, and a settings row is neither. Ink-on-track is also the only "which one is selected" signal here that survives a colour-blind reader unchanged, because it carries no hue at all.
 

@@ -218,7 +218,7 @@ export function ClientDetailPage() {
               open={isExpanded}
               onOpenChange={() => toggle(project.id)}
             >
-              <div className="rounded-lg border bg-card">
+              <div className="rounded-lg bg-card">
                 <div className="flex items-center gap-3 px-4 py-3">
                   <span
                     className="h-3 w-3 shrink-0 rounded-full"

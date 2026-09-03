@@ -28,9 +28,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          // Toasts are overlay containers, so they take the container radius
+          // rather than the data-cell one (DESIGN.md §5, The Geometry Rule).
+          "--border-radius": "var(--radius-container)",
         } as React.CSSProperties
       }
+      toastOptions={{
+        classNames: {
+          // Sonner styles its own action/cancel buttons, so they don't inherit
+          // `Button` and were the one square-cornered control left in the app.
+          actionButton: "rounded-full!",
+          cancelButton: "rounded-full!",
+        },
+      }}
       {...props}
     />
   )

@@ -64,15 +64,15 @@ function SheetContent({
           // 300ms out on `ease-in-out` — the slowest motion in the app by a
           // wide margin, and the Assistant panel is a Sheet, so it was also the
           // most felt. Panel and scrim now move together.
-          "fixed z-portal flex flex-col gap-4 bg-background shadow-lg transition duration-slow ease-out-quart data-[state=closed]:animate-out data-[state=open]:animate-in",
+          "fixed z-portal flex flex-col gap-4 bg-popover shadow-lg transition duration-slow ease-out-quart data-[state=closed]:animate-out data-[state=open]:animate-in",
           side === "right" &&
-            "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+            "inset-y-0 right-0 h-full w-3/4 rounded-l-container border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
           side === "left" &&
-            "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+            "inset-y-0 left-0 h-full w-3/4 rounded-r-container border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
           side === "top" &&
-            "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+            "inset-x-0 top-0 h-auto rounded-b-container border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
           side === "bottom" &&
-            "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+            "inset-x-0 bottom-0 h-auto rounded-t-container border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           className
         )}
         {...props}
