@@ -19,19 +19,30 @@ interface DateRange {
 export type ExportFormat = "csv" | "excel" | "print";
 
 interface ReportHeaderProps {
-  range: DateRange;
-  onRangeChange: (range: DateRange) => void;
   onExport?: (format: ExportFormat) => void;
-  /** Extra actions rendered inline with the date/export controls (e.g. AI summary). */
+  /** Extra actions rendered inline with the export control (e.g. AI summary). */
   actions?: React.ReactNode;
 }
 
-export function ReportHeader({
-  range,
-  onRangeChange,
-  onExport,
-  actions,
-}: ReportHeaderProps) {
+interface ReportRangeControlProps {
+  range: DateRange;
+  onRangeChange: (range: DateRange) => void;
+}
+
+/*
+ * The eight controls above this page's data used to sit in two rows split
+ * across no discernible seam: the date range shared row one with Export and the
+ * AI summary, while search, Filters, Rounding and Saved reports shared row two.
+ * Scope was on both rows and presentation was mixed in with actions, so there
+ * was nothing to learn from the arrangement and eight options to read.
+ *
+ * One job per row now. The header is what you DO with a report — export it, ask
+ * for a summary, save the configuration. The query row below is what the report
+ * IS — the range first, then search and filters, then how the numbers are
+ * rendered. The range moves down because it belongs with the query, not because
+ * it matters less; it is still the first control under the title.
+ */
+export function ReportRangeControl({ range, onRangeChange }: ReportRangeControlProps) {
   const presets = getDateRangePresets();
   const [customSince, setCustomSince] = useState("");
   const [customUntil, setCustomUntil] = useState("");
@@ -51,11 +62,8 @@ export function ReportHeader({
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <h1 className="text-xl font-semibold">Reports</h1>
-
-      <div className="flex items-center gap-2 print:hidden">
-        {range.label === "Custom range" && (
+    <div className="flex flex-wrap items-center gap-2 print:hidden">
+      {range.label === "Custom range" && (
           <div className="flex items-center gap-1.5">
             <input
               type="date"
@@ -107,8 +115,17 @@ export function ReportHeader({
               Custom range
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+      </DropdownMenu>
+    </div>
+  );
+}
 
+export function ReportHeader({ onExport, actions }: ReportHeaderProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <h1 className="text-xl font-semibold">Reports</h1>
+
+      <div className="flex items-center gap-2 print:hidden">
         {onExport && (
           <DropdownMenu>
             <Tooltip>

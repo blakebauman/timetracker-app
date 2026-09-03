@@ -159,7 +159,28 @@ export function DailyBarChart({ data, since, until }: DailyBarChartProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Daily breakdown</CardTitle>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <CardTitle className="text-base">Daily breakdown</CardTitle>
+          {/* The dashed rule was a quantity with no name — in no legend and
+              with no caption. Captioned here rather than labelled in-plot,
+              where the text landed on top of the bars it was drawn over. */}
+          {avgHours > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <svg width="14" height="2" aria-hidden className="shrink-0">
+                <line
+                  x1="0"
+                  y1="1"
+                  x2="14"
+                  y2="1"
+                  stroke="currentColor"
+                  strokeDasharray="4 3"
+                  strokeOpacity={0.6}
+                />
+              </svg>
+              avg {formatDurationShort(Math.round(avgHours * 3600))}/day
+            </span>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-55 w-full">
@@ -227,12 +248,6 @@ export function DailyBarChart({ data, since, until }: DailyBarChartProps) {
                 stroke="var(--muted-foreground)"
                 strokeDasharray="4 3"
                 strokeOpacity={0.6}
-                label={{
-                  value: `avg ${formatDurationShort(Math.round(avgHours * 3600))}`,
-                  position: "insideTopRight",
-                  fill: "var(--muted-foreground)",
-                  fontSize: 10,
-                }}
               />
             )}
             {/* Not optional: --chart-ink-soft sits at 2.23:1 greyscale against

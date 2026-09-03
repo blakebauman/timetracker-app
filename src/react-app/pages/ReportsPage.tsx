@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
-import { ReportHeader, type ExportFormat } from "@/components/reports/ReportHeader";
+import {
+  ReportHeader,
+  ReportRangeControl,
+  type ExportFormat,
+} from "@/components/reports/ReportHeader";
 import { AiSummaryDialog } from "@/components/reports/AiSummaryDialog";
 import { SummaryCards, SummaryMetricsMenu } from "@/components/reports/SummaryCards";
 import { DailyBarChart } from "@/components/reports/DailyBarChart";
@@ -182,19 +186,27 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-4 p-6">
+      {/* Row one is what you DO with a report; row two is what the report IS.
+          See ReportRangeControl for why the range sits below rather than up
+          here with the actions. */}
       <ReportHeader
-        range={range}
-        onRangeChange={setRange}
         onExport={handleExport}
-        actions={<AiSummaryDialog since={range.since} until={range.until} />}
+        actions={
+          <>
+            <SavedReportsMenu current={currentConfig} onLoad={loadConfig} />
+            <AiSummaryDialog since={range.since} until={range.until} />
+          </>
+        }
       />
 
       <div className="flex flex-wrap items-start justify-between gap-2 print:hidden">
-        <ReportFilterBar filters={filters} onChange={setFilters} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ReportRangeControl range={range} onRangeChange={setRange} />
+          <ReportFilterBar filters={filters} onChange={setFilters} />
+        </div>
         <div className="flex items-center gap-2">
           <RoundingControl value={rounding} onChange={setRounding} />
           <SummaryMetricsMenu visible={visibleMetrics} toggle={toggleMetric} />
-          <SavedReportsMenu current={currentConfig} onLoad={loadConfig} />
         </div>
       </div>
 

@@ -245,27 +245,55 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
   // on a fresh Planner rendered amber, because `actual > 0 > planned = 0` reads
   // as "over plan". Day one of the Planner was a full grid of warning colour
   // for the crime of having worked. You can't be over a plan you never made.
-  const renderPair = (cell: PlanCell, opts?: { alignRight?: boolean; strong?: boolean }) => (
-    <span
-      className={cn("flex flex-col leading-tight", opts?.alignRight ? "items-end" : "items-center")}
-    >
-      <span className={cn("tabular-nums", opts?.strong ? "font-semibold" : "font-medium")}>
-        {cell.planned > 0 ? formatDurationShort(cell.planned) : "–"}
-      </span>
-      {(cell.planned > 0 || cell.actual > 0) && (
+  //
+  // Which of the two lines is loud depends on which one has something to say.
+  // The plan line is on top because it is the edit target, but with no plan
+  // entered — the state of every new user, and of any week nobody pre-planned —
+  // the top line was an em-dash rendered at the dominant weight while the real
+  // tracked hours sat beneath it smaller and dimmer. A grid full of tracked
+  // time read as empty, and the first-run impression of the feature was that
+  // nothing had recorded.
+  //
+  // So an absent plan de-emphasises to a placeholder and the tracked figure
+  // takes the weight. Nothing moves: the top line stays the click target, and
+  // the row keeps one shape whether or not it is planned.
+  const renderPair = (cell: PlanCell, opts?: { alignRight?: boolean; strong?: boolean }) => {
+    const unplanned = cell.planned === 0 && cell.actual > 0;
+    return (
+      <span
+        className={cn("flex flex-col leading-tight", opts?.alignRight ? "items-end" : "items-center")}
+      >
         <span
           className={cn(
-            "text-micro tabular-nums",
-            cell.planned > 0 && cell.actual > cell.planned
-              ? "text-warning-ink"
-              : "text-muted-foreground"
+            "tabular-nums",
+            unplanned
+              ? "text-micro font-normal text-muted-foreground/60"
+              : opts?.strong
+                ? "font-semibold"
+                : "font-medium"
           )}
         >
-          {cell.actual > 0 ? formatDurationShort(cell.actual) : "–"}
+          {cell.planned > 0 ? formatDurationShort(cell.planned) : "–"}
         </span>
-      )}
-    </span>
-  );
+        {(cell.planned > 0 || cell.actual > 0) && (
+          <span
+            className={cn(
+              "tabular-nums",
+              unplanned
+                ? cn("text-foreground", opts?.strong ? "font-semibold" : "font-medium")
+                : "text-micro",
+              !unplanned &&
+                (cell.planned > 0 && cell.actual > cell.planned
+                  ? "text-warning-ink"
+                  : "text-muted-foreground")
+            )}
+          >
+            {cell.actual > 0 ? formatDurationShort(cell.actual) : "–"}
+          </span>
+        )}
+      </span>
+    );
+  };
 
   return (
     <div className="flex h-full flex-col overflow-auto">
@@ -279,7 +307,16 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
               Task
             </th>
             <th className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
-              Project
+              {/* The cells stack two numbers and the only thing naming them was
+                  the totals row, at the far bottom-left of a scrolling grid. A
+                  reader meeting the Planner for the first time met the stack
+                  before the legend. */}
+              <span className="flex flex-col leading-tight">
+                <span>Project</span>
+                <span className="text-micro font-normal text-muted-foreground/80">
+                  planned / tracked
+                </span>
+              </span>
             </th>
             {days.map((d, i) => (
               <th key={i} className="px-2 py-2 text-center font-medium">
