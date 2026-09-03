@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, Download, FileText, FileSpreadsheet, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,57 +65,62 @@ export function ReportRangeControl({ range, onRangeChange }: ReportRangeControlP
   return (
     <div className="flex flex-wrap items-center gap-2 print:hidden">
       {range.label === "Custom range" && (
-          <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              aria-label="Start date"
-              value={customSince}
-              onChange={(e) => handleCustomSince(e.target.value)}
-              className="border rounded-md px-2 py-1 text-sm bg-background"
-            />
-            <span className="text-sm text-muted-foreground">–</span>
-            <input
-              type="date"
-              aria-label="End date"
-              value={customUntil}
-              onChange={(e) => handleCustomUntil(e.target.value)}
-              className="border rounded-md px-2 py-1 text-sm bg-background"
-            />
-          </div>
-        )}
+        // Was a pair of bare <input>s with a hand-rolled border and rounded-md,
+        // which put square corners and no focus ring beside the pill controls
+        // they sit next to. An input is a control, so it takes the control
+        // radius (DESIGN.md §5) — and the shared component already knows that,
+        // along with the focus ring and the disabled state the raw ones lacked.
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="date"
+            aria-label="Start date"
+            value={customSince}
+            onChange={(e) => handleCustomSince(e.target.value)}
+            className="h-8 w-auto px-3"
+          />
+          <span className="text-sm text-muted-foreground">–</span>
+          <Input
+            type="date"
+            aria-label="End date"
+            value={customUntil}
+            onChange={(e) => handleCustomUntil(e.target.value)}
+            className="h-8 w-auto px-3"
+          />
+        </div>
+      )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Calendar className="h-4 w-4" />
-              {range.label}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {Object.entries(presets).map(([key, preset]) => (
-              <DropdownMenuItem
-                key={key}
-                onClick={() =>
-                  onRangeChange({
-                    since: preset.since,
-                    until: preset.until,
-                    label: preset.label,
-                  })
-                }
-              >
-                {preset.label}
-              </DropdownMenuItem>
-            ))}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Calendar className="h-4 w-4" />
+            {range.label}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {Object.entries(presets).map(([key, preset]) => (
             <DropdownMenuItem
-              onClick={() => {
-                setCustomSince("");
-                setCustomUntil("");
-                onRangeChange({ since: "", until: "", label: "Custom range" });
-              }}
+              key={key}
+              onClick={() =>
+                onRangeChange({
+                  since: preset.since,
+                  until: preset.until,
+                  label: preset.label,
+                })
+              }
             >
-              Custom range
+              {preset.label}
             </DropdownMenuItem>
-          </DropdownMenuContent>
+          ))}
+          <DropdownMenuItem
+            onClick={() => {
+              setCustomSince("");
+              setCustomUntil("");
+              onRangeChange({ since: "", until: "", label: "Custom range" });
+            }}
+          >
+            Custom range
+          </DropdownMenuItem>
+        </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );
