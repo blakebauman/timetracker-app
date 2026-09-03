@@ -1,5 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* shadcn v4's runtime stylesheet. Purely additive: the `data-open` /
+   `data-closed` / `data-checked` / `data-active` / `data-horizontal` /
+   `data-vertical` custom variants that v4 components are written against
+   (they replace the `data-[state=open]:` longhand), plus the `no-scrollbar`,
+   `scroll-fade-*` and `shimmer-*` utilities. Nothing here overrides a token
+   or a utility this app already defines — verified by diffing the built CSS
+   before and after adding it. */
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
