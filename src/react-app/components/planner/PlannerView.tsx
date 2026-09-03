@@ -16,6 +16,7 @@ import {
 import { api } from "@/lib/api";
 import { formatDurationShort, formatTimeInput, parseTimeInput } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
+import { weekGrid } from "@/lib/weekGridColumns";
 import { AddTimesheetRowDialog } from "@/components/timesheet/AddTimesheetRowDialog";
 import { PlannerImportDialog } from "./PlannerImportDialog";
 import type { Allocation } from "@shared/schemas";
@@ -300,13 +301,16 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
       <span id={PLANNER_LOCKED_HELP_ID} className="sr-only">
         Assign a project to this row before planning hours against it.
       </span>
-      <table className="w-full min-w-[760px] border-collapse text-sm">
+      <table className={weekGrid.table}>
         <thead className="sticky top-0 z-overlay bg-background">
           <tr className="border-b text-xs text-muted-foreground">
-            <th className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 text-left font-medium">
+            {/* Column geometry is shared with the Timesheet — see
+                lib/weekGridColumns.ts, which also explains the small-screen
+                widths. */}
+            <th className={weekGrid.headTask}>
               Task
             </th>
-            <th className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
+            <th className={weekGrid.headProject}>
               {/* The cells stack two numbers and the only thing naming them was
                   the totals row, at the far bottom-left of a scrolling grid. A
                   reader meeting the Planner for the first time met the stack
@@ -375,12 +379,12 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
                   key={row.key}
                   className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
-                  <td className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className={weekGrid.cellTask}>
                     <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>
                       {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
                     </div>
                   </td>
-                  <td className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className={weekGrid.cellProject}>
                     {/* A fixed-width block, not just `truncate`: a <td>'s width is
                         advisory in auto table layout, so the min-content of a long
                         consultancy project name still expanded the column and pushed
@@ -462,7 +466,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
           <tfoot>
             <tr className="border-t-2 font-medium">
               <td
-                className="sticky left-0 z-sticky w-[280px] min-w-[280px] border-r border-border-strong bg-background px-3 py-2 text-muted-foreground"
+                className={weekGrid.footLabel}
                 colSpan={2}
               >
                 <span className="flex flex-col leading-tight">

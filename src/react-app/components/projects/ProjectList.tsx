@@ -224,10 +224,17 @@ export function ProjectList() {
                     style={{ backgroundColor: project.color }}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    {/* Wrapping, with the name claiming a whole line below sm.
+                        The row used to be a nowrap flex where the badges
+                        couldn't shrink, so a name long enough to need two lines
+                        broke *around* the badge — four of five rows on a 390px
+                        screen rendered as a ragged L, with the rate outranking
+                        the thing it describes. The identifier gets the line;
+                        the rate is a detail and can sit beneath it. */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span
                         className={cn(
-                          "text-sm font-medium",
+                          "min-w-0 max-w-full basis-full truncate text-sm font-medium sm:basis-auto",
                           !project.active && "text-muted-foreground line-through"
                         )}
                       >
