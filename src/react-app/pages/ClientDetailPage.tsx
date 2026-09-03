@@ -16,10 +16,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useClientStats } from "@/hooks/useClientStats";
 import {
-  CLIENT_PERIODS,
-  resolveClientPeriod,
-  type ClientPeriod,
-} from "@/lib/clientPeriod";
+  COLLECTION_PERIODS,
+  resolveCollectionPeriod,
+  type CollectionPeriod,
+} from "@/lib/collectionPeriod";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
 import {
@@ -43,8 +43,8 @@ export function ClientDetailPage() {
   // Same period vocabulary and the same aggregation as the Clients list, so
   // the drill-down continues the sentence the row started instead of
   // restating it in different units.
-  const [period, setPeriod] = useState<ClientPeriod>("thisMonth");
-  const { since, until } = resolveClientPeriod(period);
+  const [period, setPeriod] = useState<CollectionPeriod>("thisMonth");
+  const { since, until } = resolveCollectionPeriod(period);
   const { byClient, isLoading: statsLoading } = useClientStats(since, until);
   const currency = useUIStore((s) => s.currency);
   const stats = id ? byClient.get(id) : undefined;
@@ -157,7 +157,7 @@ export function ClientDetailPage() {
           <h2 className="text-sm font-semibold">Activity</h2>
           <SegmentedControl
             label="Period"
-            options={[...CLIENT_PERIODS]}
+            options={[...COLLECTION_PERIODS]}
             value={period}
             onChange={setPeriod}
           />

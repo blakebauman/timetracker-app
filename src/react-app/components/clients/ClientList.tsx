@@ -5,10 +5,10 @@ import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useClientStats } from "@/hooks/useClientStats";
 import {
-  CLIENT_PERIODS,
-  resolveClientPeriod,
-  type ClientPeriod,
-} from "@/lib/clientPeriod";
+  COLLECTION_PERIODS,
+  resolveCollectionPeriod,
+  type CollectionPeriod,
+} from "@/lib/collectionPeriod";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
@@ -113,8 +113,8 @@ function ClientFigures({
 
 export function ClientList() {
   const { data: clients = [], isLoading } = useAllClients();
-  const [period, setPeriod] = useState<ClientPeriod>("thisMonth");
-  const { since, until } = resolveClientPeriod(period);
+  const [period, setPeriod] = useState<CollectionPeriod>("thisMonth");
+  const { since, until } = resolveCollectionPeriod(period);
   const { byClient, isLoading: statsLoading } = useClientStats(since, until);
   const currency = useUIStore((s) => s.currency);
   const deleteClient = useDeleteClient();
@@ -140,7 +140,7 @@ export function ClientList() {
           <>
             <SegmentedControl
               label="Period"
-              options={[...CLIENT_PERIODS]}
+              options={[...COLLECTION_PERIODS]}
               value={period}
               onChange={setPeriod}
             />

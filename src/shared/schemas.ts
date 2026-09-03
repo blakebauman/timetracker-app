@@ -108,7 +108,14 @@ export const ProjectSchema = z.object({
   integrationId: z.string().nullable(),
   externalProjectId: z.string().nullable(),
   externalTaskId: z.string().nullable(),
+  /** Tracked time inside the requested window (all time when unscoped). */
   trackedSeconds: z.number().default(0),
+  /**
+   * Always all-time. A budget is cumulative, so the bar that reads `11h / 40h`
+   * must not follow the page's period control or its two halves stop being
+   * about the same thing.
+   */
+  budgetSeconds: z.number().default(0),
   createdAt: z.string(),
 });
 

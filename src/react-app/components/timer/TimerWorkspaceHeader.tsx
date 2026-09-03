@@ -19,6 +19,7 @@ import {
 import { TimerViewSwitcher } from "./TimerViewSwitcher";
 import { DraftDayButton } from "@/components/drafts/DraftDayButton";
 import { CalendarViewOptions } from "./CalendarViewOptions";
+import { VIEW_LABELS } from "./calendarViewLabels";
 import { ListRangePicker } from "./ListRangePicker";
 import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
@@ -210,9 +211,17 @@ export function TimerWorkspaceHeader({
               ? formatListRangeLabel(listRangeKey, since, until, wso)
               : formatPeriodLabel(since, until, { weekStamp: !isDayView })}
           </h1>
+          {/* Names the effect, not the cause. "narrow pane" described the
+              app's own layout state — a fact about the container, offered to a
+              user who asked for a week and got five days. The full sentence
+              already lives in the View options popover; this is its short form
+              in the same vocabulary. */}
           {densityReduced && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-micro font-medium text-muted-foreground">
-              narrow pane
+            <span
+              className="rounded-full bg-muted px-2 py-0.5 text-micro font-medium text-muted-foreground"
+              title={`The pane is too narrow for ${VIEW_LABELS[requestedCalendarView]}.`}
+            >
+              Showing {VIEW_LABELS[calendarView]}
             </span>
           )}
         </div>

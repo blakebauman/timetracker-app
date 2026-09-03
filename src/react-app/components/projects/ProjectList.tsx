@@ -32,6 +32,12 @@ import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
 import { cn } from "@/lib/utils";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import {
+  COLLECTION_PERIODS,
+  resolveCollectionPeriod,
+  type CollectionPeriod,
+} from "@/lib/collectionPeriod";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -45,7 +51,15 @@ type ProjectSort = "name" | "client" | "tracked" | "rate";
 import type { Project } from "@shared/schemas";
 
 export function ProjectList() {
-  const { data: projects = [], isLoading } = useAllProjects();
+  // Defaults to all time, and says so. Clients opens on this month; the two
+  // pages answer different questions, so they keep different defaults — but
+  // they now use one vocabulary and neither leaves its window implicit. The
+  // budget bar below stays all-time whatever this is set to.
+  const [period, setPeriod] = useState<CollectionPeriod>("all");
+  const range = resolveCollectionPeriod(period);
+  const periodLabel =
+    COLLECTION_PERIODS.find((p) => p.value === period)?.label ?? "All time";
+  const { data: projects = [], isLoading } = useAllProjects(range);
   // Pacing covers active projects only (an archived project has nothing left to
   // pace), so the row falls back to the plain percentage when it's absent.
   const { data: pacing = [] } = useProjectPacing();
@@ -142,6 +156,12 @@ export function ProjectList() {
                 className="h-8 w-48 pl-8"
               />
             </div>
+            <SegmentedControl
+              label="Period"
+              options={[...COLLECTION_PERIODS]}
+              value={period}
+              onChange={setPeriod}
+            />
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as ProjectSort)}>
               <SelectTrigger className="h-8 w-36" aria-label="Sort projects">
                 <SelectValue />
@@ -175,12 +195,15 @@ export function ProjectList() {
 
       <div className="space-y-1.5">
         {visible.map((project) => {
+          // budgetSeconds, not trackedSeconds: the bar is cumulative against
+          // the estimate and must not follow the period control, or `11h / 40h`
+          // becomes a sentence whose two halves cover different spans.
           const budgetPercent =
-            project.estimatedHours && project.trackedSeconds !== undefined
+            project.estimatedHours && project.budgetSeconds !== undefined
               ? Math.min(
                   100,
                   Math.round(
-                    (project.trackedSeconds / (project.estimatedHours * 3600)) * 100
+                    (project.budgetSeconds / (project.estimatedHours * 3600)) * 100
                   )
                 )
               : null;
@@ -222,7 +245,21 @@ export function ProjectList() {
                     <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {project.clientName && <span>{project.clientName}</span>}
                       {project.trackedSeconds > 0 && (
-                        <span>{formatDurationShort(project.trackedSeconds)} tracked</span>
+                        <span>
+                          {formatDurationShort(project.trackedSeconds)} tracked
+                          {period !== "all" && (
+                            <span className="text-muted-foreground/80">
+                              {" "}
+                              {periodLabel.toLowerCase()}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      {/* A project with time in it, but none inside the chosen
+                          window, said nothing at all — indistinguishable from a
+                          project nobody has ever touched. */}
+                      {project.trackedSeconds === 0 && project.budgetSeconds > 0 && (
+                        <span>Nothing tracked {periodLabel.toLowerCase()}</span>
                       )}
                       {project.endDate && (
                         <span>Due {formatPlainDate(project.endDate)}</span>
@@ -235,7 +272,7 @@ export function ProjectList() {
                           <TooltipTrigger asChild>
                             <Progress
                               value={budgetPercent}
-                              aria-label={`${Math.round(budgetPercent)}% of budget used`}
+                              aria-label={`${Math.round(budgetPercent)}% of budget used, all time`}
                               className={cn(
                                 "h-1.5 flex-1",
                                 budgetPercent >= 100
@@ -246,10 +283,15 @@ export function ProjectList() {
                               )}
                             />
                           </TooltipTrigger>
-                          <TooltipContent>{Math.round(budgetPercent)}% of budget used</TooltipContent>
+                          <TooltipContent>
+                            {Math.round(budgetPercent)}% of budget used — all time
+                          </TooltipContent>
                         </Tooltip>
                         <span className="text-micro tabular-nums text-muted-foreground">
-                          {formatDurationShort(project.trackedSeconds)} / {project.estimatedHours}h
+                          {formatDurationShort(project.budgetSeconds)} / {project.estimatedHours}h
+                          {period !== "all" && (
+                            <span className="ml-1 normal-nums">all time</span>
+                          )}
                         </span>
                       </div>
                     )}

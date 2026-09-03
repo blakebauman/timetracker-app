@@ -246,7 +246,11 @@ export function ReportsPage() {
                   refuses to shrink. Without this the Summary column measured
                   441px inside a 342px track at 390px wide. */}
               <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-                <DailyBarChart data={summary.daily} />
+                <DailyBarChart
+                  data={summary.daily}
+                  since={range.since}
+                  until={range.until}
+                />
                 {subGrouped && grouped ? (
                   <SummaryTree data={grouped} showAmount header={groupControls} />
                 ) : (

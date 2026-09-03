@@ -7,7 +7,29 @@ import { loadProjectPacing } from "../lib/pacing";
 
 const PROJECT_SELECT = `
   SELECT p.*, c.name AS client_name,
-    COALESCE(SUM(te.duration), 0) AS tracked_seconds
+    COALESCE(SUM(te.duration), 0) AS tracked_seconds,
+    COALESCE(SUM(te.duration), 0) AS budget_seconds
+  FROM projects p
+  LEFT JOIN clients c ON c.id = p.client_id AND c.workspace_id = p.workspace_id
+  LEFT JOIN time_entries te ON te.project_id = p.id AND te.workspace_id = p.workspace_id AND te.stop IS NOT NULL
+`;
+
+/*
+ * Projects reported an unqualified all-time total while Clients defaulted to
+ * this month and Reports to the last seven days, so one project legitimately
+ * read 15h, 4h 30m and 6h on three adjacent pages with only two of them saying
+ * which window they meant. The list can now be asked for a window.
+ *
+ * Two totals, deliberately:
+ *   tracked_seconds — the window the user asked for (all time when unscoped)
+ *   budget_seconds  — always all time, because a budget is cumulative. Scoping
+ *                     it to "this month" would make `11h / 40h` a sentence with
+ *                     two different subjects.
+ */
+const PROJECT_SELECT_RANGED = `
+  SELECT p.*, c.name AS client_name,
+    COALESCE(SUM(CASE WHEN te.start >= ? AND te.start <= ? THEN te.duration ELSE 0 END), 0) AS tracked_seconds,
+    COALESCE(SUM(te.duration), 0) AS budget_seconds
   FROM projects p
   LEFT JOIN clients c ON c.id = p.client_id AND c.workspace_id = p.workspace_id
   LEFT JOIN time_entries te ON te.project_id = p.id AND te.workspace_id = p.workspace_id AND te.stop IS NOT NULL
@@ -31,6 +53,7 @@ function formatProject(row: Record<string, unknown>) {
     externalProjectId: (row.external_project_id as string | null) ?? null,
     externalTaskId: (row.external_task_id as string | null) ?? null,
     trackedSeconds: (row.tracked_seconds as number) ?? 0,
+    budgetSeconds: (row.budget_seconds as number) ?? (row.tracked_seconds as number) ?? 0,
     createdAt: row.created_at as string,
   };
 }
@@ -41,13 +64,19 @@ export const projectsRouter = new Hono<{
 }>()
   .get("/", async (c) => {
     const workspaceId = c.get("workspaceId");
-    const { includeArchived } = c.req.query();
+    const { includeArchived, since, until } = c.req.query();
 
-    const { results } = await c.env.DB.prepare(
-      `${PROJECT_SELECT}
-       WHERE p.workspace_id = ? ${!includeArchived ? "AND p.active = 1" : ""}
-       GROUP BY p.id ORDER BY p.name ASC`
-    ).bind(workspaceId).all<Record<string, unknown>>();
+    // Both or neither: half a range is not a range, and silently treating a
+    // lone `since` as "onwards" would make the page's stated window a lie.
+    const ranged = Boolean(since && until);
+    const tail = `WHERE p.workspace_id = ? ${!includeArchived ? "AND p.active = 1" : ""}
+       GROUP BY p.id ORDER BY p.name ASC`;
+
+    const stmt = ranged
+      ? c.env.DB.prepare(`${PROJECT_SELECT_RANGED} ${tail}`).bind(since, until, workspaceId)
+      : c.env.DB.prepare(`${PROJECT_SELECT} ${tail}`).bind(workspaceId);
+
+    const { results } = await stmt.all<Record<string, unknown>>();
 
     return c.json(results.map(formatProject));
   })
