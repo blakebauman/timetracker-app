@@ -33,7 +33,6 @@ import {
   compareLocalDates,
   todayLocalDate,
 } from "@shared/task-recurrence";
-import { cn } from "@/lib/utils";
 import type { Task } from "@shared/schemas";
 
 type StatusFilter = "all" | "active" | "done";
@@ -511,12 +510,12 @@ export function TaskBoardList() {
                       {/* Sentence case at Label weight. Uppercase + tracking on every group
                           heading is the eyebrow pattern PRODUCT.md and DESIGN.md §8 both
                           reject by name; the ColorDot and count already do the work. */}
-                      <h2
-                        className={cn(
-                          "text-xs font-medium",
-                          section.tone === "overdue" ? "text-destructive" : "text-muted-foreground"
-                        )}
-                      >
+                      {/* Not tinted, even for the overdue group. Inside that
+                          section every row's due date is already red, so the
+                          heading made one fact red twice — and a section
+                          heading is a heading, not a state indicator. The word
+                          "Overdue" carries it. */}
+                      <h2 className="text-xs font-medium text-muted-foreground">
                         {section.label}
                       </h2>
                       <span className="text-xs text-muted-foreground/70">

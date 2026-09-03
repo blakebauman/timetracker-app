@@ -14,7 +14,7 @@ colors:
   muted-dark: "oklch(0.28 0.008 265)"
   border-light: "oklch(0.912 0.004 30)"
   border-dark: "oklch(1 0 0 / 9%)"
-  destructive: "oklch(0.577 0.245 27.325)"
+  destructive: "oklch(0.45 0.19 18)"
   success: "oklch(0.596 0.145 163.225)"
   warning: "oklch(0.666 0.179 58.318)"
 typography:
@@ -106,7 +106,7 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 - **Project & Tag Palette** (18-color hue-alternated set, `worker/lib/colors.ts` `DISTINCT_COLORS` / `react-app/lib/colorUtils.ts`): red, blue, green, amber, violet, teal, pink, lime, indigo, orange, cyan, purple, rose, sky, emerald, yellow, slate, stone — deliberately ordered so consecutive auto-assigned colors alternate warm/cool instead of drifting through a single hue family. Applied to project swatches, tag dots, calendar event blocks (translucent fill + solid left border), and report breakdown legends.
 
 ### Tertiary
-- **Semantic status** — success (`oklch(0.596 0.145 163.225)`, billable progress / confirmations), warning (`oklch(0.666 0.179 58.318)`, avg/day and caution states), destructive (`oklch(0.577 0.245 27.325)`, delete / discard actions and error states). Each has a paired `-foreground` token for on-color text.
+- **Semantic status** — success (`oklch(0.596 0.145 163.225)`, billable progress / confirmations), warning (`oklch(0.666 0.179 58.318)`, avg/day and caution states), destructive (`oklch(0.45 0.19 18)` light / `oklch(0.72 0.17 12)` dark, delete / discard actions and error states). Each has a paired `-foreground` token for on-color text.
 - **`--success-ink`** (`oklch(0.468 0.145 163.225)` light / same as `--success` dark): success used as *text*. `--success` is calibrated as a fill and fails AA as small type on every light ground — 3.61:1 on card, 3.31:1 on muted/accent, 3.15:1 on its own /10 tint — and some call sites are 10px. Icon-only uses stay on `--success`; icons need 3:1 and clear it. Third of the same family as `--primary-ink` and `--warning-ink`, for the same measured reason.
 - **`--warning-ink`** (`oklch(0.505 0.179 58.318)` light / same as `--warning` dark): warning used as *text*, exactly as `--primary-ink` is for the brand red. `--warning` is calibrated as a fill and fails AA as small type — 3.15:1 on card (the "Unverified" badge), 2.77:1 on its own `/10` tint (the warning Alert). Holds hue and chroma, moves lightness only. Worst measured ground is that `/10` tint at 5.36:1.
 
@@ -130,7 +130,7 @@ Charts encode **billable**, not category: both bar charts stack `--success` (the
 ### Named Rules
 **The One Accent Rule.** The brand red appears in at most one or two places on any given screen — the running state and the primary action. It is never used as a large background fill or decoration.
 
-**Running is `--primary`; destructive is `--destructive`; they are not the same red.** `--primary` (0.588 / 0.207) and `--destructive` (0.577 / 0.245) are close enough to look like one colour and far enough apart to *be* two, and the timer bar used to spend the destructive one on the running state — capsule tint, pulse ring, elapsed readout and the Stop disc — while the Discard button beside it, the only genuinely destructive control in the bar, was `--muted-foreground`. Red meant "recording" and "destroy" within 200px. Stopping a timer *saves* the entry; it is not a destructive act, and the Stop disc is `variant="default"` like Start. `--destructive` in the timer bar belongs to Discard and nothing else.
+**Running is `--primary`; destructive is `--destructive`; they are not the same red.** They used to be the same red in all but name — `--primary` at hue 27.33 and `--destructive` at hue 27.325, 0.011 apart in lightness — which is a distinction a 1.5px progress bar cannot draw. `--destructive` is now 9 degrees off the brand hue and materially darker in light (0.45 vs 0.588) or brighter in dark (0.72 vs 0.65), so the pair separates on lightness as well as hue. Its foreground is ink in dark mode, as `--primary-foreground` already was: near-white on the dark-mode fill measured 2.69:1 and failed AA on every destructive button label. They are and the timer bar used to spend the destructive one on the running state — capsule tint, pulse ring, elapsed readout and the Stop disc — while the Discard button beside it, the only genuinely destructive control in the bar, was `--muted-foreground`. Red meant "recording" and "destroy" within 200px. Stopping a timer *saves* the entry; it is not a destructive act, and the Stop disc is `variant="default"` like Start. `--destructive` in the timer bar belongs to Discard and nothing else.
 
 **The Warm-Neutral Rule.** Every neutral token (background, surface, muted, border) carries a slight chroma nudge toward the brand's own red hue (light mode) or a cool 265° tint (dark mode). Neutrals are never chroma-0 gray and never generic cream.
 
@@ -305,6 +305,7 @@ A raw `z-10` / `z-20` / `z-50` fails ESLint. Sonner manages the toast layer itse
 - **Don't** reach for enterprise-bloat density — an overloaded toolbar, a nested-card layout, or a settings screen exposing everything at once. Reveal what the task needs.
 - **Don't** add drop-shadow "lift" to cards, menus, or panels on hover — depth comes from tone and border, not shadow.
 - **Don't** tint a progress track with the fill colour. A `bg-primary/20` track makes an empty bar read as a full one (`0m / 1h` looked identical in shape to a spent estimate), and spends the accent on work that hasn't started. The track is neutral; only a track that *means* something — `bg-warning/20` past 80% of a budget — overrides it.
+- **Don't** paint a progress *fill* in the accent either. The default fill is `--foreground` — the same solid ink the segmented controls use for "this is the filled part". A red fill made every healthy project alarm about itself, and it left red unable to say "over budget", since the escalation at 100% is `--destructive`. **The budget ladder is ink → `--warning` at 80% → `--destructive` at 100%**, and it has to stay monotonic: three steps, three separable colours, each louder than the last. A caller overrides the fill only when the fill *means* something (`--success` for the billable share).
 - **Don't** pair an icon-only button's `size="icon"` with an ad-hoc height/width override; use the size token so it matches its labeled siblings.
 - **Don't** visually clone Toggl. Feature parity (calendar view, favorites, auto-track) is a gap-closing strategy — the soft-tone, red-accent identity is this product's own.
 
