@@ -226,7 +226,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile top bar — replaces the sidebar below md */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-3 md:hidden">
+      <div className="flex h-14 shrink-0 items-center justify-between bg-card px-3 md:hidden">
         <div className="flex items-center gap-2">
           <BrandMark className="h-5 w-5 shrink-0" />
           <span className="font-semibold tracking-tight">Time Tracker</span>
@@ -257,7 +257,7 @@ export function Sidebar() {
       <aside
         aria-label="Sidebar"
         className={cn(
-          "hidden h-full flex-col overflow-hidden border-r bg-card transition-all duration-base ease-out-quart md:flex",
+          "hidden h-full flex-col overflow-hidden bg-card transition-all duration-base ease-out-quart md:flex",
           sidebarCollapsed ? "w-14" : "w-56"
         )}
       >

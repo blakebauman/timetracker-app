@@ -66,7 +66,7 @@ export function TimerViewSwitcher({
       role="tablist"
       aria-label="Timer view"
       onKeyDown={onKeyDown}
-      className="inline-flex items-center rounded-md border bg-muted/40 p-0.5"
+      className="inline-flex items-center rounded-full bg-muted p-0.5"
     >
       {views.map(({ value, label, icon: Icon }) => {
         const active = view === value;
@@ -84,10 +84,10 @@ export function TimerViewSwitcher({
             title={label}
             onClick={() => onChange(value)}
             className={cn(
-              "flex h-7 w-8 items-center justify-center rounded transition-colors duration-fast ease-out-quart",
+              "flex h-7 w-8 items-center justify-center rounded-full transition-colors duration-fast ease-out-quart",
               "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >

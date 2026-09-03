@@ -44,6 +44,23 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Geometry is chosen by what an element IS, not by taste (DESIGN.md §5).
+     Three families, and the boundary between them is density:
+
+       controls   — `rounded-full`. Buttons, badges, inputs, segments, icon
+                    buttons. A pill costs nothing at 24-40px and it is the
+                    single loudest cue in the new language.
+       containers — `rounded-container` (this token). Cards, dialogs, sheets,
+                    popovers. 20px, up from the 12px `rounded-xl` they used.
+       data cells — unchanged `rounded-md`/`-lg`. Entry rows, timesheet cells,
+                    calendar blocks, planner cells, table cells. Pills on a
+                    30-row list would trade the app's actual job for a look.
+
+     Named rather than spelled `rounded-[1.25rem]` at each call site so the
+     container radius moves in one place, and so a reviewer can see which
+     family a surface belongs to from the class name alone. */
+  --radius-container: 1.25rem;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
@@ -179,11 +196,18 @@
   --radius: 0.5rem;
 
   /* Soft tones: a warm-neutral off-white ground (chroma toward the brand's red
-     hue, not the cliché cream) with a slightly darker card so surfaces read
-     gently layered instead of stark white-on-white. Ink softened off pure black. */
+     hue, not the cliché cream). Ink softened off pure black.
+
+     Surfaces are separated by TONE ALONE — cards carry no border (DESIGN.md §4).
+     The direction of the step is per-theme, chosen for legibility rather than
+     symmetry: in light a card RECEDES below the ground (0.988 -> 0.962), in dark
+     it LIFTS above it (0.185 -> 0.228), because a card darker than an already
+     dark page reads as a hole. Popover keeps the lightest value in light mode on
+     purpose: an overlay floats above the page, so it must not share the card's
+     recessed tone or a dialog reads as part of the surface behind it. */
   --background: oklch(0.988 0.0015 30);
   --foreground: oklch(0.22 0.006 30);
-  --card: oklch(0.995 0.001 30);
+  --card: oklch(0.962 0.0025 30);
   --card-foreground: oklch(0.22 0.006 30);
   --popover: oklch(0.995 0.001 30);
   --popover-foreground: oklch(0.22 0.006 30);
@@ -192,28 +216,33 @@
      AA for every primary button label. White measures 4.59:1, and #ffffff is
      what DESIGN.md's button-primary spec already documents. */
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.965 0.003 30);
+  --secondary: oklch(0.936 0.003 30);
   --secondary-foreground: oklch(0.26 0.006 30);
-  --muted: oklch(0.965 0.003 30);
-  /* Tuned against the *worst* ground it lands on, not the page background.
-     At L 0.552 it measured 4.66:1 on background but only 4.36:1 on muted and
-     accent — and muted/accent is where secondary text mostly sits (toolbars,
-     sidebar, tab tracks, count badges). L 0.543 clears AA on all four: 4.84 /
-     4.94 / 4.53 / 4.53. */
-  --muted-foreground: oklch(0.543 0.008 30);
-  --accent: oklch(0.965 0.004 30);
+  --muted: oklch(0.936 0.003 30);
+  /* Tuned against the *worst* ground it lands on, not the page background —
+     muted/accent is where secondary text mostly sits (toolbars, sidebar, tab
+     tracks, count badges), and those moved down with the rest of the ramp.
+     L 0.543 was calibrated against the old muted (0.965) and only reaches
+     4.19:1 on the new one. L 0.523 clears AA on all five grounds:
+     background 5.27 / card 4.88 / popover 5.38 / muted 4.52 / accent 4.52. */
+  --muted-foreground: oklch(0.523 0.008 30);
+  --accent: oklch(0.936 0.004 30);
   --accent-foreground: oklch(0.26 0.006 30);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.596 0.145 163.225);
   --success-foreground: oklch(0.985 0 0);
   /* Success used as TEXT — the third of the same family as --primary-ink and
-     --warning-ink, and it exists for the same measured reason. --success is
-     calibrated as a fill and fails AA as small type on every light ground:
-     3.61:1 on card, 3.31:1 on muted/accent, 3.15:1 on its own /10 tint. Some of
-     the call sites are 10px. Holds hue and chroma, moves lightness only; worst
-     measured ground is a /15 tint at 4.52:1. */
-  --success-ink: oklch(0.488 0.145 163.225);
+     --warning-ink, and it exists for the same measured reason: --success is
+     calibrated as a fill and fails AA as small type on every light ground.
+     Holds hue and chroma, moves lightness only. L 0.488 was tuned against the
+     old ramp; on the new one it misses at 4.31:1 on muted, so it steps to
+     0.468 — background 5.85 / card 5.42 / popover 5.97 / muted 5.02 / accent
+     5.02, and 4.50:1 on its own /10 tint (worst of the three plausible
+     compositing models: linear, oklab, and gamma-space alpha).
+     `/15` is deliberately not in that list: both call sites are `aria-hidden`
+     progress-bar tracks with no text on them. */
+  --success-ink: oklch(0.468 0.145 163.225);
   --warning: oklch(0.666 0.179 58.318);
   --warning-foreground: oklch(0.985 0 0);
   /* Warning used as TEXT, exactly as --primary-ink is for the brand red.
@@ -222,14 +251,15 @@
      Holds hue and chroma, moves lightness only. Worst measured ground is the
      /10 tint at 5.36:1, and 4.52:1 for the alert description's /90 text. */
   --warning-ink: oklch(0.505 0.179 58.318);
-  --border: oklch(0.912 0.004 30);
-  /* Dense row dividers only (entry list, timesheet). --border is tuned as a
-     card hairline and measures 1.26:1, which effectively disappears across a
-     30-row list for a low-vision user. This is ~2:1 — deliberately short of the
-     3:1 non-text target, because a 3:1 divider reads as a structural rule and
-     DESIGN.md keeps borders subtle. Card and input edges still use --border. */
+  --border: oklch(0.898 0.003 30);
+  /* Dense row dividers only (entry list, timesheet). --border measures 1.21:1
+     on a card, which effectively disappears across a 30-row list for a
+     low-vision user. This is ~1.8:1 — deliberately short of the 3:1 non-text
+     target, because a 3:1 divider reads as a structural rule and DESIGN.md
+     keeps borders subtle. Cards no longer have an edge at all (tone separates
+     them); --border now draws input edges and internal dividers only. */
   --border-strong: oklch(0.78 0.004 30);
-  --input: oklch(0.912 0.004 30);
+  --input: oklch(0.898 0.003 30);
   /* Focus gets its own hue. This used to be byte-identical to --primary and
      0.011 lightness from --destructive, so a focused field read as a validation
      error and "Save changes" was the same red as "Discard". Hue 265 is the
@@ -239,8 +269,9 @@
   --ring: oklch(0.55 0.14 265);
   /* How much of a project/tag swatch survives in text drawn ON that swatch's own
      tint (the rest is mixed toward --foreground). Ceiling measured across all 18
-     DISTINCT_COLORS over background/card/muted/accent: 52% light, 60% dark — these
-     sit under it with margin. See .tt-swatch-tint. */
+     DISTINCT_COLORS over every ground, mixing in oklab as `color-mix` does:
+     50% light (was 52% before the ramp moved down), 64% dark — these sit under
+     it with margin, so the token is unchanged. See .tt-swatch-tint. */
   --swatch-ink-mix: 46%;
   /* Brand red used as TEXT (active nav item, running pill, the billable "$").
      --primary is tuned as a fill behind white, and fails AA as small text: 3.59:1

@@ -41,6 +41,7 @@ rounded:
   md: "6px"
   lg: "8px"
   xl: "12px"
+  container: "20px"
   full: "9999px"
 spacing:
   xs: "4px"
@@ -52,22 +53,22 @@ components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "#ffffff"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.full}"
     padding: "0 16px"
     height: "36px"
   button-outline:
     backgroundColor: "transparent"
     textColor: "{colors.ink-light}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.full}"
     padding: "0 12px"
     height: "32px"
   button-icon-sm:
     backgroundColor: "transparent"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.full}"
     size: "32px"
   card:
     backgroundColor: "{colors.surface-light}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.container}"
     padding: "24px"
   badge:
     rounded: "{rounded.full}"
@@ -106,7 +107,7 @@ The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue
 
 ### Tertiary
 - **Semantic status** — success (`oklch(0.596 0.145 163.225)`, billable progress / confirmations), warning (`oklch(0.666 0.179 58.318)`, avg/day and caution states), destructive (`oklch(0.577 0.245 27.325)`, delete / discard actions and error states). Each has a paired `-foreground` token for on-color text.
-- **`--success-ink`** (`oklch(0.488 0.145 163.225)` light / same as `--success` dark): success used as *text*. `--success` is calibrated as a fill and fails AA as small type on every light ground — 3.61:1 on card, 3.31:1 on muted/accent, 3.15:1 on its own /10 tint — and some call sites are 10px. Icon-only uses stay on `--success`; icons need 3:1 and clear it. Third of the same family as `--primary-ink` and `--warning-ink`, for the same measured reason.
+- **`--success-ink`** (`oklch(0.468 0.145 163.225)` light / same as `--success` dark): success used as *text*. `--success` is calibrated as a fill and fails AA as small type on every light ground — 3.61:1 on card, 3.31:1 on muted/accent, 3.15:1 on its own /10 tint — and some call sites are 10px. Icon-only uses stay on `--success`; icons need 3:1 and clear it. Third of the same family as `--primary-ink` and `--warning-ink`, for the same measured reason.
 - **`--warning-ink`** (`oklch(0.505 0.179 58.318)` light / same as `--warning` dark): warning used as *text*, exactly as `--primary-ink` is for the brand red. `--warning` is calibrated as a fill and fails AA as small type — 3.15:1 on card (the "Unverified" badge), 2.77:1 on its own `/10` tint (the warning Alert). Holds hue and chroma, moves lightness only. Worst measured ground is that `/10` tint at 5.36:1.
 
 ### Chart marks
@@ -118,12 +119,13 @@ Charts encode **billable**, not category: both bar charts stack `--success` (the
 
 ### Neutral
 - **Ground** (`oklch(0.988 0.0015 30)` light / `oklch(0.185 0.006 265)` dark): the page background. Warm-tinted off-white in light; soft charcoal with a faint cool tint in dark — never pure white or near-black.
-- **Surface** (`oklch(0.995 0.001 30)` light / `oklch(0.228 0.007 265)` dark): cards, popovers, dropdowns — one step lighter (light mode) or one step lighter-than-ground (dark mode) so surfaces read as gently layered.
+- **Card** (`oklch(0.962 0.0025 30)` light / `oklch(0.228 0.007 265)` dark): a tonal step *away* from the ground, and the only thing separating a card from the page — cards carry no border and no shadow (§4). The direction differs per theme on purpose: in light a card **recedes** below the ground, in dark it **lifts** above it, because a card darker than an already-dark page reads as a hole.
+- **Popover** (`oklch(0.995 0.001 30)` light / `oklch(0.228 0.007 265)` dark): dialogs, popovers, dropdowns, sheets. In light this stays the *lightest* surface in the system while cards recede, so an overlay reads as floating above the page rather than as part of it. This is why popover and card are no longer the same token.
 - **Ink** (`oklch(0.22 0.006 30)` light / `oklch(0.96 0.003 265)` dark): body text, eased off pure black/white for a softer read.
-- **Muted** (`oklch(0.965 0.003 30)` light / `oklch(0.28 0.008 265)` dark): secondary surfaces (sidebar, toolbars — a second neutral layer, per product-register convention), disabled fills.
-- **`--muted-foreground` is tuned against its *worst* ground, not the page background.** At L 0.552 it measured 4.66:1 on background but only 4.36:1 on muted/accent — which is where secondary text mostly sits (toolbars, sidebar, tab tracks, count badges). L 0.543 clears AA on all four: 4.84 / 4.94 / 4.53 / 4.53.
-- **Border** (`oklch(0.912 0.004 30)` light / `9% white` dark): input outlines, card edges — always subtle, never a structural color.
-- **Border-strong** (`oklch(0.78 0.004 30)` light / `22% white` dark): row dividers in the dense surfaces only (entry list, timesheet grid). The card hairline measures 1.26:1 against the ground, which effectively vanishes across a 30-row list at low vision. This sits at ~2:1 — deliberately short of the 3:1 non-text target, because a 3:1 divider reads as a structural rule and breaks the quiet-ledger feel. Never use it for cards, panels, or inputs.
+- **Muted** (`oklch(0.936 0.003 30)` light / `oklch(0.28 0.008 265)` dark): secondary surfaces (sidebar, toolbars — a second neutral layer, per product-register convention), segmented-control tracks, disabled fills. It moved down with the card so a track still reads *on* a card.
+- **`--muted-foreground` is tuned against its *worst* ground, not the page background** — muted/accent, where secondary text mostly sits (toolbars, sidebar, tab tracks, count badges). L 0.543 was calibrated against the old muted (0.965) and reaches only 4.19:1 on the current one. **L 0.523** clears AA on all five grounds: background 5.27 / card 4.88 / popover 5.38 / muted 4.52 / accent 4.52.
+- **Border** (`oklch(0.898 0.003 30)` light / `9% white` dark): input outlines and internal dividers — always subtle, never a structural color. It no longer draws card edges; tone does that.
+- **Border-strong** (`oklch(0.78 0.004 30)` light / `22% white` dark): row dividers in the dense surfaces only (entry list, timesheet grid). `--border` measures 1.21:1 on a card, which effectively vanishes across a 30-row list at low vision. This sits at ~1.8:1 — deliberately short of the 3:1 non-text target, because a 3:1 divider reads as a structural rule and breaks the quiet-ledger feel. Never use it for panels or inputs.
 
 ### Named Rules
 **The One Accent Rule.** The brand red appears in at most one or two places on any given screen — the running state and the primary action. It is never used as a large background fill or decoration.
@@ -157,19 +159,19 @@ Charts encode **billable**, not category: both bar charts stack `--success` (the
 
 ## 4. Elevation
 
-The system is flat-by-default with tonal layering, not shadow-driven. Depth is conveyed by a one-step lightness shift between background and surface (card/popover), plus a 1px border — not by drop shadows implying physical height. The timer Start/Stop control is the one place that gets a distinct treatment, and it earns it with *color and motion* rather than dimension: a flat brand-tinted capsule with a ring breathing outward behind the disc (see §8).
+The system is flat-by-default with tonal layering, not shadow-driven. Depth is conveyed by a one-step lightness shift between the ground and the surface — **and by nothing else**. Cards have no border and no resting shadow: the tonal step already says "this is a surface", and a hairline plus a shadow on top of it are two more ways of saying the same thing. Thirty of them on a Settings page is most of its visual noise. The timer Start/Stop control is the one place that gets a distinct treatment, and it earns it with *color and motion* rather than dimension: a flat brand-tinted capsule with a ring breathing outward behind the disc (see §8).
 
 ### Shadow Vocabulary
-- **Card rest** (`shadow-sm`): the default resting shadow on cards and popovers — barely-there, present mainly to separate a surface from the page on light backgrounds.
-- **Overlay** (`shadow-md` / `shadow-lg`): popovers, dialogs and sheets, which float above the page and need to read as detached rather than layered.
+- **Card rest: none.** Cards are separated by tone alone. There is no resting shadow anywhere in the system.
+- **Overlay** (`shadow-md` / `shadow-lg`): popovers, dialogs and sheets, which float above the page and need to read as detached rather than layered. These are the *only* shadows in the app, and they are paired with the lightest surface token (`--popover`) so "floating" is said twice, consistently, rather than once each in two different vocabularies.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Surfaces are flat at rest, separated by tone and a hairline border, not by shadow. There is no gradient, inner-shadow or "lit-dome" depth anywhere — including on the timer control, which is a flat solid disc.
+**The Flat-By-Default Rule.** Surfaces are flat at rest, separated by **tone alone** — no border, no shadow. There is no gradient, inner-shadow or "lit-dome" depth anywhere — including on the timer control, which is a flat solid disc.
 
 ## 5. Components
 
 ### Buttons
-- **Shape:** `rounded-md` (6px) on all sizes.
+- **Shape:** `rounded-full` on all sizes, including icon-only (which therefore render as circles). See The Geometry Rule below.
 - **Primary:** brand-red background, white text, `hover:bg-primary/90`, active state scales to 97%.
 - **Outline:** transparent background, 1px border, `hover:bg-accent`. The default for secondary toolbar actions.
 - **Ghost:** no border or fill at rest; `hover:bg-accent`. Used for tertiary/inline actions (row menus, dismiss buttons).
@@ -182,15 +184,15 @@ The system is flat-by-default with tonal layering, not shadow-driven. Depth is c
 - **Project/tag chips** additionally carry a small `ColorDot` (2.5px circle) in the item's assigned palette color before the label.
 
 ### Cards / Containers
-- **Corner Style:** `rounded-xl` (12px).
-- **Background:** surface token (one step lighter than page background).
-- **Shadow Strategy:** `shadow-sm` at rest (see Elevation); no hover elevation change.
-- **Border:** 1px, border token.
+- **Corner Style:** `rounded-container` (20px). Named rather than spelled as an arbitrary value so the container radius moves in one place.
+- **Background:** `--card`, a measured tonal step from the page ground (§2 Neutral).
+- **Shadow Strategy:** none at rest, and no hover elevation change.
+- **Border:** none. Tone is the only separator.
 - **Internal Padding:** 24px (`py-6` + header/content gutters).
 - **The KPI-strip exception:** the Reports summary metrics render as one framed strip (flex-wrap, 1px internal dividers via `bg-border` gaps) rather than a grid of individual cards — this avoids the "identical card grid with an orphaned empty cell" anti-pattern when the visible metric count doesn't evenly divide the row.
 
 ### Inputs / Fields
-- **Style:** 1px border, `bg-background`, `rounded-md`, `shadow-xs`.
+- **Style:** 1px border, `bg-background`, `rounded-full`, `shadow-xs`. `Input` carries `px-4` so text is not crowded into the curve; **`SelectTrigger` stays at `px-3`** because it is `w-fit` in tight toolbars and the extra 8px truncated its value ("No sub-grou…") — a chevron already gives it the breathing room the pill needs. **Textarea is the deliberate exception** to the shape — it keeps `rounded-xl`, because a pill forces the first and last lines of multi-line text into the curve.
 - **Focus:** border shifts to the ring color plus a 3px ring at 50% opacity — no glow, no scale change. **The focus ring is not the brand red.** `--ring` (`oklch(0.55 0.14 265)` light / `oklch(0.7 0.14 265)` dark) is deliberately a different hue from both `--primary` and `--destructive`: when they shared a value, a focused input read as a validation error and "Save changes" was the same color as "Discard". Hue 265 is the system's own cool tint from the dark ramp, not a stock blue. One focus vocabulary everywhere — no bare-underline substitutes.
 - **Error:** border and ring shift to the destructive color at reduced opacity.
 
@@ -198,6 +200,22 @@ The system is flat-by-default with tonal layering, not shadow-driven. Depth is c
 - **Sidebar:** icon + label nav items, `rounded-md` active/hover states, active item gets a `bg-primary/10` fill with primary-colored text and icon (not a full-color fill — this is the "One Accent Rule" applied to navigation). Collapses to a 56px icon rail; the collapsed state shows the brand mark itself as the expand control (no separate arrow button) — the logo never disappears when collapsed.
 - **Tabs** (Reports Summary/Weekly/Detailed, Timer view switcher, Settings sections): segmented control, `bg-muted/40` track, active segment lifts to `bg-background` with a subtle shadow. Settings uses them to break 15 cards into four named groups, with the active tab in the query string so `/settings?tab=account` is linkable.
 - **`SegmentedControl`** (`ui/segmented-control.tsx`): the same segmented shape for a *value* rather than a panel — theme and time format. Use it instead of hand-rolling a pill group; Settings had two of these diverging, one of which (theme) was a lone icon that never showed which of its three states was active.
+
+### The Geometry Rule
+Corner radius is chosen by **what an element is**, never by taste, and there are exactly three families:
+
+- **Controls — `rounded-full`.** Buttons (including icon-only, which become circles), badges, inputs, segmented-control tracks and segments. A pill costs nothing at 24–40px and it is the loudest single cue in the system's shape language.
+- **Containers — `rounded-container` (20px).** Cards, dialogs, sheets, popovers.
+- **Data cells — `rounded-md` / `rounded-lg`, unchanged.** Entry rows, timesheet cells, calendar event blocks, planner cells, table cells.
+
+The boundary between the families is **density**. Pills on a thirty-row entry list would trade the app's actual job — scanning a day of tracked time — for a look, so the geometry stops at the edge of the data. If a new surface is dense, it belongs to the third family no matter how it is built.
+
+### The Segmented Rule
+There are five segmented controls in the app — `SegmentedControl`, `Tabs` (default variant), `TaskViewTabs`, `TimerViewSwitcher` and the calendar-view radiogroup inside `CalendarViewOptions` — and they must not diverge. That last one is the reason this is a written rule: it is a `grid`, not a flex row, so it did not match a search for the others and had been quietly drifting on its own. The active segment is a solid `--foreground` pill with `--background` text, on a `--muted` track.
+
+It is deliberately **not** the brand red: the one accent is spent on primary actions and the running timer, and a settings row is neither. Ink-on-track is also the only "which one is selected" signal here that survives a colour-blind reader unchanged, because it carries no hue at all.
+
+It replaced a lift-to-`bg-background`-with-a-shadow treatment, which stopped working the moment cards went borderless and recessed: the "lifted" segment and the surface behind it became the same value, so the control read as flat. Anything inside an active segment must use `--background`-derived ink, not `--muted-foreground`, which is tuned for light grounds and disappears on the pill.
 
 ### The Period Control Rule
 The "Today" button is never hidden — visible-but-disabled when the period already contains today. It was briefly `invisible` + `aria-hidden` to avoid the label reading "Today Today", which traded an affordance for a cosmetic nit and fired at exactly the wrong moment: switching to Split collapses the period to a single day, so the one period control vanished from the screen and the a11y tree together. When the pane is too narrow for the requested calendar view, the header carries a "narrow pane" chip — that explanation previously lived only inside the View options popover, so the header total silently changed from a week to a day with nothing on screen saying why.

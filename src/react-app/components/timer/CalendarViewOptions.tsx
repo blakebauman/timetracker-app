@@ -87,7 +87,7 @@ export function CalendarViewOptions({
               <div
                 role="radiogroup"
                 aria-label="Calendar view"
-                className="grid grid-cols-4 gap-0.5 rounded-md border bg-muted/40 p-0.5"
+                className="grid grid-cols-4 gap-0.5 rounded-full bg-muted p-0.5"
               >
                 {VIEW_OPTIONS.map(({ value, label }) => (
                   <button
@@ -97,9 +97,9 @@ export function CalendarViewOptions({
                     aria-checked={requestedCalendarView === value}
                     onClick={() => onCalendarViewChange(value)}
                     className={cn(
-                      "rounded px-1 py-1 text-xs transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                      "rounded-full px-1 py-1 text-xs transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                       requestedCalendarView === value
-                        ? "bg-background font-medium text-foreground shadow-sm"
+                        ? "bg-foreground font-medium text-background"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >

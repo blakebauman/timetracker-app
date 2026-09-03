@@ -173,7 +173,7 @@ export function ClientList() {
         {clients.map((client) => (
           <div
             key={client.id}
-            className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-card px-4 py-3 md:flex-nowrap"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-card px-4 py-3 md:flex-nowrap"
           >
             <button
               type="button"

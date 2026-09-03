@@ -122,7 +122,7 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   };
 
   return (
-    <div className="flex items-start gap-2.5 rounded-lg border bg-card p-3 shadow-sm">
+    <div className="flex items-start gap-2.5 rounded-container bg-card p-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{nudge.title}</p>
