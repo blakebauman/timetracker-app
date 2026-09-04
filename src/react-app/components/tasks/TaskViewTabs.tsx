@@ -98,7 +98,8 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
             }
             onClick={() => onChange(value)}
             className={cn(
-              "flex h-full items-center gap-1.5 rounded-full px-3 text-xs font-medium",
+              // text-sm to match the toolbar row it sits in (see SegmentedControl).
+              "flex h-full items-center gap-1.5 rounded-full px-3 text-sm font-medium",
               "transition-colors duration-fast ease-out-quart",
               "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active

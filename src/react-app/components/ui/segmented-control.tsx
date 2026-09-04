@@ -63,7 +63,12 @@ export function SegmentedControl<T extends string>({
             aria-checked={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex h-full items-center rounded-full px-3 text-xs font-medium transition-colors duration-fast ease-out-quart",
+              // text-sm, not text-xs: this sits in a toolbar row beside an Input, a
+              // SelectTrigger and a Button, all of which are text-sm, and its
+              // 12px label read as a smaller, secondary control next to them.
+              // `ui/tabs` — the closest relative — was already text-sm, so the
+              // 12px was the outlier on both axes rather than the convention.
+              "flex h-full items-center rounded-full px-3 text-sm font-medium transition-colors duration-fast ease-out-quart",
               "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active
                 ? "bg-foreground text-background"

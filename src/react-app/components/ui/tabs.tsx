@@ -62,7 +62,17 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-3 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all duration-fast ease-out-quart group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        // Hover is scoped to INACTIVE triggers. It used to sit unscoped in the
+        // base, so hovering the *active* tab set `text-foreground` on a pill
+        // whose background is `bg-foreground` — the label went the same colour
+        // as the thing behind it and disappeared. Broken in both themes
+        // (near-white on near-white in dark, near-black on near-black in
+        // light); dark is only where it is obvious.
+        //
+        // SegmentedControl, TimerViewSwitcher and TaskViewTabs all put hover on
+        // the inactive branch of a ternary and were never affected. Tabs was
+        // the one that expressed the same idea as an unconditional utility.
+        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-3 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all duration-fast ease-out-quart group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start data-[state=inactive]:hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
         "group-data-[variant=default]/tabs-list:data-[state=active]:bg-foreground group-data-[variant=default]/tabs-list:data-[state=active]:text-background",
         "group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground",
