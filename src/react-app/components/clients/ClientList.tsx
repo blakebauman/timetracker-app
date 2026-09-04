@@ -216,7 +216,19 @@ export function ClientList() {
               currency={currency}
             />
 
-            <ChevronRight className="hidden h-4 w-4 shrink-0 text-muted-foreground md:block" />
+            {/* Decorative mirror of the row's navigation, not a second control:
+                it sits outside the button that navigates, at the far right
+                where a "go" chevron invites the click it was the one part of
+                the row that didn't answer. aria-hidden and not focusable, so it
+                adds a live target without adding a tab stop for an action the
+                name button already exposes to the keyboard. */}
+            <span
+              aria-hidden
+              onClick={() => navigate(`/clients/${client.id}`)}
+              className="hidden shrink-0 cursor-pointer text-muted-foreground md:block"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </span>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
