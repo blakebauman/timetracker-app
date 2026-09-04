@@ -2,7 +2,7 @@ import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 
 function AlertDialog({
   ...props
@@ -104,33 +104,58 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      // text-balance / md:text-pretty is maia's convention for dialog copy:
+      // a confirmation is short enough that an even two-line split reads
+      // better than a ragged one, and long enough on wider screens that
+      // orphan control matters more than balance.
+      className={cn("text-sm text-balance text-muted-foreground md:text-pretty", className)}
       {...props}
     />
   )
 }
 
+// Composed with `<Button asChild>` rather than by calling `buttonVariants()`
+// inline, which is how the registry does it and it is not just tidier.
+//
+// The old shape hard-coded the default variant, so the only way to get a
+// destructive confirm was to pass a *second* full set of button classes through
+// className and let tailwind-merge fight the first set — which both call sites
+// did. It also meant these buttons never carried Button's own `data-slot`,
+// `data-variant` or `data-size`, so they were invisible to anything selecting
+// on them (including this project's own style probes).
 function AlertDialogAction({
   className,
+  variant = "default",
+  size = "default",
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
+  Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
   return (
-    <AlertDialogPrimitive.Action
-      className={cn(buttonVariants(), className)}
-      {...props}
-    />
+    <Button variant={variant} size={size} asChild>
+      <AlertDialogPrimitive.Action
+        data-slot="alert-dialog-action"
+        className={cn(className)}
+        {...props}
+      />
+    </Button>
   )
 }
 
 function AlertDialogCancel({
   className,
+  variant = "outline",
+  size = "default",
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Cancel> &
+  Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
   return (
-    <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: "outline" }), className)}
-      {...props}
-    />
+    <Button variant={variant} size={size} asChild>
+      <AlertDialogPrimitive.Cancel
+        data-slot="alert-dialog-cancel"
+        className={cn(className)}
+        {...props}
+      />
+    </Button>
   )
 }
 
