@@ -37,6 +37,18 @@
          segmented control in the app at once.
          Kept in sync with next-themes' defaults: storageKey "theme",
          attribute "class", defaultTheme "system". -->
+    <style>
+      /* Paired with the tt-preload class set below. `!important` and the
+         universal selector are deliberate: this has to outrank every utility
+         for the handful of frames it exists, and it is removed before the
+         first interaction. */
+      .tt-preload * ,
+      .tt-preload *::before,
+      .tt-preload *::after {
+        transition: none !important;
+        animation-duration: 0s !important;
+      }
+    </style>
     <script>
       (function () {
         try {
@@ -46,6 +58,29 @@
             : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
           if (theme === "dark") document.documentElement.classList.add("dark");
           document.documentElement.style.colorScheme = theme;
+
+          // Suppress transitions until the stylesheet has actually landed.
+          //
+          // In dev, Vite injects the app CSS from JavaScript — `curl` the dev
+          // server and there is no <link rel=stylesheet> at all — so elements
+          // can paint before Tailwind applies. The correction that follows is
+          // then *animated*, because the controls carry `transition-*`: an
+          // active segment pill went from the unstyled inherited colour to
+          // `text-background` over 150ms, which in dark mode reads as white
+          // text sliding to black on every tab strip at once.
+          //
+          // Production ships a blocking <link> and never has the gap, so this
+          // is a dev-only artifact — but it is the one every page load shows
+          // you while working, and the guard costs nothing once removed.
+          var de = document.documentElement;
+          de.classList.add("tt-preload");
+          var release = function () {
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () { de.classList.remove("tt-preload"); });
+            });
+          };
+          if (document.readyState === "complete") release();
+          else window.addEventListener("load", release, { once: true });
         } catch (e) {}
       })();
     </script>
