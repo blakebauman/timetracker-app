@@ -164,7 +164,7 @@ export function ProjectList() {
               onChange={setPeriod}
             />
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as ProjectSort)}>
-              <SelectTrigger className="h-8 w-36" aria-label="Sort projects">
+              <SelectTrigger size="sm" className="w-36" aria-label="Sort projects">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -208,7 +208,7 @@ export function ReportFilterBar({ filters, onChange }: ReportFilterBarProps) {
               value={filters.billable}
               onValueChange={(v) => onChange({ ...filters, billable: v as BillableFilter })}
             >
-              <SelectTrigger className="h-8 w-full text-sm" id="report-billable">
+              <SelectTrigger size="sm" className="w-full text-sm" id="report-billable">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

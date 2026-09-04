@@ -439,7 +439,7 @@ export function TaskBoardList() {
           <>
             <div className="mx-1 h-5 w-px bg-border" aria-hidden />
             <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-              <SelectTrigger className="h-8 w-28" aria-label="Filter by status">
+              <SelectTrigger size="sm" className="w-28" aria-label="Filter by status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -450,7 +450,7 @@ export function TaskBoardList() {
             </Select>
 
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger className="h-8 w-36" aria-label="Group by">
+              <SelectTrigger size="sm" className="w-36" aria-label="Group by">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -462,7 +462,7 @@ export function TaskBoardList() {
             </Select>
 
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-              <SelectTrigger className="h-8 w-36" aria-label="Sort by">
+              <SelectTrigger size="sm" className="w-36" aria-label="Sort by">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -45,7 +45,11 @@ export function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        "inline-flex w-fit items-center rounded-full bg-muted p-[3px]",
+        // h-8 to match every other control in a toolbar row. Without it the
+        // track sized itself from its buttons' text and landed at 30px beside
+        // 32px inputs and buttons — a 2px step that reads as misalignment
+        // rather than as a smaller control.
+        "inline-flex h-8 w-fit items-center rounded-full bg-muted p-[3px]",
         className
       )}
     >
@@ -59,7 +63,7 @@ export function SegmentedControl<T extends string>({
             aria-checked={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-colors duration-fast ease-out-quart",
+              "flex h-full items-center rounded-full px-3 text-xs font-medium transition-colors duration-fast ease-out-quart",
               "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active
                 ? "bg-foreground text-background"

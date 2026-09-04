@@ -25,6 +25,30 @@
     <meta name="twitter:title" content="Time Tracker" />
     <meta name="twitter:description" content="Track your time, manage projects, and analyze your productivity." />
     <meta name="twitter:image" content="https://timetracker.run/og-image.png" />
+
+    <!-- Resolve the theme BEFORE first paint.
+         This is a client-rendered SPA, so next-themes can only add the `dark`
+         class once React has mounted. Every full page load therefore painted
+         one frame with the light tokens and then flipped — and the most
+         visible casualty was any active segment pill, which is
+         `bg-foreground text-background`: near-black on near-white in light,
+         and the exact inverse in dark. On a dark-preferring machine that read
+         as a flash of white text turning black, on every tab strip and
+         segmented control in the app at once.
+         Kept in sync with next-themes' defaults: storageKey "theme",
+         attribute "class", defaultTheme "system". -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var theme = stored && stored !== "system"
+            ? stored
+            : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          if (theme === "dark") document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = theme;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

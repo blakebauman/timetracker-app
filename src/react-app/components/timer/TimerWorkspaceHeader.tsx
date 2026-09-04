@@ -304,7 +304,28 @@ export function TimerWorkspaceHeader({
         {/* At 0m the bar was a full-width empty grey track — a chart of nothing.
             Collapse to a hairline rule so the row keeps its rhythm without
             implying there's a value to read. */}
+        {/* A proportion bar, not a progress bar: the segments are projects and
+            they always sum to the full width, so there is no unfilled remainder
+            to misread as "not done yet".
+            
+            It was, however, mute. The breakdown lived entirely in per-segment
+            hover tooltips inside non-focusable divs, so a screen-reader user
+            got a decorative strip and nothing else. One label carries the same
+            sentence the tooltips do. */}
         <div
+          role="img"
+          aria-label={
+            totalSeconds > 0
+              ? `Logged ${periodSummary}: ${formatDurationShort(totalSeconds)}. ` +
+                segments
+                  .map(
+                    (seg) =>
+                      `${seg.projectName ?? "No project"} ${formatDurationShort(seg.seconds)}, ` +
+                      `${Math.round((seg.seconds / totalSeconds) * 100)}%`
+                  )
+                  .join("; ")
+              : `Nothing logged ${periodSummary}`
+          }
           className={cn(
             "flex flex-1 overflow-hidden rounded-full bg-muted transition-all duration-fast ease-out-quart",
             totalSeconds > 0 ? "h-2" : "h-px"
@@ -315,6 +336,7 @@ export function TimerWorkspaceHeader({
               <Tooltip key={seg.projectId ?? "none"}>
                 <TooltipTrigger asChild>
                   <div
+                    aria-hidden
                     className="h-full first:rounded-l-full last:rounded-r-full"
                     style={{
                       width: `${(seg.seconds / totalSeconds) * 100}%`,

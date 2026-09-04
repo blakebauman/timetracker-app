@@ -56,7 +56,7 @@ export function RoundingControl({ value, onChange }: RoundingControlProps) {
             value={value.mode}
             onValueChange={(v) => onChange({ ...value, mode: v as RoundMode })}
           >
-            <SelectTrigger className="h-8 text-sm" id="rounding-mode">
+            <SelectTrigger size="sm" className="text-sm" id="rounding-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -75,7 +75,7 @@ export function RoundingControl({ value, onChange }: RoundingControlProps) {
             onValueChange={(v) => onChange({ ...value, minutes: Number(v) })}
             disabled={value.mode === "off"}
           >
-            <SelectTrigger className="h-8 text-sm" id="rounding-increment">
+            <SelectTrigger size="sm" className="text-sm" id="rounding-increment">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
