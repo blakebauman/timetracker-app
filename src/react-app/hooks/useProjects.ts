@@ -18,11 +18,19 @@ export function useProjects() {
   });
 }
 
-export function useAllProjects() {
+/**
+ * `range` scopes each project's `trackedSeconds` to a window. `budgetSeconds`
+ * stays all-time regardless, because the budget bar is cumulative — see
+ * routes/projects.ts. Omit it for the all-time list.
+ */
+export function useAllProjects(range?: { since: string; until: string }) {
   return useQuery({
-    queryKey: ["projects", "all"],
+    queryKey: ["projects", "all", range?.since ?? null, range?.until ?? null],
     queryFn: () =>
-      api.projects.list({ includeArchived: "true" }) as Promise<Project[]>,
+      api.projects.list({
+        includeArchived: "true",
+        ...(range ? { since: range.since, until: range.until } : {}),
+      }) as Promise<Project[]>,
     staleTime: 5 * 60_000,
   });
 }

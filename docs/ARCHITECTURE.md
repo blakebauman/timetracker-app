@@ -31,7 +31,7 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 | Mount | File | Notes |
 |---|---|---|
 | `/api/time_entries` | `time-entries.ts` | CRUD, `/current` (running), `/suggestions`, bulk ops, `/:id/stop` |
-| `/api/projects` | `projects.ts` | CRUD + `POST /recolor` (AI color assignment) + `GET /pacing` (budget burn/projection) |
+| `/api/projects` | `projects.ts` | CRUD + `POST /recolor` (AI color assignment) + `GET /pacing` (budget burn/projection). `GET /` takes optional `since`/`until` (both or neither) which scope `trackedSeconds` only; `budgetSeconds` is always all-time so the budget bar can't be scoped out from under its own denominator |
 | `/api/clients`, `/api/tags`, `/api/favorites`, `/api/recurring` | one file each | plain CRUD (tags: rename/recolor/delete only — created implicitly via entries) |
 | `/api/tasks` | `routes/tasks.ts` | CRUD plus the planning model: due date, priority, fractional `sort_order`, one level of subtasks, and recurrence. Three rules live here, not in the client: a subtask may never be a parent (one level, enforced on create and on re-parent); `tracked_seconds` **rolls subtasks up into the parent**, so a container task isn't reported as zero; and completing a repeating task **spawns the next occurrence inline**, measured from the `completedOn` local date the client sends — the worker runs in UTC and must not derive a due date from its own clock. Recurrence carries forward to the new occurrence and is cleared from the completed one, so reopening and re-ticking can't mint a second copy. |
 | `/api/drafts` | `drafts.ts` | drafted entries awaiting review: `GET ?date=` / `?since&until` (local dates), `POST /generate`, `PATCH /:id`, `POST /confirm` (with optional total reconciliation), `DELETE /:id`, `DELETE ?date=` |

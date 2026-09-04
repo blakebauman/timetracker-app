@@ -19,6 +19,7 @@ import {
 import { TimerViewSwitcher } from "./TimerViewSwitcher";
 import { DraftDayButton } from "@/components/drafts/DraftDayButton";
 import { CalendarViewOptions } from "./CalendarViewOptions";
+import { VIEW_LABELS } from "./calendarViewLabels";
 import { ListRangePicker } from "./ListRangePicker";
 import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
@@ -210,9 +211,17 @@ export function TimerWorkspaceHeader({
               ? formatListRangeLabel(listRangeKey, since, until, wso)
               : formatPeriodLabel(since, until, { weekStamp: !isDayView })}
           </h1>
+          {/* Names the effect, not the cause. "narrow pane" described the
+              app's own layout state — a fact about the container, offered to a
+              user who asked for a week and got five days. The full sentence
+              already lives in the View options popover; this is its short form
+              in the same vocabulary. */}
           {densityReduced && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-micro font-medium text-muted-foreground">
-              narrow pane
+            <span
+              className="rounded-full bg-muted px-2 py-0.5 text-micro font-medium text-muted-foreground"
+              title={`The pane is too narrow for ${VIEW_LABELS[requestedCalendarView]}.`}
+            >
+              Showing {VIEW_LABELS[calendarView]}
             </span>
           )}
         </div>
@@ -295,7 +304,28 @@ export function TimerWorkspaceHeader({
         {/* At 0m the bar was a full-width empty grey track — a chart of nothing.
             Collapse to a hairline rule so the row keeps its rhythm without
             implying there's a value to read. */}
+        {/* A proportion bar, not a progress bar: the segments are projects and
+            they always sum to the full width, so there is no unfilled remainder
+            to misread as "not done yet".
+            
+            It was, however, mute. The breakdown lived entirely in per-segment
+            hover tooltips inside non-focusable divs, so a screen-reader user
+            got a decorative strip and nothing else. One label carries the same
+            sentence the tooltips do. */}
         <div
+          role="img"
+          aria-label={
+            totalSeconds > 0
+              ? `Logged ${periodSummary}: ${formatDurationShort(totalSeconds)}. ` +
+                segments
+                  .map(
+                    (seg) =>
+                      `${seg.projectName ?? "No project"} ${formatDurationShort(seg.seconds)}, ` +
+                      `${Math.round((seg.seconds / totalSeconds) * 100)}%`
+                  )
+                  .join("; ")
+              : `Nothing logged ${periodSummary}`
+          }
           className={cn(
             "flex flex-1 overflow-hidden rounded-full bg-muted transition-all duration-fast ease-out-quart",
             totalSeconds > 0 ? "h-2" : "h-px"
@@ -306,6 +336,7 @@ export function TimerWorkspaceHeader({
               <Tooltip key={seg.projectId ?? "none"}>
                 <TooltipTrigger asChild>
                   <div
+                    aria-hidden
                     className="h-full first:rounded-l-full last:rounded-r-full"
                     style={{
                       width: `${(seg.seconds / totalSeconds) * 100}%`,

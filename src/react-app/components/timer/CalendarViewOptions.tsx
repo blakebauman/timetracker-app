@@ -10,13 +10,7 @@ import {
   CALENDAR_SLOT_HEIGHT_MAX,
 } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
-
-const VIEW_LABELS: Record<CalendarViewType, string> = {
-  timeGridDay: "Day",
-  timeGridFiveDay: "5 days",
-  timeGridWeek: "Week",
-  dayGridMonth: "Month",
-};
+import { VIEW_LABELS } from "./calendarViewLabels";
 
 const VIEW_OPTIONS: { value: CalendarViewType; label: string }[] = [
   { value: "timeGridDay", label: "Day" },

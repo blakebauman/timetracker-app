@@ -62,7 +62,7 @@ export function PromptInput({
         submit();
       }}
       className={cn(
-        "flex items-end gap-2 rounded-lg border bg-transparent p-1.5 shadow-xs",
+        "flex items-end gap-2 rounded-lg border bg-transparent p-1.5",
         "transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
       )}
     >

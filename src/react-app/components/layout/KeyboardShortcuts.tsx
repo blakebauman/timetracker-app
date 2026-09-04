@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { useUIStore } from "@/stores/uiStore";
 import { modKey as mod } from "@/lib/platform";
+import { Kbd } from "@/components/ui/kbd";
 
 interface Shortcut {
   keys: string[];
@@ -43,9 +44,9 @@ function Keys({ keys }: { keys: string[] }) {
       {keys.map((k, i) => (
         <span key={k} className="flex items-center gap-1">
           {i > 0 && <span className="text-micro text-muted-foreground">+</span>}
-          <kbd className="inline-flex h-6 min-w-6 select-none items-center justify-center rounded border bg-muted px-1.5 font-mono text-micro font-medium text-foreground">
+          <Kbd className="h-6 min-w-6">
             {k}
-          </kbd>
+          </Kbd>
         </span>
       ))}
     </span>

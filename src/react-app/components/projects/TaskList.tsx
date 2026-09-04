@@ -3,6 +3,7 @@ import { Plus, Trash2, Check, Pencil, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { SpentFigure } from "@/components/ui/spent-figure";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -156,10 +157,10 @@ export function TaskList({ projectId }: TaskListProps) {
                       onClick={() => handleStartEditTime(task)}
                     >
                       <Progress value={progress} className="h-1 flex-1" aria-hidden />
-                      <span className="text-micro tabular-nums text-muted-foreground">
-                        {formatDurationShort(task.trackedSeconds)} /{" "}
-                        {formatDurationShort(task.estimatedSeconds!)}
-                      </span>
+                      <SpentFigure
+                        spent={formatDurationShort(task.trackedSeconds)}
+                        of={formatDurationShort(task.estimatedSeconds!)}
+                      />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>Edit estimate — {Math.round(progress)}% used</TooltipContent>

@@ -202,7 +202,7 @@ export const api = {
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   projects: {
-    list: (params?: { includeArchived?: string }) => {
+    list: (params?: { includeArchived?: string; since?: string; until?: string }) => {
       const qs = params
         ? new URLSearchParams(
             Object.fromEntries(
@@ -247,7 +247,7 @@ export const api = {
 
   // ─── Clients ──────────────────────────────────────────────────────────────
   clients: {
-    list: (params?: { includeArchived?: string }) => {
+    list: (params?: { includeArchived?: string; since?: string; until?: string }) => {
       const qs = params
         ? new URLSearchParams(
             Object.fromEntries(

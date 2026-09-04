@@ -21,6 +21,7 @@ import {
   parseTimeInput,
 } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
+import { weekGrid } from "@/lib/weekGridColumns";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { AddTimesheetRowDialog } from "./AddTimesheetRowDialog";
 import type { TimeEntry } from "@shared/schemas";
@@ -243,13 +244,13 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
       {/* min-w forces a horizontal scroller instead of letting seven day columns
           squeeze below legibility; the Task/Project pair stays pinned so a
           narrow screen never loses track of which row it's scrolling. */}
-      <table className="w-full min-w-[760px] border-collapse text-sm">
+      <table className={weekGrid.table}>
         <thead className="sticky top-0 z-overlay bg-background">
           <tr className="border-b text-xs text-muted-foreground">
-            <th className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 text-left font-medium">
+            <th className={weekGrid.headTask}>
               Task
             </th>
-            <th className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 text-left font-medium">
+            <th className={weekGrid.headProject}>
               Project
             </th>
             {days.map((d, i) => (
@@ -320,12 +321,12 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                   key={row.key}
                   className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
-                  <td className="sticky left-0 z-sticky w-[132px] min-w-[132px] bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className={weekGrid.cellTask}>
                     <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>
                       {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
                     </div>
                   </td>
-                  <td className="sticky left-[132px] z-sticky w-[148px] min-w-[148px] border-r border-border-strong bg-background px-3 py-2 group-hover/row:bg-muted/30">
+                  <td className={weekGrid.cellProject}>
                     {/* A fixed-width block, not just `truncate`: a <td>'s width is
                         advisory in auto table layout, so the min-content of a long
                         consultancy project name still expanded the column and pushed
@@ -408,7 +409,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
           <tfoot>
             <tr className="border-t-2 font-medium">
               <td
-                className="sticky left-0 z-sticky w-[280px] min-w-[280px] border-r border-border-strong bg-background px-3 py-2 text-muted-foreground"
+                className={weekGrid.footLabel}
                 colSpan={2}
               >
                 Total

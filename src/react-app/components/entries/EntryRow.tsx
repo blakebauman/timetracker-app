@@ -302,7 +302,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
                 start={entry.start}
                 stop={entry.stop}
                 onChange={handleRangeChange}
-                triggerClassName="flex items-center gap-1 rounded-sm px-1 text-micro text-muted-foreground"
+                triggerClassName="flex items-center gap-1 rounded-sm px-1 text-micro tabular-nums text-muted-foreground"
               >
                 <span>{formatEntryTime(entry.start, timeFormat)}</span>
                 <span>–</span>
@@ -405,7 +405,21 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             start={entry.start}
             stop={entry.stop}
             onChange={handleRangeChange}
-            triggerClassName="flex items-center gap-1 px-1 text-xs text-muted-foreground"
+            // font-mono + tabular-nums + a fixed width, like the duration
+            // beside it. Without them this was the one number in the row that
+            // wasn't in a column: proportional digits made the trigger's width
+            // depend on which digits it held, which walked the billable "$"
+            // before it across a measured 13px down a single list while the
+            // durations held an exact column. DESIGN.md §8 asks for tabular
+            // figures in any list column, and this is the app's most-read list.
+            //
+            // The width is per-format because 12h is genuinely wider and its
+            // strings are ragged ("9:00 AM" vs "11:15 AM"); justify-end pulls
+            // the short ones into the same right edge.
+            triggerClassName={cn(
+              "flex items-center justify-end gap-1 px-1 font-mono text-xs tabular-nums text-muted-foreground",
+              timeFormat === "12h" ? "w-[9.25rem]" : "w-[6.5rem]"
+            )}
           >
             <span>{formatEntryTime(entry.start, timeFormat)}</span>
             <span>–</span>

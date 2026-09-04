@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useUIStore } from "@/stores/uiStore";
+import { Kbd } from "@/components/ui/kbd";
 
 const navItems = [
   { to: "/", icon: Timer, label: "Timer" },
@@ -74,9 +75,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                   <span className="flex-1 text-left">Search…</span>
                   {/* text-foreground, not muted: 10px muted-on-muted measured
                       4.38:1. A keycap is a label, not secondary text. */}
-                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-micro font-medium text-foreground">
-                    ⌘K
-                  </kbd>
+                  <Kbd>⌘K</Kbd>
                 </>
               )}
             </button>
@@ -202,9 +201,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
               {!collapsed && (
                 <>
                   <span className="flex-1 text-left">Keyboard shortcuts</span>
-                  <kbd className="pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border bg-muted px-1 font-mono text-micro font-medium">
-                    ?
-                  </kbd>
+                  <Kbd>?</Kbd>
                 </>
               )}
             </button>

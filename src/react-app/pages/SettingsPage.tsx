@@ -38,6 +38,7 @@ import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { DangerZoneCard } from "@/components/settings/DangerZoneCard";
 
 import { getDefaultBillable, setDefaultBillable } from "@/lib/billable";
+import { Kbd } from "@/components/ui/kbd";
 const TABS = ["general", "tracking", "workspace", "account"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -203,16 +204,12 @@ export function SettingsPage() {
         <CardContent className="space-y-3 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Start / Stop timer</span>
-            <kbd className="rounded border bg-muted px-2 py-0.5 font-mono text-xs">
-              Alt+Shift+S
-            </kbd>
+            <Kbd className="px-2">Alt+Shift+S</Kbd>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Discard running timer</span>
-            <kbd className="rounded border bg-muted px-2 py-0.5 font-mono text-xs">
-              Alt+Shift+X
-            </kbd>
+            <Kbd className="px-2">Alt+Shift+X</Kbd>
           </div>
         </CardContent>
       </Card>

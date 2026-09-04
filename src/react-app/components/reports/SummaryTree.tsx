@@ -71,7 +71,6 @@ export function SummaryTree({ data, showAmount = true, header }: SummaryTreeProp
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
                       {g.name}
                     </span>
-                    <span className="text-xs text-muted-foreground">{pct(g.totalSeconds)}%</span>
                     {showAmount && (
                       <span className="w-20 text-right text-xs tabular-nums text-muted-foreground">
                         {formatCurrency(g.billableAmount, currency)}
@@ -79,6 +78,11 @@ export function SummaryTree({ data, showAmount = true, header }: SummaryTreeProp
                     )}
                     <span className="w-16 text-right text-sm font-semibold tabular-nums">
                       {formatDurationShort(g.totalSeconds)}
+                    </span>
+                    {/* Share of TIME — kept next to the duration it describes,
+                        not next to the amount it doesn't. */}
+                    <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      {pct(g.totalSeconds)}%
                     </span>
                   </button>
 
@@ -93,9 +97,6 @@ export function SummaryTree({ data, showAmount = true, header }: SummaryTreeProp
                           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
                             {s.name}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {pct(s.totalSeconds)}%
-                          </span>
                           {showAmount && (
                             <span className="w-20 text-right text-xs tabular-nums text-muted-foreground">
                               {formatCurrency(s.billableAmount, currency)}
@@ -103,6 +104,9 @@ export function SummaryTree({ data, showAmount = true, header }: SummaryTreeProp
                           )}
                           <span className="w-16 text-right text-sm tabular-nums">
                             {formatDurationShort(s.totalSeconds)}
+                          </span>
+                          <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                            {pct(s.totalSeconds)}%
                           </span>
                         </div>
                       ))}
@@ -116,7 +120,6 @@ export function SummaryTree({ data, showAmount = true, header }: SummaryTreeProp
             <div className="flex items-center gap-2 py-2">
               <span className="h-3.5 w-3.5 shrink-0" />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">Total</span>
-              <span className="text-xs text-muted-foreground">100%</span>
               {showAmount && (
                 <span className="w-20 text-right text-xs tabular-nums text-muted-foreground">
                   {formatCurrency(data.billableAmount, currency)}
@@ -124,6 +127,9 @@ export function SummaryTree({ data, showAmount = true, header }: SummaryTreeProp
               )}
               <span className="w-16 text-right text-sm font-semibold tabular-nums">
                 {formatDurationShort(data.totalSeconds)}
+              </span>
+              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                100%
               </span>
             </div>
           </div>

@@ -15,9 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 
 export function DangerZoneCard() {
@@ -92,7 +90,7 @@ export function DangerZoneCard() {
                 handleDelete();
               }}
               disabled={pending || !password}
-              className={cn(buttonVariants({ variant: "destructive" }))}
+              variant="destructive"
             >
               {pending && <Spinner size="sm" className="mr-1.5" />}
               Delete account

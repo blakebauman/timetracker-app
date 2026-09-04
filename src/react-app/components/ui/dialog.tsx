@@ -136,7 +136,11 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      // text-balance / md:text-pretty is maia's convention for dialog copy:
+      // a confirmation is short enough that an even two-line split reads
+      // better than a ragged one, and long enough on wider screens that
+      // orphan control matters more than balance.
+      className={cn("text-sm text-balance text-muted-foreground md:text-pretty", className)}
       {...props}
     />
   )

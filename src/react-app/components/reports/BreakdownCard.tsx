@@ -136,11 +136,18 @@ export function BreakdownCard({
                         {formatCurrency(row.billableAmount, currency)}
                       </span>
                     )}
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {pct}%
-                    </span>
                     <span className="min-w-12 shrink-0 text-right text-sm font-medium tabular-nums">
                       {formatDurationShort(row.totalSeconds)}
+                    </span>
+                    {/* The share is a share of TIME, and it used to sit between
+                        the amount and the duration — styled identically to the
+                        amount and differently from the duration, so it read as
+                        a pair with the money. A row can be 26% of the hours and
+                        0% of the revenue, which is exactly what "Internal /
+                        Admin — $0.00 · 26%" was saying. It now sits after the
+                        figure it qualifies, with nothing between them. */}
+                    <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      {pct}%
                     </span>
                   </div>
                 );
@@ -158,11 +165,11 @@ export function BreakdownCard({
                     )}
                   </span>
                 )}
-                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  100%
-                </span>
                 <span className="min-w-12 shrink-0 text-right text-sm font-semibold tabular-nums">
                   {formatDurationShort(totalSeconds)}
+                </span>
+                <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                  100%
                 </span>
               </div>
             </>

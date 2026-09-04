@@ -228,8 +228,20 @@
   --muted-foreground: oklch(0.523 0.008 30);
   --accent: oklch(0.936 0.004 30);
   --accent-foreground: oklch(0.26 0.006 30);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
+  /* Destructive has to be a DIFFERENT RED from the brand, and it wasn't:
+     --primary sat at hue 27.33 and --destructive at 27.325 — the same hue to
+     three decimals, 0.011 apart in lightness. On a 1.5px progress bar a project
+     3% into its budget and one 110% through it were indistinguishable, and the
+     budget ladder ran red -> amber -> red, reversing exactly where it mattered.
+
+     Deeper and cooler: 9 degrees off the brand hue and 0.138 darker, so the two
+     reds separate on lightness as well as hue and destructive reads as the more
+     severe of the pair. The old value also failed AA as small text — 4.27:1 on
+     card, 3.95:1 on muted — which is why `text-destructive` needed no ink
+     variant to go wrong. Measured here: label 7.97:1, text 7.72 background /
+     7.15 card / 6.61 muted, 6.05:1 on its own /10 tint and 5.12:1 on /20. */
+  --destructive: oklch(0.45 0.19 18);
+  --destructive-foreground: oklch(1 0 0);
   --success: oklch(0.596 0.145 163.225);
   --success-foreground: oklch(0.985 0 0);
   /* Success used as TEXT — the third of the same family as --primary-ink and
@@ -314,8 +326,17 @@
   --muted-foreground: oklch(0.72 0.012 265);
   --accent: oklch(0.3 0.009 265);
   --accent-foreground: oklch(0.96 0.003 265);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
+  /* Same separation as light, resolved the other way: on charcoal a deep red
+     disappears, so destructive goes brighter than the brand red rather than
+     darker (0.72 vs --primary's 0.65) and takes the bigger hue step.
+
+     Its foreground flips to ink, which --primary-foreground already does in
+     this theme and --destructive-foreground never did: near-white on this fill
+     measures 2.69:1 and failed AA on every destructive button label in dark
+     mode. Ink measures 7.24:1. Text uses of the token: 6.93 background /
+     6.36 card / 5.63 muted, 5.59:1 on its own /10 tint. */
+  --destructive: oklch(0.72 0.17 12);
+  --destructive-foreground: oklch(0.16 0.006 265);
   --success: oklch(0.696 0.17 162.48);
   --success-foreground: oklch(0.16 0.006 265);
   /* Dark ink is light, so the fill value already clears AA as text here

@@ -5,10 +5,10 @@ import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useClientStats } from "@/hooks/useClientStats";
 import {
-  CLIENT_PERIODS,
-  resolveClientPeriod,
-  type ClientPeriod,
-} from "@/lib/clientPeriod";
+  COLLECTION_PERIODS,
+  resolveCollectionPeriod,
+  type CollectionPeriod,
+} from "@/lib/collectionPeriod";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { formatCurrency } from "@/lib/currency";
 import { useUIStore } from "@/stores/uiStore";
@@ -113,8 +113,8 @@ function ClientFigures({
 
 export function ClientList() {
   const { data: clients = [], isLoading } = useAllClients();
-  const [period, setPeriod] = useState<ClientPeriod>("thisMonth");
-  const { since, until } = resolveClientPeriod(period);
+  const [period, setPeriod] = useState<CollectionPeriod>("thisMonth");
+  const { since, until } = resolveCollectionPeriod(period);
   const { byClient, isLoading: statsLoading } = useClientStats(since, until);
   const currency = useUIStore((s) => s.currency);
   const deleteClient = useDeleteClient();
@@ -140,7 +140,7 @@ export function ClientList() {
           <>
             <SegmentedControl
               label="Period"
-              options={[...CLIENT_PERIODS]}
+              options={[...COLLECTION_PERIODS]}
               value={period}
               onChange={setPeriod}
             />
@@ -216,7 +216,19 @@ export function ClientList() {
               currency={currency}
             />
 
-            <ChevronRight className="hidden h-4 w-4 shrink-0 text-muted-foreground md:block" />
+            {/* Decorative mirror of the row's navigation, not a second control:
+                it sits outside the button that navigates, at the far right
+                where a "go" chevron invites the click it was the one part of
+                the row that didn't answer. aria-hidden and not focusable, so it
+                adds a live target without adding a tab stop for an action the
+                name button already exposes to the keyboard. */}
+            <span
+              aria-hidden
+              onClick={() => navigate(`/clients/${client.id}`)}
+              className="hidden shrink-0 cursor-pointer text-muted-foreground md:block"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </span>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
