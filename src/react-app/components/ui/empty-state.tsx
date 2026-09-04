@@ -8,9 +8,29 @@ interface EmptyStateProps {
   description?: string
   action?: ReactNode
   className?: string
+  /**
+   * Heading level for the title. Defaults to `h2`.
+   *
+   * It was a hard-coded `h3`, which skipped a level under every page's `<h1>`
+   * — and not only on the collection pages: `CardTitle` renders a `div` by
+   * default, so an empty state inside a report card had no `h2` above it
+   * either. Every empty state in the app was one, and each is a heading-order
+   * break for anyone navigating by headings.
+   *
+   * `h2` is safe as the default because repeating a level is valid where
+   * skipping one is not; pass `h3` only where a real `h2` actually precedes.
+   */
+  as?: "h2" | "h3"
 }
 
-export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  className,
+  as: Heading = "h2",
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -19,7 +39,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
       )}
     >
       <Icon className="mb-4 h-10 w-10 text-muted-foreground/30" />
-      <h3 className="font-semibold">{title}</h3>
+      <Heading className="font-semibold">{title}</Heading>
       {description && (
         <p className="mt-1 max-w-[60ch] text-sm text-balance text-muted-foreground">
           {description}
