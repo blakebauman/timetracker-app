@@ -40,13 +40,15 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
   const [open, setOpen] = useState(true);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="mb-2">
-      {/* Day header — acts as collapse trigger */}
-      <CollapsibleTrigger className="flex w-full items-center justify-between bg-muted/50 px-4 py-1.5 hover:bg-muted/70 transition-colors duration-fast ease-out-quart">
+    <Collapsible open={open} onOpenChange={setOpen}>
+      {/* Day header — a plain heading row that acts as the collapse trigger.
+          No fill of its own: the entries below are the cards, and a tinted
+          band above a stack of cards read as a second, heavier card. */}
+      <CollapsibleTrigger className="group/day flex w-full items-center justify-between rounded-md py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
         <div className="flex items-center gap-2">
           <ChevronDown
             className={cn(
-              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-fast ease-out-quart",
+              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-fast ease-out-quart group-hover/day:text-foreground",
               !open && "-rotate-90"
             )}
           />
@@ -55,7 +57,7 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
         <DayTotal dateKey={dateKey} totalSeconds={totalSeconds} />
       </CollapsibleTrigger>
 
-      <CollapsibleContent>
+      <CollapsibleContent className="space-y-2">
         {/* Keyed by `anchorId`, never `key` — see DescriptionGroup.anchorId.
             `key` is built from the description and project the row edits inline,
             so keying by it made every rename look like a delete-and-recreate. */}

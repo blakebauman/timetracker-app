@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Users, MoreHorizontal, Archive, Edit2, ChevronRight } from "lucide-react";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
+import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useClientStats } from "@/hooks/useClientStats";
 import {
@@ -123,18 +124,8 @@ export function ClientList() {
   const [showCreate, setShowCreate] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3 p-6">
-        {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
+    <Pane>
       <CollectionHeader title="Clients">
         {clients.length > 0 && (
           <>
@@ -152,129 +143,143 @@ export function ClientList() {
         )}
       </CollectionHeader>
 
-      {/* Column headings for the numeric columns. A client list is a comparison
-          table — the whole point is reading down a column — so the numbers get
-          named once at the top rather than repeating a label in every row.
-          Hidden below md, where the row reflows and each figure carries its own
-          label instead. */}
-      {clients.length > 0 && (
-        <div className="mb-1 hidden items-center gap-3 px-4 text-micro font-medium text-muted-foreground md:flex">
-          <span className="min-w-0 flex-1">Client</span>
-          <span className="w-16 shrink-0 text-right">Projects</span>
-          <span className="w-20 shrink-0 text-right">Tracked</span>
-          <span className="w-20 shrink-0 text-right">Billable</span>
-          <span className="w-24 shrink-0 text-right">Amount</span>
-          <span className="w-8 shrink-0" aria-hidden />
-          <span className="w-8 shrink-0" aria-hidden />
-        </div>
-      )}
-
-      <div className="space-y-1.5">
-        {clients.map((client) => (
-          <div
-            key={client.id}
-            className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-card px-4 py-3 md:flex-nowrap"
-          >
-            <button
-              type="button"
-              onClick={() => navigate(`/clients/${client.id}`)}
-              // `min-w-0` matters: without it this collapsed to 16px at 390 and
-              // hid the client's name rather than truncating it. It shares line
-              // one with the row menu; the figures below take a full line of
-              // their own, which is what leaves room for both.
-              className="flex min-w-0 flex-1 items-center gap-3 text-left"
-            >
-              <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="flex min-w-0 flex-col">
-                <span
-                  className={cn(
-                    "truncate text-sm font-medium",
-                    client.archived && "text-muted-foreground line-through"
-                  )}
-                >
-                  {client.name}
-                </span>
-                {client.email && (
-                  <span className="truncate text-xs text-muted-foreground">
-                    {client.email}
-                  </span>
-                )}
-              </span>
-              {client.archived && (
-                <Badge variant="outline" className="shrink-0 text-xs">Archived</Badge>
-              )}
-            </button>
-
-            {/* The numbers. Fixed-width right-aligned columns with tabular
-                figures so they scan vertically — the Tabular Rule exists for
-                exactly this, and a client list is read down a column, not
-                across a row. Each carries its own label below md, where the
-                columns stack and the shared heading row is hidden. */}
-            <ClientFigures
-              stats={byClient.get(client.id)}
-              loading={statsLoading}
-              currency={currency}
-            />
-
-            {/* Decorative mirror of the row's navigation, not a second control:
-                it sits outside the button that navigates, at the far right
-                where a "go" chevron invites the click it was the one part of
-                the row that didn't answer. aria-hidden and not focusable, so it
-                adds a live target without adding a tab stop for an action the
-                name button already exposes to the keyboard. */}
-            <span
-              aria-hidden
-              onClick={() => navigate(`/clients/${client.id}`)}
-              className="hidden shrink-0 cursor-pointer text-muted-foreground md:block"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </span>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Client actions">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditClient(client)}>
-                  <Edit2 className="mr-2 h-3.5 w-3.5" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    client.archived
-                      ? updateClient.mutate({ id: client.id, data: { archived: false } })
-                      : deleteClient.mutate(client.id)
-                  }
-                >
-                  <Archive className="mr-2 h-3.5 w-3.5" />
-                  {client.archived ? "Unarchive" : "Archive"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      <PaneScroll>
+        {/* Skeletons live inside the pane, under the header that is already in
+            place, so nothing jumps when the rows land. */}
+        {isLoading && (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-container" />
+            ))}
           </div>
-        ))}
-
-        {clients.length === 0 && (
-          <EmptyState
-            icon={Users}
-            title="No clients yet"
-            description="Group projects under clients to organize your work."
-            action={
-              <Button size="sm" onClick={() => setShowCreate(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                Add your first client
-              </Button>
-            }
-          />
         )}
-      </div>
+
+        {/* Column headings for the numeric columns. A client list is a comparison
+            table — the whole point is reading down a column — so the numbers get
+            named once at the top rather than repeating a label in every row.
+            Hidden below md, where the row reflows and each figure carries its own
+            label instead. */}
+        {clients.length > 0 && (
+          <div className="mb-1 hidden items-center gap-3 px-4 text-micro font-medium text-muted-foreground md:flex">
+            <span className="min-w-0 flex-1">Client</span>
+            <span className="w-16 shrink-0 text-right">Projects</span>
+            <span className="w-20 shrink-0 text-right">Tracked</span>
+            <span className="w-20 shrink-0 text-right">Billable</span>
+            <span className="w-24 shrink-0 text-right">Amount</span>
+            <span className="w-8 shrink-0" aria-hidden />
+            <span className="w-8 shrink-0" aria-hidden />
+          </div>
+        )}
+
+        {!isLoading && (
+          <div className="space-y-2">
+            {clients.map((client) => (
+              <div
+                key={client.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-container border bg-card px-4 py-3 transition-colors duration-fast ease-out-quart hover:border-border-strong md:flex-nowrap"
+              >
+                <button
+                  type="button"
+                  onClick={() => navigate(`/clients/${client.id}`)}
+                  // `min-w-0` matters: without it this collapsed to 16px at 390 and
+                  // hid the client's name rather than truncating it. It shares line
+                  // one with the row menu; the figures below take a full line of
+                  // their own, which is what leaves room for both.
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex min-w-0 flex-col">
+                    <span
+                      className={cn(
+                        "truncate text-sm font-medium",
+                        client.archived && "text-muted-foreground line-through"
+                      )}
+                    >
+                      {client.name}
+                    </span>
+                    {client.email && (
+                      <span className="truncate text-xs text-muted-foreground">
+                        {client.email}
+                      </span>
+                    )}
+                  </span>
+                  {client.archived && (
+                    <Badge variant="outline" className="shrink-0 text-xs">Archived</Badge>
+                  )}
+                </button>
+
+                {/* The numbers. Fixed-width right-aligned columns with tabular
+                    figures so they scan vertically — the Tabular Rule exists for
+                    exactly this, and a client list is read down a column, not
+                    across a row. Each carries its own label below md, where the
+                    columns stack and the shared heading row is hidden. */}
+                <ClientFigures
+                  stats={byClient.get(client.id)}
+                  loading={statsLoading}
+                  currency={currency}
+                />
+
+                {/* Decorative mirror of the row's navigation, not a second control:
+                    it sits outside the button that navigates, at the far right
+                    where a "go" chevron invites the click it was the one part of
+                    the row that didn't answer. aria-hidden and not focusable, so it
+                    adds a live target without adding a tab stop for an action the
+                    name button already exposes to the keyboard. */}
+                <span
+                  aria-hidden
+                  onClick={() => navigate(`/clients/${client.id}`)}
+                  className="hidden shrink-0 cursor-pointer text-muted-foreground md:block"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label="Client actions">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditClient(client)}>
+                      <Edit2 className="mr-2 h-3.5 w-3.5" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        client.archived
+                          ? updateClient.mutate({ id: client.id, data: { archived: false } })
+                          : deleteClient.mutate(client.id)
+                      }
+                    >
+                      <Archive className="mr-2 h-3.5 w-3.5" />
+                      {client.archived ? "Unarchive" : "Archive"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
+
+            {clients.length === 0 && (
+              <EmptyState
+                icon={Users}
+                title="No clients yet"
+                description="Group projects under clients to organize your work."
+                action={
+                  <Button size="sm" onClick={() => setShowCreate(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                    Add your first client
+                  </Button>
+                }
+              />
+            )}
+          </div>
+        )}
+      </PaneScroll>
 
       {showCreate && <ClientForm open onClose={() => setShowCreate(false)} />}
       {editClient && (
         <ClientForm client={editClient} open onClose={() => setEditClient(null)} />
       )}
-    </div>
+    </Pane>
   );
 }

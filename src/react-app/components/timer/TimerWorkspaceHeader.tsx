@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { PaneActions, PaneHeader, PaneTitle } from "@/components/layout/Pane";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -136,9 +137,18 @@ export function TimerWorkspaceHeader({
   const densityReduced = showCalendarControls && calendarView !== requestedCalendarView;
 
   return (
-    <div className="border-b">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
-        <div className="flex items-center gap-2">
+    // The Timer's header floats over its body like every other pane's: the
+    // period is the page's name (24px bold), the stepper and Today sit beside
+    // it, and the view controls right-align. The "Logged" strip is the second
+    // row of the same header, so the entry list fades out beneath it too.
+    <PaneHeader className="pb-3">
+      <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2">
+        <PaneTitle className="tabular-nums">
+          {isListView
+            ? formatListRangeLabel(listRangeKey, since, until, wso)
+            : formatPeriodLabel(since, until, { weekStamp: !isDayView })}
+        </PaneTitle>
+        <div className="flex items-center gap-1.5">
           {isListView ? (
             <ListRangePicker
               value={listRangeKey}
@@ -200,17 +210,11 @@ export function TimerWorkspaceHeader({
           <Button
             variant="outline"
             size="sm"
-            className="h-8"
             onClick={isListView ? () => onListRangeChange("thisWeek") : onToday}
             disabled={periodIncludesToday}
           >
             Today
           </Button>
-          <h1 className="ml-1 text-sm font-semibold tracking-tight tabular-nums">
-            {isListView
-              ? formatListRangeLabel(listRangeKey, since, until, wso)
-              : formatPeriodLabel(since, until, { weekStamp: !isDayView })}
-          </h1>
           {/* Names the effect, not the cause. "narrow pane" described the
               app's own layout state — a fact about the container, offered to a
               user who asked for a week and got five days. The full sentence
@@ -226,7 +230,7 @@ export function TimerWorkspaceHeader({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <PaneActions>
           {showCalendarControls && (
             <CalendarViewOptions
               calendarView={calendarView}
@@ -253,33 +257,34 @@ export function TimerWorkspaceHeader({
           {/* Split control: Add entry stays a single click (it's the primary
               action here); AI quick-add moves behind the caret rather than
               sitting at equal weight beside it. */}
-          <div className="flex items-center rounded-md border">
+          {/* Split control, as one pill: Add entry is the primary action here
+              and stays a single click; AI quick-add sits behind the caret. The
+              pill is the header's one red element. */}
+          <div className="flex items-center overflow-hidden rounded-full bg-primary text-primary-foreground">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="rounded-r-none"
+                  variant="default"
+                  size="sm"
+                  className="rounded-r-none pl-3 pr-2.5"
                   onClick={onAddEntry}
                   aria-label="Add entry"
                 >
                   <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Add</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Add entry</TooltipContent>
             </Tooltip>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                {/* Same icon-sm token as its sibling: a shorter caret left gaps
-                    inside the shared border and needed an arbitrary divider. The
-                    separator is the button's own left border. */}
                 <Button
-                  variant="ghost"
+                  variant="default"
                   size="icon-sm"
-                  className="w-6 rounded-l-none border-l"
+                  className="w-7 rounded-l-none border-l border-primary-foreground/25"
                   aria-label="More ways to add"
                 >
-                  <ChevronDown className="h-3 w-3 opacity-60" />
+                  <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -290,11 +295,11 @@ export function TimerWorkspaceHeader({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
+        </PaneActions>
       </div>
 
-      {/* Logged-this-period bar */}
-      <div className="flex items-center gap-3 px-4 pb-2">
+      {/* Logged-this-period strip: the second row of the floating header. */}
+      <div className="flex w-full items-center gap-3">
         {/* Name the period the number covers. "Logged" alone meant a different
             span in each view, so the total appeared to contradict itself when
             you switched tabs. */}
@@ -365,6 +370,6 @@ export function TimerWorkspaceHeader({
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
-    </div>
+    </PaneHeader>
   );
 }

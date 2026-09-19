@@ -62,8 +62,10 @@ export function PromptInput({
         submit();
       }}
       className={cn(
-        "flex items-end gap-2 rounded-lg border bg-transparent p-1.5",
-        "transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
+        // A recessed well in a capsule, with the send disc as the one red
+        // element in the panel. No glass here — only the timer surfaces are.
+        "flex items-end gap-2 rounded-capsule border bg-background p-1.5 pl-2",
+        "transition-[color,box-shadow] duration-fast ease-out-quart focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
       )}
     >
       <Textarea
@@ -76,12 +78,12 @@ export function PromptInput({
         placeholder={placeholder}
         aria-label={ariaLabel}
         rows={1}
-        className="max-h-40 min-h-9 resize-none border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
+        className="max-h-40 min-h-10 resize-none border-0 bg-transparent px-2 py-2.5 shadow-none focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
       />
       {busy ? (
         <Button
           type="button"
-          size="icon-sm"
+          size="icon-lg"
           variant="outline"
           className="shrink-0"
           onClick={onStop}
@@ -97,8 +99,8 @@ export function PromptInput({
       ) : (
         <Button
           type="submit"
-          size="icon-sm"
-          className="shrink-0"
+          size="icon-lg"
+          className="shrink-0 shadow-lg shadow-primary/40"
           disabled={!canSend}
           aria-label="Send message"
           title="Send"

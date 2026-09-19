@@ -1,47 +1,102 @@
 ---
 name: Time Tracker
-description: A soft-toned, red-accented time tracker for consultants billing across clients, projects, and tasks.
+description: A true-neutral instrument rack with one lit control — a red-accented time tracker for consultants billing across clients, projects, and tasks.
 colors:
   primary: "oklch(0.588 0.207 27.33)"
   primary-dark: "oklch(0.65 0.207 27.33)"
-  bg-light: "oklch(0.988 0.0015 30)"
-  bg-dark: "oklch(0.185 0.006 265)"
-  surface-light: "oklch(0.995 0.001 30)"
-  surface-dark: "oklch(0.228 0.007 265)"
-  ink-light: "oklch(0.22 0.006 30)"
-  ink-dark: "oklch(0.96 0.003 265)"
-  muted-light: "oklch(0.965 0.003 30)"
-  muted-dark: "oklch(0.28 0.008 265)"
-  border-light: "oklch(0.912 0.004 30)"
+  primary-foreground: "oklch(1 0 0)"
+  primary-foreground-dark: "oklch(0.13 0 0)"
+  primary-ink-light: "oklch(0.485 0.19 27.33)"
+  primary-ink-dark: "oklch(0.76 0.19 27.33)"
+  ground-light: "oklch(0.961 0 0)"
+  ground-dark: "oklch(0.168 0 0)"
+  card-light: "oklch(0.976 0 0)"
+  card-dark: "oklch(0.191 0 0)"
+  popover-light: "oklch(0.985 0 0)"
+  popover-dark: "oklch(0.215 0 0)"
+  rail-light: "oklch(0.943 0 0)"
+  rail-dark: "oklch(0.145 0 0)"
+  ink-light: "oklch(0.15 0 0)"
+  ink-dark: "oklch(0.961 0 0)"
+  muted-light: "oklch(0.925 0 0)"
+  muted-dark: "oklch(0.239 0 0)"
+  muted-ink-light: "oklch(0.51 0 0)"
+  muted-ink-dark: "oklch(0.68 0 0)"
+  accent-light: "oklch(0.91 0 0)"
+  accent-dark: "oklch(0.27 0 0)"
+  border-light: "oklch(0.888 0 0)"
   border-dark: "oklch(1 0 0 / 9%)"
+  border-strong-light: "oklch(0.8 0 0)"
+  border-strong-dark: "oklch(1 0 0 / 20%)"
+  ring-light: "oklch(0.55 0.14 265)"
+  ring-dark: "oklch(0.7 0.14 265)"
+  glass-light: "oklch(0.976 0 0 / 72%)"
+  glass-dark: "oklch(0.191 0 0 / 70%)"
   destructive: "oklch(0.45 0.19 18)"
+  destructive-dark: "oklch(0.72 0.17 12)"
   success: "oklch(0.596 0.145 163.225)"
+  success-ink-light: "oklch(0.45 0.145 163.225)"
+  success-dark: "oklch(0.696 0.17 162.48)"
   warning: "oklch(0.666 0.179 58.318)"
+  warning-ink-light: "oklch(0.49 0.179 58.318)"
+  warning-dark: "oklch(0.769 0.188 70.08)"
+  chart-ink-soft-light: "oklch(0.84 0 0)"
+  chart-ink-soft-dark: "oklch(0.40 0 0)"
 typography:
+  display:
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "24px"
+    fontWeight: 700
+    lineHeight: 1.33
+    letterSpacing: "-0.025em"
+  readout:
+    fontFamily: "Geist Mono Variable, ui-monospace, SFMono-Regular, monospace"
+    fontSize: "24px"
+    fontWeight: 600
+    lineHeight: 1.33
+    fontVariation: "tabular-nums"
+  title:
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "20px"
+    fontWeight: 600
+    lineHeight: 1.4
+  subtitle:
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "18px"
+    fontWeight: 600
+    lineHeight: 1
+  headline:
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "16px"
+    fontWeight: 600
+    lineHeight: 1
   body:
     fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: "normal"
+    lineHeight: 1.43
   label:
     fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "12px"
     fontWeight: 500
-    lineHeight: 1.3
-    letterSpacing: "normal"
+    lineHeight: 1.33
+  micro:
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "10px"
+    fontWeight: 500
   mono:
     fontFamily: "Geist Mono Variable, ui-monospace, SFMono-Regular, monospace"
     fontSize: "14px"
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: "normal"
+    fontWeight: 400
+    lineHeight: 1.43
+    fontVariation: "tabular-nums"
 rounded:
   sm: "4px"
   md: "6px"
-  lg: "8px"
+  base: "8px"
   xl: "12px"
-  container: "20px"
+  container: "12px"
+  capsule: "32px"
   full: "9999px"
 spacing:
   xs: "4px"
@@ -49,289 +104,381 @@ spacing:
   md: "12px"
   lg: "16px"
   xl: "24px"
+  rail: "80px"
+  pane-gutter: "24px"
+  row-gap: "8px"
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
-    textColor: "#ffffff"
+    textColor: "{colors.primary-foreground}"
     rounded: "{rounded.full}"
     padding: "0 16px"
     height: "36px"
+    typography: "{typography.body}"
+  button-primary-hover:
+    backgroundColor: "color-mix(in oklab, var(--primary) 90%, transparent)"
   button-outline:
+    backgroundColor: "{colors.ground-light}"
+    textColor: "{colors.ink-light}"
+    rounded: "{rounded.full}"
+    padding: "0 14px"
+    height: "32px"
+  button-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.ink-light}"
     rounded: "{rounded.full}"
-    padding: "0 12px"
-    height: "32px"
+    padding: "0 16px"
+    height: "36px"
+  button-icon-xs:
+    rounded: "{rounded.full}"
+    size: "24px"
   button-icon-sm:
-    backgroundColor: "transparent"
     rounded: "{rounded.full}"
     size: "32px"
+  button-icon-lg:
+    rounded: "{rounded.full}"
+    size: "40px"
+  input:
+    backgroundColor: "{colors.ground-light}"
+    textColor: "{colors.ink-light}"
+    rounded: "{rounded.full}"
+    padding: "4px 16px"
+    height: "36px"
+  textarea:
+    backgroundColor: "{colors.ground-light}"
+    rounded: "{rounded.container}"
+    padding: "8px 12px"
   card:
-    backgroundColor: "{colors.surface-light}"
+    backgroundColor: "{colors.card-light}"
     rounded: "{rounded.container}"
     padding: "24px"
+  row-card:
+    backgroundColor: "{colors.card-light}"
+    rounded: "{rounded.container}"
+    padding: "10px 16px"
   badge:
     rounded: "{rounded.full}"
     padding: "2px 8px"
     typography: "{typography.label}"
+  segment-track:
+    backgroundColor: "{colors.muted-light}"
+    rounded: "{rounded.full}"
+    padding: "3px"
+    height: "32px"
+  segment-active:
+    backgroundColor: "{colors.ground-light}"
+    textColor: "{colors.ink-light}"
+    rounded: "{rounded.full}"
+    padding: "0 12px"
+  composer:
+    backgroundColor: "{colors.glass-light}"
+    rounded: "{rounded.capsule}"
+    padding: "12px"
+    width: "736px"
+  rail-button:
+    backgroundColor: "transparent"
+    textColor: "{colors.muted-ink-light}"
+    rounded: "{rounded.full}"
+    size: "48px"
+  rail-button-active:
+    backgroundColor: "color-mix(in oklab, var(--foreground) 6%, transparent)"
+    textColor: "{colors.ink-light}"
+    rounded: "{rounded.full}"
+    size: "48px"
+  kbd:
+    backgroundColor: "{colors.muted-light}"
+    textColor: "{colors.ink-light}"
+    rounded: "{rounded.sm}"
+    padding: "0 6px"
+    height: "20px"
+    typography: "{typography.micro}"
+  tab-line-active:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-light}"
+    padding: "8px 16px"
 ---
 
 # Design System: Time Tracker
 
-## 1. Overview
+## Overview
 
-**Creative North Star: "The Quiet Ledger"**
+**Creative North Star: "The Instrument Rack"**
 
-Time Tracker is a professional instrument, not a showcase. It exists to be trusted with a number that a client will see on an invoice, so it earns that trust through restraint: a calm, softened neutral ground carries the interface, and the one saturated color — a warm brand red — is spent only where it means something (the running timer, the primary action, a live indicator). Project and tag colors do the rest of the visual work, turning a dense week of client entries into something scannable at a glance without any single element shouting for attention.
+Time Tracker is a rack of instruments, not a dashboard. The chassis is a true-neutral ramp with no tint anywhere — a near-black ground in dark, a light grey in light — and the panels sit in it with one hairline edge each. Navigation is an 80px icon rail on the left; every route is a tall pane whose header floats over a scroll-fade and whose content scrolls without a scrollbar. The thing you *do* (start tracking) is a glass capsule hovering over the bottom of the pane, and the thing that is *happening* (a running timer) docks to the bottom edge as a full-width transport bar with a live trace of the day. One saturated colour, the brand red, is the only lit control on the rack: the Start disc and its glow, the elapsed readout, the running segment and now-line, the active rail ring, the header's one primary pill, the Settings underline. Project and tag swatches do the at-a-glance scanning; nothing else on the page carries hue.
 
-The system explicitly rejects the generic SaaS-cream dashboard: no near-white cream body, no gradient-text hero metrics, no tiny uppercase eyebrow above every card, no identical stat-card grids with an orphaned empty cell. It also rejects enterprise-bloat density — Jira/ServiceNow-style overloaded toolbars and 40-field settings screens. Every dense surface (entry lists, detailed reports, many-project workspaces) still resolves cleanly at narrow widths: legends wrap instead of overflowing, stat strips reflow without empty cells.
+The register is precise, calm and unobtrusive: a consultant mid-task should never lose a billable minute and never wonder "am I still tracking?". The system refuses the category default of a top toolbar with a text field and a play button, refuses the SaaS card-grid page, and refuses the cream/tinted-charcoal ground of the generic AI dashboard — the neutrals here are chroma-zero by measurement, not by mood. Density is welcome where the job is dense (a thirty-row day, a timesheet grid) and is earned by resolving cleanly at every width: on a phone the rail becomes a chassis strip with a sheet, the composer spans the bottom edge with 16px insets, and every control stays on screen.
 
 **Key Characteristics:**
-- A softened, warm-neutral ground in both themes — never stark black-and-white, never AI-cream.
-- One saturated accent (brand red), spent deliberately: primary actions, the running-timer state, focus rings.
-- Project and tag color are the secondary color system, chosen from a hue-alternated palette so adjacent items always read as visually distinct.
-- Icon-only actions in dense toolbars, each with an accessible name — labels are reserved for controls that convey current state.
-- Flat, layered-by-tone surfaces; elevation comes from a one-step lightness/darkness shift between background and card, not shadow depth.
+- A chroma-zero neutral ramp in both themes: ground, card, popover and rail are four measured lightness steps, never a tint.
+- One accent (brand red) spent as a light, not a fill: the Start disc glows, the running readout reads in it, the active rail button wears a fading ring of it.
+- Every structural line is one device pixel — the hairline draws panel edges, inputs, row cards and the segment track; there is no 2px border anywhere.
+- Controls are pills, panels are 12px-cornered, the composer alone is a 2rem capsule; radius is chosen by what a thing *is*.
+- No scrollbars: a gradient from the ground fades content out beneath each pane's floating header instead.
+- Geist for everything, Geist Mono for every duration, clock and column of figures, always tabular.
+- Motion is one scale (150/200/300ms) and one curve, with one exception reserved for the capsule docking into the bar.
 
-## 2. Colors
+## Colors
 
-The palette is a warm-neutral ramp (chroma nudged toward the brand's own red hue, not a generic warm/cream default) with one saturated primary and a hue-alternated set of secondary colors for projects and tags.
+A chroma-zero neutral ramp in both themes with a single saturated primary, three text-calibrated ink variants, a cool focus hue that belongs to nothing else, and an eighteen-swatch project/tag palette.
 
 ### Primary
-- **Ledger Red** (`oklch(0.588 0.207 27.33)` light / `oklch(0.65 0.207 27.33)` dark): primary buttons, the running-timer indicator and pulse, active nav item, links. Used sparingly — most screens show it in one or two places, never as a background fill.
-- **`--primary-foreground` is pure white**, not `oklch(0.985 0 0)`. On the brand red, `#fafafa` measures 4.40:1 and fails AA for every primary button label; white measures 4.59:1 — and `#ffffff` is what the button-primary spec below already documented, so the token had drifted off its own page.
-- **Ledger Red as text** (`--primary-ink`, `oklch(0.5 0.19 27.33)` light / `oklch(0.76 0.19 27.33)` dark): the same brand red retuned for small text. `--primary` is calibrated as a *fill* behind white and fails WCAG AA as 11–12px type (3.59:1 on its own `/10` tint in light, 4.27:1 in dark). `--primary-ink` holds the hue and chroma and moves only lightness. Use it for the active nav label, the running-timer elapsed readout, and the billable indicator — anywhere the brand red is the text rather than the ground.
+- **Brand Red** (`--primary`, `{colors.primary}` light / `{colors.primary-dark}` dark): the Start disc and its glow, the primary pill in a pane header, the active rail ring (at 60% opacity, masked to fade downward), the running segment and now-line on the day ribbon, the calendar's now-indicator, the Settings underline, the selected row card's edge (at 50%) and wash (at 5%), the assistant's nudge count. Text selection is the red at 28%. It is never a large background fill — the calendar's today column is a 4% wash of the *foreground*, not of the red, for exactly that reason.
+- **`--primary-foreground` is pure white in light** (`{colors.primary-foreground}`), not the near-white ink: on the brand red, 0.985 measures 4.40:1 and fails AA on every primary button label; white measures 4.59:1. In dark the fill is brighter and takes near-black ink (`{colors.primary-foreground-dark}`).
+- **Brand Red as text** (`--primary-ink`, `{colors.primary-ink-light}` light / `{colors.primary-ink-dark}` dark): the elapsed readout in the docked bar, the billable "$" on a row, links, the hover colour of an editable description or duration. `--primary` is calibrated as a *fill behind white* and fails AA as small type; this holds hue and chroma and moves lightness only. Light is L 0.485, not 0.5: on the accent surface plus its own 10% tint the older value measured 4.43:1 (`e2e/contrast.spec.ts`).
 
 ### Secondary
-- **Project & Tag Palette** (18-color hue-alternated set, `worker/lib/colors.ts` `DISTINCT_COLORS` / `react-app/lib/colorUtils.ts`): red, blue, green, amber, violet, teal, pink, lime, indigo, orange, cyan, purple, rose, sky, emerald, yellow, slate, stone — deliberately ordered so consecutive auto-assigned colors alternate warm/cool instead of drifting through a single hue family. Applied to project swatches, tag dots, calendar event blocks (translucent fill + solid left border), and report breakdown legends.
+- **Project & Tag Palette** (18 hex swatches, `worker/lib/colors.ts`, mirrored in `react-app/lib/colorUtils.ts`): red, blue, green, amber, violet, teal, pink, lime, indigo, orange, cyan, purple, rose, sky, emerald, yellow, slate, stone. `DISTINCT_COLORS` is hue-*alternated* (warm/cool/warm) so two or three auto-assigned projects never come out near-identical; `TAG_COLORS` is the same set in hue order for the manual picker grid. Applied to project dots, the project badge tint, calendar blocks (translucent fill with a 3px solid left edge), the header's "Logged" proportion bar, the day ribbon's segments, and report legends. Projects created without a colour get the first unused `DISTINCT_COLORS` entry server-side.
+- **Swatch ink is derived, never copied.** A label drawn on a tint of its own swatch mixes the swatch toward `--foreground` by `--swatch-ink-mix` (46% light / 55% dark) over a 13% tint of the swatch; one expression fixes both themes for eighteen arbitrary hexes.
 
 ### Tertiary
-- **Semantic status** — success (`oklch(0.596 0.145 163.225)`, billable progress / confirmations), warning (`oklch(0.666 0.179 58.318)`, avg/day and caution states), destructive (`oklch(0.45 0.19 18)` light / `oklch(0.72 0.17 12)` dark, delete / discard actions and error states). Each has a paired `-foreground` token for on-color text.
-- **`--success-ink`** (`oklch(0.468 0.145 163.225)` light / same as `--success` dark): success used as *text*. `--success` is calibrated as a fill and fails AA as small type on every light ground — 3.61:1 on card, 3.31:1 on muted/accent, 3.15:1 on its own /10 tint — and some call sites are 10px. Icon-only uses stay on `--success`; icons need 3:1 and clear it. Third of the same family as `--primary-ink` and `--warning-ink`, for the same measured reason.
-- **`--warning-ink`** (`oklch(0.505 0.179 58.318)` light / same as `--warning` dark): warning used as *text*, exactly as `--primary-ink` is for the brand red. `--warning` is calibrated as a fill and fails AA as small type — 3.15:1 on card (the "Unverified" badge), 2.77:1 on its own `/10` tint (the warning Alert). Holds hue and chroma, moves lightness only. Worst measured ground is that `/10` tint at 5.36:1.
-
-### Chart marks
-Charts encode **billable**, not category: both bar charts stack `--success` (the part you invoice) under `--chart-ink-soft` (the remainder). Green means the same thing it means on the KPI strip's billable bar.
-
-- **`--chart-ink-soft`** (`oklch(0.84 0.012 30)` light / `oklch(0.40 0.014 265)` dark) is the de-emphasized half of that stack. It must stay distinguishable from `--success` on **luminance alone**, since hue is the channel a colour-blind reader loses: measured 2.23:1 greyscale in light, 3.74:1 in dark, with stack position and a legend carrying the rest.
-- There is **no `--chart-1..5`**. Those were stock shadcn values acting as a second categorical palette against `DISTINCT_COLORS`, and `--chart-1` flipped hue family between themes (orange in light, blue-violet in dark). Categorical colour comes from `DISTINCT_COLORS` everywhere, including the breakdown donut's client/task/tag fallback.
-- Projects created without an explicit colour are assigned the first unused `DISTINCT_COLORS` entry **server-side** (`routes/projects.ts`). The schema deliberately has no colour default: a fixed one meant every project created via API, extension or seed came out the same sky blue.
+- **Destructive** (`{colors.destructive}` light / `{colors.destructive-dark}` dark) is a *different* red from the brand: 9 degrees off the hue and materially darker in light, brighter with a bigger hue step in dark (a deep red disappears on near-black). Light measures 7.97:1 as a label; the dark fill takes near-black ink because near-white on it measured 2.69:1. It belongs to Discard, Delete and error states — never to Stop, which *saves* the entry and wears the brand red like Start.
+- **Success** (`{colors.success}` light / `{colors.success-dark}` dark) and **Warning** (`{colors.warning}` light / `{colors.warning-dark}` dark) are calibrated as fills. As *text* they use `--success-ink` (`{colors.success-ink-light}` light; same as the fill in dark) and `--warning-ink` (`{colors.warning-ink-light}` light; same as the fill in dark) — hue and chroma held, lightness moved, for the same measured reason as `--primary-ink`. Icon-only uses stay on the fill token; icons need 3:1 and clear it.
+- **Chart marks** encode *billable*, not category: bar charts stack `--success` (the part you invoice) under `--chart-ink-soft` (`{colors.chart-ink-soft-light}` light / `{colors.chart-ink-soft-dark}` dark), which must stay distinguishable from success on luminance alone. There is no `--chart-1..5`; categorical colour is always the project palette.
 
 ### Neutral
-- **Ground** (`oklch(0.988 0.0015 30)` light / `oklch(0.185 0.006 265)` dark): the page background. Warm-tinted off-white in light; soft charcoal with a faint cool tint in dark — never pure white or near-black.
-- **Card** (`oklch(0.962 0.0025 30)` light / `oklch(0.228 0.007 265)` dark): a tonal step *away* from the ground, and the only thing separating a card from the page — cards carry no border and no shadow (§4). The direction differs per theme on purpose: in light a card **recedes** below the ground, in dark it **lifts** above it, because a card darker than an already-dark page reads as a hole.
-- **Popover** (`oklch(0.995 0.001 30)` light / `oklch(0.228 0.007 265)` dark): dialogs, popovers, dropdowns, sheets. In light this stays the *lightest* surface in the system while cards recede, so an overlay reads as floating above the page rather than as part of it. This is why popover and card are no longer the same token.
-- **Ink** (`oklch(0.22 0.006 30)` light / `oklch(0.96 0.003 265)` dark): body text, eased off pure black/white for a softer read.
-- **Muted** (`oklch(0.936 0.003 30)` light / `oklch(0.28 0.008 265)` dark): secondary surfaces (sidebar, toolbars — a second neutral layer, per product-register convention), segmented-control tracks, disabled fills. It moved down with the card so a track still reads *on* a card.
-- **`--muted-foreground` is tuned against its *worst* ground, not the page background** — muted/accent, where secondary text mostly sits (toolbars, sidebar, tab tracks, count badges). L 0.543 was calibrated against the old muted (0.965) and reaches only 4.19:1 on the current one. **L 0.523** clears AA on all five grounds: background 5.27 / card 4.88 / popover 5.38 / muted 4.52 / accent 4.52.
-- **Border** (`oklch(0.898 0.003 30)` light / `9% white` dark): input outlines and internal dividers — always subtle, never a structural color. It no longer draws card edges; tone does that.
-- **Border-strong** (`oklch(0.78 0.004 30)` light / `22% white` dark): row dividers in the dense surfaces only (entry list, timesheet grid). `--border` measures 1.21:1 on a card, which effectively vanishes across a 30-row list at low vision. This sits at ~1.8:1 — deliberately short of the 3:1 non-text target, because a 3:1 divider reads as a structural rule and breaks the quiet-ledger feel. Never use it for panels or inputs.
+- **Ground** (`--background`, `{colors.ground-light}` light / `{colors.ground-dark}` dark): the page. Light grey, not white; near-black (a 6% grey), not black. Chroma zero in both.
+- **Card** (`--card`, `{colors.card-light}` light / `{colors.card-dark}` dark): a panel on the rack — one step *lighter* than the ground in both themes, with a hairline edge. Cards, row cards, the Settings panels.
+- **Popover** (`--popover`, `{colors.popover-light}` light / `{colors.popover-dark}` dark): a further step up for dialogs, sheets, popovers, menus and selects — the lightest surface in each theme, so an overlay reads as floating above the panels rather than as one of them.
+- **Rail** (`--rail`, `{colors.rail-light}` light / `{colors.rail-dark}` dark): a step *down* from the ground. The chassis the panels sit in: the icon rail on desktop, the brand strip on a phone. The darkest thing on screen in dark mode.
+- **Ink** (`--foreground`, `{colors.ink-light}` light / `{colors.ink-dark}` dark): 15% black in light, 96% white in dark — eased off pure in both directions.
+- **Muted** (`--muted`, `{colors.muted-light}` light / `{colors.muted-dark}` dark): the segment track, the day ribbon's trace track, the "Logged" proportion track, kbd chips, secondary fills. `--secondary` is the same value.
+- **Muted ink** (`--muted-foreground`, `{colors.muted-ink-light}` light / `{colors.muted-ink-dark}` dark) is tuned against the *worst* ground it lands on — the segment track and the rail, not the page. L 0.51 clears AA on all of them in light: ground 5.13 / card 5.36 / muted 4.60 / rail 4.85. Dark's 0.68 measures 6.6:1 on the ground and 5.7:1 on the track.
+- **Accent** (`{colors.accent-light}` light / `{colors.accent-dark}` dark): hover and keyboard-focus fills inside menus and on outline/ghost buttons.
+- **The hairline** (`--border`, `{colors.border-light}` light / `{colors.border-dark}` dark): every panel edge, every input, every row card, the segment track, the rail's right edge, the docked bar's top edge. One device pixel, one value. `--input` is the same value in light and 12% white in dark.
+- **Border-strong** (`{colors.border-strong-light}` light / `{colors.border-strong-dark}` dark): row dividers inside a dense grid (timesheet, planner), the day ribbon's hour ticks, and the *hover* edge of a row card. Never for panels or inputs.
+- **Glass** (`--glass`, `{colors.glass-light}` light / `{colors.glass-dark}` dark): the card colour at partial opacity behind a 24px blur with 1.2 saturation. Exactly two surfaces are made of it — the composer and the docked bar — declared as one token so they cannot drift into two hand-tuned alphas.
 
 ### Named Rules
-**The One Accent Rule.** The brand red appears in at most one or two places on any given screen — the running state and the primary action. It is never used as a large background fill or decoration.
+**The One Lit Control Rule.** The brand red is a light, not a paint. It appears on the thing you press (the Start disc), the thing that is happening (the readout, the ribbon's live segment, the rail's running dot), the one primary pill in a header, and the active rail ring — and on nothing decorative. If a new surface wants the red as a wash or a large fill, it is wrong.
 
-**Running is `--primary`; destructive is `--destructive`; they are not the same red.** They used to be the same red in all but name — `--primary` at hue 27.33 and `--destructive` at hue 27.325, 0.011 apart in lightness — which is a distinction a 1.5px progress bar cannot draw. `--destructive` is now 9 degrees off the brand hue and materially darker in light (0.45 vs 0.588) or brighter in dark (0.72 vs 0.65), so the pair separates on lightness as well as hue. Its foreground is ink in dark mode, as `--primary-foreground` already was: near-white on the dark-mode fill measured 2.69:1 and failed AA on every destructive button label. They are and the timer bar used to spend the destructive one on the running state — capsule tint, pulse ring, elapsed readout and the Stop disc — while the Discard button beside it, the only genuinely destructive control in the bar, was `--muted-foreground`. Red meant "recording" and "destroy" within 200px. Stopping a timer *saves* the entry; it is not a destructive act, and the Stop disc is `variant="default"` like Start. `--destructive` in the timer bar belongs to Discard and nothing else.
+**The True-Neutral Rule.** Every neutral token — ground, card, popover, rail, muted, border — is chroma zero in both themes. The brand red and the project swatches are the only hue on the page. A tinted grey, a cream, a cool charcoal: all drift.
 
-**The Warm-Neutral Rule.** Every neutral token (background, surface, muted, border) carries a slight chroma nudge toward the brand's own red hue (light mode) or a cool 265° tint (dark mode). Neutrals are never chroma-0 gray and never generic cream.
+**The Two Reds Rule.** Running is `--primary`; destroying is `--destructive`; they separate on lightness as well as hue so that a 1.5px progress bar can tell "3% into budget" from "110% through it". In the docked bar the red belongs to Stop (which saves) and the readout; the Discard button beside them is the only thing that wears the destructive colour.
 
-## 3. Typography
+**The Derived-Ink Rule.** Any colour that has to be read as *text* is a separate token from the same colour as a *fill* — `--primary-ink`, `--success-ink`, `--warning-ink` — holding hue and chroma and moving lightness until it clears AA on its worst ground. Never put the fill token on small type.
 
-**Body Font:** Geist Variable (with `ui-sans-serif, system-ui, sans-serif` fallback)
-**Label/Mono Font:** Geist Mono Variable (with `ui-monospace, SFMono-Regular, monospace` fallback)
+**The Focus Hue Rule.** `--ring` (`{colors.ring-light}` light / `{colors.ring-dark}` dark) is hue 265 — deliberately neither the brand red nor the destructive red, so a focused field never reads as a validation error and "Save" never looks like "Discard". Lightness is set per theme so the ring clears 3:1 on every ground. One focus vocabulary everywhere: the border shifts to the ring colour and a 3px ring at 50% opacity appears; the composer's bare field, which has no border to shift, uses an inset ring at full opacity instead.
 
-**Character:** One well-tuned variable sans carries headings, labels, buttons, and body — a second family (Geist Mono) appears only for tabular numbers, durations, and timestamps, where fixed-width digits matter for scannability. Fixed rem scale throughout, not fluid/clamp — this is a product surface viewed at consistent DPI, not a marketing page.
+## Typography
+
+**Display Font:** Geist Variable (with ui-sans-serif, system-ui, sans-serif fallback)
+**Body Font:** Geist Variable
+**Label/Mono Font:** Geist Mono Variable (with ui-monospace, SFMono-Regular, monospace fallback)
+
+**Character:** One variable sans carries titles, labels, buttons and body; the mono appears wherever a number has to hold a column — durations, clocks, the elapsed readout, the ribbon's hour labels — and always with tabular figures. The scale is fixed rem steps, not fluid: this is a product surface at consistent DPI, not a marketing page. Weight does the ranking above 14px; contrast does it below.
 
 ### Hierarchy
-- **Title** (600 weight, 20px / `text-xl`, 1.3 line-height): page headings ("Reports", "Settings").
-- **Headline** (600 weight, 16px / `text-base`, 1.4 line-height): card titles, section headers.
-- **Body** (400 weight, 14px / `text-sm`, 1.5 line-height): default UI text, descriptions, table cells. 65–75ch cap where prose appears (AI summary output); dense tabular data runs narrower.
-- **Label** (500 weight, 12px / `text-xs`, 1.3 line-height): muted metadata, timestamps, badge text, form labels.
-- **Micro** (500 weight, 10px / `text-micro`): the floor of the ramp, for chrome-level detail only — `kbd` shortcut chips, dense inline badges (entry-row tags, session badges), counts, and micro-metadata inside 16–20px-tall elements. Never for content the user reads as text; anything sentence-shaped belongs at Label or above.
-- **Subtitle** (600 weight, 18px / `text-lg`): the step between Headline and Title, for dialog and alert-dialog titles and the timer's elapsed readout. Documented because five call sites already used it and the ramp pretended it didn't exist; `text-lg` is a named, greppable step, which is what the Named-Step Rule actually asks for.
-- **Mono/Data** (500 weight, tabular-nums, Geist Mono): durations (`2h 15m`), elapsed timers, currency amounts — anywhere a column of numbers needs to align.
+- **Display** (700, 24px, tight tracking at -0.025em): the pane title — "Sep 14 – 20 · W38", "Projects", "Settings" — set inline with its actions in the floating header. Also the login page's product name.
+- **Readout** (Geist Mono, 600, 24px, tabular): the docked bar's elapsed time, in `--primary-ink`. The one number in the app at Display size; it is the answer to "am I still tracking?" and is sized to be read from across a desk.
+- **Title** (600, 20px): the auth card's heading ("Welcome back, clock-watcher") and error-page headings. Not used inside panes — the pane title is Display.
+- **Subtitle** (600, 18px, line-height 1): dialog and alert-dialog titles.
+- **Headline** (600, 16px, line-height 1): card titles ("Appearance", "Keyboard shortcuts"), sheet titles.
+- **Body** (400, 14px): default UI text, row descriptions, table cells, buttons, segments, form labels (at 500), day-group headers (at 600). Inputs render at 16px below the tablet breakpoint so iOS does not zoom, and 14px above it.
+- **Label** (500, 12px): the "Logged this week" strip, the row's time range (mono, tabular), badges, card descriptions, secondary metadata, the assistant's shortcut hints.
+- **Micro** (500, 10px, `--text-micro`): the floor of the ramp, for chrome-level detail only — kbd chips, the ribbon's hour labels, the billable "$", entry-row tag chips, the rail's nudge count, the "Showing 5 days" chip, the spent-figure caption. Never for anything sentence-shaped. Deliberately declared without a line-height so call sites inherit their leading.
+- **Mono/Data** (Geist Mono, tabular): durations ("1h 30m"), time ranges ("13:00 – 14:30"), day totals, currency — at Body or Label size, and at Readout size in the bar.
 
 ### Named Rules
-**The Tabular Rule.** Any number that appears in a list or column (durations, currency, percentages) uses `tabular-nums` so digits align vertically. This is non-negotiable in reports and entry lists.
+**The Tabular Rule.** Any number that appears in a list, column or readout uses tabular figures and the mono face, so digits align vertically and a control's width does not depend on which digits it holds. The row's time range is fixed-width per format (12h is genuinely wider) and right-justified for the same reason. Non-negotiable in the entry list, reports and the bar.
 
-**The Named-Step Rule.** Every size above comes from a named utility — `text-xl`, `text-base`, `text-sm`, `text-xs`, `text-micro`. An arbitrary size anywhere in the app is drift by definition, even when the pixel value happens to match a step: it can't be changed centrally and it defeats the design-system check. There are now **zero** arbitrary font sizes in the app, and ESLint fails the build if one comes back (`no-restricted-syntax` in `packages/eslint-config/base.js`). This rule had been swept clean by hand more than once and grew back each time, because nothing failed when it did. (**Never write a utility class in backticks in a Markdown file.** Tailwind v4 scans `.md` too, so a class named in prose compiles a real, dead rule into the shipped stylesheet — name the CSS property instead. This has now bitten twice: once for arbitrary font sizes, and once for the background-clip utility, where §6's note that the assistant's gradient sweep had been *removed* was itself what kept regenerating that rule into the bundle and tripping the gradient-text detector on every route. Writing the class name here — even to warn about it, even with a leading dot — recompiles it, which is how this rule got its second bite. The named steps listed above are the exception that proves it: they are all real utilities the app uses.)
+**The Named-Step Rule.** Every size above is a named step; an arbitrary font size anywhere in the app is drift by definition, even when its pixel value happens to match a step. ESLint fails the build on one (`packages/eslint-config/base.js`). This rule had been swept clean by hand more than once and grew back each time, because nothing failed when it did. (Never write a utility class name in backticks in a Markdown file — Tailwind v4 scans `.md` and compiles what it sees into the shipped stylesheet. Name the CSS property or the token instead.)
 
-**The Spent-Figure Rule.** A `5h 30m / 90h` caption beside a progress bar ranks by *contrast*, not size: the spent value is `--foreground`, the thing it is measured against is `--muted-foreground`, and both stay at Micro. Three surfaces rendered this pair — project budgets, task estimates in the project drawer, task estimates in the board — and all three set the whole string at the smallest step of the ramp *and* the lowest contrast on it, which put the one live number in the row below the chrome around it. Micro is still correct (the Two-Tier Rule fixes it there, and a 12px caption under a 12px metadata line flattens the row rather than ranking it); the fix is that only half the string should recede. One component, `ui/spent-figure.tsx`, so the three can't diverge again.
+**The Spent-Figure Rule.** A "5h 30m / 90h" caption beside a progress bar ranks by *contrast*, not size: the spent value is `--foreground`, the thing it is measured against is `--muted-foreground`, and both stay at Micro. One component, `ui/spent-figure.tsx`, so the three surfaces that render this pair cannot diverge again.
 
-**The One-Keycap Rule.** Every keyboard chip is `ui/kbd.tsx` — `Kbd`, or `KbdGroup` for a sequence. There were five hand-rolled `<kbd>` elements across four files in four different shapes (three heights, three paddings, two font sizes) for one element with one job, which is what happens when a Micro-tier detail is too small to feel worth a component. The canonical chip is 20px tall at Micro on `--muted` with a hairline; a longer label may widen its padding, nothing else varies.
+**The One-Keycap Rule.** Every keyboard chip is `ui/kbd.tsx` — `Kbd`, or `KbdGroup` for a sequence. The chip is 20px tall at Micro in the mono face, on `--muted` with a hairline and a 4px corner; a longer label may widen its padding and nothing else varies. Inside a tooltip's inverted surface it re-inks itself from `--background` at 20%.
 
-**The Two-Tier Rule.** Where a dense element stacks a heading over its metadata — calendar blocks, table column headers, tool cards, entry rows — the heading is Label (12px) and everything beneath it is Micro (10px). No in-between size: an 11px middle tier is a near-miss that reads as sloppy rather than hierarchical, which is exactly what the app accumulated before this rule existed. The exception is a block whose *only* content is that one line (the calendar's untracked-gap affordance, a `<code>` value you may need to read exactly) — that line is the heading tier, so it takes Label.
+**The Two-Tier Rule.** Where a dense element stacks a heading over its metadata — calendar blocks, table column headers, tool cards, the spent-figure caption — the heading is Label and everything beneath it is Micro. No 11px middle tier.
 
-## 4. Elevation
+## Layout
 
-The system is flat-by-default with tonal layering, not shadow-driven. This is now literally true: inputs, selects, textareas, switches and outline buttons each carried a `shadow-xs` while this section claimed overlay shadows were the only ones in the app. They no longer do — radix-maia puts no shadow on any control either, so the rule and the code finally agree. Depth is conveyed by a one-step lightness shift between the ground and the surface — **and by nothing else**. Cards have no border and no resting shadow: the tonal step already says "this is a surface", and a hairline plus a shadow on top of it are two more ways of saying the same thing. Thirty of them on a Settings page is most of its visual noise. The timer Start/Stop control is the one place that gets a distinct treatment, and it earns it with *color and motion* rather than dimension: a flat brand-tinted capsule with a ring breathing outward behind the disc (see §8).
+The app is a fixed rack: the page never scrolls, the panes do. The shell is a full-height row — an 80px rail on the left (`--spacing-rail`), then the pane column, capped at 1800px and centred. Nothing on the page has a scrollbar in either engine; each scrolling pane fades its content out at the top instead.
+
+**The rail** is 80px wide, on `--rail`, with a hairline right edge and 20px vertical padding. The brand mark (36px) sits in a 48px slot at the top, then the six route buttons (48px circles, 8px apart), then at the bottom: Assistant, Search, and the account avatar. Below the tablet breakpoint (768px) the rail becomes a 56px chassis strip across the top — mark, product name, Assistant and a menu button — and the nav lives in a 288px left sheet as fully rounded rows.
+
+**The pane** (`components/layout/Pane.tsx`) is the one shape every route is built from: a relative, full-height column with hidden overflow. Its header is *absolute* over the top — 24px side gutters, 20px above, 8px below, wrapping with 12px/8px gaps — and measures itself into `--pane-header-h` (default 4.5rem) so a header that wraps to two rows at a narrow width pushes the content down rather than covering its first row. A gradient from `--background` to transparent, the header's height plus 20px tall, sits at the sticky tier beneath it; the scroll region pads its top by `--pane-header-h` and its sides and bottom by 24px. A body that manages its own scrolling (the calendar grid, the timesheet) opts out of the padding but still starts below the header. The Timer's header carries a second row — the "Logged this week" proportion strip — inside the same floating header, so the list fades out beneath both.
+
+**The dock clearance.** The shell exposes `--dock-h` — 8.5rem while the composer floats (24px up, roughly 104px tall) and 6.5rem while the bar is docked (88px flush) — and the main region pads its bottom by it, transitioning at the slow duration, so the last row of any route clears the timer surface. Toasts offset 112px from the bottom on desktop for the same reason; on a phone the composer spans the bottom edge, so toasts drop in from the top instead, 72px down to clear the brand strip.
+
+**Density and rhythm.** The base rhythm is 4px; the working steps are 8 (row gap, rail button gap), 12 (header gap, composer padding, row card horizontal gap), 16 (row card side padding, phone insets), 24 (pane gutters, card padding, the composer's inset from the rail and the bottom edge). Entry rows are row cards 8px apart under a plain day header; Settings caps its panels at 768px. Breakpoints are Tailwind's: 640 (sm — the row's time range moves into the metadata line below it), 768 (md — the rail appears, the composer stops spanning the edge), 1024 (lg — the day ribbon appears in the bar, Split view is offered), 1280 (xl — the ribbon widens from 256 to 320px).
+
+**Touch and hover** are gated on input capability, not viewport width: hit areas grow to 44px on a coarse pointer, and reveal-on-hover row actions are always visible on a device that cannot hover.
+
+## Elevation & Depth
+
+Depth on the rack is tonal and drawn: a panel is one lightness step up from the ground with a one-pixel hairline, and that is the whole vocabulary for everything that rests on the page. There is no resting shadow on a card, a row, an input or a button. Shadows are spent on the things that are genuinely *off* the page — overlays, and the two timer surfaces — plus one red glow.
 
 ### Shadow Vocabulary
-- **Card rest: none.** Cards are separated by tone alone. There is no resting shadow anywhere in the system.
-- **Overlay** (`shadow-md` / `shadow-lg`): popovers, dialogs and sheets, which float above the page and need to read as detached rather than layered. These are the *only* shadows in the app, and they are paired with the lightest surface token (`--popover`) so "floating" is said twice, consistently, rather than once each in two different vocabularies.
+- **Overlay** (Tailwind's medium shadow on popovers, menus and selects; large on dialogs, sheets and submenus): floating surfaces, always paired with `--popover` so "floating" is said twice in one voice. The assistant's scroll-to-latest button and the skip-to-content link, both of which hover over content, take the medium shadow.
+- **The composer** (Tailwind's 2xl shadow): the idle capsule is the loudest surface in the app and the only thing at that depth. Its edge is the brand red at 20%, warming to 40% while a field inside has focus.
+- **The lit disc** (large shadow, coloured `--primary` at 40%, 50% on hover): the composer's 40px Start disc and the assistant's Send disc — a glow, not a drop. The only coloured shadows in the system. Running, the Stop disc drops the glow and the pulse ring does that job.
+- **The active rail button** (large shadow): the current route's 48px circle lifts a step off the chassis, under its fading red ring.
+- **The active segment** (small shadow): the recessed pill on the segment track carries the faintest lift so it reads as *set into* the track rather than painted on it.
+- **The brand glow** (dark only): three stacked drop-shadows of the brand red at 55/35/20% behind the rail's mark — the one place the red is a light rather than a fill. Off in light, where a glow on a light ground reads as a smudge.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Surfaces are flat at rest, separated by **tone alone** — no border, no shadow. There is no gradient, inner-shadow or "lit-dome" depth anywhere — including on the timer control, which is a flat solid disc.
+**The Hairline Rule.** Every structural line is one device pixel of `--border`. There is no 2px border anywhere in the world; the only thicker lines are the calendar's 3px event edge and 2px now-indicator, which are colour, not structure.
 
-## 5. Components
+**The Flat-At-Rest Rule.** Surfaces that rest on the page — cards, row cards, inputs, buttons, the segment track — are separated by tone and hairline alone. A shadow means "this is off the page": an overlay, the composer, or the lit disc.
+
+**The Glass Rule.** Exactly two surfaces are glass — the composer and the docked bar — and both are `--glass` behind a 24px blur. Nothing else blurs.
+
+## Shapes
+
+Radius is chosen by what an element *is*, never by taste, and there are four families; the boundary between them is density.
+
+- **Controls are pills** (fully rounded): buttons of every size — icon-only buttons are therefore circles — badges, inputs, select triggers, the segment track and its segments, the composer's chips, the rail's 48px buttons, the sheet nav's rows, the header's split Add pill.
+- **Containers are 12px** (`--radius-container`, 0.75rem): cards, row cards, dialogs, sheets (on their open edge), popovers, menus, selects, textareas. Tight-cornered, not pillowy — a rack panel, not a cushion.
+- **The capsule is 2rem** (`--radius-capsule`): exactly one surface, the floating composer. It is the loudest shape in the system and it is spent on the one thing the app exists to do.
+- **Data cells stay at the base scale** (`--radius`, 8px, and its 6px/4px steps): timesheet and planner cells, calendar blocks (4px with a 3px solid left edge), menu items (8px), the elapsed-readout hit area, kbd chips (4px), the row checkbox.
+
+Borders are hairlines (see Elevation). A dashed hairline means exactly one thing — **empty, click to fill**: the assign-project chip, the calendar's ghost, gap and draft blocks, empty-state containers. It is never a "you can't" signal; locked cells read at 50% opacity with a not-allowed cursor and stay in the tab order.
+
+## Components
 
 ### Buttons
-- **Shape:** `rounded-full` on all sizes, including icon-only (which therefore render as circles). See The Geometry Rule below.
-- **Primary:** brand-red background, white text, `hover:bg-primary/90`, active state scales to 97% — **except on menu triggers**, which are excluded via `aria-haspopup`. A trigger that shrinks while its own menu is opening plays two conflicting animations on one click. (This is radix-maia's `not-aria-[haspopup]` refinement; the app keeps its 97% scale rather than maia's 1px nudge.)
-- **Every button carries a transparent 1px border** (`border border-transparent bg-clip-padding`). It is load-bearing, not cosmetic: the focus treatment below sets a border *colour*, and Tailwind's preflight leaves border-width at 0, so on any variant that didn't declare its own border the focus border never rendered — measured at 0px across the whole app. It also keeps the box identical between variants. Badge, Switch and TabsTrigger already did this (it is the radix-maia convention, five components wide); Button predated the v4 CLI migration and was the one that missed it.
-- **Open state:** `outline`, `secondary` and `ghost` style `aria-expanded`, so a dropdown trigger reads as held-open while its menu is up. Without it a row's `…` button looked identical open and closed.
-- **Outline:** transparent background, 1px border, `hover:bg-accent`. The default for secondary toolbar actions.
-- **Ghost:** no border or fill at rest; `hover:bg-accent`. Used for tertiary/inline actions (row menus, dismiss buttons).
-- **Destructive:** filled with the destructive color; reserved for delete/discard confirmations.
-- **Icon-only:** always paired with `aria-label` + a native `title` tooltip. Use the canonical size tokens — `icon-xs` (24px, dense inline row actions), `icon-sm` (32px, toolbar actions — matches labeled `size="sm"` buttons), `icon-lg` (40px) — never an ad-hoc `h-N w-N` override; drift between icon and labeled buttons of the same conceptual size is a defect.
+- **Shape:** fully rounded at every size. Heights: xs 24px, sm 32px, default 36px, lg 40px; icon-only circles at xs 24px, sm 32px, default 36px, lg 40px. Text is Body at 500; xs drops to Label.
+- **Every button carries a transparent 1px border** with background clipped to the padding box. It is load-bearing: focus sets a border *colour*, and without a border width the focus border never rendered. It also keeps the box identical between variants.
+- **Primary:** `--primary` fill, `--primary-foreground` text, 90% on hover. The pane header's Add control is a primary pill split in two (Add, then a caret for "Add with AI…") with a 25% white divider — the header's one red element.
+- **Outline:** `--background` fill with the hairline; hovers to `--accent`. The default for secondary toolbar actions ("Today", "Draft day").
+- **Ghost:** no fill at rest; hovers to `--accent` (50% in dark). Row menus, period steppers, dismiss buttons, the docked bar's Discard (which hovers to `--destructive`).
+- **Destructive:** `--destructive` fill; delete and discard confirmations only.
+- **Link:** `--primary` text with an underline on hover.
+- **States:** hover and focus at the fast duration; press scales to 97% except on menu triggers (a trigger that shrinks while its menu opens reads as two animations on one click); an open menu trigger holds its hover fill via `aria-expanded`; disabled is 50% opacity.
+- **Icon-only** buttons always carry an accessible name and a native title, and use the size tokens — never an ad-hoc width/height — so they match labelled siblings of the same size. Prefer icon-only in dense toolbars; keep the label when the button conveys current state (date range, rounding mode).
 
-### Badges / Chips
-- **Style:** fully rounded (`rounded-full`), 12px label text, 2px/8px padding.
-- **Variants:** default (primary fill), secondary (muted fill), outline (border only, transparent fill), destructive.
-- **Project/tag chips** additionally carry a small `ColorDot` (2.5px circle) in the item's assigned palette color before the label.
+### The Segment Track
+One shape for every "pick one of these" control: a 32px track on `--muted` with a hairline and 3px padding; segments are pills at Body 500 with 12px side padding. The **active segment is recessed** — `--background` fill, a hairline edge and the small shadow — so it reads as set into the track, in ink, not in the brand red. Inactive segments are `--muted-foreground` and brighten to `--foreground` on hover. On a phone the track scrolls horizontally rather than wrapping labels mid-word.
 
-### Cards / Containers
-- **Corner Style:** `rounded-container` (20px). Named rather than spelled as an arbitrary value so the container radius moves in one place.
-- **Background:** `--card`, a measured tonal step from the page ground (§2 Neutral).
-- **Shadow Strategy:** none at rest, and no hover elevation change.
-- **Border:** none. Tone is the only separator.
-- **Internal Padding:** 24px (`py-6` + header/content gutters).
-- **The KPI-strip exception:** the Reports summary metrics render as one framed strip (flex-wrap, 1px internal dividers via `bg-border` gaps) rather than a grid of individual cards — this avoids the "identical card grid with an orphaned empty cell" anti-pattern when the visible metric count doesn't evenly divide the row.
+Five controls render this exact shape and must not diverge: `SegmentedControl` (a value — theme, time format), `Tabs` in its default variant (Reports' Summary / Weekly / Detailed), `TaskViewTabs`, `TimerViewSwitcher`, and the calendar-view radiogroup inside `CalendarViewOptions`. They share the exported `SEGMENT_TRACK` / `SEGMENT` / `SEGMENT_ACTIVE` / `SEGMENT_INACTIVE` strings from `ui/segmented-control.tsx`; a sixth consumer imports those rather than restating them.
+
+### Line Tabs
+`Tabs` in its `line` variant is the Settings navigation: a hairline under the whole strip, triggers at Body 500 with 16px/8px padding, and the active tab carries a 1px `--primary` underline sitting *on* the strip's hairline (pulled down one pixel so the two coincide). It is the only place the accent appears as a line, and it is spent on the one navigation that is itself a page. The active tab lives in the query string so a Settings section is linkable.
+
+### Cards & Row Cards
+- **Card:** `--card` fill, 12px corners, hairline edge, 24px padding, 24px internal gap; header and content share a 24px gutter. Card titles are Headline. No shadow, no hover lift.
+- **Row card** (the entry row): the same panel at list density — `--card`, 12px corners, hairline, 16px side and 10px vertical padding, 12px gap between cells, rows 8px apart. Hover wakes the *edge* (to `--border-strong`), not the fill; the fill is reserved for selection (`--primary` at 5% with a 50% red edge) and the just-stopped flash. Inside a description group's card, occurrences are hairline-separated rows instead, hovering to a 40% muted wash. Cells, left to right: project dot, description over a metadata line (project badge, tags at Micro), sync state, the billable "$" in `--primary-ink` at Micro, the mono time range at Label, the mono duration at Body, and reveal-on-hover actions.
+- **Day header:** a plain heading row — chevron, Body 600 label, mono muted total — with no fill of its own; a tinted band above a stack of cards read as a second, heavier card.
+- **The KPI strip:** Reports' summary metrics are one framed, wrapping strip with hairline internal dividers, not a grid of cards that can orphan an empty cell.
 
 ### Inputs / Fields
-- **Style:** 1px border, `bg-background`, `rounded-full`, **no shadow**. `Input` carries `px-4` so text is not crowded into the curve; **`SelectTrigger` stays at `px-3`** because it is `w-fit` in tight toolbars and the extra 8px truncated its value ("No sub-grou…") — a chevron already gives it the breathing room the pill needs. **Textarea is the deliberate exception** to the shape — it keeps `rounded-xl`, because a pill forces the first and last lines of multi-line text into the curve.
-- **Focus:** border shifts to the ring color plus a 3px ring at 50% opacity — no glow, no scale change. **The focus ring is not the brand red.** `--ring` (`oklch(0.55 0.14 265)` light / `oklch(0.7 0.14 265)` dark) is deliberately a different hue from both `--primary` and `--destructive`: when they shared a value, a focused input read as a validation error and "Save changes" was the same color as "Discard". Hue 265 is the system's own cool tint from the dark ramp, not a stock blue. One focus vocabulary everywhere — no bare-underline substitutes.
-- **Error:** border and ring shift to the destructive color at reduced opacity.
+- **Style:** a recessed well — `--background` fill (one step *below* the card it sits on), hairline in `--input`, fully rounded, 36px tall, 16px side padding so text clears the curve. No shadow.
+- **Select trigger:** the same well at 12px side padding (it is fit-width in tight toolbars and the extra 8px truncated values); the chevron gives it the room the pill needs. 36px, or 32px in its small size.
+- **Textarea** is the deliberate shape exception: 12px container corners, because a pill forces the first and last lines of multi-line text into the curve.
+- **Focus:** border to `--ring`, 3px ring at 50%. **Error:** border and ring to `--destructive` at reduced opacity. **Disabled:** 50% opacity.
+- **Inline editors** in a row (description, duration) are bare fields with a `--primary` bottom hairline while editing, and turn destructive when the value is invalid rather than silently reverting.
 
-### Navigation
-- **Sidebar:** icon + label nav items, `rounded-md` active/hover states, active item gets a `bg-primary/10` fill with primary-colored text and icon (not a full-color fill — this is the "One Accent Rule" applied to navigation). Collapses to a 56px icon rail; the collapsed state shows the brand mark itself as the expand control (no separate arrow button) — the logo never disappears when collapsed.
-- **Tabs** (Reports Summary/Weekly/Detailed, Timer view switcher, Settings sections): segmented control, `bg-muted` track, active segment is a solid `--foreground` pill with `--background` ink (see The Segmented Rule below — this line used to describe the lift-to-`bg-background`-with-a-shadow treatment that rule replaced). Settings uses them to break 15 cards into four named groups, with the active tab in the query string so `/settings?tab=account` is linkable.
-- **`SegmentedControl`** (`ui/segmented-control.tsx`): the same segmented shape for a *value* rather than a panel — theme and time format. Use it instead of hand-rolling a pill group; Settings had two of these diverging, one of which (theme) was a lone icon that never showed which of its three states was active.
+### The Composer (signature)
+The idle timer. A glass capsule (`--glass`, 24px blur) with 2rem corners, 12px padding, a `--primary` edge at 20% (40% while focused within) and the 2xl shadow, fixed 24px up from the bottom edge and 24px in from the rail, at most 46rem wide (16px insets and full width on a phone). Row one: a *bare* description field — no border, transparent, 36px, Body-size at every width, placeholder "What are you working on?", focus as an inset full-opacity ring — beside the 40px `--primary` Start disc with its red glow, which scales to 105% on hover. Row two: chips — project, task, tag pills (32px, hairline, `--background`, hovering to a 6% ink wash), the billable toggle — and, right-aligned, resume-last and favourites. It enters with the capsule-in motion. It is the only surface at its depth, the only capsule, and one of two glass surfaces.
 
-### The Geometry Rule
-Corner radius is chosen by **what an element is**, never by taste, and there are exactly three families:
+### The Docked Transport Bar (signature)
+The running timer. The capsule docks into a full-width glass strip on the bottom edge (from the rail's right edge on desktop, edge to edge on a phone) with a hairline top and no radius, entering with the dock-in motion. Inside, capped at 1800px with 16/24px side and 12px vertical padding: the 40px Stop disc — brand red, shadow off, a flat `--primary` ring breathing outward behind it — then the Readout (24px mono 600, `--primary-ink`, minimum 6.5 characters wide, click to edit in place), the same bare description field (now at 500) and the same chips, the day ribbon (from the laptop breakpoint), and a ghost Discard button that hovers to `--destructive`. Below the tablet breakpoint the disc and readout take the first row, the field the second, the chips the third, and Stop stays on screen at every width.
 
-- **Controls — `rounded-full`.** Buttons (including icon-only, which become circles), badges, inputs, segmented-control tracks and segments. A pill costs nothing at 24–40px and it is the loudest single cue in the system's shape language.
-- **Containers — `rounded-container` (20px).** Cards, dialogs, sheets, popovers.
-- **Data cells — `rounded-md` / `rounded-lg`, unchanged.** Entry rows, timesheet cells, calendar event blocks, planner cells, table cells.
+### The Day Ribbon (signature)
+Today as a trace, inside the docked bar: a 36px-tall strip, 256px wide (320 from the desktop breakpoint). Hour ticks in `--border-strong` (8px tall every third hour, 4px otherwise) with Micro mono labels; beneath them an 8px fully rounded track on `--muted` carrying one segment per entry in its project colour (minimum 2px wide), the running segment in `--primary` breathing with the running-dot cadence, and a 1px `--primary` now-line overshooting the track by 4px. The window is 07:00–19:00, stretched to whole hours whenever an entry or the clock falls outside it. It has one accessible name summarising the day; the segments are decorative.
 
-The boundary between the families is **density**. Pills on a thirty-row entry list would trade the app's actual job — scanning a day of tracked time — for a look, so the geometry stops at the edge of the data. If a new surface is dense, it belongs to the third family no matter how it is built.
+### The Rail Button & Ring (signature)
+A 48px circle. Idle: `--muted-foreground` icon (20px), hovering to a 6% `--foreground` wash and full ink. Active: the wash held, the large shadow, and the rail ring — a hairline of `--primary` at 60% around the circle, masked to fade from full at the top to nothing by 60% of the way down, so it is brightest where it meets the icon's top edge. The Timer button additionally carries the running dot (8px, `--primary`, top-right, breathing) while a timer runs; the Assistant button carries a 16px `--primary` count badge at Micro when nudges are waiting. Focus is the house ring.
 
-### The Segmented Rule
-There are five segmented controls in the app — `SegmentedControl`, `Tabs` (default variant), `TaskViewTabs`, `TimerViewSwitcher` and the calendar-view radiogroup inside `CalendarViewOptions` — and they must not diverge. That last one is the reason this is a written rule: it is a `grid`, not a flex row, so it did not match a search for the others and had been quietly drifting on its own. The active segment is a solid `--foreground` pill with `--background` text, on a `--muted` track.
+### Badges / Chips
+Fully rounded, Label 500, 8px/2px padding, transparent 1px border. Variants: default (`--primary` fill), secondary (`--secondary`), outline (hairline, ink), ghost, destructive, link. Project and tag chips carry a 6px colour dot before the label; entry-row tag chips shrink to 16px tall at Micro. The project badge is the swatch-tint treatment (13% tint, derived ink).
 
-It is deliberately **not** the brand red: the one accent is spent on primary actions and the running timer, and a settings row is neither. Ink-on-track is also the only "which one is selected" signal here that survives a colour-blind reader unchanged, because it carries no hue at all.
+### Overlays
+- **Dialog:** `--popover`, 12px corners, hairline, 24px padding, large shadow, over a 50% black scrim; fades and scales in from 95% at the base duration. Title at Subtitle; description at Body in muted ink, balanced.
+- **Sheet:** `--popover`, large shadow, 12px corners on the open edge, hairline on that edge; slides at the slow duration, scrim included, on the shared curve (the Assistant panel is a sheet, so this is the most-felt motion in the app). Three-quarters width, capped at 384px.
+- **Popover / dropdown / select:** `--popover`, 12px corners, hairline, medium shadow, 4px inner padding for menus and 16px for popovers; items are 8px-cornered at Body with `--accent` focus. Tooltips are the inverted surface with shortcut hints in `--background` at 60%.
 
-It replaced a lift-to-`bg-background`-with-a-shadow treatment, which stopped working the moment cards went borderless and recessed: the "lifted" segment and the surface behind it became the same value, so the control read as flat. Anything inside an active segment must use `--background`-derived ink, not `--muted-foreground`, which is tuned for light grounds and disappears on the pill.
+### Keyboard Chip
+See The One-Keycap Rule.
 
-### The Period Control Rule
-The "Today" button is never hidden — visible-but-disabled when the period already contains today. It was briefly `invisible` + `aria-hidden` to avoid the label reading "Today Today", which traded an affordance for a cosmetic nit and fired at exactly the wrong moment: switching to Split collapses the period to a single day, so the one period control vanished from the screen and the a11y tree together. When the pane is too narrow for the requested calendar view, the header carries a "narrow pane" chip — that explanation previously lived only inside the View options popover, so the header total silently changed from a week to a day with nothing on screen saying why.
+### Busy vs Not-Loaded-Yet
+- **Spinner** (`ui/spinner.tsx`): "this specific action is working". Sizes sm 14px, default 16px (matches a button's icon), lg 20px (a whole panel). Never a hand-rolled spinning icon.
+- **Skeleton**: "this surface hasn't loaded yet" — `--accent` at the pulse cadence, 6px corners, holding the layout.
 
-### The Dashed Rule
-A dashed border means exactly one thing: **empty, click to fill.** The assign-project chip, the calendar's ghost and untracked-gap blocks, and empty-state containers. It is never a "you can't" signal — locked cells (a multi-entry timesheet cell, a planner row with no project) read as `opacity-50` + `cursor-not-allowed`, and they use `aria-disabled` rather than `disabled` so they stay in the tab order and their `aria-describedby` explanation is actually announced. A `title` on a `disabled` button reaches nobody.
+### Calendar Blocks
+Real entries: a translucent project-colour fill with a 3px solid left edge, 4px corners, no shadow, 2px/6px padding. Ghost (unconfirmed calendar event), gap (untracked time) and draft (proposed entry) blocks are dashed and solidify on hover; a running block dashes its left edge and breathes the running dot. Labels degrade by the *block's* width via container queries (duration drops below 144px, times below 84px), not by viewport. The today column is a 4% foreground wash; the now-indicator is `--primary`, 2px.
 
-### Calendar Event Block (signature component)
-Real tracked entries render as a translucent fill (16% opacity of the project/tag color) with a solid left-accent border in the same color — not a solid block, so overlapping context (now-indicator, grid lines) stays legible through it. Three distinct block styles share the same grid: **real entries** (solid border, translucent fill), **unconfirmed calendar "ghost" events** (dashed border, near-transparent, cursor pointer, "click to track" affordance), and **untracked-gap blocks** (dashed, barely-there, "Track hh:mm–hh:mm" label) — all three read as fundamentally different weights of interactivity at a glance without needing a legend.
+### The Period Control
+"Today" is never hidden — visible-but-disabled when the period already contains today, so the toolbar does not reflow and the one period control never vanishes from the tab order. When the pane is too narrow for the requested calendar view, a Micro chip on `--muted` says "Showing 5 days" where the number changed.
 
-## 6. Motion
-
-Motion in a quiet ledger is confirmation, not performance. It exists to answer three questions — *did that register?*, *where did this come from?*, and *is this still running?* — and nothing else. Nothing bounces, nothing springs, nothing slides in to be admired.
-
-### Duration Scale
-
-Three steps, defined in `index.css` and consumed as `duration-fast` / `duration-base` / `duration-slow`. Pick by **how far the thing travels**, not by how important it is.
-
-| Token | Value | For |
-|---|---|---|
-| `duration-fast` | 150ms | A state change in place: hover, focus, colour, a chevron rotating, a row tint. |
-| `duration-base` | 200ms | Something appearing or leaving: dialogs, popovers, dropdowns, tooltips, entry rows, stat strips. |
-| `duration-slow` | 300ms | A panel-sized move across the screen: sheets and drawers, the timer capsule opening. |
-
-Numeric utilities (`duration-200`) still compile, but the named steps are the convention — they keep the scale greppable and let a retune happen in one place.
-
-### Easing
-
-`--ease-out-quart` (`cubic-bezier(0.25, 1, 0.5, 1)`) is **the** curve. Everything decelerating into place uses it; there is no separate "enter" and "exit" curve. `--ease-out-quint` is reserved for the single largest move — the timer control's width change — where a flatter tail keeps a wide element from appearing to overshoot. Looping opacity pulses (`animate-running-dot`) stay on `ease-in-out`, because a symmetric breathe wants a symmetric curve.
-
-Stock `ease-out` / `ease-in-out` / `ease` and Tailwind's default curve are not part of the system. A bare `transition-colors` silently falls back to that default — always pair a transition with a duration and `ease-out-quart`. **ESLint enforces this** (`no-restricted-syntax`): a transition utility in a class string without `ease-out-qu` fails the build. Two hand sweeps had already closed this and it grew back both times.
-
-### The Running State
-
-The one motion the product is allowed to spend attention on, because "am I still tracking?" is the question the whole app exists to answer. It has **two forms and one cadence** — both loop at 1.6s, so when they share a screen (the sidebar readout sits directly under the timer bar) they breathe together instead of drifting against each other.
-
-- **The signature** (`animate-recording-pulse`): a flat `--primary` ring scales outward from behind the Stop disc while the disc itself stays put — the visual equivalent of a recording light. Only ever on that one control. Keeps `ease-out-quart` because it *travels*.
-- **The quiet one** (`animate-running-dot`): a small dot breathing in place, for dense surfaces — the sidebar's running readout, a running block on the calendar grid. Opacity only, because these sit inside rows where a scaling dot would nudge its neighbours. On `ease-in-out`, per the curve rule above.
-
-These are the only infinite animations in the product. Adding a third form of "running" is the wrong move — extend one of these two.
-
-### Busy vs. Not-Loaded-Yet
-
-Two different states, two different components, and they are not interchangeable:
-
-- **`Spinner`** (`components/ui/spinner.tsx`) — *this specific action is working*. Sizes are `sm` (14px, compact controls and row actions), `default` (16px, inside a default button), `lg` (20px, a whole panel or route). Never hand-roll `<Loader2 className="animate-spin" />`; that is how five sizes appeared for three jobs.
-- **`Skeleton`** — *this surface hasn't loaded yet*. Preferred for anything with a known shape (lists, cards, tables) because it holds the layout instead of collapsing it and then shoving content in.
-
-There is no third busy form. The assistant's "Thinking…" used to be a `background-clip: text` gradient sweep — a one-off reimplementation of `Spinner` wearing a paint job §7 explicitly forbids. It is a `Spinner` now, and the component, its keyframe and its token are gone.
-
-### Named Rules
-
-**The Confirmation Rule.** Motion confirms something the user did, or reports something that changed. It never decorates, never celebrates, and never delays access to content.
-
-**The One Curve Rule.** `ease-out-quart` unless there is a stated reason otherwise — and the reason belongs in a comment at the call site.
-
-**The Disclosure Rule.** Anything that opens or closes animates its *panel*, not just its chevron. `CollapsibleContent` carries the height animation by default (`duration-base`, `overflow-hidden`); a disclosure whose arrow rotates smoothly while its content snaps into place reads as broken.
-
-**The Reduced-Motion Rule.** `prefers-reduced-motion: reduce` collapses every animation and transition globally (`index.css`). Any effect whose *timing is coordinated in JS* — a row that waits for its exit animation before unmounting, a highlight that clears on a timer — must read the preference too and shorten itself; the CSS rule cannot reach a `setTimeout`. A running state must always survive the preference as colour and iconography, never as motion alone.
-
-## 7. Layering
-
-Four named tiers, registered in `index.css` as `--z-index-*`. The values are the ones the app already used by convention; naming them means a new surface picks a *meaning* rather than a number, and the order is greppable in one place.
-
-| Token | Value | For |
-|---|---|---|
-| `z-sticky` | 10 | Headers and frozen first columns inside a scrolling grid. |
-| `z-overlay` | 20 | Something covering a pane but not the app — the calendar's error wash, the ghost-count button, a sticky corner cell that has to win against its sticky neighbours. |
-| `z-portal` | 50 | Dialogs, sheets, popovers, dropdowns, selects. |
-| `z-tooltip` | 60 | Above portal on purpose: a tooltip on a control *inside* a dialog was previously the same 50 as the dialog and relied on DOM order to be visible at all. |
-
-A raw `z-10` / `z-20` / `z-50` fails ESLint. Sonner manages the toast layer itself and is left alone.
-
-## 8. Do's and Don'ts
+## Do's and Don'ts
 
 ### Do:
-- **Do** keep the brand red to one or two elements per screen — the running-timer state and the primary action (**The One Accent Rule**).
-- **Do** use the hue-alternated project/tag palette (`DISTINCT_COLORS`) for anything auto-assigned, so 2-3 adjacent items are never visually near-identical.
-- **Do** use `tabular-nums` and Geist Mono for any number in a list or column.
-- **Do** use the canonical `icon-xs` / `icon-sm` / `icon-lg` button size tokens for every icon-only button — never a hard-coded `h-N w-N` override.
-- **Do** show a real empty state (icon + title + one-line description) on any chart, list, or breakdown that has no data — never a blank axis or silent nothing.
-- **Do** let dense legends and stat strips wrap or reflow at narrow widths rather than overflow their container.
+- **Do** spend the brand red as a light: the Start disc's glow, the readout, the live segment, the active rail ring, one primary pill per header, the Settings underline (**The One Lit Control Rule**).
+- **Do** keep every neutral at chroma zero in both themes (**The True-Neutral Rule**).
+- **Do** draw every structural line as one device pixel of `--border`; wake a row's *edge* to `--border-strong` on hover, not its fill (**The Hairline Rule**).
+- **Do** use the mono face with tabular figures for any duration, clock or column of numbers (**The Tabular Rule**).
+- **Do** pick radius by family: pills for controls, 12px for containers, 2rem for the composer alone, the base scale for data cells (**Shapes**).
+- **Do** build every route as a Pane — floating header, scroll-fade, no scrollbar — and pad its last row by `--dock-h`.
+- **Do** render every pick-one control from the shared `SEGMENT_*` strings, with the active segment recessed in ink.
+- **Do** use the `-ink` token whenever the brand, success or warning colour is text.
+- **Do** pair every transition with a duration token and the quart curve; use `Spinner` for busy and `Skeleton` for not-loaded; put every shortcut in `Kbd`.
+- **Do** gate touch targets and reveal-on-hover on input capability, not viewport width.
+- **Do** show a real empty state (icon, title, one line) on any chart, list or breakdown with no data, and let dense legends and stat strips wrap rather than overflow.
 
 ### Don't:
-- **Don't** use a cream/sand/near-white body background — the "SaaS-cream dashboard" look is explicitly rejected. Neutrals carry a chroma nudge toward the brand's own hue, not a generic warm default.
-- **Don't** use gradient-clipped text, tiny uppercase tracked eyebrows above every section, or identical stat-card grids that can orphan an empty cell.
-- **Don't** reach for enterprise-bloat density — an overloaded toolbar, a nested-card layout, or a settings screen exposing everything at once. Reveal what the task needs.
-- **Don't** add drop-shadow "lift" to cards, menus, or panels on hover — depth comes from tone and border, not shadow.
-- **Don't** tint a progress track with the fill colour. A `bg-primary/20` track makes an empty bar read as a full one (`0m / 1h` looked identical in shape to a spent estimate), and spends the accent on work that hasn't started. The track is neutral; only a track that *means* something — `bg-warning/20` past 80% of a budget — overrides it.
-- **Don't** paint a progress *fill* in the accent either. The default fill is `--foreground` — the same solid ink the segmented controls use for "this is the filled part". A red fill made every healthy project alarm about itself, and it left red unable to say "over budget", since the escalation at 100% is `--destructive`. **The budget ladder is ink → `--warning` at 80% → `--destructive` at 100%**, and it has to stay monotonic: three steps, three separable colours, each louder than the last. A caller overrides the fill only when the fill *means* something (`--success` for the billable share).
-- **Don't** pair an icon-only button's `size="icon"` with an ad-hoc height/width override; use the size token so it matches its labeled siblings.
-- **Don't** visually clone Toggl. Feature parity (calendar view, favorites, auto-track) is a gap-closing strategy — the soft-tone, red-accent identity is this product's own.
+- **Don't** tint a neutral — no cream, no sand, no cool charcoal, no warm grey. The ground is measured grey.
+- **Don't** use the brand red as a wash or a large fill (the today column is a 4% *foreground* wash for this reason), and don't put `--primary` on small text — that is `--primary-ink`'s job.
+- **Don't** make Stop destructive. Stopping saves; only Discard and Delete wear `--destructive`.
+- **Don't** put a resting shadow on a card, row, input or button, and don't add hover lift to panels. A shadow means off-the-page: overlays, the composer, the lit disc.
+- **Don't** add a second glass surface, a second capsule, or a third form of "running" — extend the pulse ring or the running dot.
+- **Don't** write a bare transition, a 1px or 2px focus ring, an arbitrary font size, or a numeric z-index. ESLint fails the build on each: a transition utility without the quart easing, a thin or outline-hidden focus treatment instead of the house 3px ring at 50%, an arbitrary text size, and a raw 10/20/30/40/50 layer.
+- **Don't** pair an icon-only button's size with an ad-hoc width/height; use the icon size tokens.
+- **Don't** put `--muted-foreground` inside an active segment or on the rail's active pill — it is tuned for the track, and vanishes on the recessed pill; use `--foreground`.
+- **Don't** tint a progress track with its fill colour (an empty bar reads as full), and don't paint a healthy fill in the accent. The default fill is ink; the budget ladder is ink → `--warning` at 80% → `--destructive` at 100%, and it stays monotonic.
+- **Don't** use a dashed border for anything but "empty, click to fill".
+- **Don't** hide "Today", and don't hide a primary action behind hover.
+- **Don't** run the shadcn `init` against `index.css` — `add` is safe; `init` rewrites every measured token underneath its comment.
+- **Don't** write a utility class name in backticks in any Markdown file; name the property or the token.
 
-## 9. Brand Mark & App Icons
+## Motion
 
-The brand mark is a **circled analog clock reading ~10:10** (the classic "watch ad" angle): a brand-red circle, a white ring at 90% opacity, two rounded white hands, and a center dot. It is the one place the brand red appears as a fill.
+Motion on the rack is confirmation, not performance: *did that register?*, *where did this come from?*, *is this still running?* Nothing bounces or springs.
 
-**Single source of truth:** `src/shared/brand-mark.ts` — glyph geometry (`clockGlyph`), face ratio, and the pre-converted sRGB hexes of the brand tokens for surfaces that can't use `oklch()` (static assets, email, OG image):
+**Scale** (`--transition-duration-fast` / `-base` / `-slow` = 150 / 200 / 300ms), chosen by how far a thing travels: fast for a state change in place (hover, focus, colour, a chevron); base for something appearing or leaving (overlays, popovers, rows, the just-stopped fade-up); slow for a panel-sized move (sheets, the dock, the main region's bottom padding).
+
+**Curves.** `--ease-out-quart` (cubic-bezier 0.25, 1, 0.5, 1) is *the* curve; there is no separate enter and exit. `--ease-out-quint` (0.22, 1, 0.36, 1) is reserved for the one large slow move — the timer surfaces arriving — where a flatter tail keeps a big element from appearing to overshoot. Symmetric breathing stays on ease-in-out.
+
+**Entrances** (tokens `--animate-fade-in` / `-fade-up` / `-scale-in`): routes crossfade in at the slow duration; rows fade up 8px at base; the disc's play/stop glyph scales in from 96%.
+
+**One pull deploys** (`--animate-dock-in`, `--animate-capsule-in`): the docked bar rises from the bottom edge (100% translate to rest) and the composer settles from 16px below at 98% scale — the same motion at two scales, both slow on the quint curve.
+
+**The running state** has exactly two forms and one 1.6s cadence, so when both are on screen they breathe together: the signature (`--animate-recording-pulse`), a flat `--primary` ring scaling from 1 to 1.7 and fading from 45% behind the Stop disc, on the quart curve because it travels; and the quiet one (`--animate-running-dot`), an opacity-only breathe from 1 to 35% for dense surfaces — the rail dot, the ribbon's live segment, a running calendar block. These are the only infinite animations in the product.
+
+**Just stopped** (`--animate-stopped`): the landed row fades up while a 16% `--primary` wash and a 3px inset left rail bloom and recede over 1.4s, so the eye tracks where the timer went.
+
+**Reduced motion** collapses every animation and transition globally in `index.css`. Anything whose timing is coordinated in JS — the row that waits 200ms for its exit before committing a delete — reads the preference itself and shortens to zero, since the CSS rule cannot reach a timeout. A running state always survives the preference as colour and iconography.
+
+## Layering
+
+Five named tiers, registered in `index.css` as `--z-index-*`, so a new surface picks a meaning rather than a number.
+
+| Tier | Value | For |
+|---|---|---|
+| sticky | 10 | Pane headers and their scroll-fade; headers and frozen first columns inside a scrolling grid. |
+| overlay | 20 | Something covering a pane but not the app: the calendar's error wash, the ghost-count button, a sticky corner cell. |
+| dock | 30 | The app-wide timer surfaces — the composer and the docked bar. Above every pane, below every portal, so a dialog still covers the running readout. |
+| portal | 50 | Dialogs, sheets, popovers, dropdowns, selects, the focused skip link. |
+| tooltip | 60 | Above portal on purpose: a tooltip on a control inside a dialog used to share the dialog's tier and rely on DOM order. |
+
+A raw numeric layer fails ESLint. Sonner manages the toast layer itself and is left alone.
+
+## Brand Mark & App Icons
+
+The brand mark is a **circled analog clock reading ~10:10** (the classic "watch ad" angle): a brand-red circle, a white ring at 90% opacity, two rounded white hands, and a centre dot. It is the one place the brand red is a fill by definition — and, on the dark rail, the one place it is a light: three stacked red drop-shadows behind the mark, off in light mode.
+
+**Single source of truth:** `src/shared/brand-mark.ts` — glyph geometry (`clockGlyph`), face ratio (0.39), and the pre-converted sRGB hexes of the brand tokens for surfaces that can't use `oklch()` (static assets, email, OG image):
 
 | Token | oklch | hex |
 |---|---|---|
 | Brand red (light `--primary`) | `oklch(0.588 0.207 27.33)` | `#dd322e` |
 | Brand red (dark `--primary`) | `oklch(0.65 0.207 27.33)` | `#f34a42` |
-| Ground light | `oklch(0.988 0.0015 30)` | `#fcfbfa` |
-| Ground dark | `oklch(0.185 0.006 265)` | `#111315` |
+
+The file also exports `GROUND_LIGHT`, `GROUND_DARK` and `MUTED_INK_DARK` hexes that still encode the retired tinted ramp (0.988/0.185/0.72 with chroma); the app's own `--background` and `--muted-foreground` are the frontmatter values above, and those constants are stale drift, not a rule: regenerate them from the current tokens before the next `pnpm generate-icons`.
 
 **Two consumers, one geometry:**
-- `src/react-app/components/brand/BrandMark.tsx` — the in-app mark (sidebar brand + collapsed-rail expand control, mobile top bar and nav sheet, login/signup). Fills the circle with `var(--primary)` so it tracks the theme.
+- `src/react-app/components/brand/BrandMark.tsx` — the in-app mark (the rail's brand slot, the phone brand strip and nav sheet, login/signup). Fills the circle with `var(--primary)` so it tracks the theme.
 - `scripts/generate-icons.mjs` (`pnpm generate-icons`) — every static asset: favicon (`logo.svg` + multi-res `favicon.ico`), PWA `any` + `maskable` icons, `apple-touch-icon`, PWA shortcut icons, OG share image, and the extension's four action icons.
 
-**Named rule — One Clock.** No surface may draw its own clock glyph (including lucide's `Clock`) as a brand stand-in. The mark is always the shared geometry; change it in `brand-mark.ts` and re-run `pnpm generate-icons`. The lucide `Timer` icon in the nav is a *navigation* icon, not a brand mark — that distinction is the line.
+**Named rule — One Clock.** No surface may draw its own clock glyph (including lucide's `Clock`) as a brand stand-in. The mark is always the shared geometry; change it in `brand-mark.ts` and re-run `pnpm generate-icons`. The lucide `Timer` icon on the rail is a *navigation* icon, not a brand mark — that distinction is the line.
 
 **Satellite surfaces:** the extension popup consumes the same oklch tokens directly in its inline CSS (Chrome-only surface); transactional email uses the pre-converted hexes via `src/worker/emails/theme.ts` and a deliberately text-only header ("timetracker.run") — no image logo in email, since image blocking would break it.

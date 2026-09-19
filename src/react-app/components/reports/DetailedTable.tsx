@@ -198,7 +198,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
     <div className="space-y-3">
       {/* Toolbar: bulk action bar when rows are selected, else column menu */}
       {selected.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 rounded-container border bg-card px-3 py-2 print:hidden">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="ml-auto flex items-center gap-1.5">
             <Button variant="outline" size="sm" className="h-8" onClick={() => bulkBillable(true)}>

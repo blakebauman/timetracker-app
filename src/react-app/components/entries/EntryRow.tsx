@@ -39,12 +39,18 @@ interface EntryRowProps {
   entry: TimeEntry;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
+  /**
+   * Rendered inside an EntryDescriptionGroup's card rather than as a card of
+   * its own: a hairline-separated row instead of a bordered panel, so the
+   * group reads as one container holding its occurrences.
+   */
+  nested?: boolean;
 }
 
 /** Must match `duration-base` on the row's exit animation below. */
 const EXIT_MS = 200;
 
-export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRowProps) {
+export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = false }: EntryRowProps) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [desc, setDesc] = useState(entry.description);
   const [editingDuration, setEditingDuration] = useState(false);
@@ -213,13 +219,19 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
     <>
       <div
         className={cn(
-          "group flex items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors duration-fast ease-out-quart hover:bg-accent/40",
+          "group flex items-center gap-3 px-4 py-2.5 transition-[color,background-color,border-color] duration-fast ease-out-quart",
+          // A card on the rack, or a hairline row inside a group's card. The
+          // hover is the edge waking up, not a fill — the fill is reserved for
+          // selection and the just-stopped flash.
+          nested
+            ? "border-t first:border-t-0 hover:bg-muted/40"
+            : "rounded-container border bg-card hover:border-border-strong",
           removing
             ? "pointer-events-none animate-out fade-out slide-out-to-right-4 fill-mode-forwards duration-base ease-out-quart"
             : highlighted
               ? "animate-stopped"
               : "animate-fade-up",
-          isSelected && "bg-accent/60"
+          isSelected && (nested ? "bg-primary/5" : "border-primary/50 bg-primary/5")
         )}
       >
         {/* Checkbox (visible on hover or when any selection active) */}
@@ -277,7 +289,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
               // Use the system focus ring rather than a bare underline: a third
               // focus vocabulary in one page means keyboard users have to relearn
               // "where am I" per control.
-              className="relative rounded-sm text-left text-sm transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="relative line-clamp-2 rounded-sm text-left text-sm transition-colors duration-fast ease-out-quart before:absolute sm:line-clamp-none before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={() => setEditingDesc(true)}
             >
               {entry.description || (
@@ -458,7 +470,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
             <SavedTick saved={savedDuration.saved} />
             <button
               onClick={handleStartEditDuration}
-              className="relative min-w-20 rounded-sm text-right font-mono text-sm tabular-nums transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="relative min-w-14 rounded-sm text-right font-mono text-sm tabular-nums transition-colors duration-fast ease-out-quart before:absolute sm:min-w-20 before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               {entry.duration ? formatDurationShort(entry.duration) : "–"}
             </button>
@@ -467,19 +479,23 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect }: EntryRow
 
         {/* Actions (visible on hover) */}
         <div className="tt-reveal flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Continue timing this entry"
-                onClick={handleContinue}
-              >
-                <Play className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Continue</TooltipContent>
-          </Tooltip>
+          {/* Below sm the kebab carries Continue; the standalone button would
+              cost the description a third of its width on a phone. */}
+          <span className="hidden sm:contents">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Continue timing this entry"
+                  onClick={handleContinue}
+                >
+                  <Play className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Continue</TooltipContent>
+            </Tooltip>
+          </span>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

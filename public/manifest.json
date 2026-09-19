@@ -5,8 +5,8 @@
   "description": "Track your time, manage projects, and analyze your productivity.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fcfbfa",
-  "theme_color": "#fcfbfa",
+  "background_color": "#f2f2f2",
+  "theme_color": "#f2f2f2",
   "orientation": "portrait-primary",
   "icons": [
     {

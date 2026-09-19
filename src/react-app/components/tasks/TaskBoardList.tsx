@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
+import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -33,6 +34,7 @@ import {
   compareLocalDates,
   todayLocalDate,
 } from "@shared/task-recurrence";
+import { cn } from "@/lib/utils";
 import type { Task } from "@shared/schemas";
 
 type StatusFilter = "all" | "active" | "done";
@@ -357,6 +359,7 @@ export function TaskBoardList() {
 
   const renderNode = (node: TaskNode, ordered: Task[], index: number, section: Section) => {
     const open = !collapsed.has(node.task.id);
+    const dragging = dragId === node.task.id;
     const dragHandlers = section.reorderable
       ? {
           draggable: true,
@@ -371,7 +374,13 @@ export function TaskBoardList() {
       : undefined;
 
     return (
-      <div key={node.task.id}>
+      <div
+        key={node.task.id}
+        className={cn(
+          "overflow-hidden rounded-container border bg-card",
+          dragging && "opacity-50"
+        )}
+      >
         <TaskRow
           task={node.task}
           showProject={groupBy !== "project" || view !== "all"}
@@ -389,7 +398,7 @@ export function TaskBoardList() {
             setSubtaskParent(t.id);
           }}
           dragHandlers={dragHandlers}
-          dragging={dragId === node.task.id}
+          dragging={dragging}
         />
         {open && node.children.length > 0 && (
           <div className="border-t">
@@ -406,7 +415,7 @@ export function TaskBoardList() {
           </div>
         )}
         {subtaskParent === node.task.id && (
-          <div className="border-t px-2 py-1.5 pl-8">
+          <div className="border-t px-3 py-1.5 pl-9">
             <QuickAddTask
               autoFocus
               parentId={node.task.id}
@@ -420,12 +429,12 @@ export function TaskBoardList() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col p-6 pb-0">
+    <Pane>
       {/* Same header shape as Projects and Clients. This used to be a bordered
           toolbar with a `text-sm` <h1> — a page title rendered at body size,
           6px under every sibling page's, in the one collection page that also
           centred itself in a 768px column. */}
-      <CollectionHeader title="Tasks" className="shrink-0">
+      <CollectionHeader title="Tasks">
         <TaskViewTabs view={view} counts={counts} onChange={setView} />
 
         {/* Grouping and status only mean anything in All — Today and Upcoming
@@ -437,42 +446,42 @@ export function TaskBoardList() {
             important as the one that changes the sort. */}
         {view === "all" && (
           <>
-            <div className="mx-1 h-5 w-px bg-border" aria-hidden />
-            <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-              <SelectTrigger size="sm" className="w-28" aria-label="Filter by status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+              <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
+                <SelectTrigger size="sm" className="w-28" aria-label="Filter by status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger size="sm" className="w-36" aria-label="Group by">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="project">Group: Project</SelectItem>
-                <SelectItem value="due">Group: Due date</SelectItem>
-                <SelectItem value="status">Group: Status</SelectItem>
-                <SelectItem value="none">Group: None</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
+                <SelectTrigger size="sm" className="w-36" aria-label="Group by">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="project">Group: Project</SelectItem>
+                  <SelectItem value="due">Group: Due date</SelectItem>
+                  <SelectItem value="status">Group: Status</SelectItem>
+                  <SelectItem value="none">Group: None</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-              <SelectTrigger size="sm" className="w-36" aria-label="Sort by">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="plan">Sort: Plan order</SelectItem>
-                <SelectItem value="recent">Sort: Recent</SelectItem>
-                <SelectItem value="name">Sort: Name</SelectItem>
-                <SelectItem value="estimate">Sort: Estimate</SelectItem>
-                <SelectItem value="tracked">Sort: Tracked</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+                <SelectTrigger size="sm" className="w-36" aria-label="Sort by">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="plan">Sort: Plan order</SelectItem>
+                  <SelectItem value="recent">Sort: Recent</SelectItem>
+                  <SelectItem value="name">Sort: Name</SelectItem>
+                  <SelectItem value="estimate">Sort: Estimate</SelectItem>
+                  <SelectItem value="tracked">Sort: Tracked</SelectItem>
+                </SelectContent>
+              </Select>
           </>
         )}
 
@@ -484,59 +493,61 @@ export function TaskBoardList() {
         )}
       </CollectionHeader>
 
-      {isLoading ? (
-        <div className="space-y-2 p-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      ) : (
-        <div className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-          {hasAnyTask && (
-            <QuickAddTask
-              className="mb-4"
-              defaultDueDate={view === "today" ? today : null}
-            />
-          )}
+      <PaneScroll>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-container" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {hasAnyTask && (
+              <QuickAddTask
+                className="mb-4"
+                defaultDueDate={view === "today" ? today : null}
+              />
+            )}
 
-          {empty ?? (
-            <div className="space-y-6">
-              {sections.map((section) => {
-                const ordered = section.nodes.map((n) => n.task);
-                return (
-                  <div key={section.key}>
-                    <div className="mb-1 flex items-center gap-2 px-2">
-                      {groupBy === "project" && view === "all" && <ColorDot color={section.color} />}
-                      {/* Sentence case at Label weight. Uppercase + tracking on every group
-                          heading is the eyebrow pattern PRODUCT.md and DESIGN.md §8 both
-                          reject by name; the ColorDot and count already do the work. */}
-                      {/* Not tinted, even for the overdue group. Inside that
-                          section every row's due date is already red, so the
-                          heading made one fact red twice — and a section
-                          heading is a heading, not a state indicator. The word
-                          "Overdue" carries it. */}
-                      <h2 className="text-xs font-medium text-muted-foreground">
-                        {section.label}
-                      </h2>
-                      <span className="text-xs text-muted-foreground/70">
-                        {section.nodes.length}
-                      </span>
-                      {section.trackedSeconds > 0 && (
-                        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-                          {formatDurationShort(section.trackedSeconds)}
+            {empty ?? (
+              <div className="space-y-6">
+                {sections.map((section) => {
+                  const ordered = section.nodes.map((n) => n.task);
+                  return (
+                    <div key={section.key}>
+                      <div className="mb-1 flex items-center gap-2 px-2">
+                        {groupBy === "project" && view === "all" && <ColorDot color={section.color} />}
+                        {/* Sentence case at Label weight. Uppercase + tracking on every group
+                            heading is the eyebrow pattern PRODUCT.md and DESIGN.md §8 both
+                            reject by name; the ColorDot and count already do the work. */}
+                        {/* Not tinted, even for the overdue group. Inside that
+                            section every row's due date is already red, so the
+                            heading made one fact red twice — and a section
+                            heading is a heading, not a state indicator. The word
+                            "Overdue" carries it. */}
+                        <h2 className="text-xs font-medium text-muted-foreground">
+                          {section.label}
+                        </h2>
+                        <span className="text-xs text-muted-foreground/70">
+                          {section.nodes.length}
                         </span>
-                      )}
+                        {section.trackedSeconds > 0 && (
+                          <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                            {formatDurationShort(section.trackedSeconds)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {section.nodes.map((node, i) => renderNode(node, ordered, i, section))}
+                      </div>
                     </div>
-                    <div className="divide-y rounded-md border">
-                      {section.nodes.map((node, i) => renderNode(node, ordered, i, section))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </PaneScroll>
 
       <TaskDialog
         open={addOpen}
@@ -566,6 +577,6 @@ export function TaskBoardList() {
           setDeleteTarget(null);
         }}
       />
-    </div>
+    </Pane>
   );
 }

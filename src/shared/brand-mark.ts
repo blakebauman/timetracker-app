@@ -12,9 +12,9 @@
 // can't use oklch()/CSS vars (static icon assets, email, OG image).
 export const BRAND_RED = "#dd322e"; // --primary light, oklch(0.588 0.207 27.33)
 export const BRAND_RED_DARK = "#f34a42"; // --primary dark, oklch(0.65 0.207 27.33)
-export const GROUND_LIGHT = "#fcfbfa"; // --background light, oklch(0.988 0.0015 30)
-export const GROUND_DARK = "#111315"; // --background dark, oklch(0.185 0.006 265)
-export const MUTED_INK_DARK = "#a1a5ac"; // --muted-foreground dark, oklch(0.72 0.012 265)
+export const GROUND_LIGHT = "#f2f2f2"; // --background light, oklch(0.961 0 0)
+export const GROUND_DARK = "#0f0f0f"; // --background dark, oklch(0.168 0 0)
+export const MUTED_INK_DARK = "#999999"; // --muted-foreground dark, oklch(0.68 0 0)
 
 /**
  * Inner SVG for the clock glyph (ring + hour/minute hands + center dot),

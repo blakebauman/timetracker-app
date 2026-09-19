@@ -57,12 +57,12 @@ export default tseslint.config(
 				{
 					selector: "Literal[value=/\\btext-\\[/]",
 					message:
-						"Arbitrary font size. Use a named step — text-micro / text-xs / text-sm / text-base / text-xl (DESIGN.md §3, The Named-Step Rule).",
+						"Arbitrary font size. Use a named step — text-micro / text-xs / text-sm / text-base / text-lg / text-xl / text-2xl (DESIGN.md, The Named-Step Rule).",
 				},
 				{
 					selector: "Literal[value=/\\bz-(10|20|30|40|50)\\b/]",
 					message:
-						"Use the semantic layer scale — z-sticky / z-overlay / z-portal / z-tooltip (index.css) — so a new surface picks a meaning, not a number.",
+						"Use the semantic layer scale — z-sticky / z-overlay / z-dock / z-portal / z-tooltip (index.css) — so a new surface picks a meaning, not a number.",
 				},
 			],
 		},

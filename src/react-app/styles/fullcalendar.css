@@ -6,7 +6,7 @@
  */
 .tt-calendar {
   --fc-border-color: var(--border);
-  --fc-page-bg-color: var(--card);
+  --fc-page-bg-color: var(--background);
   --fc-neutral-bg-color: var(--muted);
   --fc-neutral-text-color: var(--muted-foreground);
   /* Neutral, not brand red: this washed the entire today column full-height,
@@ -155,7 +155,3 @@
   background: var(--primary);
 }
 
-/* Scrollbars stay subtle. */
-.tt-calendar .fc .fc-scroller {
-  scrollbar-width: thin;
-}

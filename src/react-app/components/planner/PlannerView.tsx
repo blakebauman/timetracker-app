@@ -297,20 +297,22 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-auto">
+    <div className="flex h-full min-h-0 flex-col px-4 pb-4">
       <span id={PLANNER_LOCKED_HELP_ID} className="sr-only">
         Assign a project to this row before planning hours against it.
       </span>
+      {/* One panel on the rack, and its own scroller — see TimesheetView. */}
+      <div className="min-h-0 flex-1 overflow-auto rounded-container border bg-card">
       <table className={weekGrid.table}>
-        <thead className="sticky top-0 z-overlay bg-background">
+        <thead className="sticky top-0 z-overlay bg-card">
           <tr className="border-b text-xs text-muted-foreground">
             {/* Column geometry is shared with the Timesheet — see
                 lib/weekGridColumns.ts, which also explains the small-screen
                 widths. */}
-            <th className={weekGrid.headTask}>
+            <th className={cn(weekGrid.headTask, "bg-card")}>
               Task
             </th>
-            <th className={weekGrid.headProject}>
+            <th className={cn(weekGrid.headProject, "bg-card")}>
               {/* The cells stack two numbers and the only thing naming them was
                   the totals row, at the far bottom-left of a scrolling grid. A
                   reader meeting the Planner for the first time met the stack
@@ -379,12 +381,12 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
                   key={row.key}
                   className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
-                  <td className={weekGrid.cellTask}>
+                  <td className={cn(weekGrid.cellTask, "bg-card")}>
                     <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>
                       {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
                     </div>
                   </td>
-                  <td className={weekGrid.cellProject}>
+                  <td className={cn(weekGrid.cellProject, "bg-card")}>
                     {/* A fixed-width block, not just `truncate`: a <td>'s width is
                         advisory in auto table layout, so the min-content of a long
                         consultancy project name still expanded the column and pushed
@@ -438,7 +440,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
                               setEditing({ row: row.key, day: dayIndex });
                             }}
                             className={cn(
-                              "mx-auto flex h-11 w-16 items-center justify-center rounded border text-xs transition-colors duration-fast ease-out-quart",
+                              "mx-auto flex h-11 w-16 items-center justify-center rounded-md border text-xs transition-colors duration-fast ease-out-quart",
                               cell.planned > 0
                                 ? "border-border"
                                 : "border-transparent text-muted-foreground/40 hover:border-border",
@@ -464,9 +466,9 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
         </tbody>
         {rows.length > 0 && (
           <tfoot>
-            <tr className="border-t-2 font-medium">
+            <tr className="border-t border-border-strong font-medium">
               <td
-                className={weekGrid.footLabel}
+                className={cn(weekGrid.footLabel, "bg-card")}
                 colSpan={2}
               >
                 <span className="flex flex-col leading-tight">
@@ -486,12 +488,13 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
           </tfoot>
         )}
       </table>
+      </div>
 
       {/* The empty state owns the actions while the body is empty — rendering
           them here as well put the same labels twice on one screen, 84px
           apart, which reads as a rendering bug. One rule, four screens. */}
       {rows.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 p-3">{actionButtons}</div>
+        <div className="flex flex-wrap items-center gap-2 pt-3">{actionButtons}</div>
       )}
 
       <AddTimesheetRowDialog

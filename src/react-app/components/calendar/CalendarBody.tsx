@@ -355,7 +355,7 @@ export function CalendarBody({
             icon={CalendarPlus}
             title="Nothing tracked in this period"
             description="Click any empty slot to log time, or start the timer to track as you work."
-            className="rounded-xl border bg-background/95 px-8 py-8 shadow-sm"
+            className="rounded-container border bg-card px-8 py-8"
           />
         </div>
       )}
@@ -364,7 +364,7 @@ export function CalendarBody({
         <Button
           variant="secondary"
           size="sm"
-          className="absolute right-4 top-3 z-overlay gap-1.5 shadow-sm"
+          className="absolute right-4 top-3 z-overlay gap-1.5"
           onClick={handleConvertAll}
           disabled={convertRange.isPending}
           title="Add every calendar event in view as a time entry"

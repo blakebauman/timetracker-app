@@ -3,6 +3,12 @@ import { CalendarDays, CalendarRange, Columns2, List, Table2 } from "lucide-reac
 import { cn } from "@/lib/utils";
 import type { TimerView } from "@/stores/uiStore";
 import { TIMER_PANEL_ID, timerTabId } from "./timerTabs";
+import {
+  SEGMENT,
+  SEGMENT_ACTIVE,
+  SEGMENT_INACTIVE,
+  SEGMENT_TRACK,
+} from "@/components/ui/segmented-control";
 
 const VIEWS: { value: TimerView; label: string; icon: typeof List }[] = [
   { value: "calendar", label: "Calendar", icon: CalendarDays },
@@ -19,13 +25,8 @@ interface TimerViewSwitcherProps {
   allowSplit?: boolean;
 }
 
-// Icon-only segmented control that swaps between the views the Timer tab
-// hosts. Purely in-page state — no routing.
-//
-// Implements the full tab pattern, not just the roles: a single tab stop with
-// roving tabindex plus arrow/Home/End keys. Four separate tab stops that ignore
-// arrow keys announce as a tablist but don't behave like one, which is worse for
-// a screen-reader user than plain buttons would have been.
+// Icon-only segment track that swaps between the views the Timer tab hosts.
+// Full tab pattern: a single tab stop with roving tabindex plus arrow/Home/End.
 export function TimerViewSwitcher({
   view,
   onChange,
@@ -37,7 +38,6 @@ export function TimerViewSwitcher({
   const focusTab = (index: number) => {
     const next = views[(index + views.length) % views.length];
     onChange(next.value);
-    // Selection follows focus, so move focus with it.
     ref.current
       ?.querySelector<HTMLButtonElement>(`#${CSS.escape(timerTabId(next.value))}`)
       ?.focus();
@@ -66,7 +66,7 @@ export function TimerViewSwitcher({
       role="tablist"
       aria-label="Timer view"
       onKeyDown={onKeyDown}
-      className="inline-flex items-center rounded-full bg-muted p-0.5"
+      className={SEGMENT_TRACK}
     >
       {views.map(({ value, label, icon: Icon }) => {
         const active = view === value;
@@ -78,17 +78,14 @@ export function TimerViewSwitcher({
             role="tab"
             aria-selected={active}
             aria-controls={TIMER_PANEL_ID}
-            // Roving tabindex: only the selected tab is in the tab order.
             tabIndex={active ? 0 : -1}
             aria-label={label}
             title={label}
             onClick={() => onChange(value)}
             className={cn(
-              "flex h-7 w-8 items-center justify-center rounded-full transition-colors duration-fast ease-out-quart",
-              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-              active
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
+              SEGMENT,
+              "w-8 justify-center px-0",
+              active ? SEGMENT_ACTIVE : SEGMENT_INACTIVE
             )}
           >
             <Icon className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Pane, PaneHeader, PaneScroll, PaneTitle } from "@/components/layout/Pane";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -114,9 +115,7 @@ export function SettingsPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4 p-6">
-      <h1 className="text-xl font-semibold">Settings</h1>
-
+    <Pane>
       {/*
         Fifteen cards used to stack into one 3,808px scroll with 41 controls and
         no sectioning — the "config-everything settings screen" PRODUCT.md
@@ -125,246 +124,255 @@ export function SettingsPage() {
 
         The tab lives in the URL so /settings?tab=account is linkable and a
         reload doesn't dump you back at the top of General.
+
+        The Tabs root wraps both the header and the scroll region so the
+        section nav can sit in the floating header (the one underline nav in
+        the app) while its panels scroll beneath it.
       */}
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="tracking">Tracking</TabsTrigger>
-          <TabsTrigger value="workspace">Workspace</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="h-full min-h-0 gap-0">
+        <PaneHeader>
+          <PaneTitle>Settings</PaneTitle>
+          <TabsList variant="line" className="basis-full">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="tracking">Tracking</TabsTrigger>
+            <TabsTrigger value="workspace">Workspace</TabsTrigger>
+            <TabsTrigger value="account">Account</TabsTrigger>
+          </TabsList>
+        </PaneHeader>
 
-        <TabsContent value="general" className="mt-4 space-y-4">
-      {/* Appearance */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Appearance</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Label>Theme</Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                Choose light, dark, or system default
-              </p>
+        <PaneScroll>
+          <TabsContent value="general" className="mt-4 max-w-3xl space-y-4">
+        {/* Appearance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Appearance</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label>Theme</Label>
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
+                  Choose light, dark, or system default
+                </p>
+              </div>
+              <ThemeToggle />
             </div>
-            <ThemeToggle />
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Auto-assign colors */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="pr-2">
-              <Label htmlFor="pref-autocolor" className="flex items-center gap-1.5">
-                <Palette className="h-3.5 w-3.5" />
-                Auto-assign colors
-              </Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                Give new projects a distinct color automatically. "Apply to existing"
-                uses AI to color your current projects distinctly.
-              </p>
+            {/* Auto-assign colors */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="pr-2">
+                <Label htmlFor="pref-autocolor" className="flex items-center gap-1.5">
+                  <Palette className="h-3.5 w-3.5" />
+                  Auto-assign colors
+                </Label>
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
+                  Give new projects a distinct color automatically. "Apply to existing"
+                  uses AI to color your current projects distinctly.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => recolorProjects.mutate()}
+                  // Reads as actionable while the setting it belongs to is off,
+                  // which is the one state where pressing it contradicts the
+                  // switch beside it.
+                  disabled={recolorProjects.isPending || !autoAssignColors}
+                  title={
+                    autoAssignColors
+                      ? "Spread distinct colors across your existing projects"
+                      : "Turn on auto-assign colors to recolor existing projects"
+                  }
+                >
+                  {recolorProjects.isPending ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    "Apply to existing"
+                  )}
+                </Button>
+                <Switch
+                  id="pref-autocolor"
+                  checked={autoAssignColors}
+                  onCheckedChange={handleAutoAssignColorsChange}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => recolorProjects.mutate()}
-                // Reads as actionable while the setting it belongs to is off,
-                // which is the one state where pressing it contradicts the
-                // switch beside it.
-                disabled={recolorProjects.isPending || !autoAssignColors}
-                title={
-                  autoAssignColors
-                    ? "Spread distinct colors across your existing projects"
-                    : "Turn on auto-assign colors to recolor existing projects"
-                }
-              >
-                {recolorProjects.isPending ? (
-                  <Spinner size="sm" />
-                ) : (
-                  "Apply to existing"
-                )}
-              </Button>
+          </CardContent>
+        </Card>
+
+        {/* Keyboard shortcuts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Keyboard shortcuts</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Start / Stop timer</span>
+              <Kbd className="px-2">Alt+Shift+S</Kbd>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Discard running timer</span>
+              <Kbd className="px-2">Alt+Shift+X</Kbd>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Preferences */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Preferences</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Default billable */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label htmlFor="pref-billable">Default billable</Label>
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
+                  New timers start billable unless the project says otherwise
+                </p>
+              </div>
               <Switch
-                id="pref-autocolor"
-                checked={autoAssignColors}
-                onCheckedChange={handleAutoAssignColorsChange}
+                id="pref-billable"
+                checked={defaultBillable}
+                onCheckedChange={handleDefaultBillableChange}
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Keyboard shortcuts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Keyboard shortcuts</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Start / Stop timer</span>
-            <Kbd className="px-2">Alt+Shift+S</Kbd>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Discard running timer</span>
-            <Kbd className="px-2">Alt+Shift+X</Kbd>
-          </div>
-        </CardContent>
-      </Card>
+            <Separator />
 
-      {/* Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Default billable */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Label htmlFor="pref-billable">Default billable</Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                New timers start billable unless the project says otherwise
-              </p>
+            {/* Time display format */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label>Time display format</Label>
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
+                  How times are shown throughout the app
+                </p>
+              </div>
+              <SegmentedControl
+                label="Time display format"
+                options={[
+                  { value: "24h", label: "24h" },
+                  { value: "12h", label: "12h" },
+                ]}
+                value={timeFormat}
+                onChange={handleTimeFormatChange}
+              />
             </div>
-            <Switch
-              id="pref-billable"
-              checked={defaultBillable}
-              onCheckedChange={handleDefaultBillableChange}
-            />
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Time display format */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Label>Time display format</Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                How times are shown throughout the app
-              </p>
+            {/* Currency */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label htmlFor="pref-currency">Currency</Label>
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
+                  Used for billable amounts in reports
+                </p>
+              </div>
+              <Select value={currency} onValueChange={handleCurrencyChange}>
+                <SelectTrigger className="w-48 text-sm" id="pref-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <SegmentedControl
-              label="Time display format"
-              options={[
-                { value: "24h", label: "24h" },
-                { value: "12h", label: "12h" },
-              ]}
-              value={timeFormat}
-              onChange={handleTimeFormatChange}
-            />
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Currency */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Label htmlFor="pref-currency">Currency</Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                Used for billable amounts in reports
-              </p>
+            {/* Week start */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label htmlFor="pref-week-start">Week starts on</Label>
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
+                  First day of the week in the calendar and timesheet
+                </p>
+              </div>
+              <Select value={String(weekStart)} onValueChange={handleWeekStartChange}>
+                <SelectTrigger className="w-48 text-sm" id="pref-week-start">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Sunday</SelectItem>
+                  <SelectItem value="1">Monday</SelectItem>
+                  <SelectItem value="6">Saturday</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={currency} onValueChange={handleCurrencyChange}>
-              <SelectTrigger className="w-48 text-sm" id="pref-currency">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCIES.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Week start */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Label htmlFor="pref-week-start">Week starts on</Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                First day of the week in the calendar and timesheet
-              </p>
+            {/* Show weekends */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label htmlFor="pref-weekends">Show weekends</Label>
+                <p className="mt-1 text-xs leading-normal text-muted-foreground">
+                  Include Saturday and Sunday columns on the calendar
+                </p>
+              </div>
+              <Switch
+                id="pref-weekends"
+                checked={showWeekends}
+                onCheckedChange={handleShowWeekendsChange}
+              />
             </div>
-            <Select value={String(weekStart)} onValueChange={handleWeekStartChange}>
-              <SelectTrigger className="w-48 text-sm" id="pref-week-start">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0">Sunday</SelectItem>
-                <SelectItem value="1">Monday</SelectItem>
-                <SelectItem value="6">Saturday</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          </CardContent>
+        </Card>
 
-          <Separator />
+          </TabsContent>
 
-          {/* Show weekends */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Label htmlFor="pref-weekends">Show weekends</Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                Include Saturday and Sunday columns on the calendar
-              </p>
-            </div>
-            <Switch
-              id="pref-weekends"
-              checked={showWeekends}
-              onCheckedChange={handleShowWeekendsChange}
-            />
-          </div>
-        </CardContent>
-      </Card>
+          <TabsContent value="tracking" className="mt-4 max-w-3xl space-y-4">
+            <ProductivityCard />
+            <DigestCard />
+            <RecurringEntriesCard />
+            <AssistantMemoryCard />
+          </TabsContent>
 
-        </TabsContent>
+          <TabsContent value="workspace" className="mt-4 max-w-3xl space-y-4">
+            <TeamCard />
+            <CalendarSyncCard />
+            <McpConnectorCard />
+            <IntegrationsCard />
 
-        <TabsContent value="tracking" className="mt-4 space-y-4">
-          <ProductivityCard />
-          <DigestCard />
-          <RecurringEntriesCard />
-          <AssistantMemoryCard />
-        </TabsContent>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Data export</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Export all your time entries as a CSV file.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleExportAll}
+                >
+                  <Download className="h-4 w-4" />
+                  Export all entries (CSV)
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="workspace" className="mt-4 space-y-4">
-          <TeamCard />
-          <CalendarSyncCard />
-          <McpConnectorCard />
-          <IntegrationsCard />
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Data export</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-3 text-sm text-muted-foreground">
-                Export all your time entries as a CSV file.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={handleExportAll}
-              >
-                <Download className="h-4 w-4" />
-                Export all entries (CSV)
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="account" className="mt-4 space-y-4">
-          <AccountCard />
-          <PasskeysCard />
-          <ConnectedAccountsCard />
-          <SessionsCard />
-          <DangerZoneCard />
-        </TabsContent>
+          <TabsContent value="account" className="mt-4 max-w-3xl space-y-4">
+            <AccountCard />
+            <PasskeysCard />
+            <ConnectedAccountsCard />
+            <SessionsCard />
+            <DangerZoneCard />
+          </TabsContent>
+        </PaneScroll>
       </Tabs>
-    </div>
+    </Pane>
   );
 }

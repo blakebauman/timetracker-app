@@ -7,11 +7,11 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        // No border and no shadow: the card is separated from the page by tone
-        // alone (DESIGN.md §4). --card sits a measured step off --background in
-        // both themes, so a hairline on top of that is a second, redundant
-        // signal — and thirty of them on a Settings page is most of its noise.
-        "flex flex-col gap-6 rounded-container bg-card py-6 text-card-foreground",
+        // A panel on the rack: one step lighter than the ground and a 1px
+        // hairline edge. The hairline IS the panel edge (DESIGN.md §4) —
+        // there is no shadow at rest anywhere in the system, and the tonal
+        // step alone stopped being enough once the ramp went true-neutral.
+        "flex flex-col gap-6 rounded-container border bg-card py-6 text-card-foreground",
         className
       )}
       {...props}
@@ -34,9 +34,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 
 // `as` is opt-in and defaults to the original div, so existing cards are
 // unchanged. It exists because a card that *is* the page — the auth pages —
-// needs its title to be a real heading: rendered as a div, /login had no
-// h1..h4 at all, which axe flags (page-has-heading-one) and which leaves a
-// screen-reader user no way to identify the page.
+// needs its title to be a real heading.
 function CardTitle({
   className,
   as: Tag = "div",
