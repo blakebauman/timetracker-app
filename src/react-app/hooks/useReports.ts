@@ -9,6 +9,17 @@ interface DailyData {
   entryCount: number;
 }
 
+/** One project's share of one day — the daily chart's "by project" stack. */
+export interface DailyProjectData {
+  date: string;
+  projectId: string | null;
+  projectName: string;
+  color: string;
+  totalSeconds: number;
+  billableSeconds: number;
+  entryCount: number;
+}
+
 export interface BreakdownRow {
   id: string | null;
   name: string;
@@ -29,6 +40,7 @@ export interface ReportSummary {
   byTask: BreakdownRow[];
   byTag: BreakdownRow[];
   daily: DailyData[];
+  dailyByProject: DailyProjectData[];
 }
 
 export type RoundMode = "off" | "nearest" | "up" | "down";
