@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LIT_DISC } from "@/components/ui/lit-disc";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTimerStore } from "@/stores/timerStore";
@@ -84,7 +85,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
               // the pulse ring does that job and the shadow comes off.
               isRunning
                 ? "shadow-none"
-                : "shadow-lg shadow-primary/40 hover:scale-105 hover:shadow-primary/50"
+                : cn(LIT_DISC, "hover:scale-105 hover:shadow-primary/50")
             )}
             aria-label={isRunning ? "Stop timer" : "Start timer"}
           >

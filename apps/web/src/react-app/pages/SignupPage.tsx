@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { BrandGlow } from "@/components/brand/BrandGlow";
 
 function GoogleIcon() {
   return (
@@ -123,10 +124,7 @@ export function SignupPage() {
         {/* Logo: the mark over a soft red halo, wordmark beneath. */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="relative flex items-center justify-center">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
-            />
+            <BrandGlow />
             <BrandMark className="relative size-16" />
           </div>
           <span className="text-2xl font-bold tracking-tight">Time Tracker</span>
