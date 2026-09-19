@@ -21,7 +21,7 @@ function Command({
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        "flex h-full w-full flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground",
+        "flex h-full w-full flex-col overflow-hidden rounded-container bg-popover text-popover-foreground",
         className
       )}
       {...props}
@@ -163,7 +163,7 @@ function CommandShortcut({
     <span
       data-slot="command-shortcut"
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
+        "ml-auto inline-flex items-center",
         className
       )}
       {...props}

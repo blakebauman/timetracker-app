@@ -72,6 +72,8 @@ export function AddTimesheetRowDialog({ open, onClose, onAdd }: AddTimesheetRowD
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
+            {/* The pickers are popover triggers, not inputs, so there is no
+                control for htmlFor to point at; the label is a heading. */}
             <Label>Project</Label>
             <div>
               <ProjectPicker
@@ -84,19 +86,25 @@ export function AddTimesheetRowDialog({ open, onClose, onAdd }: AddTimesheetRowD
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Task (optional)</Label>
-            <div>
-              <TaskPicker projectId={projectId} value={taskId} onChange={setTaskId} />
+          {/* TaskPicker renders nothing without a project, which left this
+              label captioning empty space. */}
+          {projectId && (
+            <div className="space-y-1.5">
+              <Label>Task (optional)</Label>
+              <div>
+                <TaskPicker projectId={projectId} value={taskId} onChange={setTaskId} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={handleClose}>
             Cancel
           </Button>
-          <Button onClick={handleAdd}>Add row</Button>
+          <Button onClick={handleAdd} disabled={!projectId}>
+            Add row
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

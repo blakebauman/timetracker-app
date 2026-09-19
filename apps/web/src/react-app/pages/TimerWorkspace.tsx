@@ -171,10 +171,11 @@ export function TimerWorkspace() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewDay, setReviewDay] = useState<string>(reviewDate);
   const generateDrafts = useGenerateDrafts(reviewDate);
-  const { data: periodDrafts = [] } = useDraftRange(
-    format(since, "yyyy-MM-dd"),
-    format(until, "yyyy-MM-dd")
-  );
+  const {
+    data: periodDrafts = [],
+    isError: draftsError,
+    refetch: refetchDrafts,
+  } = useDraftRange(format(since, "yyyy-MM-dd"), format(until, "yyyy-MM-dd"));
 
   const openReview = (day: string) => {
     setReviewDay(day);
@@ -184,17 +185,28 @@ export function TimerWorkspace() {
   // Drafting and reviewing are one button: propose what's missing, then show
   // the result. When proposals are already waiting, skip straight to them
   // rather than making the user ask for more of what they haven't looked at.
-  const handleDraftDay = () => {
-    const waiting = periodDrafts.filter((d) => d.localDate === reviewDate);
-    if (waiting.length > 0) {
-      openReview(reviewDate);
-      return;
-    }
+  const generateForReviewDate = () =>
     generateDrafts.mutate(undefined, {
       onSuccess: (result) => {
         if (result.drafts.length > 0) openReview(reviewDate);
       },
     });
+  const handleDraftDay = async () => {
+    // A failed draft read is "unknown", not "none": deciding from the empty
+    // fallback would re-draft a day whose proposals are already waiting. Ask
+    // again first and route on the real answer.
+    let known = periodDrafts;
+    if (draftsError) {
+      const { data } = await refetchDrafts();
+      if (!data) return;
+      known = data;
+    }
+    const waiting = known.filter((d) => d.localDate === reviewDate);
+    if (waiting.length > 0) {
+      openReview(reviewDate);
+      return;
+    }
+    generateForReviewDate();
   };
 
   /**
@@ -247,7 +259,10 @@ export function TimerWorkspace() {
 
   // Week entries drive the "Logged" bar. Shares the ["time-entries", since, until]
   // query key with the body views, so this is deduped, not a second fetch.
-  const { data: entries = [] } = useEntriesRange(since.toISOString(), until.toISOString());
+  const { data: entries = [], isError: entriesError } = useEntriesRange(
+    since.toISOString(),
+    until.toISOString()
+  );
   const { periodSeconds, segments } = useMemo(() => {
     const byProject = new Map<string | null, LoggedSegment>();
     let total = 0;
@@ -352,7 +367,7 @@ export function TimerWorkspace() {
       <TimerWorkspaceHeader
         since={since}
         until={until}
-        totalSeconds={periodSeconds}
+        totalSeconds={entriesError && entries.length === 0 ? null : periodSeconds}
         segments={segments}
         view={effectiveView}
         onViewChange={changeView}

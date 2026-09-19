@@ -4,6 +4,7 @@ import { passkey } from "@better-auth/passkey";
 import { WorkspaceInvitationEmail } from "./emails/workspace-invitation";
 import { VerificationOtpEmail } from "./emails/verification-otp";
 import { MagicLinkEmail } from "./emails/magic-link";
+import { DeleteAccountEmail } from "./emails/delete-account";
 import { sendEmail } from "./lib/mailer";
 
 function randomSlug(): string {
@@ -71,9 +72,21 @@ export function createAuth(env: Env, baseURL: string) {
       },
     },
     user: {
-      // Enables the account self-deletion flow (authClient.deleteUser()).
+      // Account self-deletion (authClient.deleteUser()). Passwords are retired in
+      // production, so Better Auth's password confirmation is unavailable to a
+      // real user; configuring sendDeleteAccountVerification switches the flow
+      // to an emailed one-time link instead: POST /delete-user (still behind
+      // requireFreshSession in index.ts) only sends the email, and the account
+      // is deleted when GET /delete-user/callback is opened from a browser that
+      // holds the session — the token alone is not enough.
       deleteUser: {
         enabled: true,
+        // Better Auth's default is also one day; pinned here because the email
+        // copy promises "24 hours" and must not drift with a library default.
+        deleteTokenExpiresIn: 60 * 60 * 24,
+        async sendDeleteAccountVerification({ user, url }) {
+          await sendEmail(env, user.email, "Confirm account deletion", DeleteAccountEmail({ url }));
+        },
       },
     },
     socialProviders: {

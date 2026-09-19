@@ -23,7 +23,7 @@ function relativeDateLabel(iso: string): string {
 
 // Quick inline editor for an entry's start/stop, opened by clicking its time
 // range in the list — a Popover combining Start/Stop time fields with a
-// Calendar for the date, mirroring Toggl's own row-level time-range editor.
+// Calendar for the date — a row-level time-range editor.
 // Every change saves immediately (no separate confirm step), matching how
 // TimeOfDayInput already commits on blur elsewhere in the app.
 export function TimeRangePopover({ start, stop, onChange, children, triggerClassName }: TimeRangePopoverProps) {
@@ -60,7 +60,7 @@ export function TimeRangePopover({ start, stop, onChange, children, triggerClass
         <button
           type="button"
           className={cn(
-            "relative rounded transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:bg-accent/50",
+            "relative rounded-md transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:bg-accent/50",
             triggerClassName
           )}
         >

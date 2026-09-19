@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import type { ReportFilters } from "@/components/reports/ReportFilterBar";
 import type { Rounding, GroupDimension, SubGroupDimension } from "@/hooks/useReports";
 
@@ -40,7 +40,10 @@ export function useCreateSavedReport() {
       queryClient.invalidateQueries({ queryKey: ["saved-reports"] });
       toast.success("Report saved");
     },
-    onError: () => toast.error("Failed to save report"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the report will be saved when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to save report")),
   });
 }
 
@@ -52,6 +55,9 @@ export function useDeleteSavedReport() {
       queryClient.invalidateQueries({ queryKey: ["saved-reports"] });
       toast.success("Report deleted");
     },
-    onError: () => toast.error("Failed to delete report"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the report will be deleted when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to delete report")),
   });
 }

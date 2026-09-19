@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import type {
   Project,
   ProjectPacing,
@@ -60,7 +60,10 @@ export function useCreateProject() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project created");
     },
-    onError: () => toast.error("Failed to create project"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the project will be created when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to create project")),
   });
 }
 
@@ -80,7 +83,10 @@ export function useUpdateProject() {
       ) as Promise<Project>,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["projects"] }),
-    onError: () => toast.error("Failed to update project"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the project will be updated when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to update project")),
   });
 }
 
@@ -92,7 +98,10 @@ export function useDeleteProject() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project archived");
     },
-    onError: () => toast.error("Failed to archive project"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the project will be archived when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to archive project")),
   });
 }
 
@@ -111,7 +120,10 @@ export function useRecolorProjects() {
           : "No projects to recolor"
       );
     },
-    onError: () => toast.error("Failed to recolor projects"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — projects will be recolored when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to recolor projects")),
   });
 }
 
@@ -149,7 +161,10 @@ export function useCreateClient() {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       toast.success("Client created");
     },
-    onError: () => toast.error("Failed to create client"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the client will be created when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to create client")),
   });
 }
 
@@ -160,7 +175,10 @@ export function useUpdateClient() {
       api.clients.update(id, data as Record<string, unknown>) as Promise<Client>,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["clients"] }),
-    onError: () => toast.error("Failed to update client"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the client will be updated when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to update client")),
   });
 }
 
@@ -172,7 +190,10 @@ export function useDeleteClient() {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       toast.success("Client archived");
     },
-    onError: () => toast.error("Failed to archive client"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the client will be archived when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to archive client")),
   });
 }
 
@@ -198,6 +219,9 @@ export function useUpdateTag() {
     mutationFn: ({ id, color }: { id: string; color: string }) =>
       api.tags.update(id, { color }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tags"] }),
-    onError: () => toast.error("Failed to update tag color"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the tag color will be saved when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to update tag color")),
   });
 }

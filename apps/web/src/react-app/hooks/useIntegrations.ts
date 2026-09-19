@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import type {
   CreateIntegration,
   Integration,
@@ -24,7 +24,10 @@ export function useCreateIntegration() {
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       toast.success("Integration added");
     },
-    onError: () => toast.error("Failed to add integration"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the integration will be added when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to add integration")),
   });
 }
 
@@ -37,7 +40,10 @@ export function useUpdateIntegration() {
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       toast.success("Integration updated");
     },
-    onError: () => toast.error("Failed to update integration"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the integration will be updated when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to update integration")),
   });
 }
 
@@ -50,13 +56,22 @@ export function useDeleteIntegration() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Integration removed");
     },
-    onError: () => toast.error("Failed to remove integration"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the integration will be removed when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to remove integration")),
   });
 }
 
 export function useTestIntegration() {
   return useMutation({
     mutationFn: (id: string) => api.integrations.test(id),
+    // A test is a question, not a write: a queued replay would run unobserved,
+    // so the honest offline message is "ask again", not "it will happen".
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — test the connection again once you reconnect")
+        : toast.error(mutationErrorMessage(err, "Couldn't reach the integration")),
   });
 }
 
@@ -89,6 +104,9 @@ export function usePushEntries() {
       }
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
     },
-    onError: () => toast.error("Failed to push entries"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the entries will be pushed when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to push entries")),
   });
 }

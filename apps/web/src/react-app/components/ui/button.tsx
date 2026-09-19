@@ -22,13 +22,13 @@ const buttonVariants = cva(
   // `aria-expanded` styling is the other convention worth taking — an open
   // dropdown's trigger should look held-open, and none of these variants said
   // so, so a `...` menu button looked identical open and closed.
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all duration-150 ease-out-quart outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 active:not-aria-[haspopup]:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all duration-fast ease-out-quart outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 active:not-aria-[haspopup]:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         // shadow-xs dropped: DESIGN.md §4's Flat-By-Default Rule says there is
         // no resting shadow anywhere in the system and that overlay shadows are
         // the only shadows in the app. Both were false while these controls
@@ -46,10 +46,19 @@ const buttonVariants = cva(
         xs: "h-6 gap-1 px-2.5 text-xs has-[>svg]:px-2 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-8 gap-1.5 px-3.5 has-[>svg]:px-2.5",
         lg: "h-10 px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        // On a coarse pointer the *hit area* grows to 44px through a
+        // pseudo-element; the box never does. A `min-h-11` here would blow
+        // up the 32px segment tracks, the split-pill caret and every row
+        // that lays out for a 24/32px control. Adjacent icon buttons at
+        // `gap-0.5` overlap a little and the later sibling wins — the usual
+        // trade, and still far better than a 24px target under a thumb.
+        icon: "relative size-9 pointer-coarse:after:absolute pointer-coarse:after:-inset-1 pointer-coarse:after:content-['']",
+        "icon-xs":
+          "relative size-6 pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5 pointer-coarse:after:content-[''] [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "relative size-8 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 pointer-coarse:after:content-['']",
+        "icon-lg":
+          "relative size-10 pointer-coarse:after:absolute pointer-coarse:after:-inset-0.5 pointer-coarse:after:content-['']",
       },
     },
     defaultVariants: {

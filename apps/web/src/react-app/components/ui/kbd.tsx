@@ -19,7 +19,7 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
     <kbd
       data-slot="kbd"
       className={cn(
-        "pointer-events-none inline-flex h-5 w-fit min-w-5 select-none items-center justify-center gap-1 rounded border bg-muted px-1.5 font-mono text-micro font-medium text-foreground",
+        "pointer-events-none inline-flex h-5 w-fit min-w-5 select-none items-center justify-center gap-1 rounded-sm border bg-muted px-1.5 font-mono text-micro font-medium text-foreground",
         "[&_svg:not([class*='size-'])]:size-3",
         // On a tooltip's inverted surface the muted fill and foreground ink both
         // vanish; the registry solves it the same way.

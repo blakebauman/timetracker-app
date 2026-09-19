@@ -5,6 +5,7 @@ import { EntryGroup } from "./EntryGroup";
 import { EntryForm } from "./EntryForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FirstProjectPrompt } from "./FirstProjectPrompt";
 import {
@@ -73,11 +74,18 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
     const payloads = entries
       .filter((e) => selectedIds.has(e.id))
       .map(toCreatePayload);
-    bulkDelete.mutate(ids, { onSuccess: clearSelection });
-    toast.success(`${ids.length} ${ids.length === 1 ? "entry" : "entries"} deleted`, {
-      action: {
-        label: "Undo",
-        onClick: () => payloads.forEach((p) => createEntry.mutate(p)),
+    // The success toast waits for the server: firing it alongside the request
+    // meant a failed delete showed "3 entries deleted" and "Failed to delete
+    // entries" back to back, with an Undo that re-created rows still present.
+    bulkDelete.mutate(ids, {
+      onSuccess: () => {
+        clearSelection();
+        toast.success(`${ids.length} ${ids.length === 1 ? "entry" : "entries"} deleted`, {
+          action: {
+            label: "Undo",
+            onClick: () => payloads.forEach((p) => createEntry.mutate(p)),
+          },
+        });
       },
     });
   };
@@ -93,6 +101,9 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
   };
 
   const selectionCount = selectedIds.size;
+  // Which billable button is the one working: both share one mutation, so the
+  // patch it was called with says which.
+  const billablePending = bulkUpdate.isPending ? bulkUpdate.variables?.patch.billable : undefined;
 
   if (isLoading) {
     return (
@@ -167,7 +178,11 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
               onClick={() => handleBulkBillable(true)}
               disabled={bulkUpdate.isPending}
             >
-              <DollarSign className="h-3 w-3" />
+              {billablePending === true ? (
+                <Spinner size="sm" className="h-3 w-3" />
+              ) : (
+                <DollarSign className="h-3 w-3" />
+              )}
               Mark billable
             </Button>
             <Button
@@ -177,7 +192,11 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
               onClick={() => handleBulkBillable(false)}
               disabled={bulkUpdate.isPending}
             >
-              <DollarSign className="h-3 w-3 line-through opacity-50" />
+              {billablePending === false ? (
+                <Spinner size="sm" className="h-3 w-3" />
+              ) : (
+                <DollarSign className="h-3 w-3 line-through opacity-50" />
+              )}
               Non-billable
             </Button>
             {integrations.length > 0 && (
@@ -188,7 +207,11 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
                 onClick={handleBulkPush}
                 disabled={pushEntries.isPending}
               >
-                <Upload className="h-3 w-3" />
+                {pushEntries.isPending ? (
+                  <Spinner size="sm" className="h-3 w-3" />
+                ) : (
+                  <Upload className="h-3 w-3" />
+                )}
                 Push to integration
               </Button>
             )}
@@ -199,7 +222,11 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
               onClick={handleBulkDelete}
               disabled={bulkDelete.isPending}
             >
-              <Trash2 className="h-3 w-3" />
+              {bulkDelete.isPending ? (
+                <Spinner size="sm" className="h-3 w-3" />
+              ) : (
+                <Trash2 className="h-3 w-3" />
+              )}
               Delete
             </Button>
             <Button

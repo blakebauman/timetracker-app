@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import type { ApiKey, ApiKeyScope } from "@timetracker/core/schemas";
 
 export function useApiKeys() {
@@ -20,7 +20,14 @@ export function useCreateApiKey() {
   return useMutation({
     mutationFn: (body: { name: string; scope: ApiKeyScope }) => api.apiKeys.create(body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
-    onError: () => toast.error("Couldn't create the key"),
+    // The secret is only ever in the create response, and a queued replay's
+    // response goes nowhere — so a key minted by the drain is unusable.
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info(
+            "Offline — the key will be created when you reconnect, but its secret can't be shown; revoke it then and create another"
+          )
+        : toast.error(mutationErrorMessage(err, "Couldn't create the key")),
   });
 }
 
@@ -32,6 +39,9 @@ export function useRevokeApiKey() {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       toast.success("Key revoked");
     },
-    onError: () => toast.error("Couldn't revoke the key"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the key will be revoked when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Couldn't revoke the key")),
   });
 }

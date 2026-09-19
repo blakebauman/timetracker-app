@@ -18,7 +18,7 @@ test("tag colors: recolor an existing tag in the entry dialog", async ({ page })
   await page.getByRole("button", { name: "Add entry" }).click();
   const dialog = page.getByRole("dialog", { name: "New entry" });
   await dialog.getByRole("button", { name: "Tags" }).click();
-  await page.getByPlaceholder("Add a tag...").fill("design");
+  await page.getByPlaceholder("Add a tag…").fill("design");
   await page.getByRole("option", { name: /design/ }).first().click();
 
   // The selected tag's dot opens the inline recolor palette.

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,22 +86,22 @@ export function ListRangePicker({
         >
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="w-8">From</span>
-            <input
+            <Input
               type="date"
               max={today}
               value={customSince ?? ""}
               onChange={(e) => setCustom("since", e.target.value)}
-              className="h-7 flex-1 rounded-md border bg-background px-2 text-xs text-foreground"
+              className="h-7 flex-1 px-3 text-xs"
             />
           </label>
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="w-8">To</span>
-            <input
+            <Input
               type="date"
               max={today}
               value={customUntil ?? ""}
               onChange={(e) => setCustom("until", e.target.value)}
-              className="h-7 flex-1 rounded-md border bg-background px-2 text-xs text-foreground"
+              className="h-7 flex-1 px-3 text-xs"
             />
           </label>
         </div>

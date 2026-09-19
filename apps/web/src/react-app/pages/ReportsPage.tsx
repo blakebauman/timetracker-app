@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   useReportSummary,
   useReportDetailed,
@@ -90,26 +91,30 @@ export function ReportsPage() {
     [filters, debouncedSearch]
   );
 
-  const { data: summary, isLoading } = useReportSummary(
-    range.since,
-    range.until,
-    queryFilters,
-    rounding
-  );
-  const { data: detailed = [], isLoading: detailedLoading } = useReportDetailed(
-    range.since,
-    range.until,
-    queryFilters,
-    rounding
-  );
-  const { data: weekly = [], isLoading: weeklyLoading } = useReportWeekly(
-    range.since,
-    range.until,
-    queryFilters,
-    rounding
-  );
+  const {
+    data: summary,
+    isLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useReportSummary(range.since, range.until, queryFilters, rounding);
+  const {
+    data: detailed = [],
+    isLoading: detailedLoading,
+    isError: detailedError,
+    refetch: refetchDetailed,
+  } = useReportDetailed(range.since, range.until, queryFilters, rounding);
+  const {
+    data: weekly = [],
+    isLoading: weeklyLoading,
+    isError: weeklyError,
+    refetch: refetchWeekly,
+  } = useReportWeekly(range.since, range.until, queryFilters, rounding);
   const subGrouped = subGroupDim !== "none";
-  const { data: grouped } = useReportGrouped(
+  const {
+    data: grouped,
+    isError: groupedError,
+    refetch: refetchGrouped,
+  } = useReportGrouped(
     range.since,
     range.until,
     groupDim,
@@ -142,6 +147,22 @@ export function ReportsPage() {
     if (cfg.group) setGroupDim(cfg.group);
     if (cfg.subGroup) setSubGroupDim(cfg.subGroup);
   };
+
+  // One error surface for every report query. A failed fetch used to fall
+  // through to "No data for this period", which is the one thing a report must
+  // never say when it doesn't know.
+  const loadError = (what: string, retry: () => void) => (
+    <EmptyState
+      icon={AlertTriangle}
+      title={`Couldn't load ${what}`}
+      description="The request didn't get through. Your tracked time is safe."
+      action={
+        <Button variant="outline" size="sm" onClick={retry}>
+          Try again
+        </Button>
+      }
+    />
+  );
 
   // Group-by + sub-group-by controls, shared by the breakdown and tree views.
   const groupControls = (
@@ -223,6 +244,8 @@ export function ReportsPage() {
             </div>
             <Skeleton className="h-60" />
           </div>
+        ) : summaryError ? (
+          loadError("this report", () => refetchSummary())
         ) : summary ? (
           <>
             <SummaryCards
@@ -268,7 +291,11 @@ export function ReportsPage() {
                     since={range.since}
                     until={range.until}
                   />
-                  {subGrouped && grouped ? (
+                  {subGrouped && groupedError ? (
+                    <div className="rounded-container border bg-card">
+                      {loadError("the breakdown", () => refetchGrouped())}
+                    </div>
+                  ) : subGrouped && grouped ? (
                     <SummaryTree data={grouped} showAmount header={groupControls} />
                   ) : (
                     <BreakdownCard
@@ -289,6 +316,8 @@ export function ReportsPage() {
               <TabsContent value="weekly" className="mt-4">
                 {weeklyLoading ? (
                   <Skeleton className="h-72" />
+                ) : weeklyError ? (
+                  loadError("the weekly view", () => refetchWeekly())
                 ) : (
                   <WeeklyBarChart data={weekly} />
                 )}
@@ -301,6 +330,8 @@ export function ReportsPage() {
                       <Skeleton key={i} className="h-10" />
                     ))}
                   </div>
+                ) : detailedError ? (
+                  loadError("the entries", () => refetchDetailed())
                 ) : (
                   <DetailedTable entries={detailed as DetailedEntry[]} />
                 )}

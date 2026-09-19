@@ -118,7 +118,7 @@ export function TagPicker({
                         type="button"
                         aria-label={`Recolor ${tag}`}
                         onClick={() => setRecoloring((cur) => (cur === tag ? null : tag))}
-                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-offset-1 transition-transform duration-fast ease-out-quart hover:scale-125 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        className="h-2.5 w-2.5 shrink-0 rounded-full transition-transform duration-fast ease-out-quart hover:scale-125 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                         style={{ backgroundColor: colorOf(tag) }}
                       />
                     </TooltipTrigger>
@@ -135,7 +135,7 @@ export function TagPicker({
                   type="button"
                   onClick={() => removeTag(tag)}
                   aria-label={`Remove ${tag}`}
-                  className="rounded-sm text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="rounded-full text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   <X className="h-2.5 w-2.5" />
                 </button>
@@ -159,8 +159,13 @@ export function TagPicker({
                       setRecoloring(null);
                     }}
                     className={cn(
-                      "h-5 w-5 rounded-full ring-2 ring-offset-1 transition-transform duration-fast ease-out-quart hover:scale-110",
-                      colorOf(recoloring) === c ? "ring-foreground" : "ring-transparent"
+                      // Selection is an outline and `ring` means focus and only
+                      // focus — the same split ProjectForm made for the same
+                      // swatch grid.
+                      "h-5 w-5 rounded-full outline-offset-2 transition-all duration-fast ease-out-quart focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                      colorOf(recoloring) === c
+                        ? "scale-110 outline-2 outline-foreground"
+                        : "outline-none hover:scale-105"
                     )}
                     style={{ backgroundColor: c }}
                   />
@@ -175,7 +180,7 @@ export function TagPicker({
             value={input}
             onValueChange={setInput}
             onKeyDown={handleKeyDown}
-            placeholder="Add a tag..."
+            placeholder="Add a tag…"
             className="h-9"
           />
           <CommandList>

@@ -25,9 +25,9 @@ function Progress({
         // Accent Rule (DESIGN.md §8): red marks the running timer and the primary
         // action, not every unbegun estimate.
         //
-        // Callers that mean something by their track still win — SummaryCards'
-        // `bg-success/15`, ProjectList's `bg-warning/20` past 80% of budget —
-        // because those come through `className` and merge over this.
+        // The track stays neutral everywhere; a track tinted with its own fill
+        // reads as full when it is empty. ProjectList tints past 80% of budget
+        // only, where an empty bar cannot occur.
         "relative h-2 w-full overflow-hidden rounded-full bg-border",
         className
       )}

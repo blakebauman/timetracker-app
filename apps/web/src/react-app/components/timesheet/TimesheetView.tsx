@@ -82,6 +82,9 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
   const [copying, setCopying] = useState(false);
   const [editing, setEditing] = useState<{ row: string; day: number } | null>(null);
   const [draft, setDraft] = useState("");
+  // The open cell's input didn't parse. Held open and marked rather than
+  // closed: on a timesheet a silently dropped "1.5h" is a wrong invoice.
+  const [draftInvalid, setDraftInvalid] = useState(false);
 
   // Build rows + a rowKey→dayIndex→Cell lookup from the week's entries.
   const { rows, cells } = useMemo(() => {
@@ -139,13 +142,22 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
   }, [cells]);
   const grandTotal = dayTotals.reduce((s, n) => s + n, 0);
 
+  const closeCell = () => {
+    setEditing(null);
+    setDraftInvalid(false);
+  };
+
   const commitCell = (row: RowMeta, dayIndex: number) => {
     const cell = cells.get(row.key)![dayIndex];
-    setEditing(null);
     const parsed = parseTimeInput(draft.trim());
-    // Invalid input → ignore. Empty or 0 → clear (delete single entry).
+    // Empty or 0 → clear (delete single entry).
     const seconds = draft.trim() === "" ? 0 : parsed;
-    if (seconds === null) return;
+    if (seconds === null) {
+      // Same rule as EntryRow's duration: hold the field open and say so.
+      setDraftInvalid(true);
+      return;
+    }
+    closeCell();
     if (cell.entries.length > 1) return; // read-only aggregate
 
     if (cell.entries.length === 1) {
@@ -259,7 +271,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
             </th>
             {days.map((d, i) => (
               <th key={i} className="px-2 py-2 text-center font-medium">
-                <div className="uppercase">{format(d, "EEE")}</div>
+                <div>{format(d, "EEE")}</div>
                 {/* Full-strength muted: the old /70 opacity measured 4.26:1 in dark. */}
                 <div className="text-micro text-muted-foreground">{format(d, "MMM d")}</div>
               </th>
@@ -323,7 +335,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
               return (
                 <tr
                   key={row.key}
-                  className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
+                  className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/40"
                 >
                   <td className={cn(weekGrid.cellTask, "bg-card")}>
                     <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>
@@ -358,13 +370,26 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                           <Input
                             autoFocus
                             value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
+                            onChange={(e) => {
+                              setDraft(e.target.value);
+                              if (draftInvalid) setDraftInvalid(false);
+                            }}
                             onBlur={() => commitCell(row, dayIndex)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") commitCell(row, dayIndex);
-                              if (e.key === "Escape") setEditing(null);
+                              if (e.key === "Escape") closeCell();
                             }}
-                            className="h-8 w-16 px-1 text-center text-xs tabular-nums"
+                            aria-label={`Time for ${row.projectName ?? "Without project"} on ${format(days[dayIndex], "EEE d")}`}
+                            aria-invalid={draftInvalid}
+                            title={
+                              draftInvalid
+                                ? "Enter a duration like 1h 30m, 1:30, or 90m"
+                                : undefined
+                            }
+                            className={cn(
+                              "h-8 w-16 px-1 text-center font-mono text-xs tabular-nums",
+                              draftInvalid && "text-destructive"
+                            )}
                           />
                         ) : (
                           <button
@@ -381,7 +406,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                               setEditing({ row: row.key, day: dayIndex });
                             }}
                             className={cn(
-                              "mx-auto flex h-8 w-16 items-center justify-center rounded-md border text-xs tabular-nums transition-colors duration-fast ease-out-quart",
+                              "mx-auto flex h-8 w-16 items-center justify-center rounded-md border font-mono text-xs tabular-nums transition-colors duration-fast ease-out-quart",
                               cell.seconds > 0
                                 ? "border-border font-medium"
                                 : "border-transparent text-muted-foreground/40 hover:border-border",
@@ -401,7 +426,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                       </td>
                     );
                   })}
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                  <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums">
                     {rowTotal > 0 ? formatDurationShort(rowTotal) : "–"}
                   </td>
                 </tr>
@@ -419,11 +444,11 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                 Total
               </td>
               {dayTotals.map((t, i) => (
-                <td key={i} className="px-2 py-2 text-center tabular-nums">
+                <td key={i} className="px-2 py-2 text-center font-mono tabular-nums">
                   {t > 0 ? formatDurationShort(t) : "–"}
                 </td>
               ))}
-              <td className="px-3 py-2 text-right tabular-nums">
+              <td className="px-3 py-2 text-right font-mono tabular-nums">
                 {grandTotal > 0 ? formatDurationShort(grandTotal) : "–"}
               </td>
             </tr>

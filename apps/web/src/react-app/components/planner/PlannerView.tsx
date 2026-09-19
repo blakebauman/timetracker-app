@@ -77,6 +77,9 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
   const [copying, setCopying] = useState(false);
   const [editing, setEditing] = useState<{ row: string; day: number } | null>(null);
   const [draft, setDraft] = useState("");
+  // The open cell's input didn't parse. Held open and marked rather than
+  // closed: a silently dropped "1.5h" is a plan that never got made.
+  const [draftInvalid, setDraftInvalid] = useState(false);
 
   const { rows, cells } = useMemo(() => {
     const rowMap = new Map<string, RowMeta>();
@@ -152,13 +155,22 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
     { planned: 0, actual: 0 }
   );
 
+  const closeCell = () => {
+    setEditing(null);
+    setDraftInvalid(false);
+  };
+
   const commitCell = (row: RowMeta, dayIndex: number) => {
     const cell = cells.get(row.key)![dayIndex];
-    setEditing(null);
-    if (!row.projectId) return; // "Without project" rows can't be planned
+    if (!row.projectId) return closeCell(); // "Without project" rows can't be planned
     const parsed = parseTimeInput(draft.trim());
     const seconds = draft.trim() === "" ? 0 : parsed;
-    if (seconds === null) return; // invalid input → ignore
+    if (seconds === null) {
+      // Same rule as EntryRow's duration: hold the field open and say so.
+      setDraftInvalid(true);
+      return;
+    }
+    closeCell();
     if (seconds === cell.planned) return;
 
     upsert.mutate({
@@ -266,7 +278,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
       >
         <span
           className={cn(
-            "tabular-nums",
+            "font-mono tabular-nums",
             unplanned
               ? "text-micro font-normal text-muted-foreground/60"
               : opts?.strong
@@ -279,7 +291,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
         {(cell.planned > 0 || cell.actual > 0) && (
           <span
             className={cn(
-              "tabular-nums",
+              "font-mono tabular-nums",
               unplanned
                 ? cn("text-foreground", opts?.strong ? "font-semibold" : "font-medium")
                 : "text-micro",
@@ -326,7 +338,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
             </th>
             {days.map((d, i) => (
               <th key={i} className="px-2 py-2 text-center font-medium">
-                <div className="uppercase">{format(d, "EEE")}</div>
+                <div>{format(d, "EEE")}</div>
                 <div className="text-micro text-muted-foreground">{format(d, "MMM d")}</div>
               </th>
             ))}
@@ -379,7 +391,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
               return (
                 <tr
                   key={row.key}
-                  className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
+                  className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/40"
                 >
                   <td className={cn(weekGrid.cellTask, "bg-card")}>
                     <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>
@@ -413,13 +425,26 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
                           <Input
                             autoFocus
                             value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
+                            onChange={(e) => {
+                              setDraft(e.target.value);
+                              if (draftInvalid) setDraftInvalid(false);
+                            }}
                             onBlur={() => commitCell(row, dayIndex)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") commitCell(row, dayIndex);
-                              if (e.key === "Escape") setEditing(null);
+                              if (e.key === "Escape") closeCell();
                             }}
-                            className="h-11 w-16 px-1 text-center text-xs tabular-nums"
+                            aria-label={`Planned time for ${row.projectName ?? "Without project"} on ${format(days[dayIndex], "EEE d")}`}
+                            aria-invalid={draftInvalid}
+                            title={
+                              draftInvalid
+                                ? "Enter a duration like 1h 30m, 1:30, or 90m"
+                                : undefined
+                            }
+                            className={cn(
+                              "h-11 w-16 px-1 text-center font-mono text-xs tabular-nums",
+                              draftInvalid && "text-destructive"
+                            )}
                           />
                         ) : (
                           <button

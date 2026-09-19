@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { BrandGlow } from "@/components/brand/BrandGlow";
 
 function GoogleIcon() {
   return (
@@ -48,6 +49,9 @@ export function SignupPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  // The magic-link button has its own flag: one shared `pending` made the
+  // primary button read "Sending…" when the user had pressed the other one.
+  const [linkPending, setLinkPending] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
   const [linkSent, setLinkSent] = useState(false);
@@ -77,7 +81,7 @@ export function SignupPage() {
     });
     setPending(false);
     if (sendError) {
-      setError(sendError.message ?? "Failed to send code");
+      setError("Couldn't send the code. Check the address and try again.");
       return;
     }
     setCodeSent(true);
@@ -90,12 +94,17 @@ export function SignupPage() {
     const { error: verifyError } = await authClient.signIn.emailOtp({ email, otp: code });
     if (verifyError) {
       setPending(false);
-      setError(verifyError.message ?? "Invalid or expired code");
+      setError("That code isn't right or has expired. Request a new one.");
       return;
     }
     // OTP sign-in creates the account without a name — set it now, while the
     // session is brand new (the fresh-session gate on update-user passes).
-    await authClient.updateUser({ name: name.trim() });
+    // The account exists either way, so a failure here is a note, not a stop:
+    // the name can be set again from Settings.
+    const { error: nameError } = await authClient.updateUser({ name: name.trim() });
+    if (nameError) {
+      setError("Signed in, but the name didn't save — you can set it in Settings.");
+    }
     setPending(false);
     // The useEffect above navigates once `user` updates.
   };
@@ -103,15 +112,15 @@ export function SignupPage() {
   const handleSendMagicLink = async () => {
     setError("");
     if (!validate()) return;
-    setPending(true);
+    setLinkPending(true);
     const { error: sendError } = await authClient.signIn.magicLink({
       email,
       name: name.trim(),
       callbackURL: redirect,
     });
-    setPending(false);
+    setLinkPending(false);
     if (sendError) {
-      setError(sendError.message ?? "Failed to send magic link");
+      setError("Couldn't send the magic link. Check the address and try again.");
       return;
     }
     setLinkSent(true);
@@ -123,10 +132,7 @@ export function SignupPage() {
         {/* Logo: the mark over a soft red halo, wordmark beneath. */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="relative flex items-center justify-center">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
-            />
+            <BrandGlow />
             <BrandMark className="relative size-16" />
           </div>
           <span className="text-2xl font-bold tracking-tight">Time Tracker</span>
@@ -227,7 +233,7 @@ export function SignupPage() {
               )}
               {linkSent && (
                 <p className="text-sm text-muted-foreground">
-                  Magic link deployed. Check your inbox to finish creating your
+                  Magic link sent. Check your inbox to finish creating your
                   account — no password required.
                 </p>
               )}
@@ -240,10 +246,10 @@ export function SignupPage() {
                   className="w-full"
                   disabled={pending || !code.trim()}
                 >
-                  {pending ? "Starting the clock…" : "Verify code & create account"}
+                  {pending ? "Creating your account…" : "Verify code & create account"}
                 </Button>
               ) : (
-                <Button type="submit" className="w-full" disabled={pending}>
+                <Button type="submit" className="w-full" disabled={pending || linkPending}>
                   {pending ? "Sending…" : "Email me a sign-up code"}
                 </Button>
               )}
@@ -252,10 +258,10 @@ export function SignupPage() {
                 variant="ghost"
                 size="sm"
                 className="w-full text-muted-foreground"
-                disabled={pending}
+                disabled={pending || linkPending}
                 onClick={handleSendMagicLink}
               >
-                Or send me a magic link instead
+                {linkPending ? "Sending…" : "Or send me a magic link instead"}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 Already clocking in with us?{" "}

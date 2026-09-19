@@ -68,7 +68,8 @@ export function QuickAddTask({
   const canSubmit = parsed.name.length > 0 && !!effectiveProjectId;
 
   const submit = () => {
-    if (!canSubmit || !effectiveProjectId) return;
+    // A second Enter while the first is in flight used to create the task twice.
+    if (!canSubmit || !effectiveProjectId || createTask.isPending) return;
     createTask.mutate(
       {
         name: parsed.name,

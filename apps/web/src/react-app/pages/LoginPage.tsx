@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { KeyRound } from "lucide-react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { BrandGlow } from "@/components/brand/BrandGlow";
 
 function GoogleIcon() {
   return (
@@ -44,6 +45,9 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user } = useAuth();
+  // Better Auth lands here after the emailed delete-account link is opened
+  // (DangerZoneCard passes callbackURL "/login?deleted=1").
+  const accountDeleted = params.get("deleted") === "1";
   const [email, setEmail] = useState("");
   const [error, setError] = useState(() => {
     const oauthError = params.get("error");
@@ -59,9 +63,13 @@ export function LoginPage() {
   const [code, setCode] = useState("");
   const [linkSent, setLinkSent] = useState(false);
   const [pending, setPending] = useState(false);
+  // The magic-link button has its own flag: one shared `pending` made the
+  // primary button read "Sending…" when the user had pressed the other one.
+  const [linkPending, setLinkPending] = useState(false);
 
-  // — Passkey state
+  // — Passkey / Google state
   const [passkeyPending, setPasskeyPending] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
 
   // Navigate only once the shared session store has actually caught up —
   // navigating right after a sign-in call resolves races AuthGuard's
@@ -76,12 +84,15 @@ export function LoginPage() {
     const res = await authClient.signIn.passkey();
     setPasskeyPending(false);
     if (res?.error) {
-      setError(res.error.message ?? "Passkey sign-in failed");
+      setError("Passkey sign-in didn't complete. Try again, or use a code.");
     }
     // On success, the useEffect above navigates once `user` updates.
   };
 
   const handleGoogleSignIn = () => {
+    // The redirect takes a beat; without a pending state the button stays
+    // live and a second click starts a second OAuth round-trip.
+    setGooglePending(true);
     authClient.signIn.social({ provider: "google", callbackURL: "/", errorCallbackURL: "/login?error=google" });
   };
 
@@ -98,7 +109,7 @@ export function LoginPage() {
     });
     setPending(false);
     if (sendError) {
-      setError(sendError.message ?? "Failed to send code");
+      setError("Couldn't send the code. Check the address and try again.");
       return;
     }
     setCodeSent(true);
@@ -111,7 +122,7 @@ export function LoginPage() {
     const { error: verifyError } = await authClient.signIn.emailOtp({ email, otp: code });
     setPending(false);
     if (verifyError) {
-      setError(verifyError.message ?? "Invalid or expired code");
+      setError("That code isn't right or has expired. Request a new one.");
       return;
     }
     // The useEffect above navigates once `user` updates.
@@ -123,14 +134,14 @@ export function LoginPage() {
       return;
     }
     setError("");
-    setPending(true);
+    setLinkPending(true);
     const { error: sendError } = await authClient.signIn.magicLink({
       email,
       callbackURL: "/",
     });
-    setPending(false);
+    setLinkPending(false);
     if (sendError) {
-      setError(sendError.message ?? "Failed to send magic link");
+      setError("Couldn't send the magic link. Check the address and try again.");
       return;
     }
     setLinkSent(true);
@@ -142,14 +153,17 @@ export function LoginPage() {
         {/* Logo: the mark over a soft red halo, wordmark beneath. */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="relative flex items-center justify-center">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
-            />
+            <BrandGlow />
             <BrandMark className="relative size-16" />
           </div>
           <span className="text-2xl font-bold tracking-tight">Time Tracker</span>
         </div>
+
+        {accountDeleted && (
+          <p role="status" className="mb-4 text-center text-sm text-muted-foreground">
+            Your account has been deleted. Thanks for tracking with us.
+          </p>
+        )}
 
         <Card>
           <CardHeader className="space-y-1 pb-4">
@@ -166,9 +180,10 @@ export function LoginPage() {
               variant="outline"
               className="w-full gap-2"
               onClick={handleGoogleSignIn}
+              disabled={googlePending}
             >
               <GoogleIcon />
-              Continue with Google
+              {googlePending ? "Opening Google…" : "Continue with Google"}
             </Button>
 
             <Button
@@ -236,7 +251,7 @@ export function LoginPage() {
               {error && <p className="text-sm text-destructive">{error}</p>}
               {linkSent && (
                 <p className="text-sm text-muted-foreground">
-                  Magic link deployed. Check your inbox — no password
+                  Magic link sent. Check your inbox — no password
                   memorization required.
                 </p>
               )}
@@ -250,7 +265,7 @@ export function LoginPage() {
                   {pending ? "Verifying…" : "Verify code"}
                 </Button>
               ) : (
-                <Button type="submit" className="w-full" disabled={pending}>
+                <Button type="submit" className="w-full" disabled={pending || linkPending}>
                   {pending ? "Sending…" : "Email me a code"}
                 </Button>
               )}
@@ -259,10 +274,10 @@ export function LoginPage() {
                 variant="ghost"
                 size="sm"
                 className="w-full text-muted-foreground"
-                disabled={pending}
+                disabled={pending || linkPending}
                 onClick={handleSendMagicLink}
               >
-                Or send me a magic link instead
+                {linkPending ? "Sending…" : "Or send me a magic link instead"}
               </Button>
             </form>
           </CardContent>

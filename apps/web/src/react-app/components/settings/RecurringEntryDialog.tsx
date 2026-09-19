@@ -4,9 +4,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -83,6 +85,9 @@ export function RecurringEntryDialog({ open, onClose, editing }: RecurringEntryD
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit recurring entry" : "New recurring entry"}</DialogTitle>
+          <DialogDescription>
+            An entry is added automatically on each chosen day at the scheduled time.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -154,15 +159,11 @@ export function RecurringEntryDialog({ open, onClose, editing }: RecurringEntryD
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <Label htmlFor="rec-billable">Billable</Label>
-              <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                Mark each generated entry as billable.
-              </p>
-            </div>
-            <Switch id="rec-billable" checked={billable} onCheckedChange={setBillable} />
-          </div>
+          <SettingsRow
+            label={<Label htmlFor="rec-billable">Billable</Label>}
+            description="Mark each generated entry as billable."
+            trailing={<Switch id="rec-billable" checked={billable} onCheckedChange={setBillable} />}
+          />
         </div>
 
         <DialogFooter>

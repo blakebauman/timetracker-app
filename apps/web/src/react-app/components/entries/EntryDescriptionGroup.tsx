@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EntryRow } from "./EntryRow";
 import { AssignProjectChip } from "./ProjectPicker";
 import { formatDurationShort } from "@/lib/dateUtils";
@@ -39,6 +40,7 @@ export function EntryDescriptionGroup({
   onToggleSelect,
 }: EntryDescriptionGroupProps) {
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { startTimer } = useTimer();
   const bulkDelete = useBulkDeleteEntries();
   const bulkUpdate = useBulkUpdateEntries();
@@ -70,19 +72,26 @@ export function EntryDescriptionGroup({
     });
   };
 
-  // Deleting a whole group is the most destructive action in the list, and it
-  // was the only delete path with no undo: the single-row menu, the bulk bar,
-  // and the timesheet's clear-a-cell all offer one. The app's convention for
-  // destructive actions is undo rather than a confirm dialog — match it.
+  // Deleting a whole group is the most destructive action in the list: one
+  // menu item, every occurrence. It gets both guards — a confirm naming the
+  // count, and the same Undo the single-row menu and bulk bar offer. The
+  // success toast waits for the server, so a failed delete shows only the
+  // failure rather than "deleted" followed by "failed".
   const handleDeleteAll = () => {
+    const count = group.entries.length;
     const payloads = group.entries.map(toCreatePayload);
-    bulkDelete.mutate(group.entries.map((e) => e.id));
-    toast.success(`${group.entries.length} entries deleted`, {
-      action: {
-        label: "Undo",
-        onClick: () => payloads.forEach((p) => createEntry.mutate(p)),
-      },
-    });
+    bulkDelete.mutate(
+      group.entries.map((e) => e.id),
+      {
+        onSuccess: () =>
+          toast.success(`${count} ${count === 1 ? "entry" : "entries"} deleted`, {
+            action: {
+              label: "Undo",
+              onClick: () => payloads.forEach((p) => createEntry.mutate(p)),
+            },
+          }),
+      }
+    );
   };
 
   return (
@@ -227,7 +236,7 @@ export function EntryDescriptionGroup({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={handleDeleteAll}
+                onClick={() => setConfirmDelete(true)}
                 disabled={bulkDelete.isPending}
               >
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
@@ -251,6 +260,15 @@ export function EntryDescriptionGroup({
           ))}
         </div>
       </CollapsibleContent>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete ${group.entries.length} ${group.entries.length === 1 ? "entry" : "entries"}?`}
+        description="They can be restored from the Undo toast for a few seconds, then they're gone."
+        confirmLabel="Delete"
+        onConfirm={handleDeleteAll}
+      />
     </Collapsible>
   );
 }

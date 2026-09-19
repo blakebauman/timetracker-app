@@ -11,11 +11,14 @@ import {
   X,
   CheckCircle2,
   Eraser,
+  AlertCircle,
 } from "lucide-react";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Sheet,
   SheetContent,
@@ -177,7 +180,13 @@ export function AssistantPanel() {
   const setOpen = useAssistantStore((s) => s.setOpen);
   const markSeen = useAssistantStore((s) => s.markSeen);
   const openQuickAdd = useUIStore((s) => s.openQuickAdd);
-  const { nudges } = useAssistantNudges();
+  const {
+    nudges,
+    isLoading: nudgesLoading,
+    isError: nudgesError,
+    refetch: refetchNudges,
+  } = useAssistantNudges();
+  const [confirmClear, setConfirmClear] = useState(false);
   const suggestions = useContextualSuggestions();
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -262,7 +271,19 @@ export function AssistantPanel() {
           <ConversationContent className="p-4">
             {/* Nudges */}
             <div className="space-y-2">
-              {nudges.length > 0 ? (
+              {nudgesLoading ? (
+                <Skeleton className="h-16 w-full" />
+              ) : nudgesError ? (
+                // "All caught up" on a failed fetch would be the one thing
+                // the Assistant must never say; name the problem instead.
+                <div className="flex items-center gap-2.5 rounded-container border border-dashed p-3 text-sm text-muted-foreground">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span className="flex-1">Couldn't check your calendar and timesheet.</span>
+                  <Button variant="outline" size="xs" onClick={() => refetchNudges()}>
+                    Retry
+                  </Button>
+                </div>
+              ) : nudges.length > 0 ? (
                 nudges.map((n) => <NudgeCard key={n.id} nudge={n} />)
               ) : (
                 <div className="flex items-center gap-2.5 rounded-container border border-dashed p-3 text-sm text-muted-foreground">
@@ -289,7 +310,7 @@ export function AssistantPanel() {
                     variant="ghost"
                     size="sm"
                     className="h-7 gap-1.5 text-xs text-muted-foreground"
-                    onClick={() => clearHistory()}
+                    onClick={() => setConfirmClear(true)}
                     disabled={busy}
                   >
                     <Eraser className="h-3.5 w-3.5" /> Clear chat
@@ -315,7 +336,7 @@ export function AssistantPanel() {
                   // rack. Neither has a shadow.
                   className={
                     m.role === "user"
-                      ? "ml-8 rounded-container border border-primary/20 bg-primary/10 px-3 py-2 text-sm whitespace-pre-wrap"
+                      ? "ml-8 rounded-container border border-primary/20 bg-primary/5 px-3 py-2 text-sm whitespace-pre-wrap"
                       : "group mr-4 flex gap-2 rounded-container border bg-card px-3 py-2.5"
                   }
                 >
@@ -353,6 +374,18 @@ export function AssistantPanel() {
                   <span>Thinking…</span>
                 </div>
               )}
+
+              {status === "error" && (
+                // A failed turn used to end in silence — the spinner just went
+                // away. Say so, and offer the same retry the message menu has.
+                <div className="mr-4 flex items-center gap-2.5 rounded-container border border-destructive/40 px-3 py-2 text-sm">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+                  <span className="flex-1">That didn't go through.</span>
+                  <Button variant="outline" size="xs" onClick={() => regenerate()}>
+                    Try again
+                  </Button>
+                </div>
+              )}
             </div>
           </ConversationContent>
           <ConversationScrollButton />
@@ -370,6 +403,14 @@ export function AssistantPanel() {
           />
         </div>
       </SheetContent>
+      <ConfirmDialog
+        open={confirmClear}
+        onOpenChange={setConfirmClear}
+        title="Clear this conversation?"
+        description="The messages are removed for good. What the Assistant remembers about you stays."
+        confirmLabel="Clear chat"
+        onConfirm={() => clearHistory()}
+      />
     </Sheet>
   );
 }

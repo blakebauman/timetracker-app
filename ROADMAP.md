@@ -226,6 +226,27 @@ what the audit turned up; nothing here is outstanding.*
   whenever the next schema change lands — no urgency, it costs nothing but
   reads as live schema.
 
+## Deferred from the September 2026 polish pass
+
+- **One palette source** — `worker/lib/colors.ts` and `react-app/lib/colorUtils.ts`
+  are two hand-maintained copies of the same 18 hexes; the contrast spec imports
+  only the web one. Hoist into `@timetracker/core` and import from both, or add a
+  parity assertion.
+- **Contrast spec coverage** — `e2e/contrast.spec.ts` guards swatch ink and
+  `--primary-ink` only. `--success-ink`, `--warning-ink`, `--destructive` and
+  muted ink on the rail are asserted in `index.css` comments and nowhere else.
+- **Icon glyph size** — ~115 call sites pass a 14px icon into the 16px slot the
+  button primitives declare. It reads as deliberate density and a sweep is churn,
+  but two spellings of the same size (`h-N w-N` vs `size-N`) keep growing.
+- **"Copy last week" partial failure** — the timesheet fires one create per
+  entry with no per-item handling; a half-copied week needs a batch endpoint.
+- **Timer header at phone width** — the five-segment view switcher plus the
+  split Add pill is the tightest toolbar in the app and wraps to three rows at
+  400px; a design decision, not a polish item.
+- **Queued API-key mints** — a `POST /keys` is now excluded from the offline
+  replay queue (the secret only exists in the response); the same question
+  applies to any future write whose response is the point.
+
 ## Ideas / backlog
 
 - **Desktop app (Tauri) for OS-level idle detection** — the web app can only

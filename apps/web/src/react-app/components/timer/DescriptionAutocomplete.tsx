@@ -252,7 +252,7 @@ export function DescriptionAutocomplete({
             }}
             onMouseEnter={() => setActive(i)}
             className={cn(
-              "flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm",
+              "flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left text-sm",
               i === active && "bg-accent"
             )}
           >

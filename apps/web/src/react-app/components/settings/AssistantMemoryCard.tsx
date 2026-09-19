@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Sparkles, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Spinner } from "@/components/ui/spinner";
 import { useAssistantMemory, useDeleteAssistantMemory } from "@/hooks/useAssistant";
 
 /**
@@ -42,16 +42,14 @@ export function AssistantMemoryCard() {
         </p>
 
         {isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Spinner /> Loading…
-          </div>
+          <Skeleton className="h-12 w-full" />
         ) : memories.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+          <p className="rounded-container border border-dashed p-3 text-sm text-muted-foreground">
             The assistant hasn't remembered anything yet. Tell it a preference in chat (e.g.
             “always mark Acme non-billable”) and it'll show up here.
           </p>
         ) : (
-          <ul className="divide-y rounded-lg border">
+          <ul className="divide-y rounded-container border">
             {memories.map((m) => (
               <li key={m.key} className="flex items-start gap-2 p-3">
                 <span className="min-w-0 flex-1 text-sm">{m.content}</span>

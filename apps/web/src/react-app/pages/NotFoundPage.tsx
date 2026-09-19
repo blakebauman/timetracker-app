@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { BrandGlow } from "@/components/brand/BrandGlow";
 
 export function NotFoundPage() {
   return (
@@ -8,10 +9,7 @@ export function NotFoundPage() {
       {/* Same brand treatment as the auth pages: the mark over a soft red
           halo. It stands in for the empty-state icon here. */}
       <div className="relative mb-6 flex items-center justify-center">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
-        />
+        <BrandGlow />
         <BrandMark className="relative size-16" />
       </div>
       <h1 className="text-2xl font-bold tracking-tight">Page not found</h1>

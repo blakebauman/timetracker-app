@@ -12,6 +12,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { modKey } from "@/lib/platform";
+import { Kbd } from "@/components/ui/kbd";
 import { useTimer } from "@/hooks/useTimer";
 import { useGroupedEntries } from "@/hooks/useEntries";
 import { useTimerStore } from "@/stores/timerStore";
@@ -98,30 +99,18 @@ export function CommandPalette() {
   ];
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title="Command Palette">
+    <CommandDialog open={open} onOpenChange={setOpen} title="Command palette">
       <CommandInput
         placeholder="Search or start a timer…"
         value={search}
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors duration-fast ease-out-quart hover:bg-accent"
-            onClick={handleStartTimer}
-          >
-            <Play className="h-4 w-4 text-primary" />
-            <span>
-              Start timer
-              {search && (
-                <>
-                  {": "}
-                  <span className="font-medium">"{search}"</span>
-                </>
-              )}
-            </span>
-          </button>
-        </CommandEmpty>
+        {/* The Timer group's "Start: …" item below already carries the typed
+            text and therefore always matches it, so this slot only shows
+            while a timer is running and nothing else matches. It used to hold
+            a plain button that cmdk never made arrow-selectable. */}
+        <CommandEmpty>No matches.</CommandEmpty>
 
         {/* Timer actions */}
         <CommandGroup heading="Timer">
@@ -160,7 +149,9 @@ export function CommandPalette() {
           >
             <Sparkles className="h-4 w-4" />
             Ask Assistant
-            <CommandShortcut>{modKey}I</CommandShortcut>
+            <CommandShortcut>
+              <Kbd>{modKey}I</Kbd>
+            </CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

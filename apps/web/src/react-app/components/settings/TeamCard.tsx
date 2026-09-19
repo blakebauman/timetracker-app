@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
+import { mutationErrorMessage } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { UserAvatar } from "@/components/layout/UserAvatar";
 import { X, Mail } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +26,12 @@ export function TeamCard() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitePending, setInvitePending] = useState(false);
   const [inviteError, setInviteError] = useState("");
+  const [removingMember, setRemovingMember] = useState<{ id: string; name: string } | null>(
+    null
+  );
+  const [cancellingInvite, setCancellingInvite] = useState<{ id: string; email: string } | null>(
+    null
+  );
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +44,10 @@ export function TeamCard() {
     });
     setInvitePending(false);
     if (error) {
-      setInviteError(error.message ?? "Failed to send invite");
+      // Better Auth's error is a plain object, never an ApiError, so every
+      // handler below lands on its curated line — the server's wording never
+      // reaches the UI.
+      setInviteError(mutationErrorMessage(error, "Couldn't send that invitation"));
       return;
     }
     setInviteEmail("");
@@ -46,7 +57,7 @@ export function TeamCard() {
   const handleCancelInvite = async (invitationId: string) => {
     const { error } = await authClient.organization.cancelInvitation({ invitationId });
     if (error) {
-      toast.error(error.message ?? "Failed to cancel invitation");
+      toast.error(mutationErrorMessage(error, "Couldn't cancel that invitation"));
       return;
     }
     toast.success("Invitation cancelled");
@@ -56,7 +67,7 @@ export function TeamCard() {
   const handleRoleChange = async (memberId: string, role: string) => {
     const { error } = await authClient.organization.updateMemberRole({ memberId, role });
     if (error) {
-      toast.error(error.message ?? "Failed to update role");
+      toast.error(mutationErrorMessage(error, "Couldn't change that role"));
       return;
     }
     toast.success("Role updated");
@@ -66,7 +77,7 @@ export function TeamCard() {
   const handleRemoveMember = async (memberId: string) => {
     const { error } = await authClient.organization.removeMember({ memberIdOrEmail: memberId });
     if (error) {
-      toast.error(error.message ?? "Failed to remove member");
+      toast.error(mutationErrorMessage(error, "Couldn't remove that member"));
       return;
     }
     toast.success("Member removed");
@@ -132,8 +143,14 @@ export function TeamCard() {
                               <Button
                                 size="icon-xs"
                                 variant="ghost"
-                                onClick={() => handleRemoveMember(member.id)}
+                                onClick={() =>
+                                  setRemovingMember({
+                                    id: member.id,
+                                    name: member.user?.name ?? member.user?.email ?? "this member",
+                                  })
+                                }
                                 aria-label="Remove member"
+                                title="Remove member"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </Button>
@@ -168,8 +185,11 @@ export function TeamCard() {
                             <Button
                               size="icon-xs"
                               variant="ghost"
-                              onClick={() => handleCancelInvite(invitation.id)}
+                              onClick={() =>
+                                setCancellingInvite({ id: invitation.id, email: invitation.email })
+                              }
                               aria-label="Cancel invitation"
+                              title="Cancel invitation"
                             >
                               <X className="h-3.5 w-3.5" />
                             </Button>
@@ -204,6 +224,29 @@ export function TeamCard() {
           </>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={removingMember !== null}
+        onOpenChange={(open) => !open && setRemovingMember(null)}
+        title={`Remove ${removingMember?.name ?? "this member"} from the workspace?`}
+        description="They lose access straight away. Time they tracked stays in the workspace."
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (removingMember) handleRemoveMember(removingMember.id);
+          setRemovingMember(null);
+        }}
+      />
+      <ConfirmDialog
+        open={cancellingInvite !== null}
+        onOpenChange={(open) => !open && setCancellingInvite(null)}
+        title={`Withdraw the invitation to ${cancellingInvite?.email ?? "this address"}?`}
+        description="The link in their email stops working. You can invite them again any time."
+        confirmLabel="Withdraw invitation"
+        onConfirm={() => {
+          if (cancellingInvite) handleCancelInvite(cancellingInvite.id);
+          setCancellingInvite(null);
+        }}
+      />
     </Card>
   );
 }

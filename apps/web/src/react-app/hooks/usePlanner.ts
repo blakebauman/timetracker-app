@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import type { Allocation, UpsertAllocation, BulkUpsertAllocations } from "@timetracker/core/schemas";
 
 // Planned allocations for a [since, until) range of local YYYY-MM-DD dates.
@@ -68,9 +68,14 @@ export function useUpsertAllocation() {
       });
       return { prev };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err, _vars, ctx) => {
+      if (isQueuedOffline(err)) {
+        // Keep the optimistic cell — the write is queued, not lost.
+        toast.info("Offline — the plan will be saved when you reconnect");
+        return;
+      }
       ctx?.prev.forEach(([key, data]) => queryClient.setQueryData(key, data));
-      toast.error("Failed to save plan");
+      toast.error(mutationErrorMessage(err, "Failed to save plan"));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planner-allocations"] });
@@ -88,6 +93,9 @@ export function useBulkUpsertAllocations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planner-allocations"] });
     },
-    onError: () => toast.error("Failed to save plan"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the plan will be saved when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to save plan")),
   });
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Copy, Check } from "lucide-react";
+import { Sparkles, Copy, Check, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -18,7 +18,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Spinner } from "@/components/ui/spinner";
 import { useAiSummary } from "@/hooks/useAi";
+import { mutationErrorMessage } from "@/lib/api";
 
 interface AiSummaryDialogProps {
   since: string;
@@ -33,9 +35,11 @@ export function AiSummaryDialog({ since, until }: AiSummaryDialogProps) {
   const aiSummary = useAiSummary();
 
   const handleGenerate = () => {
+    if (aiSummary.isPending) return;
     setCopied(false);
     aiSummary.mutate({ since, until, style }, { onSuccess: (data) => setSummary(data.summary) });
   };
+  const hasDrafted = summary.length > 0;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(summary);
@@ -47,6 +51,7 @@ export function AiSummaryDialog({ since, until }: AiSummaryDialogProps) {
     if (!o) {
       setSummary("");
       setCopied(false);
+      aiSummary.reset();
     }
   };
 
@@ -60,11 +65,11 @@ export function AiSummaryDialog({ since, until }: AiSummaryDialogProps) {
             </Button>
           </DialogTrigger>
         </TooltipTrigger>
-        <TooltipContent>Draft AI summary</TooltipContent>
+        <TooltipContent>Draft summary</TooltipContent>
       </Tooltip>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>AI-drafted summary</DialogTitle>
+          <DialogTitle>Draft summary</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -78,15 +83,45 @@ export function AiSummaryDialog({ since, until }: AiSummaryDialogProps) {
                 <SelectItem value="narrative">Narrative</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={handleGenerate} disabled={aiSummary.isPending}>
-              {aiSummary.isPending ? "Drafting…" : summary ? "Regenerate" : "Generate"}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleGenerate}
+              disabled={aiSummary.isPending}
+            >
+              {aiSummary.isPending && <Spinner size="sm" />}
+              {aiSummary.isPending ? "Drafting…" : hasDrafted ? "Regenerate" : "Generate"}
             </Button>
           </div>
+
+          {/* The hook already toasts, but a toast is gone in four seconds and
+              the dialog is still open. Say it where the result was expected. */}
+          {aiSummary.isError && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 text-sm text-destructive"
+            >
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1">
+                {mutationErrorMessage(aiSummary.error, "Couldn't draft a summary.")}
+              </span>
+              <Button variant="outline" size="sm" onClick={handleGenerate}>
+                Retry
+              </Button>
+            </div>
+          )}
 
           <Textarea
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
-            placeholder="Generated summary will appear here — edit freely before copying."
+            // Nothing has happened yet, and the placeholder must not read as
+            // though it did: no "will appear here" over a failed draft.
+            placeholder={
+              aiSummary.isError
+                ? "Nothing drafted yet. Retry, or write your own."
+                : "Choose a style and press Generate. You can edit the draft before copying."
+            }
             className="min-h-48 resize-none text-sm"
           />
         </div>

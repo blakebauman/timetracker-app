@@ -19,6 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Spinner } from "@/components/ui/spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   useSavedReports,
   useCreateSavedReport,
@@ -37,13 +39,22 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
   const remove = useDeleteSavedReport();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleSave = () => {
     const trimmed = name.trim();
-    if (!trimmed) return;
-    create.mutate({ name: trimmed, config: current });
-    setName("");
-    setDialogOpen(false);
+    if (!trimmed || create.isPending) return;
+    // Close and clear only once the save has landed. Closing first meant a
+    // failed save left nothing on screen but a toast — and lost the name.
+    create.mutate(
+      { name: trimmed, config: current },
+      {
+        onSuccess: () => {
+          setName("");
+          setDialogOpen(false);
+        },
+      }
+    );
   };
 
   return (
@@ -52,7 +63,7 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon-sm" aria-label="Saved">
+              <Button variant="outline" size="icon-sm" aria-label="Saved reports" title="Saved reports">
                 <Bookmark className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -77,11 +88,12 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
                 <button
                   type="button"
                   aria-label={`Delete ${r.name}`}
+                  title="Delete saved report"
                   onClick={(e) => {
                     e.stopPropagation();
-                    remove.mutate(r.id);
+                    setDeleteTarget({ id: r.id, name: r.name });
                   }}
-                  className="tt-reveal shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive"
+                  className="tt-reveal shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -96,7 +108,19 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title={`Delete "${deleteTarget?.name ?? ""}"?`}
+        description="It can't be recovered."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleteTarget) remove.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+      />
+
+      <Dialog open={dialogOpen} onOpenChange={(o) => !create.isPending && setDialogOpen(o)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Save report</DialogTitle>
@@ -115,11 +139,16 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={create.isPending}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!name.trim()}>
-              Save
+            <Button
+              onClick={handleSave}
+              disabled={!name.trim() || create.isPending}
+              className="gap-1.5"
+            >
+              {create.isPending && <Spinner size="sm" />}
+              {create.isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

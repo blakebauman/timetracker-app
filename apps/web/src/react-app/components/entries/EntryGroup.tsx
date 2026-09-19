@@ -21,7 +21,7 @@ function DayTotal({ dateKey, totalSeconds }: { dateKey: string; totalSeconds: nu
     s.runningEntry && localDayKey(s.runningEntry.start) === dateKey ? s.elapsed : 0
   );
   return (
-    <span className="font-mono text-sm text-muted-foreground">
+    <span className="font-mono text-sm tabular-nums text-muted-foreground">
       {formatDurationShort(totalSeconds + liveExtra)}
     </span>
   );

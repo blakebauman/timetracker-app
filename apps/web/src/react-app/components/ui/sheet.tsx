@@ -64,7 +64,7 @@ function SheetContent({
           // 300ms out on `ease-in-out` — the slowest motion in the app by a
           // wide margin, and the Assistant panel is a Sheet, so it was also the
           // most felt. Panel and scrim now move together.
-          "fixed z-portal flex flex-col gap-4 bg-popover shadow-lg transition duration-slow ease-out-quart data-[state=closed]:animate-out data-[state=open]:animate-in",
+          "fixed z-portal flex flex-col gap-4 bg-popover shadow-lg transition-[transform,opacity] duration-slow ease-out-quart data-[state=closed]:animate-out data-[state=open]:animate-in",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 rounded-l-container border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
           side === "left" &&
@@ -79,7 +79,7 @@ function SheetContent({
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity duration-fast ease-out-quart hover:opacity-100 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity duration-fast ease-out-quart hover:opacity-100 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none data-[state=open]:bg-accent">
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>

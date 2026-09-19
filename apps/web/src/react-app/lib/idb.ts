@@ -60,6 +60,24 @@ export async function clearTimerState(): Promise<void> {
   await db.delete("timer_state", "current");
 }
 
+/**
+ * Who wants to know when the queue grows or shrinks — the offline banner's
+ * "N changes will sync" count. IndexedDB has no change events of its own, so
+ * the two writers below notify by hand; a listener re-counts on each call.
+ */
+const pendingListeners = new Set<() => void>();
+
+export function onPendingMutationsChange(listener: () => void): () => void {
+  pendingListeners.add(listener);
+  return () => {
+    pendingListeners.delete(listener);
+  };
+}
+
+function notifyPendingMutationsChange(): void {
+  for (const listener of pendingListeners) listener();
+}
+
 export async function addPendingMutation(
   mutation: Omit<PendingMutation, "id" | "createdAt">
 ): Promise<void> {
@@ -68,6 +86,12 @@ export async function addPendingMutation(
     ...mutation,
     createdAt: Date.now(),
   } as PendingMutation);
+  notifyPendingMutationsChange();
+}
+
+export async function countPendingMutations(): Promise<number> {
+  const db = await getDB();
+  return db.count("pending_mutations");
 }
 
 export async function getPendingMutations(): Promise<PendingMutation[]> {
@@ -78,6 +102,7 @@ export async function getPendingMutations(): Promise<PendingMutation[]> {
 export async function deletePendingMutation(id: number): Promise<void> {
   const db = await getDB();
   await db.delete("pending_mutations", id);
+  notifyPendingMutationsChange();
 }
 
 export type { TimerState, PendingMutation };

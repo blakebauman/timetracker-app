@@ -98,7 +98,9 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
                 aria-hidden
                 className={cn(
                   "tabular-nums",
-                  late ? "text-destructive" : "text-muted-foreground"
+                  // Muted ink is tuned for the track and vanishes on the
+                  // recessed pill, so the active count reads in full ink.
+                  late ? "text-destructive" : active ? "text-foreground" : "text-muted-foreground"
                 )}
               >
                 {count}

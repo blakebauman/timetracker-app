@@ -25,7 +25,7 @@ interface SpentFigureProps {
  */
 export function SpentFigure({ spent, of, className }: SpentFigureProps) {
   return (
-    <span className={cn("text-micro tabular-nums", className)}>
+    <span className={cn("font-mono text-micro tabular-nums", className)}>
       <span className="text-foreground">{spent}</span>
       <span className="text-muted-foreground"> / {of}</span>
     </span>

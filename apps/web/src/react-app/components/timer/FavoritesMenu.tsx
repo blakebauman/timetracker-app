@@ -120,7 +120,7 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
             </span>
             <button
               type="button"
-              className="tt-reveal shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive"
+              className="tt-reveal shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-destructive"
               title="Remove favorite"
               aria-label="Remove favorite"
               onClick={(e) => {

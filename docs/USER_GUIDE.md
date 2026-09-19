@@ -292,7 +292,7 @@ Under **Settings → Account / Security / Danger zone**:
 - **Passkeys** — sign in with Touch ID / security keys.
 - **Connected accounts** — link/unlink Google sign-in.
 - **Active sessions** — see and revoke every signed-in session.
-- **Delete account** — permanent, removes your data.
+- **Delete account** — permanent, removes your data. There is no password to type: choosing **Email me the link** sends a confirmation to your address, and the account is deleted only when you open that link from the browser you're signed in on (it expires after 24 hours; if you didn't ask for it, ignore the email and nothing changes). You land back on the sign-in page with a note that it's done.
 
 ## Settings reference
 

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { SpentFigure } from "@/components/ui/spent-figure";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
@@ -17,7 +18,7 @@ interface TaskListProps {
 }
 
 export function TaskList({ projectId }: TaskListProps) {
-  const { data: tasks = [], isLoading } = useTasks(projectId);
+  const { data: tasks = [], isLoading, isError, refetch } = useTasks(projectId);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
@@ -34,7 +35,8 @@ export function TaskList({ projectId }: TaskListProps) {
 
   const handleCreate = () => {
     const name = newName.trim();
-    if (!name) return;
+    // Enter and the button share this; a second Enter mid-flight created twins.
+    if (!name || createTask.isPending) return;
     createTask.mutate({ name, projectId }, { onSuccess: () => setNewName("") });
   };
 
@@ -77,6 +79,17 @@ export function TaskList({ projectId }: TaskListProps) {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="flex items-center gap-2 pt-3 text-xs text-muted-foreground">
+        <span>Couldn't load tasks.</span>
+        <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => refetch()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   // Done tasks are fetched here too (they weren't before), and this list has no
   // status filter of its own — so sink them below the active ones rather than
   // letting a long-lived project bury its open work under finished work.
@@ -86,6 +99,14 @@ export function TaskList({ projectId }: TaskListProps) {
 
   return (
     <div className="mt-3 space-y-1">
+      {/* One muted line rather than a full EmptyState: this list sits inside a
+          project row, and the composer beneath it is the call to action. */}
+      {ordered.length === 0 && (
+        <p className="px-2 py-1.5 text-xs text-muted-foreground">
+          No tasks yet — add one below.
+        </p>
+      )}
+
       {ordered.map((task) => {
         const progress = task.estimatedSeconds
           ? Math.min(100, Math.round((task.trackedSeconds / task.estimatedSeconds) * 100))
@@ -94,7 +115,7 @@ export function TaskList({ projectId }: TaskListProps) {
         return (
           <div
             key={task.id}
-            className="group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/50"
+            className="group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40"
           >
             {/* Done toggle */}
             <button
@@ -224,7 +245,9 @@ export function TaskList({ projectId }: TaskListProps) {
         <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !createTask.isPending) handleCreate();
+          }}
           placeholder="Add a task…"
           aria-label="Add a task"
           className="h-7 text-xs"
@@ -237,7 +260,7 @@ export function TaskList({ projectId }: TaskListProps) {
           onClick={handleCreate}
           disabled={!newName.trim() || createTask.isPending}
         >
-          <Plus className="h-3.5 w-3.5" />
+          {createTask.isPending ? <Spinner size="sm" /> : <Plus className="h-3.5 w-3.5" />}
         </Button>
       </div>
 

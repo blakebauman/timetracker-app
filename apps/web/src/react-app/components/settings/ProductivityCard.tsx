@@ -150,14 +150,14 @@ export function ProductivityCard() {
         {/* Assistant nudge alerts */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="pr-2">
-            <Label htmlFor="pref-aski-alerts">Assistant nudge alerts</Label>
+            <Label htmlFor="pref-assistant-alerts">Assistant nudge alerts</Label>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Toast when the assistant notices something new — untracked meetings,
               long-running timers. Each nudge alerts once.
             </p>
           </div>
           <Switch
-            id="pref-aski-alerts"
+            id="pref-assistant-alerts"
             checked={alertsEnabled}
             onCheckedChange={setAlertsEnabled}
           />

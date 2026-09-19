@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { LIT_DISC } from "@/components/ui/lit-disc";
 
 /**
  * Auto-growing chat composer (fold.run ai-elements/prompt-input, trimmed to our
@@ -62,9 +63,10 @@ export function PromptInput({
         submit();
       }}
       className={cn(
-        // A recessed well in a capsule, with the send disc as the one red
-        // element in the panel. No glass here — only the timer surfaces are.
-        "flex items-end gap-2 rounded-capsule border bg-background p-1.5 pl-2",
+        // A recessed well with the send disc as the one red element in the
+        // panel. No glass and no capsule here — the composer is the only
+        // capsule, and only the timer surfaces are glass.
+        "flex items-end gap-2 rounded-container border bg-background p-1.5 pl-2",
         "transition-[color,box-shadow] duration-fast ease-out-quart focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
       )}
     >
@@ -100,7 +102,7 @@ export function PromptInput({
         <Button
           type="submit"
           size="icon-lg"
-          className="shrink-0 shadow-lg shadow-primary/40"
+          className={cn("shrink-0", LIT_DISC)}
           disabled={!canSend}
           aria-label="Send message"
           title="Send"

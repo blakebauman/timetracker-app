@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import { useUIStore } from "@/stores/uiStore";
 import type { Settings, UpdateSettings } from "@timetracker/core/schemas";
 
@@ -100,7 +100,10 @@ export function useUpdateSettings() {
       setShowWeekends(settings.showWeekends);
       setAutoAssignColors(settings.autoAssignColors);
     },
-    onError: () => toast.error("Failed to save settings"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — your settings will be saved when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to save settings")),
   });
 }
 
@@ -109,7 +112,9 @@ export function useSendDigest() {
   return useMutation({
     mutationFn: (kind: "daily" | "weekly") => api.settings.sendDigest(kind),
     onSuccess: () => toast.success("Sent — check your inbox"),
-    onError: (error: Error) =>
-      toast.error(error.message || "Couldn't send the digest"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the digest will be sent when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Couldn't send the digest")),
   });
 }

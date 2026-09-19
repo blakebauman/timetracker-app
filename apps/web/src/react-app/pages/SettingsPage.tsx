@@ -18,7 +18,12 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Download, Palette } from "lucide-react";
-import { useEntries } from "@/hooks/useEntries";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { startOfDay, subDays, endOfDay, parseISO } from "date-fns";
+import { api } from "@/lib/api";
+import { useDayRollover } from "@/hooks/useDayRollover";
+import type { TimeEntry } from "@timetracker/core/schemas";
 import { exportToCSV } from "@/lib/exportUtils";
 import { useUIStore } from "@/stores/uiStore";
 import { useUpdateSettings } from "@/hooks/useSettings";
@@ -46,7 +51,13 @@ type Tab = (typeof TABS)[number];
 // ── Settings page ────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
-  const { data: entries = [] } = useEntries(365);
+  // The export used to fetch a year of entries on every Settings visit, for a
+  // button most visits never press. Now it fetches on click, through the same
+  // ["time-entries", since, until] key `useEntries(365)` uses, so a warm cache
+  // still answers instantly.
+  const queryClient = useQueryClient();
+  const today = parseISO(useDayRollover());
+  const [exporting, setExporting] = useState(false);
 
   // — Preferences state
   const [defaultBillable, setDefaultBillableState] = useState<boolean>(getDefaultBillable);
@@ -65,8 +76,27 @@ export function SettingsPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleExportAll = () => {
-    exportToCSV(entries, "all-time-entries");
+  const handleExportAll = async () => {
+    if (exporting) return;
+    setExporting(true);
+    const since = startOfDay(subDays(today, 364)).toISOString();
+    const until = endOfDay(today).toISOString();
+    try {
+      const entries = await queryClient.fetchQuery({
+        queryKey: ["time-entries", since, until],
+        queryFn: () => api.timeEntries.list({ since, until }) as Promise<TimeEntry[]>,
+      });
+      if (entries.length === 0) {
+        // A header-only CSV is a file that says nothing; say it here instead.
+        toast.info("No entries to export from the last year");
+        return;
+      }
+      exportToCSV(entries, "all-time-entries");
+    } catch {
+      toast.error("Couldn't fetch your entries for export");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleDefaultBillableChange = (checked: boolean) => {
@@ -356,9 +386,10 @@ export function SettingsPage() {
                   size="sm"
                   className="gap-1.5"
                   onClick={handleExportAll}
+                  disabled={exporting}
                 >
-                  <Download className="h-4 w-4" />
-                  Export all entries (CSV)
+                  {exporting ? <Spinner size="default" /> : <Download className="h-4 w-4" />}
+                  {exporting ? "Preparing export…" : "Export all entries (CSV)"}
                 </Button>
               </CardContent>
             </Card>

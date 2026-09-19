@@ -59,7 +59,11 @@
                     shape in the system and it is spent on the one thing the
                     app exists to do.
        data cells — unchanged `rounded-md`/`-lg`. Timesheet cells, calendar
-                    blocks, planner cells, table cells. */
+                    blocks, planner cells, table cells, and the 8px rows inside
+                    a menu or picker.
+       Two deliberate exceptions: a Textarea is a 12px container, because a
+       pill forces the first and last lines of multi-line text into the curve;
+       and a Kbd is the 4px step, a keycap, not a control. */
   --radius-container: 0.75rem;
   --radius-capsule: 2rem;
   --font-sans: var(--font-geist-sans);
@@ -319,7 +323,7 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
   /* No scrollbars anywhere, in either engine. Every scrolling pane fades its
-     content out at the top instead (see .tt-pane), which is the rack's way of
+     content out at the top instead (see .tt-pane-fade), which is the rack's way of
      saying "there is more" without drawing a grey bar down every panel. */
   * {
     scrollbar-width: none;

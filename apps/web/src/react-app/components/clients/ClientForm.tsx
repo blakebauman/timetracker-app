@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useCreateClient, useUpdateClient } from "@/hooks/useProjects";
@@ -52,13 +54,17 @@ export function ClientForm({ client, open, onClose }: ClientFormProps) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{client ? "Edit Client" : "New Client"}</DialogTitle>
+          <DialogTitle>{client ? "Edit client" : "New client"}</DialogTitle>
+          <DialogDescription>
+            Only the name is required. The rest is here for when you invoice.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Name</Label>
+            <Label htmlFor="client-name">Name</Label>
             <Input
+              id="client-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Client name"
@@ -68,8 +74,9 @@ export function ClientForm({ client, open, onClose }: ClientFormProps) {
 
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
-              <Label>Email</Label>
+              <Label htmlFor="client-email">Email</Label>
               <Input
+                id="client-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -77,8 +84,9 @@ export function ClientForm({ client, open, onClose }: ClientFormProps) {
               />
             </div>
             <div className="flex-1 space-y-1.5">
-              <Label>Phone</Label>
+              <Label htmlFor="client-phone">Phone</Label>
               <Input
+                id="client-phone"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -88,8 +96,9 @@ export function ClientForm({ client, open, onClose }: ClientFormProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Address</Label>
+            <Label htmlFor="client-address">Address</Label>
             <Textarea
+              id="client-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Street, city, country"
@@ -98,8 +107,9 @@ export function ClientForm({ client, open, onClose }: ClientFormProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Notes</Label>
+            <Label htmlFor="client-notes">Notes</Label>
             <Textarea
+              id="client-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Anything worth remembering about this client"
@@ -111,6 +121,7 @@ export function ClientForm({ client, open, onClose }: ClientFormProps) {
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={!name.trim() || isPending}>
+            {isPending && <Spinner size="sm" />}
             {client ? "Save changes" : "Create client"}
           </Button>
         </DialogFooter>

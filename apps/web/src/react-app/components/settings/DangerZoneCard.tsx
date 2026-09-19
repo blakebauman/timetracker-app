@@ -1,10 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,25 +15,32 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 
+// Server text is not shown to the user: Better Auth's messages here are
+// internal ("Delete user is disabled", token codes) and a fixed line reads better.
+const SEND_FAILED = "Couldn't send the confirmation email";
+
 export function DangerZoneCard() {
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
 
-  const handleDelete = async () => {
+  // Passwords are retired, so deletion is confirmed by email: this only asks the
+  // server to send the link (worker/auth.ts sendDeleteAccountVerification). The
+  // account is deleted when the link is opened from this signed-in browser, and
+  // Better Auth then redirects to callbackURL.
+  const handleRequestLink = async () => {
     setPending(true);
     try {
-      const { error } = await authClient.deleteUser({ password });
-      if (error) throw new Error(error.message ?? "Failed to delete account");
-      toast.success("Your account has been deleted");
-      navigate("/login");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete account");
+      const { error } = await authClient.deleteUser({ callbackURL: "/login?deleted=1" });
+      if (error) {
+        toast.error(SEND_FAILED);
+        return;
+      }
+      toast.success("Check your email — the deletion link is on its way");
+      setOpen(false);
+    } catch {
+      toast.error(SEND_FAILED);
     } finally {
       setPending(false);
-      setOpen(false);
-      setPassword("");
     }
   };
 
@@ -67,33 +71,23 @@ export function DangerZoneCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes your account and all time entries, projects, and reports.
-              Enter your password to confirm.
+              This permanently deletes your account and every time entry, project and report in your
+              personal workspace. We&apos;ll email you a link to confirm — nothing happens until you click
+              it.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="delete-password">Password</Label>
-            <Input
-              id="delete-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-9"
-            />
-          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                handleDelete();
+                handleRequestLink();
               }}
-              disabled={pending || !password}
+              disabled={pending}
               variant="destructive"
             >
               {pending && <Spinner size="sm" className="mr-1.5" />}
-              Delete account
+              Email me the link
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

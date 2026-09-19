@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +45,52 @@ import {
   Inbox,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+
+/**
+ * The app's checkbox grammar (EntryRow): a 16px box with a hairline, filled
+ * `bg-primary` when checked, and a ::before that widens the hit target to 28px
+ * without changing the visual weight. Local because the two native inputs it
+ * replaces were the only ones left in the app.
+ */
+function SelectCheckbox({
+  checked,
+  onToggle,
+  label,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onToggle}
+      className={cn(
+        "relative flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        checked
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-muted-foreground/40 hover:border-primary"
+      )}
+    >
+      {checked && (
+        <svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none" aria-hidden>
+          <path
+            d="M2 5l2.5 2.5L8 3"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 export interface DetailedEntry {
   id: string;
@@ -118,6 +165,9 @@ export function DetailedTable({ entries }: DetailedTableProps) {
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<DetailedEntry | null>(null);
+  // What the confirm dialog is about to delete: one row from its menu, or the
+  // whole selection from the bulk bar. Same dialog, same undo.
+  const [deleteTarget, setDeleteTarget] = useState<DetailedEntry[] | null>(null);
 
   const updateEntry = useUpdateEntry();
   const deleteEntry = useDeleteEntry();
@@ -165,24 +215,53 @@ export function DetailedTable({ entries }: DetailedTableProps) {
   const toggleAll = () =>
     setSelected(allSelected ? new Set() : new Set(sorted.map((e) => e.id)));
 
-  const duplicate = (e: DetailedEntry) =>
-    createEntry.mutate({
-      description: e.description,
-      projectId: e.projectId,
-      taskId: e.taskId,
-      start: e.start,
-      stop: e.stop,
-      billable: e.billable,
-      tags: e.tags,
-    });
+  const toCreatePayload = (e: DetailedEntry) => ({
+    description: e.description,
+    projectId: e.projectId,
+    taskId: e.taskId,
+    start: e.start,
+    stop: e.stop,
+    billable: e.billable,
+    tags: e.tags,
+  });
+  const duplicate = (e: DetailedEntry) => createEntry.mutate(toCreatePayload(e));
 
   const bulkBillable = (billable: boolean) =>
     bulkUpdate.mutate(
       { ids: [...selected], patch: { billable } },
       { onSuccess: clearSelection }
     );
-  const bulkRemove = () =>
-    bulkDelete.mutate([...selected], { onSuccess: clearSelection });
+  const bulkRemove = () => setDeleteTarget(sorted.filter((e) => selected.has(e.id)));
+
+  // The success toast waits for the server (EntryList does the same): firing
+  // it with the request meant "3 entries deleted" beside "Failed to delete".
+  // Undo re-creates the rows from what they were, so it survives the refetch.
+  const confirmDelete = () => {
+    const targets = deleteTarget;
+    setDeleteTarget(null);
+    if (!targets || targets.length === 0) return;
+    const payloads = targets.map(toCreatePayload);
+    const n = targets.length;
+    const done = () => {
+      clearSelection();
+      toast.success(`${n} ${n === 1 ? "entry" : "entries"} deleted`, {
+        action: {
+          label: "Undo",
+          onClick: () => payloads.forEach((p) => createEntry.mutate(p)),
+        },
+      });
+    };
+    if (n === 1) deleteEntry.mutate(targets[0].id, { onSuccess: done });
+    else
+      bulkDelete.mutate(
+        targets.map((e) => e.id),
+        { onSuccess: done }
+      );
+  };
+
+  const bulkPending = bulkUpdate.isPending || bulkDelete.isPending;
+  // Both billable buttons share one mutation; the patch says which is working.
+  const billablePending = bulkUpdate.isPending ? bulkUpdate.variables?.patch.billable : undefined;
 
   if (entries.length === 0) {
     return (
@@ -201,14 +280,34 @@ export function DetailedTable({ entries }: DetailedTableProps) {
         <div className="flex flex-wrap items-center gap-2 rounded-container border bg-card px-3 py-2 print:hidden">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="ml-auto flex items-center gap-1.5">
-            <Button variant="outline" size="sm" className="h-8" onClick={() => bulkBillable(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => bulkBillable(true)}
+              disabled={bulkPending}
+            >
+              {billablePending === true && <Spinner size="sm" />}
               Billable
             </Button>
-            <Button variant="outline" size="sm" className="h-8" onClick={() => bulkBillable(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => bulkBillable(false)}
+              disabled={bulkPending}
+            >
+              {billablePending === false && <Spinner size="sm" />}
               Non-billable
             </Button>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-destructive" onClick={bulkRemove}>
-              <Trash2 className="h-3.5 w-3.5" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-destructive"
+              onClick={bulkRemove}
+              disabled={bulkPending}
+            >
+              {bulkDelete.isPending ? <Spinner size="sm" /> : <Trash2 className="h-3.5 w-3.5" />}
               Delete
             </Button>
             <Button variant="ghost" size="icon-sm" onClick={clearSelection} aria-label="Clear selection">
@@ -244,7 +343,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
       )}
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className="rounded-container border">
         {/* Its own scroll region so the column headers survive a 500-row report
             and the tabs/filters above stay put. Print unbounds it so the whole
             table still flows onto pages. */}
@@ -252,13 +351,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
           <TableHeader>
             <TableRow className="[&>th]:sticky [&>th]:top-0 [&>th]:z-sticky [&>th]:bg-muted [&>th]:shadow-[inset_0_-1px_0_var(--border)] hover:bg-transparent">
               <TableHead className="w-8 rounded-tl-lg print:hidden" aria-label="Select">
-                <input
-                  type="checkbox"
-                  aria-label="Select all"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="relative size-3.5 accent-primary before:absolute before:-inset-[5px] before:content-['']"
-                />
+                <SelectCheckbox checked={allSelected} onToggle={toggleAll} label="Select all" />
               </TableHead>
               {cols.map((c) => (
                 <TableHead key={c.key} className={cn("text-xs", c.align === "right" && "text-right")}>
@@ -287,12 +380,10 @@ export function DetailedTable({ entries }: DetailedTableProps) {
             {sorted.map((entry) => (
               <TableRow key={entry.id} data-state={selected.has(entry.id) ? "selected" : undefined}>
                 <TableCell className="print:hidden">
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${entry.description || "entry"}`}
+                  <SelectCheckbox
                     checked={selected.has(entry.id)}
-                    onChange={() => toggleSelect(entry.id)}
-                    className="relative size-3.5 accent-primary before:absolute before:-inset-[5px] before:content-['']"
+                    onToggle={() => toggleSelect(entry.id)}
+                    label={`Select ${entry.description || "entry"}`}
                   />
                 </TableCell>
                 {cols.map((c) => (
@@ -344,7 +435,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
-                        onClick={() => deleteEntry.mutate(entry.id)}
+                        onClick={() => setDeleteTarget([entry])}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         Delete
@@ -364,6 +455,23 @@ export function DetailedTable({ entries }: DetailedTableProps) {
       {editing && (
         <EntryForm entry={editing} open onClose={() => setEditing(null)} />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title={
+          deleteTarget && deleteTarget.length > 1
+            ? `Delete ${deleteTarget.length} entries?`
+            : "Delete this entry?"
+        }
+        description={
+          deleteTarget && deleteTarget.length > 1
+            ? "They come off every report and total. You can undo from the toast for a moment."
+            : "It comes off every report and total. You can undo from the toast for a moment."
+        }
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
@@ -385,7 +493,7 @@ function renderCell(
           </span>
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
             {entry.billable && (
-              <span className="text-micro font-semibold text-primary">$</span>
+              <span className="text-micro font-semibold text-primary-ink">$</span>
             )}
             {entry.tags.map((tag) => (
               <Badge key={tag} variant="outline" className="h-4 px-1 py-0 text-micro font-normal">

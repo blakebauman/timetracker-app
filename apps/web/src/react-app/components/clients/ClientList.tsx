@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Users, MoreHorizontal, Archive, Edit2, ChevronRight } from "lucide-react";
+import { Plus, Users, MoreHorizontal, Archive, Edit2, ChevronRight, AlertTriangle } from "lucide-react";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -66,7 +66,7 @@ function ClientFigures({
       <span className="text-micro text-muted-foreground md:hidden">{label}</span>
       <span
         className={cn(
-          "tabular-nums md:block md:text-right",
+          "font-mono tabular-nums md:block md:text-right",
           opts?.strong ? "text-sm font-semibold" : "text-sm",
           opts?.muted && "text-muted-foreground"
         )}
@@ -101,7 +101,7 @@ function ClientFigures({
             outcome for a client that has earned nothing. Zero is neutral. */}
         <span
           className={cn(
-            "text-sm font-semibold tabular-nums md:block md:text-right",
+            "font-mono text-sm font-semibold tabular-nums md:block md:text-right",
             stats.billableAmount > 0 ? "text-success-ink" : "text-muted-foreground"
           )}
         >
@@ -113,7 +113,7 @@ function ClientFigures({
 }
 
 export function ClientList() {
-  const { data: clients = [], isLoading } = useAllClients();
+  const { data: clients = [], isLoading, isError, refetch } = useAllClients();
   const [period, setPeriod] = useState<CollectionPeriod>("thisMonth");
   const { since, until } = resolveCollectionPeriod(period);
   const { byClient, isLoading: statsLoading } = useClientStats(since, until);
@@ -171,7 +171,22 @@ export function ClientList() {
           </div>
         )}
 
-        {!isLoading && (
+        {/* A failed fetch is not "no clients yet": that state invites adding a
+            first client on top of a list that may well exist. */}
+        {isError && !isLoading && (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load clients"
+            description="The request didn't get through. Your tracked time is safe."
+            action={
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Try again
+              </Button>
+            }
+          />
+        )}
+
+        {!isLoading && !isError && (
           <div className="space-y-2">
             {clients.map((client) => (
               <div

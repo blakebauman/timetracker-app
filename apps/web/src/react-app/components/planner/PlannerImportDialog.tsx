@@ -161,6 +161,7 @@ export function PlannerImportDialog({ open, onClose, weekDayKeys }: PlannerImpor
   const handleFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => setText(String(reader.result ?? ""));
+    reader.onerror = () => toast.error("Couldn't read that file");
     reader.readAsText(file);
   };
 
@@ -229,7 +230,7 @@ export function PlannerImportDialog({ open, onClose, weekDayKeys }: PlannerImpor
           )}
 
           {parsed.rows.length > 0 && (
-            <div className="max-h-64 overflow-auto rounded-md border">
+            <div className="max-h-64 overflow-auto rounded-container border">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-popover text-muted-foreground">
                   <tr className="border-b">

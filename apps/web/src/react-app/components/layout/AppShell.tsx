@@ -41,11 +41,16 @@ const LogTaskTimeSheet = lazyWithReload(() =>
  * as `--dock-h` on the shell, in case a page needs it for its own geometry.
  */
 const DOCK_CLEARANCE = { idle: "8.5rem", running: "6.5rem" } as const;
+// Desktop toasts stack up from the bottom-right, where the composer (idle) or
+// the docked bar (running) already is. The offset follows the same clearance
+// plus one gutter, so an Undo toast never lands under the timer surface at the
+// widths where the composer reaches the right half of the pane.
+const TOAST_BOTTOM_PX = { idle: 8.5 * 16 + 16, running: 6.5 * 16 + 16 } as const;
 
 export function AppShell() {
   useWebSocket();
   useHydrateSettings();
-  const { isOnline } = useOfflineSync();
+  const { isOnline, pendingCount } = useOfflineSync();
   const location = useLocation();
   const quickAddOpen = useUIStore((s) => s.quickAddOpen);
   const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
@@ -109,10 +114,12 @@ export function AppShell() {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Offline banner */}
         {!isOnline && (
-          <Alert variant="destructive" className="rounded-none border-x-0 border-t-0 py-2">
+          <Alert variant="warning" className="rounded-none border-x-0 border-t-0 py-2">
             <WifiOff className="h-4 w-4" />
             <AlertDescription>
-              You're offline — changes will sync when your connection is restored.
+              {pendingCount > 0
+                ? `You're offline — ${pendingCount} ${pendingCount === 1 ? "change" : "changes"} will sync when you reconnect.`
+                : "You're offline — changes will sync when your connection is restored."}
             </AlertDescription>
           </Alert>
         )}
@@ -163,7 +170,7 @@ export function AppShell() {
         position={belowMd ? "top-center" : "bottom-right"}
         // Sonner reads `mobileOffset` below 600px and `offset` above it, so
         // both are set: the phone toast must clear the 56px brand bar.
-        offset={belowMd ? { top: 72 } : { bottom: 112 }}
+        offset={belowMd ? { top: 72 } : { bottom: running ? TOAST_BOTTOM_PX.running : TOAST_BOTTOM_PX.idle }}
         mobileOffset={{ top: 72 }}
       />
     </div>

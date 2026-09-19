@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
+import { mutationErrorMessage } from "@/lib/api";
 import { formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 
 // The auth client deserializes timestamps to Date; our formatters take ISO strings.
@@ -66,7 +68,9 @@ export function SessionsCard() {
       toast.success("Session signed out");
       queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    // Better Auth's error is a plain object, never an ApiError, so this always
+    // lands on the curated line — the server's wording never reaches the toast.
+    onError: (e) => toast.error(mutationErrorMessage(e, "Couldn't revoke that session")),
   });
 
   const revokeOthers = useMutation({
@@ -78,7 +82,8 @@ export function SessionsCard() {
       toast.success("Signed out all other devices");
       queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) =>
+      toast.error(mutationErrorMessage(e, "Couldn't sign out the other devices")),
   });
 
   const otherCount = sessions.filter((s) => s.token !== currentToken).length;
@@ -95,7 +100,11 @@ export function SessionsCard() {
             onClick={() => revokeOthers.mutate()}
             disabled={revokeOthers.isPending}
           >
-            <LogOut className="h-3.5 w-3.5" />
+            {revokeOthers.isPending ? (
+              <Spinner size="sm" />
+            ) : (
+              <LogOut className="h-3.5 w-3.5" />
+            )}
             Sign out other devices
           </Button>
         )}
@@ -111,41 +120,44 @@ export function SessionsCard() {
             const { label, mobile } = describeUserAgent(s.userAgent);
             const isCurrent = s.token === currentToken;
             const Icon = mobile ? Smartphone : Monitor;
+            // Only the row being revoked shows it working; the mutation is
+            // shared, so `variables` says which row that is.
+            const revoking = revoke.isPending && revoke.variables === s.token;
             return (
-              <div
+              <SettingsRow
                 key={s.id}
-                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{label}</span>
-                      {isCurrent && (
-                        <Badge variant="secondary" className="text-micro">
-                          This device
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {s.ipAddress || "Unknown IP"}
-                      {s.createdAt &&
-                        ` · signed in ${formatShortDate(toIso(s.createdAt))} ${formatEntryTime(toIso(s.createdAt))}`}
-                    </p>
-                  </div>
-                </div>
-                {!isCurrent && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => revoke.mutate(s.token)}
-                    disabled={revoke.isPending}
-                  >
-                    {revoke.isPending ? <Spinner size="sm" /> : "Revoke"}
-                  </Button>
-                )}
-              </div>
+                icon={Icon}
+                label={
+                  <>
+                    <span className="truncate">{label}</span>
+                    {isCurrent && (
+                      <Badge variant="secondary" className="text-micro">
+                        This device
+                      </Badge>
+                    )}
+                  </>
+                }
+                description={
+                  <>
+                    {s.ipAddress || "Unknown IP"}
+                    {s.createdAt &&
+                      ` · signed in ${formatShortDate(toIso(s.createdAt))} ${formatEntryTime(toIso(s.createdAt))}`}
+                  </>
+                }
+                trailing={
+                  !isCurrent && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => revoke.mutate(s.token)}
+                      disabled={revoking}
+                    >
+                      {revoking ? <Spinner size="sm" /> : "Revoke"}
+                    </Button>
+                  )
+                }
+              />
             );
           })
         )}
