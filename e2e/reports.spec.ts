@@ -20,6 +20,18 @@ test.describe("reports charts", () => {
     await expect(page.locator('[data-slot="chart"]').first()).toBeVisible();
     expect(await page.locator('[data-slot="chart"]').count()).toBeGreaterThanOrEqual(2);
 
+    // The daily chart stacks each day by project by default, with the
+    // project's name in the legend; the toggle swaps it to the billable split
+    // and back, and the choice persists across a reload.
+    const daily = page.locator('[data-slot="card"]', { hasText: "Daily breakdown" });
+    await expect(daily.getByText("No project", { exact: true })).toBeVisible();
+    await daily.getByRole("radio", { name: "Billable" }).click();
+    await expect(daily.getByText("Non-billable", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(daily.getByRole("radio", { name: "Billable" })).toHaveAttribute("aria-checked", "true");
+    await daily.getByRole("radio", { name: "Project" }).click();
+    await expect(daily.getByText("No project", { exact: true })).toBeVisible();
+
     // Weekly tab: grouped bar chart mounts with its legend.
     await page.getByRole("tab", { name: "Weekly" }).click();
     const weekly = page.getByRole("tabpanel");

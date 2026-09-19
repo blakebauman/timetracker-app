@@ -4,6 +4,9 @@ import type { ListRangeKey } from "@/lib/dateUtils";
 
 type RoundMode = "off" | "nearest" | "up" | "down";
 
+/** What the Reports daily chart stacks a day by. */
+export type DailyStack = "billable" | "project";
+
 // The four interchangeable views hosted by the unified Timer tab.
 export type TimerView = "calendar" | "split" | "list" | "timesheet" | "planner";
 
@@ -35,6 +38,8 @@ interface UIStore {
   currency: string;
   roundMode: RoundMode;
   roundMinutes: number;
+  /** Reports → daily chart: stack each day by billable share or by project. */
+  reportDailyStack: DailyStack;
   timerView: TimerView;
   calendarView: string;
   calendarSlotHeight: number;
@@ -94,6 +99,7 @@ interface UIStore {
   setTimeFormat: (v: "24h" | "12h") => void;
   setCurrency: (v: string) => void;
   setRounding: (mode: RoundMode, minutes: number) => void;
+  setReportDailyStack: (v: DailyStack) => void;
   setTimerView: (v: TimerView) => void;
   setCalendarView: (v: string) => void;
   setCalendarSlotHeight: (v: number) => void;
@@ -132,6 +138,7 @@ export const useUIStore = create<UIStore>()(
       currency: localStorage.getItem("pref_currency") ?? "USD",
       roundMode: (localStorage.getItem("pref_roundMode") as RoundMode) ?? "off",
       roundMinutes: Number(localStorage.getItem("pref_roundMinutes")) || 15,
+      reportDailyStack: "project",
       timerView: "list",
       calendarView: "timeGridWeek",
       calendarSlotHeight: CALENDAR_SLOT_HEIGHT_DEFAULT,
@@ -168,6 +175,7 @@ export const useUIStore = create<UIStore>()(
         set({ currency: v });
         localStorage.setItem("pref_currency", v);
       },
+      setReportDailyStack: (v) => set({ reportDailyStack: v }),
       setRounding: (mode, minutes) => {
         set({ roundMode: mode, roundMinutes: minutes });
         localStorage.setItem("pref_roundMode", mode);
@@ -251,6 +259,7 @@ export const useUIStore = create<UIStore>()(
         currency: s.currency,
         roundMode: s.roundMode,
         roundMinutes: s.roundMinutes,
+        reportDailyStack: s.reportDailyStack,
         timerView: s.timerView,
         calendarView: s.calendarView,
         calendarSlotHeight: s.calendarSlotHeight,
