@@ -27,7 +27,7 @@ export function ProjectBadge({ name, color, className }: ProjectBadgeProps) {
     <span
       title={name}
       className={cn(
-        "tt-swatch-tint inline-block max-w-48 truncate rounded-sm px-1.5 py-0.5 align-bottom text-xs font-medium",
+        "tt-swatch-tint inline-block max-w-48 truncate rounded-full px-2 py-0.5 align-bottom text-xs font-medium",
         className
       )}
       style={{ "--swatch": c } as CSSProperties}

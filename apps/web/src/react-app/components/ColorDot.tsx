@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils";
 
 /** Fallback swatch color for entities without an assigned color. */
-export const DEFAULT_PROJECT_COLOR = "#94a3b8";
+// A project with no colour is grey, and in this system grey is chroma zero —
+// the old value was a blue-tinted slate, the one tinted neutral on the page.
+export const DEFAULT_PROJECT_COLOR = "#9a9a9a";
 
 interface ColorDotProps {
   color?: string | null;

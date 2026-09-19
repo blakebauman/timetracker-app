@@ -226,7 +226,7 @@ export function TaskRow({
     return (
       <div
         className={cn(
-          "group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/50",
+          "group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
           dragging && "opacity-50"
         )}
         {...dragHandlers}
@@ -246,7 +246,7 @@ export function TaskRow({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/50",
+        "group flex items-center gap-2 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
         nested && "pl-9",
         running && "bg-primary/5",
         dragging && "opacity-50"
@@ -262,7 +262,7 @@ export function TaskRow({
           onClick={onToggleExpanded}
           aria-expanded={expanded}
           aria-label={expanded ? "Hide subtasks" : "Show subtasks"}
-          className="-ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground"
+          className="-ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground"
         >
           <ChevronRight
             className={cn(
@@ -391,7 +391,7 @@ export function TaskRow({
           <button
             aria-label={task.dueDate ? `Due ${formatDueDate(task.dueDate)} — change` : "Set due date"}
             className={cn(
-              "shrink-0 rounded px-1 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
+              "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
               task.dueDate
                 ? DUE_TONE_CLASS[tone ?? "later"]
                 : "tt-reveal text-muted-foreground/50 hover:text-muted-foreground"

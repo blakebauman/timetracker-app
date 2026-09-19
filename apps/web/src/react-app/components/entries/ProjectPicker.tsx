@@ -235,7 +235,7 @@ function CreateProjectItem({
         type="button"
         onClick={onCreate}
         disabled={pending}
-        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition-colors duration-fast ease-out-quart hover:bg-accent focus-visible:bg-accent focus-visible:outline-none disabled:opacity-50"
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors duration-fast ease-out-quart hover:bg-accent focus-visible:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
       >
         {content}
       </button>
@@ -274,7 +274,7 @@ export function AssignProjectChip({
       <button
         type="button"
         aria-label={ariaLabel}
-        className="flex h-4 items-center gap-1 rounded-sm border border-dashed border-muted-foreground/40 px-1.5 text-micro font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:border-primary hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="flex h-4 items-center gap-1 rounded-full border border-dashed border-muted-foreground/40 px-2 text-micro font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:border-primary hover:text-primary-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <FolderOpen className="h-2.5 w-2.5" />
         Project

@@ -379,7 +379,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
               return (
                 <tr
                   key={row.key}
-                  className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
+                  className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/40"
                 >
                   <td className={cn(weekGrid.cellTask, "bg-card")}>
                     <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>

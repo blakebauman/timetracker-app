@@ -81,7 +81,7 @@ export function SavedReportsMenu({ current, onLoad }: SavedReportsMenuProps) {
                     e.stopPropagation();
                     remove.mutate(r.id);
                   }}
-                  className="tt-reveal shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive"
+                  className="tt-reveal shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
