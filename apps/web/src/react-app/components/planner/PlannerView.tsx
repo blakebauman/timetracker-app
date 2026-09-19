@@ -266,7 +266,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
       >
         <span
           className={cn(
-            "tabular-nums",
+            "font-mono tabular-nums",
             unplanned
               ? "text-micro font-normal text-muted-foreground/60"
               : opts?.strong
@@ -279,7 +279,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
         {(cell.planned > 0 || cell.actual > 0) && (
           <span
             className={cn(
-              "tabular-nums",
+              "font-mono tabular-nums",
               unplanned
                 ? cn("text-foreground", opts?.strong ? "font-semibold" : "font-medium")
                 : "text-micro",
@@ -326,7 +326,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
             </th>
             {days.map((d, i) => (
               <th key={i} className="px-2 py-2 text-center font-medium">
-                <div className="uppercase">{format(d, "EEE")}</div>
+                <div>{format(d, "EEE")}</div>
                 <div className="text-micro text-muted-foreground">{format(d, "MMM d")}</div>
               </th>
             ))}
@@ -419,7 +419,7 @@ export function PlannerView({ weekStart }: PlannerViewProps) {
                               if (e.key === "Enter") commitCell(row, dayIndex);
                               if (e.key === "Escape") setEditing(null);
                             }}
-                            className="h-11 w-16 px-1 text-center text-xs tabular-nums"
+                            className="h-11 w-16 px-1 text-center font-mono text-xs tabular-nums"
                           />
                         ) : (
                           <button

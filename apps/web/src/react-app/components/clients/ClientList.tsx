@@ -66,7 +66,7 @@ function ClientFigures({
       <span className="text-micro text-muted-foreground md:hidden">{label}</span>
       <span
         className={cn(
-          "tabular-nums md:block md:text-right",
+          "font-mono tabular-nums md:block md:text-right",
           opts?.strong ? "text-sm font-semibold" : "text-sm",
           opts?.muted && "text-muted-foreground"
         )}
@@ -101,7 +101,7 @@ function ClientFigures({
             outcome for a client that has earned nothing. Zero is neutral. */}
         <span
           className={cn(
-            "text-sm font-semibold tabular-nums md:block md:text-right",
+            "font-mono text-sm font-semibold tabular-nums md:block md:text-right",
             stats.billableAmount > 0 ? "text-success-ink" : "text-muted-foreground"
           )}
         >

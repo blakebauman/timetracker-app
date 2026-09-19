@@ -359,7 +359,7 @@ export function TimerWorkspaceHeader({
               </Tooltip>
             ))}
         </div>
-        <span className="text-xs font-semibold tabular-nums">
+        <span className="font-mono text-xs font-semibold tabular-nums">
           {formatDurationShort(totalSeconds)}
         </span>
         <Link

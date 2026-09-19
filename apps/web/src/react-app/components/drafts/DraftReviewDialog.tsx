@@ -374,7 +374,7 @@ function DraftCard({
             {formatEntryTime(draft.stop, timeFormat)}
           </span>
           <span aria-hidden>·</span>
-          <span className="font-semibold tabular-nums text-foreground">
+          <span className="font-mono font-semibold tabular-nums text-foreground">
             {formatDurationShort(draft.duration)}
           </span>
         </div>

@@ -532,7 +532,7 @@ export function TaskBoardList() {
                           {section.nodes.length}
                         </span>
                         {section.trackedSeconds > 0 && (
-                          <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                          <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
                             {formatDurationShort(section.trackedSeconds)}
                           </span>
                         )}

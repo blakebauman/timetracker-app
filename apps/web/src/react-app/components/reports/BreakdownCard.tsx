@@ -132,11 +132,11 @@ export function BreakdownCard({
                       {row.name}
                     </span>
                     {showAmount && (
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                         {formatCurrency(row.billableAmount, currency)}
                       </span>
                     )}
-                    <span className="min-w-12 shrink-0 text-right text-sm font-medium tabular-nums">
+                    <span className="min-w-12 shrink-0 text-right font-mono text-sm font-medium tabular-nums">
                       {formatDurationShort(row.totalSeconds)}
                     </span>
                     {/* The share is a share of TIME, and it used to sit between
@@ -146,7 +146,7 @@ export function BreakdownCard({
                         0% of the revenue, which is exactly what "Internal /
                         Admin — $0.00 · 26%" was saying. It now sits after the
                         figure it qualifies, with nothing between them. */}
-                    <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                    <span className="w-9 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
                       {pct}%
                     </span>
                   </div>
@@ -158,17 +158,17 @@ export function BreakdownCard({
                 <span className="mt-1 h-2.5 w-2.5 shrink-0" />
                 <span className="min-w-0 flex-1 text-sm font-medium">Total</span>
                 {showAmount && (
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                     {formatCurrency(
                       sorted.reduce((s, r) => s + r.billableAmount, 0),
                       currency
                     )}
                   </span>
                 )}
-                <span className="min-w-12 shrink-0 text-right text-sm font-semibold tabular-nums">
+                <span className="min-w-12 shrink-0 text-right font-mono text-sm font-semibold tabular-nums">
                   {formatDurationShort(totalSeconds)}
                 </span>
-                <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                <span className="w-9 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
                   100%
                 </span>
               </div>

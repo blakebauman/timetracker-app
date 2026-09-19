@@ -259,7 +259,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
             </th>
             {days.map((d, i) => (
               <th key={i} className="px-2 py-2 text-center font-medium">
-                <div className="uppercase">{format(d, "EEE")}</div>
+                <div>{format(d, "EEE")}</div>
                 {/* Full-strength muted: the old /70 opacity measured 4.26:1 in dark. */}
                 <div className="text-micro text-muted-foreground">{format(d, "MMM d")}</div>
               </th>
@@ -364,7 +364,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                               if (e.key === "Enter") commitCell(row, dayIndex);
                               if (e.key === "Escape") setEditing(null);
                             }}
-                            className="h-8 w-16 px-1 text-center text-xs tabular-nums"
+                            className="h-8 w-16 px-1 text-center font-mono text-xs tabular-nums"
                           />
                         ) : (
                           <button
@@ -381,7 +381,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                               setEditing({ row: row.key, day: dayIndex });
                             }}
                             className={cn(
-                              "mx-auto flex h-8 w-16 items-center justify-center rounded-md border text-xs tabular-nums transition-colors duration-fast ease-out-quart",
+                              "mx-auto flex h-8 w-16 items-center justify-center rounded-md border font-mono text-xs tabular-nums transition-colors duration-fast ease-out-quart",
                               cell.seconds > 0
                                 ? "border-border font-medium"
                                 : "border-transparent text-muted-foreground/40 hover:border-border",
@@ -401,7 +401,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                       </td>
                     );
                   })}
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                  <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums">
                     {rowTotal > 0 ? formatDurationShort(rowTotal) : "–"}
                   </td>
                 </tr>
@@ -419,11 +419,11 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                 Total
               </td>
               {dayTotals.map((t, i) => (
-                <td key={i} className="px-2 py-2 text-center tabular-nums">
+                <td key={i} className="px-2 py-2 text-center font-mono tabular-nums">
                   {t > 0 ? formatDurationShort(t) : "–"}
                 </td>
               ))}
-              <td className="px-3 py-2 text-right tabular-nums">
+              <td className="px-3 py-2 text-right font-mono tabular-nums">
                 {grandTotal > 0 ? formatDurationShort(grandTotal) : "–"}
               </td>
             </tr>
