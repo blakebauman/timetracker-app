@@ -6,7 +6,7 @@ file=$(echo "$data" | python3 -c "import sys,json; d=json.load(sys.stdin); print
 if [[ "$file" =~ migrations/.*\.sql$ ]]; then
   echo ""
   echo "[hook] Migration file written: $file"
-  echo "Apply locally:  npx wrangler d1 migrations apply DB --local"
-  echo "Apply to prod:  npx wrangler d1 migrations apply DB --remote"
+  echo "Apply locally:  cd apps/web && npx wrangler d1 migrations apply DB --local"
+  echo "Apply to prod:  cd apps/web && npx wrangler d1 migrations apply DB --remote"
 fi
 exit 0

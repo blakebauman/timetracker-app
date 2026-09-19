@@ -6,7 +6,15 @@ import tseslint from "typescript-eslint";
 
 /** Shared flat config: TypeScript + React hooks/refresh, browser globals. */
 export default tseslint.config(
-	{ ignores: ["dist", "worker-configuration.d.ts"] },
+	{
+		ignores: [
+			"**/dist/**",
+			"**/.wrangler/**",
+			"**/worker-configuration.d.ts",
+			"**/playwright-report/**",
+			"**/test-results/**",
+		],
+	},
 	{
 		extends: [js.configs.recommended, ...tseslint.configs.recommended],
 		files: ["**/*.{ts,tsx}"],

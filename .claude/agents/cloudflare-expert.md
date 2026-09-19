@@ -13,13 +13,14 @@ You are a Cloudflare Workers expert specializing in this time-tracker app's back
 
 ## Project context
 
-- Worker entry: `src/worker/index.ts` (Hono v4 app)
+- Monorepo: the Worker + SPA live in `apps/web` (`@timetracker/web`); shared schemas in `packages/core`. All `wrangler` commands run from `apps/web`, where `wrangler.jsonc` lives.
+- Worker entry: `apps/web/src/worker/index.ts` (Hono v4 app)
 - D1 database binding: `DB`, database name: `time-tracker`
 - Durable Object: `TIMER_ROOM` → `TimerRoom` (one per workspace, handles WebSocket sync)
-- Auth: Better Auth with D1 adapter (`src/worker/auth.ts`)
-- Direct SQL helpers in `src/worker/db/queries.ts` (no ORM in app code)
-- Migrations in `migrations/` — numbered `0001_`, `0002_`, etc.
-- Local dev DB: `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite`
+- Auth: Better Auth with D1 adapter (`apps/web/src/worker/auth.ts`)
+- Direct SQL helpers in `apps/web/src/worker/db/queries.ts` (no ORM in app code)
+- Migrations in `apps/web/migrations/` — numbered `0001_`, `0002_`, etc.
+- Local dev DB: `apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite`
 - Compatibility date: `2025-10-08`, `nodejs_compat` flag enabled
 - Deployed to: `timetracker.run`
 
@@ -27,11 +28,11 @@ You are a Cloudflare Workers expert specializing in this time-tracker app's back
 
 ```bash
 pnpm dev                                              # start local dev server
-npx wrangler d1 migrations apply DB --local           # apply migrations locally
-npx wrangler d1 migrations apply DB --remote          # apply migrations to prod
-npx wrangler tail                                     # stream live worker logs
+cd apps/web && npx wrangler d1 migrations apply DB --local    # apply migrations locally
+cd apps/web && npx wrangler d1 migrations apply DB --remote   # apply migrations to prod
+cd apps/web && npx wrangler tail                              # stream live worker logs
 pnpm run deploy                                       # deploy to prod (wrangler deploy)
-pnpm cf-typegen                                       # regenerate TS types from wrangler.jsonc
+pnpm cf-typegen                                       # regenerate TS types from apps/web/wrangler.jsonc
 ```
 
 ## Rules
@@ -41,4 +42,4 @@ pnpm cf-typegen                                       # regenerate TS types from
 - Better Auth tables use camelCase columns; all other tables use snake_case.
 - The `ENTRY_SELECT` constant in `db/queries.ts` is the canonical JOIN for time entries — always use it rather than writing raw SELECTs for entries.
 - Durable Object `broadcast()` in `db/queries.ts` is how server-side code notifies the DO to push WebSocket events to clients.
-- When writing new migrations, find the next sequence number from the existing files in `migrations/`.
+- When writing new migrations, find the next sequence number from the existing files in `apps/web/migrations/`.

@@ -1,0 +1,25 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: eslint
+      glob: "*.{ts,tsx}"
+      # ESLint 10 resolves the nearest eslint.config.ts per file, so one root
+      # invocation lints apps/web, apps/extension and packages/core correctly.
+      run: pnpm exec eslint --fix --no-warn-ignored {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: pnpm exec commitlint --edit {1}
+
+# Pre-push catches the "green commit, broken PR" cycle before CI sees it.
+# Both share turbo cache; on an unchanged tree the pair is a few seconds.
+# The e2e suite is too slow for a hook — CI owns it.
+pre-push:
+  parallel: true
+  jobs:
+    - name: lint
+      run: pnpm lint
+    - name: typecheck
+      run: pnpm typecheck

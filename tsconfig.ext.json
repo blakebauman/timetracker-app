@@ -1,9 +1,0 @@
-{
-  "extends": "@timetracker/typescript-config/dom.json",
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.ext.tsbuildinfo",
-    "types": ["chrome"]
-  },
-  "include": ["extension"],
-  "exclude": ["extension/node_modules"]
-}

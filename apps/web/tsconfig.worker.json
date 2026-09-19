@@ -1,0 +1,8 @@
+{
+  "extends": "@timetracker/tsconfig/worker.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo",
+    "types": ["vite/client", "./worker-configuration.d.ts"]
+  },
+  "include": ["src/worker"]
+}

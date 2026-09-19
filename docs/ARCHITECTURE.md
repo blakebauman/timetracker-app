@@ -20,13 +20,15 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 
 ## Request lifecycle
 
-`src/worker/index.ts` exports `{ fetch, scheduled }` and both DO classes. The fetch handler branches **before** Hono for `/agents/*`:
+The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together in `apps/web` (one Cloudflare Worker with static assets), the extension in `apps/extension`, and code shared by client and worker — Zod schemas, task recurrence, the brand mark — in `packages/core` (`@timetracker/core`).
+
+`apps/web/src/worker/index.ts` exports `{ fetch, scheduled }` and both DO classes. The fetch handler branches **before** Hono for `/agents/*`:
 
 1. **`/agents/*`** — authenticates the session, resolves the caller's workspace, then **rewrites the agent-instance segment of the URL to that workspace id** before calling `routeAgentRequest` (Agents SDK). This is the tenant-isolation guarantee for chat: a client can name any instance it likes; it always lands on its own workspace's `ChatAgent`.
 2. **Everything else** — the Hono app. `/api/auth/*` goes to the Better Auth handler (with in-isolate rate limiting on credential endpoints). All other `/api/*` route groups sit behind `middleware/workspace.ts`, which resolves `{ userId, workspaceId }` from the session (cookie or bearer token) and puts them on context. **Every query in every route filters by `workspace_id`** — this is the multi-tenancy model; there is no row-level magic beyond discipline plus the e2e tenant-isolation suite.
 3. Non-API paths fall through to static assets with SPA `not_found_handling` (`run_worker_first` covers `/api/*` and `/agents/*`).
 
-### Route groups (`src/worker/routes/`)
+### Route groups (`apps/web/src/worker/routes/`)
 
 | Mount | File | Notes |
 |---|---|---|
@@ -51,7 +53,7 @@ Cron (*/5 min) ─────────── scheduled()   → auto-track + 
 
 `db/queries.ts` holds the shared SQL helpers — `ENTRY_SELECT` is the canonical time-entry JOIN; `broadcast()` fans WebSocket events out through the DO; `upsertTags()` implicitly creates tags with deterministic colors.
 
-## Auth (Better Auth, `src/worker/auth.ts`)
+## Auth (Better Auth, `apps/web/src/worker/auth.ts`)
 
 Plugins in play: **email OTP** and **magic link** (the primary passwordless sign-in paths), **bearer** (extension tokens via `set-auth-token` header), **admin** (site-wide `user.role === "admin"`: list/ban/impersonate/remove), **organization** (workspace = organization; owner/admin/member roles, email invites), **passkey**, Google social login. Email/password is disabled in production — `emailAndPassword.enabled` is gated on `ENABLE_PASSWORD_AUTH` (set only in `.dev.vars` and CI), which keeps the sign-up/sign-in endpoints alive for the e2e suite and the local seed demo login. TOTP two-factor was removed along with passwords (Better Auth's enable/disable flow requires the account password); its D1 tables remain but are unused.
 
@@ -59,8 +61,8 @@ Notable decisions:
 
 - `session.freshAge = 0` — otherwise Better Auth's `list-sessions` 403s (`SESSION_NOT_FRESH`) after a day and breaks the Settings sessions card. Freshness is re-imposed selectively on sensitive ops (`update-user`, `unlink-account`).
 - A DB hook auto-creates a personal workspace on signup.
-- `trustedOrigins` includes the pinned `chrome-extension://<id>` origin — the extension is trusted by origin, CSRF stays on for the cookie web app (see `extension/SECURITY_AUDIT.md`).
-- **Email** goes out through the `EMAIL` send_email binding (MIME built with `mimetext`, from `noreply@timetracker.run`): invites, OTP codes, magic links. Bodies are React Email templates (`src/worker/emails/*.tsx`) rendered on the worker with `render`/`toPlainText` from `react-email`; the plain-text MIME part is derived from the HTML, and `pnpm email:dev` serves a local template preview.
+- `trustedOrigins` includes the pinned `chrome-extension://<id>` origin — the extension is trusted by origin, CSRF stays on for the cookie web app (see `apps/extension/SECURITY_AUDIT.md`).
+- **Email** goes out through the `EMAIL` send_email binding (MIME built with `mimetext`, from `noreply@timetracker.run`): invites, OTP codes, magic links. Bodies are React Email templates (`apps/web/src/worker/emails/*.tsx`) rendered on the worker with `render`/`toPlainText` from `react-email`; the plain-text MIME part is derived from the HTML, and `pnpm email:dev` serves a local template preview.
 - Better Auth tables use camelCase columns; everything else is snake_case.
 
 ## Durable Objects
@@ -115,11 +117,11 @@ Deliberately AI-free — pacing goes in front of a client, so it must be reprodu
 
 ## Data model (D1)
 
-Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy ordering rule). Core tables: `workspaces`, `clients`, `projects` (rate, budget, color), `tasks` (`due_date` is a **local `YYYY-MM-DD`**, not a timestamp — a due date is a day; `priority` 1–4 defaulting to 4; `sort_order` REAL for fractional-index drags; self-referencing `parent_id`; `completed_at`; `recur_rule`), `time_entries` (+ `calendar_event_id`), `tags` + `time_entry_tags` (tag colors), `favorites`, `recurring_entries`, `saved_reports`, `project_allocations` (per-user planned hours; `task_id` uses `''` for "no task" so the 5-column UNIQUE supports `ON CONFLICT` upserts), `integrations` (encrypted tokens — AES-GCM keyed by `AUTH_SECRET`, `lib/crypto.ts`), `assistant_memory`, `draft_entries` (proposals awaiting review — never aggregated anywhere), `api_keys` (SHA-256 only), plus the Better Auth tables (user/session/account/organization/invitation/twoFactor/passkey).
+Migrations live in `apps/web/migrations/` (append-only; wrangler resolves them relative to `apps/web/wrangler.jsonc`, so `wrangler d1` runs from there; see `CLAUDE.md` for the deploy ordering rule). Core tables: `workspaces`, `clients`, `projects` (rate, budget, color), `tasks` (`due_date` is a **local `YYYY-MM-DD`**, not a timestamp — a due date is a day; `priority` 1–4 defaulting to 4; `sort_order` REAL for fractional-index drags; self-referencing `parent_id`; `completed_at`; `recur_rule`), `time_entries` (+ `calendar_event_id`), `tags` + `time_entry_tags` (tag colors), `favorites`, `recurring_entries`, `saved_reports`, `project_allocations` (per-user planned hours; `task_id` uses `''` for "no task" so the 5-column UNIQUE supports `ON CONFLICT` upserts), `integrations` (encrypted tokens — AES-GCM keyed by `AUTH_SECRET`, `lib/crypto.ts`), `assistant_memory`, `draft_entries` (proposals awaiting review — never aggregated anywhere), `api_keys` (SHA-256 only), plus the Better Auth tables (user/session/account/organization/invitation/twoFactor/passkey).
 
-**Seed data is not a migration.** `seeds/dev-seed.sql` is local-only (`npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql`); migrations 0005/0006 were retroactively no-op'd so remote applies can never seed demo credentials into prod.
+**Seed data is not a migration.** `apps/web/seeds/dev-seed.sql` is local-only (`cd apps/web && npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql`); migrations 0005/0006 were retroactively no-op'd so remote applies can never seed demo credentials into prod.
 
-## Frontend (`src/react-app/`)
+## Frontend (`apps/web/src/react-app/`)
 
 - **Server state:** TanStack Query via the typed client in `lib/api.ts`. Mutations broadcast through the DO; other tabs invalidate on WebSocket events. Each tab stamps requests with a per-page `X-Client-Id` (`lib/api.ts` `CLIENT_ID`), which `broadcast()` echoes back as the message's `origin` so the originating tab skips the invalidate for its own write — it already has the result — instead of refetching the list twice per edit.
 - **One invalidation set for entry changes:** `invalidateEntryDerived()` (`hooks/useEntries.ts`) is the single list of what an entry change makes stale — `time-entries`, `reports`, and `projects`/`tasks` (both carry a `trackedSeconds` summed server-side from entries). Every producer goes through it: local mutations, the socket handler, and the reconnect resync. The socket used to invalidate `time-entries` alone, which left Reports stale in every other tab and the tracked totals stale in *all* of them. `entry-suggestions` stays opt-in behind a flag — the running timer saves its description on an 800 ms debounce, and it sits outside the `time-entries` prefix precisely so that doesn't refetch the suggestion set every few keystrokes.
@@ -136,13 +138,13 @@ Migrations live in `migrations/` (append-only; see `CLAUDE.md` for the deploy or
 
 Design tokens and conventions live in `DESIGN.md` / `PRODUCT.md` — read those before touching UI; they encode decisions (soft-tone ramp, one-accent rule, icon-button size tokens) that aren't recoverable from the code.
 
-## Browser extension (`extension/`)
+## Browser extension (`apps/extension/`)
 
-Separate Vite build. Popup authenticates with the standard Better Auth client + `bearer()` plugin; token lives in `chrome.storage.local`; the background service worker polls the running timer for the toolbar badge and clears the token on 401 (no refresh flow). Trusted server-side by pinned origin; API base URL is allow-listed. Full model: `extension/README.md`, `extension/SECURITY_AUDIT.md`, `extension/PUBLISHING.md`.
+Separate workspace (`@timetracker/extension`) with its own Vite build. Popup authenticates with the standard Better Auth client + `bearer()` plugin; token lives in `chrome.storage.local`; the background service worker polls the running timer for the toolbar badge and clears the token on 401 (no refresh flow). Trusted server-side by pinned origin; API base URL is allow-listed. Full model: `apps/extension/README.md`, `apps/extension/SECURITY_AUDIT.md`, `apps/extension/PUBLISHING.md`.
 
 ## Security posture (audit history)
 
-Four hardening passes landed as PRs #64–#67 (see git history): cross-tenant IDOR closure on read-backs/tag writes/token cache; SPA headers + prod seed removal + re-gated sensitive auth ops; assistant prompt-injection/tool-abuse/cost-abuse hardening; SSRF guard + outbound rate limits + OAuth workspace binding + extension token clearing. The extension had its own audit (`extension/SECURITY_AUDIT.md`). Known accepted gap: auth rate limiting is in-isolate only (a cross-isolate attacker isn't throttled) — candidate for a DO/KV-backed limiter.
+Four hardening passes landed as PRs #64–#67 (see git history): cross-tenant IDOR closure on read-backs/tag writes/token cache; SPA headers + prod seed removal + re-gated sensitive auth ops; assistant prompt-injection/tool-abuse/cost-abuse hardening; SSRF guard + outbound rate limits + OAuth workspace binding + extension token clearing. The extension had its own audit (`apps/extension/SECURITY_AUDIT.md`). Known accepted gap: auth rate limiting is in-isolate only (a cross-isolate attacker isn't throttled) — candidate for a DO/KV-backed limiter.
 
 ## Testing & CI
 
@@ -160,4 +162,4 @@ No unit test framework — the suite is Playwright e2e (`e2e/`) against `pnpm de
 | `docs/MCP.md` | users/devs | MCP connector: API keys, per-client setup, tool reference, troubleshooting |
 | `PRODUCT.md` / `DESIGN.md` | design work | product register, design system (source of truth for UI) |
 | `ROADMAP.md` | devs | deferred/planned work |
-| `extension/*.md` | devs/publishers | extension architecture, security audit, store publishing, privacy policy |
+| `apps/extension/*.md` | devs/publishers | extension architecture, security audit, store publishing, privacy policy |

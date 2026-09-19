@@ -1,0 +1,67 @@
+version: 2
+updates:
+  # GitHub Actions. `uses:` lines are pinned to a commit SHA; Dependabot reads
+  # the trailing `# vX.Y.Z` comment and keeps SHA and comment in step.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies
+
+  # The pnpm workspace. One lockfile at the root; versions live in the
+  # pnpm-workspace.yaml catalog, which Dependabot updates in place.
+  - package-ecosystem: npm
+    directories:
+      - "/"
+      - "/apps/*"
+      - "/packages/*"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+    labels:
+      - dependencies
+    groups:
+      # One PR per ecosystem cluster instead of a PR per package. These move
+      # in lockstep and are pointless to review individually.
+      cloudflare:
+        patterns:
+          - "wrangler"
+          - "@cloudflare/*"
+          - "agents"
+          - "workers-ai-provider"
+      # ai@^6 peer set — @cloudflare/ai-chat peers ai ^6; a major bump here is a
+      # coordinated migration, not a dependabot PR (see `ignore` below).
+      ai-sdk:
+        patterns:
+          - "ai"
+          - "@ai-sdk/*"
+      dev-tooling:
+        patterns:
+          - "turbo"
+          - "lefthook"
+          - "@commitlint/*"
+          - "typescript"
+          - "typescript-eslint"
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-plugin-*"
+          - "vite"
+          - "@vitejs/*"
+          - "@playwright/test"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: "ai"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@ai-sdk/*"
+        update-types: ["version-update:semver-major"]

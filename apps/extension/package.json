@@ -1,0 +1,32 @@
+{
+	"name": "@timetracker/extension",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Time Tracker MV3 Chrome extension (popup, badge service worker, content script).",
+	"type": "module",
+	"scripts": {
+		"build": "vite build && cp manifest.json dist/ && cp -r icons dist/",
+		"zip": "pnpm build && cd dist && zip -qr -X ../timetracker-extension.zip . -x '.*' && echo 'Wrote apps/extension/timetracker-extension.zip (upload this to the Chrome Web Store)'",
+		"ext:id": "openssl rsa -in .keys/extension.pem -pubout -outform DER 2>/dev/null | openssl dgst -sha256 -binary | xxd -p -c 32 | head -c 32 | tr '0-9a-f' 'a-p'; echo",
+		"lint": "eslint .",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"better-auth": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	},
+	"devDependencies": {
+		"@timetracker/eslint-config": "workspace:*",
+		"@timetracker/tsconfig": "workspace:*",
+		"@types/chrome": "catalog:",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"@vitejs/plugin-react": "catalog:",
+		"eslint": "catalog:",
+		"jiti": "catalog:",
+		"typescript": "catalog:",
+		"vite": "catalog:"
+	}
+}
