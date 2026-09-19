@@ -12,7 +12,7 @@ test.describe("client details", () => {
     await page.getByRole("button", { name: "Add your first client" }).click();
 
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "New Client" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "New client", exact: true })).toBeVisible();
     await dialog.getByPlaceholder("Client name").fill("Acme Corp");
     await dialog.getByPlaceholder("name@example.com").fill("hello@acme.test");
     await dialog.getByPlaceholder("(555) 123-4567").fill("(555) 010-2000");
@@ -63,7 +63,7 @@ test.describe("client details", () => {
     await page.getByRole("menuitem", { name: "Edit" }).click();
 
     dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Edit Client" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Edit client", exact: true })).toBeVisible();
     await dialog.getByPlaceholder("name@example.com").fill("ceo@globex.test");
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).not.toBeVisible();

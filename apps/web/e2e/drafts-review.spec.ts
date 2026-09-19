@@ -74,7 +74,7 @@ test("drafts: an uncovered gap becomes a proposal, reviewed and confirmed", asyn
     await keep.click();
   }
   await expect(dialog.getByText("How much time should we report?")).toBeVisible();
-  await dialog.getByRole("button", { name: /Add \d+ to timesheet/ }).click();
+  await dialog.getByRole("button", { name: /Add \d+ entr(y|ies)/ }).click();
   await expect(dialog).toBeHidden();
 
   // Confirmed drafts are real entries now, and nothing is left to review.

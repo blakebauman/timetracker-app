@@ -106,27 +106,11 @@ export function CommandPalette() {
         onValueChange={setSearch}
       />
       <CommandList>
+        {/* The Timer group's "Start: …" item below already carries the typed
+            text and therefore always matches it, so this slot only shows
+            while a timer is running and nothing else matches. It used to hold
+            a plain button that cmdk never made arrow-selectable. */}
         <CommandEmpty>No matches.</CommandEmpty>
-
-        {/* Typed text that matches nothing is a description for a new timer.
-            This used to be a plain button inside CommandEmpty, which cmdk does
-            not make arrow-selectable, so from a no-results query the only way
-            to start was the mouse. A force-mounted item stays in the list and
-            in the keyboard order whatever the filter says. */}
-        {search.trim() && (
-          <CommandGroup forceMount heading="Start">
-            <CommandItem
-              forceMount
-              value={`__start-timer ${search}`}
-              onSelect={handleStartTimer}
-            >
-              <Play className="h-4 w-4 text-primary" />
-              <span>
-                Start timer: <span className="font-medium">"{search}"</span>
-              </span>
-            </CommandItem>
-          </CommandGroup>
-        )}
 
         {/* Timer actions */}
         <CommandGroup heading="Timer">
