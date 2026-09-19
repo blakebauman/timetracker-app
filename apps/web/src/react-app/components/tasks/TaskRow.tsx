@@ -65,6 +65,15 @@ const DUE_TONE_CLASS: Record<string, string> = {
   later: "text-muted-foreground",
 };
 
+/**
+ * The house focus treatment for the row's bare `<button>`s. `Button` carries it
+ * already; the done toggle, disclosure, rename, estimate and due controls are
+ * plain elements and were falling back to the browser's 1px outline — the one
+ * thin ring DESIGN.md's Focus Hue Rule rules out.
+ */
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
+
 interface TaskRowProps {
   task: Task;
   /** Show the project pill on the row (hidden when the list is grouped by project). */
@@ -216,6 +225,7 @@ export function TaskRow({
       title={task.priority < 4 ? `Priority: ${PRIORITY_LABEL[task.priority]}` : undefined}
       className={cn(
         "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart",
+        FOCUS_RING,
         !task.active
           ? "border-primary bg-primary text-primary-foreground"
           : cn(PRIORITY_RING[task.priority] ?? PRIORITY_RING[4], "hover:border-primary")
@@ -248,13 +258,27 @@ export function TaskRow({
     );
   }
 
+  // A subtask is due when its parent is: the dated views select on the parent's
+  // date and re-attach children, so a date set on a subtask is never read. The
+  // row doesn't offer to set one; an existing date still shows so nothing is
+  // hidden from the user who set it through the form.
+  const showDue = Boolean(task.dueDate) || !nested;
+  const showProjectBadge = showProject && !nested && Boolean(task.projectName);
+  const showSubtaskCount = hasChildren && !nested;
+  const hasMeta = showDue || showProjectBadge || showSubtaskCount || Boolean(repeats);
+
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
+        // `flex-wrap`: below `sm` the metadata drops to its own line under the
+        // name. On a phone the due chip, project pill and actions were claiming
+        // the row first and the name — the one thing a row exists to say — was
+        // left with two or three characters.
+        "group flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
         nested && "pl-9",
         running && "bg-primary/5",
-        dragging && "opacity-50"
+        dragging && "opacity-50",
+        dragHandlers?.draggable && "cursor-grab active:cursor-grabbing"
       )}
       {...dragHandlers}
     >
@@ -267,7 +291,10 @@ export function TaskRow({
           onClick={onToggleExpanded}
           aria-expanded={expanded}
           aria-label={expanded ? "Hide subtasks" : "Show subtasks"}
-          className="-ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground"
+          className={cn(
+            "-ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground",
+            FOCUS_RING
+          )}
         >
           <ChevronRight
             className={cn(
@@ -307,7 +334,8 @@ export function TaskRow({
               setEditingName(true);
             }}
             className={cn(
-              "block max-w-full truncate text-left text-sm",
+              "block max-w-full truncate rounded-sm text-left text-sm",
+              FOCUS_RING,
               !task.active && "text-muted-foreground line-through"
             )}
           >
@@ -342,7 +370,11 @@ export function TaskRow({
           </div>
         ) : progress !== null ? (
           <button
-            className="mt-0.5 flex w-full max-w-xs items-center gap-1.5 transition-opacity duration-fast ease-out-quart hover:opacity-70"
+            className={cn(
+              "mt-0.5 flex w-full max-w-xs items-center gap-1.5 rounded-sm transition-opacity duration-fast ease-out-quart hover:opacity-70",
+              FOCUS_RING
+            )}
+            aria-label={`Edit estimate — ${formatDurationShort(task.trackedSeconds)} of ${formatDurationShort(task.estimatedSeconds!)}`}
             onClick={startEditTime}
           >
             <Progress value={progress} className="h-1 flex-1" aria-hidden />
@@ -356,7 +388,10 @@ export function TaskRow({
             // gap-1.5, not gap-1: the trailing space in the text node is swallowed
             // at the flex-item boundary, so the dashed underline started hard
             // against the "·" and read tighter than the spaces around it.
-            className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground transition-opacity duration-fast ease-out-quart hover:opacity-70"
+            className={cn(
+              "mt-0.5 flex items-center gap-1.5 rounded-sm text-micro text-muted-foreground transition-opacity duration-fast ease-out-quart hover:opacity-70",
+              FOCUS_RING
+            )}
             onClick={startEditTime}
           >
             <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
@@ -367,7 +402,15 @@ export function TaskRow({
             // `block`: a bare <button> is inline-block, so this ran onto the same
             // line as the task name ("Data mappingadd estimate"). The other two
             // states are flex and already drop below; mt-0.5 shows this meant to.
-            className="mt-0.5 block text-micro text-muted-foreground/0 transition-colors duration-fast ease-out-quart group-hover:text-muted-foreground/50 hover:text-muted-foreground!"
+            //
+            // `tt-reveal`, not a group-hover colour: the reveal is gated on hover
+            // *capability*, so a touch device sees the affordance instead of a
+            // permanently transparent button, and when it does show it reads at
+            // the full muted ink rather than a half-opacity of it.
+            className={cn(
+              "tt-reveal mt-0.5 block rounded-sm text-micro text-muted-foreground",
+              FOCUS_RING
+            )}
             onClick={startEditTime}
           >
             add estimate
@@ -377,78 +420,96 @@ export function TaskRow({
 
       {/* ─── Metadata ──────────────────────────────────────────────────────── */}
 
-      {hasChildren && !nested && (
-        <span
-          className="shrink-0 text-micro tabular-nums text-muted-foreground"
-          title={`${task.subtaskDone} of ${task.subtaskTotal} subtasks done`}
-        >
-          {task.subtaskDone}/{task.subtaskTotal}
-        </span>
-      )}
-
-      {repeats && (
-        <Repeat className="h-3 w-3 shrink-0 text-muted-foreground" aria-label={repeats} />
-      )}
-
-      {/* The due chip is the control, not a label beside one — clicking the date
-          is how you change the date. */}
-      <Popover open={dueOpen} onOpenChange={setDueOpen}>
-        <PopoverTrigger asChild>
-          <button
-            aria-label={task.dueDate ? `Due ${formatDueDate(task.dueDate)} — change` : "Set due date"}
-            className={cn(
-              "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
-              task.dueDate
-                ? DUE_TONE_CLASS[tone ?? "later"]
-                : "tt-reveal text-muted-foreground/50 hover:text-muted-foreground"
-            )}
-          >
-            {task.dueDate ? formatDueDate(task.dueDate) : <CalendarDays className="h-3.5 w-3.5" />}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <Calendar
-            mode="single"
-            selected={task.dueDate ? localDateToDate(task.dueDate) : undefined}
-            onSelect={(date) => {
-              updateTask.mutate({
-                id: task.id,
-                data: { dueDate: date ? dateToLocalDate(date) : null },
-              });
-              setDueOpen(false);
-            }}
-          />
-          {task.dueDate && (
-            <div className="border-t p-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => {
-                  updateTask.mutate({ id: task.id, data: { dueDate: null } });
-                  setDueOpen(false);
-                }}
-              >
-                Clear due date
-              </Button>
-            </div>
+      {/* One group below `sm` (its own full-width line, indented under the
+          name), dissolved into the row above it with `contents` so the desktop
+          layout is byte-for-byte what it was. */}
+      {hasMeta && (
+        <div className="order-last flex min-w-0 basis-full items-center gap-2 pl-6 sm:contents">
+          {showSubtaskCount && (
+            <span
+              className="shrink-0 text-micro tabular-nums text-muted-foreground"
+              title={`${task.subtaskDone} of ${task.subtaskTotal} subtasks done`}
+            >
+              {task.subtaskDone}/{task.subtaskTotal}
+            </span>
           )}
-        </PopoverContent>
-      </Popover>
 
-      {showProject && !nested && task.projectName && (
-        <ProjectBadge name={task.projectName} color={task.projectColor} />
+          {repeats && (
+            <Repeat
+              className="h-3 w-3 shrink-0 text-muted-foreground"
+              role="img"
+              aria-label={repeats}
+            />
+          )}
+
+          {/* The due chip is the control, not a label beside one — clicking the date
+              is how you change the date. */}
+          {showDue && (
+            <Popover open={dueOpen} onOpenChange={setDueOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  aria-label={task.dueDate ? `Due ${formatDueDate(task.dueDate)} — change` : "Set due date"}
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
+                    FOCUS_RING,
+                    task.dueDate
+                      ? DUE_TONE_CLASS[tone ?? "later"]
+                      : "tt-reveal text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {task.dueDate ? formatDueDate(task.dueDate) : <CalendarDays className="h-3.5 w-3.5" />}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={task.dueDate ? localDateToDate(task.dueDate) : undefined}
+                  onSelect={(date) => {
+                    updateTask.mutate({
+                      id: task.id,
+                      data: { dueDate: date ? dateToLocalDate(date) : null },
+                    });
+                    setDueOpen(false);
+                  }}
+                />
+                {task.dueDate && (
+                  <div className="border-t p-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        updateTask.mutate({ id: task.id, data: { dueDate: null } });
+                        setDueOpen(false);
+                      }}
+                    >
+                      Clear due date
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {showProjectBadge && (
+            <ProjectBadge name={task.projectName!} color={task.projectColor} />
+          )}
+        </div>
       )}
 
       {/* ─── Actions ───────────────────────────────────────────────────────── */}
       <div className="flex shrink-0 items-center gap-0.5">
         <div className="tt-reveal flex items-center gap-0.5">
+          {/* Hidden on a phone: the menu carries "Log time" too, and on a touch
+              device (where the reveal is always on) the extra 24px came straight
+              out of the name. */}
           <Button
             variant="ghost"
             size="icon-xs"
             aria-label={`Log time to ${task.name}`}
             title="Log time already spent on this task"
             onClick={() => onLogTime(task)}
+            className="hidden sm:inline-flex"
           >
             <Clock className="h-3 w-3" />
           </Button>

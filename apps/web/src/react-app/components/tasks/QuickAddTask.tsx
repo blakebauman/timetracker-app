@@ -88,7 +88,10 @@ export function QuickAddTask({
 
   return (
     <div className={cn("space-y-1", className)}>
-      <div className="flex items-center gap-2 rounded-full border border-dashed px-3 py-1.5 transition-colors duration-fast ease-out-quart focus-within:border-solid focus-within:border-ring">
+      {/* The capsule carries the focus treatment for the bare field inside it —
+          the border shifts to the ring hue and the 3px ring appears, the one
+          focus vocabulary every other input in the app uses. */}
+      <div className="flex items-center gap-2 rounded-full border border-dashed px-3 py-1.5 transition-[border-color,box-shadow] duration-fast ease-out-quart focus-within:border-solid focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
         <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <Input
           autoFocus={autoFocus}

@@ -82,7 +82,7 @@ export function TaskRail() {
             forward, and a heading that names only today makes an overdue row
             look like a bug. Same rule as the Tasks page's Today view. */}
         <h2 className="text-xs font-medium">Today</h2>
-        <span className="text-xs text-muted-foreground/70">{due.length}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{due.length}</span>
         <Button
           variant="ghost"
           size="icon-xs"

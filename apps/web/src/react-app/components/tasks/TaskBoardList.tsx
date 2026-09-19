@@ -19,6 +19,7 @@ import { QuickAddTask } from "./QuickAddTask";
 import { TaskDialog } from "./TaskDialog";
 import { TaskViewTabs, type TaskView } from "./TaskViewTabs";
 import { useAllTasks, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
+import { BELOW_SM, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort } from "@/lib/dateUtils";
 import {
@@ -48,11 +49,30 @@ interface Section {
   tone?: "overdue";
   trackedSeconds: number;
   nodes: TaskNode[];
-  /** Seeds the section's own quick-add, so adding inside "Tomorrow" is due tomorrow. */
-  defaultDueDate?: string | null;
-  defaultProjectId?: string | null;
   /** Drag-to-reorder is only meaningful where the order is the user's own. */
   reorderable?: boolean;
+}
+
+/**
+ * What the quick-add line files a task under when the line itself says nothing.
+ *
+ * Each view is a promise about what it shows, and the field sits inside that
+ * promise: Today captures for today, Upcoming for tomorrow (the nearest day it
+ * can show), All for whenever. Typing into Upcoming used to create an undated
+ * task that vanished from the view on Enter — the field's one job is not losing
+ * what was typed, and "gone" is indistinguishable from "lost".
+ */
+function captureDefaults(view: TaskView, today: string) {
+  if (view === "today") {
+    return { dueDate: today, placeholder: "Add a task for today — try “draft report fri p1”" };
+  }
+  if (view === "upcoming") {
+    return {
+      dueDate: addLocalDays(today, 1),
+      placeholder: "Add a task for tomorrow — try “draft report fri p1”",
+    };
+  }
+  return { dueDate: null, placeholder: undefined };
 }
 
 const SORTERS: Record<SortBy, (a: Task, b: Task) => number> = {
@@ -86,9 +106,13 @@ export function TaskBoardList() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [subtaskParent, setSubtaskParent] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  /** The row a drag is currently over; the insertion line is drawn above it. */
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const phone = useMediaQuery(BELOW_SM);
 
   const today = todayLocalDate();
   const hasAnyTask = tasks.length > 0;
+  const capture = captureDefaults(view, today);
 
   const sections = useMemo<Section[]>(() => {
     const compare = SORTERS[sortBy];
@@ -115,7 +139,6 @@ export function TaskBoardList() {
           key: "today",
           label: "Due today",
           nodes: nest(withSubtasks(due, tasks), compare),
-          defaultDueDate: today,
         },
         {
           key: "done",
@@ -143,7 +166,6 @@ export function TaskBoardList() {
           key: day,
           label: formatDueHeading(day, today),
           nodes,
-          defaultDueDate: day,
           trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
         });
       }
@@ -182,7 +204,7 @@ export function TaskBoardList() {
         : [];
     }
 
-    const map = new Map<string, { label: string; color?: string | null; tasks: Task[]; defaultProjectId?: string | null; defaultDueDate?: string | null }>();
+    const map = new Map<string, { label: string; color?: string | null; tasks: Task[] }>();
     for (const t of filtered) {
       let key: string;
       let label: string;
@@ -202,8 +224,6 @@ export function TaskBoardList() {
           label,
           color: groupBy === "project" ? t.projectColor : null,
           tasks: [],
-          defaultProjectId: groupBy === "project" ? t.projectId : null,
-          defaultDueDate: groupBy === "due" && t.dueDate ? t.dueDate : null,
         };
         map.set(key, bucket);
       }
@@ -216,8 +236,6 @@ export function TaskBoardList() {
         key,
         label: b.label,
         color: b.color,
-        defaultProjectId: b.defaultProjectId,
-        defaultDueDate: b.defaultDueDate,
         nodes,
         trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
         // Ordering is only the user's own inside a project; in any other
@@ -254,6 +272,7 @@ export function TaskBoardList() {
 
   /** Commit a drag: one row's `sort_order` becomes the midpoint of its new neighbours. */
   const handleDrop = (ordered: Task[], toIndex: number) => {
+    setDragOverId(null);
     if (!dragId) return;
     const fromIndex = ordered.findIndex((t) => t.id === dragId);
     setDragId(null);
@@ -376,12 +395,22 @@ export function TaskBoardList() {
   const renderNode = (node: TaskNode, ordered: Task[], index: number, section: Section) => {
     const open = !collapsed.has(node.task.id);
     const dragging = dragId === node.task.id;
+    // A drop lands *before* this row, so the line is drawn above the row under
+    // the pointer — and not above the row being dragged, where it would promise
+    // a move to the place it already is.
+    const dropTarget = !!dragId && !dragging && dragOverId === node.task.id;
     const dragHandlers = section.reorderable
       ? {
           draggable: true,
           onDragStart: () => setDragId(node.task.id),
-          onDragEnd: () => setDragId(null),
-          onDragOver: (e: React.DragEvent) => e.preventDefault(),
+          onDragEnd: () => {
+            setDragId(null);
+            setDragOverId(null);
+          },
+          onDragOver: (e: React.DragEvent) => {
+            e.preventDefault();
+            setDragOverId(node.task.id);
+          },
           onDrop: (e: React.DragEvent) => {
             e.preventDefault();
             handleDrop(ordered, index);
@@ -390,56 +419,69 @@ export function TaskBoardList() {
       : undefined;
 
     return (
-      <div
-        key={node.task.id}
-        className={cn(
-          "overflow-hidden rounded-container border bg-card",
-          dragging && "opacity-50"
+      <div key={node.task.id} className="relative">
+        {/* Insertion line, centred in the 8px gap above the card. Ink, not the
+            accent: it is the same "this is the filled part" vocabulary as the
+            progress bar and the segment pill. Outside the card so the card can
+            keep clipping its rows' washes to its corners. */}
+        {dropTarget && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-3 -top-[5px] h-0.5 rounded-full bg-foreground"
+          />
         )}
-      >
-        <TaskRow
-          task={node.task}
-          showProject={groupBy !== "project" || view !== "all"}
-          expanded={open}
-          onToggleExpanded={() => toggleCollapsed(node.task.id)}
-          onRequestDelete={setDeleteTarget}
-          onEdit={setEditTarget}
-          onLogTime={(t) => openTaskLogTime(t.id)}
-          onAddSubtask={(t) => {
-            setCollapsed((prev) => {
-              const next = new Set(prev);
-              next.delete(t.id);
-              return next;
-            });
-            setSubtaskParent(t.id);
-          }}
-          dragHandlers={dragHandlers}
-          dragging={dragging}
-        />
-        {open && node.children.length > 0 && (
-          <div className="border-t">
-            {node.children.map((child) => (
-              <TaskRow
-                key={child.id}
-                task={child}
-                nested
-                onRequestDelete={setDeleteTarget}
-                onEdit={setEditTarget}
-                onLogTime={(t) => openTaskLogTime(t.id)}
+        <div
+          className={cn(
+            // The card wakes its *edge* on hover, like every other row card
+            // (The Hairline Rule); the wash inside belongs to the rows it groups.
+            "overflow-hidden rounded-container border bg-card transition-[border-color,opacity] duration-fast ease-out-quart hover:border-border-strong",
+            dragging && "opacity-50"
+          )}
+        >
+          <TaskRow
+            task={node.task}
+            showProject={groupBy !== "project" || view !== "all"}
+            expanded={open}
+            onToggleExpanded={() => toggleCollapsed(node.task.id)}
+            onRequestDelete={setDeleteTarget}
+            onEdit={setEditTarget}
+            onLogTime={(t) => openTaskLogTime(t.id)}
+            onAddSubtask={(t) => {
+              setCollapsed((prev) => {
+                const next = new Set(prev);
+                next.delete(t.id);
+                return next;
+              });
+              setSubtaskParent(t.id);
+            }}
+            dragHandlers={dragHandlers}
+            dragging={dragging}
+          />
+          {open && node.children.length > 0 && (
+            <div className="border-t">
+              {node.children.map((child) => (
+                <TaskRow
+                  key={child.id}
+                  task={child}
+                  nested
+                  onRequestDelete={setDeleteTarget}
+                  onEdit={setEditTarget}
+                  onLogTime={(t) => openTaskLogTime(t.id)}
+                />
+              ))}
+            </div>
+          )}
+          {subtaskParent === node.task.id && (
+            <div className="border-t px-3 py-1.5 pl-9">
+              <QuickAddTask
+                autoFocus
+                parentId={node.task.id}
+                placeholder="Add a subtask"
+                onDone={() => setSubtaskParent(null)}
               />
-            ))}
-          </div>
-        )}
-        {subtaskParent === node.task.id && (
-          <div className="border-t px-3 py-1.5 pl-9">
-            <QuickAddTask
-              autoFocus
-              parentId={node.task.id}
-              placeholder="Add a subtask"
-              onDone={() => setSubtaskParent(null)}
-            />
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -487,7 +529,9 @@ export function TaskBoardList() {
               </Select>
 
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-                <SelectTrigger size="sm" className="w-36" aria-label="Sort by">
+                {/* w-40: "Sort: Plan order" clipped to "Sort: Plan orde" at the
+                    width its two siblings share. */}
+                <SelectTrigger size="sm" className="w-40" aria-label="Sort by">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -511,17 +555,28 @@ export function TaskBoardList() {
 
       <PaneScroll>
         {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full rounded-container" />
-            ))}
+          // The shape of what is coming — capture line, a group heading, three
+          // two-line rows — so the loaded page lands on the skeleton instead of
+          // reflowing past four anonymous bars.
+          <div aria-busy="true" aria-label="Loading tasks">
+            <Skeleton className="mb-4 h-[42px] w-full rounded-full" />
+            <Skeleton className="mb-2 ml-2 h-3 w-24" />
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-[52px] w-full rounded-container" />
+              ))}
+            </div>
           </div>
         ) : (
           <>
             {hasAnyTask && (
               <QuickAddTask
                 className="mb-4"
-                defaultDueDate={view === "today" ? today : null}
+                defaultDueDate={capture.dueDate}
+                placeholder={capture.placeholder}
+                // On a phone the inline project picker left the field a third of
+                // the row; stacked, the line is the line.
+                stacked={phone}
               />
             )}
 
@@ -544,7 +599,10 @@ export function TaskBoardList() {
                         <h2 className="text-xs font-medium text-muted-foreground">
                           {section.label}
                         </h2>
-                        <span className="text-xs text-muted-foreground/70">
+                        {/* Full muted ink: at 70% the count measured under 3:1
+                            on the ground, and the tabs' counts beside it don't
+                            fade. The heading's weight is what ranks them. */}
+                        <span className="text-xs tabular-nums text-muted-foreground">
                           {section.nodes.length}
                         </span>
                         {section.trackedSeconds > 0 && (
@@ -568,7 +626,7 @@ export function TaskBoardList() {
       <TaskDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        defaultDueDate={view === "today" ? today : null}
+        defaultDueDate={capture.dueDate}
       />
 
       <TaskDialog
