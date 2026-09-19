@@ -86,13 +86,17 @@ export function EntryDescriptionGroup({
   };
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <div
-        className={cn(
-          "group flex animate-fade-up items-center gap-3 border-b border-border-strong px-4 py-2.5 transition-colors duration-fast ease-out-quart hover:bg-accent/40",
-          someSelected && "bg-accent/60"
-        )}
-      >
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      // The group is one card; its occurrences sit inside it below a hairline.
+      // overflow-hidden so a selected child's tint stops at the rounded corner.
+      className={cn(
+        "animate-fade-up overflow-hidden rounded-container border bg-card transition-[border-color,background-color] duration-fast ease-out-quart hover:border-border-strong",
+        someSelected && "border-primary/50 bg-primary/5"
+      )}
+    >
+      <div className="group flex items-center gap-3 px-4 py-2.5">
         {/* Checkbox */}
         {onToggleSelect && (
           <button
@@ -235,11 +239,12 @@ export function EntryDescriptionGroup({
       </div>
 
       <CollapsibleContent>
-        <div className="border-l ml-7 border-muted">
+        <div className="border-t">
           {group.entries.map((entry) => (
             <EntryRow
               key={entry.id}
               entry={entry}
+              nested
               isSelected={selectedIds?.has(entry.id)}
               onToggleSelect={onToggleSelect}
             />

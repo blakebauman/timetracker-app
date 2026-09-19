@@ -4,7 +4,6 @@ import { Trash2, X, DollarSign, Upload, Clock, AlertTriangle } from "lucide-reac
 import { EntryGroup } from "./EntryGroup";
 import { EntryForm } from "./EntryForm";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FirstProjectPrompt } from "./FirstProjectPrompt";
@@ -97,12 +96,12 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-2 p-4">
+      <div className="space-y-4 py-2">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="space-y-1">
+          <div key={i} className="space-y-2">
             <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-14 w-full rounded-container" />
+            <Skeleton className="h-14 w-full rounded-container" />
           </div>
         ))}
       </div>
@@ -148,10 +147,15 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Bulk action bar */}
+    <div className="flex flex-col">
+      {/* Bulk action bar — pinned to the top of the list while the parent scrolls. */}
       {selectionCount > 0 && (
-        <div className="flex items-center gap-2 border-b bg-accent/60 px-4 py-2">
+        // `top-0` is measured from the scroll container's content edge, i.e.
+        // inside PaneScroll's header padding — so in the list view this pins
+        // just under the floating header, and in the split view's own column
+        // it pins to that column's top. Measured: a header-height offset here
+        // doubled the padding and pushed the bar down over the first row.
+        <div className="sticky top-0 z-sticky flex items-center gap-2 border-b bg-background px-1 py-2">
           <span className="text-sm font-medium">
             {selectionCount} {selectionCount === 1 ? "entry" : "entries"} selected
           </span>
@@ -210,8 +214,8 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
         </div>
       )}
 
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="divide-y divide-border-strong">
+      <div>
+        <div className="space-y-4">
           {days.map(({ dateKey, label, groups, totalSeconds }) => (
             <EntryGroup
               key={dateKey}
@@ -228,12 +232,12 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
             ranges like "All dates" can hit it, so say so rather than letting the
             oldest entries vanish silently. */}
         {entries.length >= ENTRY_LIST_LIMIT && (
-          <p className="border-t px-4 py-3 text-center text-xs text-muted-foreground">
+          <p className="px-4 py-3 text-center text-xs text-muted-foreground">
             Showing the {ENTRY_LIST_LIMIT} most recent entries. Narrow the date range to
             see older ones.
           </p>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Keyed by entry id so switching targets rebuilds the draft rather than
           leaving the previous entry's values in the fields. */}

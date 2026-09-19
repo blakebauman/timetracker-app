@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type CSSProperties } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -16,6 +16,8 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useHydrateSettings } from "@/hooks/useSettings";
 import { useUIStore } from "@/stores/uiStore";
+import { useMediaQuery, BELOW_MD } from "@/hooks/useMediaQuery";
+import { useTimerStore } from "@/stores/timerStore";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { lazyWithReload } from "@/lib/lazyWithReload";
 
@@ -27,11 +29,18 @@ const AssistantPanel = lazyWithReload(() =>
 );
 
 // Mounted once, here, because the toast that opens it fires from the Tasks page,
-// the Timer rail and the timer's own stop handler. Lazy: it pulls the whole
-// entry form, and most sessions never log time this way.
+// the Timer rail and the timer's own stop handler.
 const LogTaskTimeSheet = lazyWithReload(() =>
   import("@/components/tasks/LogTaskTimeSheet").then((m) => ({ default: m.LogTaskTimeSheet }))
 );
+
+/**
+ * How much of the bottom edge the timer surfaces cover, so every pane pads
+ * its last row clear of them. The composer floats 24px up and is ~104px
+ * tall; the docked running bar is 88px flush to the edge. Both are exposed
+ * as `--dock-h` on the shell, in case a page needs it for its own geometry.
+ */
+const DOCK_CLEARANCE = { idle: "8.5rem", running: "6.5rem" } as const;
 
 export function AppShell() {
   useWebSocket();
@@ -42,6 +51,10 @@ export function AppShell() {
   const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
   const logTimeTaskId = useUIStore((s) => s.logTimeTaskId);
   const assistantOpen = useAssistantStore((s) => s.open);
+  const running = useTimerStore((s) => Boolean(s.runningEntry));
+  // On a phone the composer spans the whole bottom edge, so a bottom toast
+  // lands on it; toasts drop in from the top there instead.
+  const belowMd = useMediaQuery(BELOW_MD);
   // Mount on first open and keep mounted after, so chat state and the sheet's
   // close animation survive re-closing. Latched during render (not in an
   // effect) so the panel mounts in the same pass that opens it.
@@ -75,13 +88,16 @@ export function AppShell() {
   // registers the tick loop, IDB restore, and keyboard shortcuts globally.
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background md:flex-row">
-      {/* Every page load costs a keyboard user ~12 tab stops through the nav
-          before the timer input — the one field the whole app exists around.
+    <div
+      className="flex h-screen flex-col overflow-hidden bg-background md:flex-row"
+      style={{ "--dock-h": running ? DOCK_CLEARANCE.running : DOCK_CLEARANCE.idle } as CSSProperties}
+    >
+      {/* Every page load costs a keyboard user a dozen tab stops through the
+          rail before the composer — the one field the whole app exists around.
           Visually hidden until focused, then pinned above everything. */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:z-portal focus:fixed focus:top-3 focus:left-3 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-md focus:outline-none focus:ring-[3px] focus:ring-ring/50"
+        className="sr-only focus:not-sr-only focus:z-portal focus:fixed focus:top-3 focus:left-3 focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-md focus:outline-none focus:ring-[3px] focus:ring-ring/50"
       >
         Skip to content
       </a>
@@ -101,20 +117,30 @@ export function AppShell() {
           </Alert>
         )}
 
-        {/* Timer bar — always visible at the top */}
-        <div className="contents print:hidden">
-          <TimerBar />
-        </div>
-
-        {/* Page content */}
-        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto">
-          <Suspense fallback={<PageFallback />}>
-            {/* Keyed by route so each page crossfades in on navigation. */}
-            <div key={location.pathname} className="h-full animate-fade-in">
-              <Outlet />
-            </div>
-          </Suspense>
+        {/* The pane. Pads its bottom by the dock's clearance so the last row of
+            any route clears the composer or the running bar. Routes that own
+            their scrolling (a Pane) fill it; the rest scroll here. */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto transition-[padding] duration-slow ease-out-quart print:pb-0"
+          style={{ paddingBottom: "var(--dock-h)" }}
+        >
+          <div className="mx-auto h-full w-full max-w-[1800px]">
+            <Suspense fallback={<PageFallback />}>
+              {/* Keyed by route so each page crossfades in on navigation. */}
+              <div key={location.pathname} className="h-full animate-fade-in">
+                <Outlet />
+              </div>
+            </Suspense>
+          </div>
         </main>
+      </div>
+
+      {/* The composer (idle) or the docked running bar. Fixed to the viewport,
+          above every pane and below every portal. */}
+      <div className="contents print:hidden">
+        <TimerBar />
       </div>
 
       <CommandPalette />
@@ -132,7 +158,14 @@ export function AppShell() {
         </Suspense>
       )}
       <ProductivityManager />
-      <Toaster richColors position="bottom-right" />
+      <Toaster
+        richColors
+        position={belowMd ? "top-center" : "bottom-right"}
+        // Sonner reads `mobileOffset` below 600px and `offset` above it, so
+        // both are set: the phone toast must clear the 56px brand bar.
+        offset={belowMd ? { top: 72 } : { bottom: 112 }}
+        mobileOffset={{ top: 72 }}
+      />
     </div>
   );
 }

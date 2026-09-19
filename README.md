@@ -6,7 +6,7 @@ A Toggl-like time tracking app built on Cloudflare Workers, Hono, React 19, and 
 
 ## Features
 
-- **Time tracking** — one-click start/stop, projects, tasks, clients, tags, billable flags, and inline editing (including editing a running timer's elapsed time from the top bar). Manual entry, a weekly timesheet grid, AI quick-add from natural language, favorites for one-click starts, and recurring entry templates that materialize on schedule.
+- **Time tracking** — one-click start/stop, projects, tasks, clients, tags, billable flags, and inline editing (including editing a running timer's elapsed time from the docked timer bar). Manual entry, a weekly timesheet grid, AI quick-add from natural language, favorites for one-click starts, and recurring entry templates that materialize on schedule.
 - **Timer workspace** — five views behind one header: list, Toggl-style calendar (FullCalendar week/5-day/day/month), split, timesheet, and planner — with clickable untracked-gap blocks between entries.
 - **Calendar sync (Google + Outlook / Microsoft 365)** — read-only, and both can be connected at once: events show as ghost blocks you click to track, and an optional **auto-track** cron converts ended meetings into entries automatically ([docs/CALENDAR_SYNC.md](docs/CALENDAR_SYNC.md)).
 - **Draft your day** — proposes the entries you're missing from calendar events that ended untracked, uncovered stretches in the day, and work you log on that weekday most weeks; you confirm them one card at a time, ending on a total that rescales the batch. Proposals are never counted as tracked time until confirmed.

@@ -87,7 +87,7 @@ export function QuickAddTask({
 
   return (
     <div className={cn("space-y-1", className)}>
-      <div className="flex items-center gap-2 rounded-md border border-dashed px-2 py-1.5 transition-colors duration-fast ease-out-quart focus-within:border-solid focus-within:border-ring">
+      <div className="flex items-center gap-2 rounded-full border border-dashed px-3 py-1.5 transition-colors duration-fast ease-out-quart focus-within:border-solid focus-within:border-ring">
         <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <Input
           autoFocus={autoFocus}
@@ -124,7 +124,7 @@ export function QuickAddTask({
           the tokens are stripped from the name, the name it will actually save
           is echoed too. */}
       {(parsed.dueDate || parsed.priority || hinted) && (
-        <p className="px-2 text-micro text-muted-foreground">
+        <p className="px-3 text-micro text-muted-foreground">
           {[
             `“${parsed.name}”`,
             parsed.dueDate ? `due ${formatDueDate(parsed.dueDate).toLowerCase()}` : null,
@@ -139,7 +139,7 @@ export function QuickAddTask({
       {/* Enter with no project chosen used to do nothing at all, with nothing on
           screen to say why — the one failure mode a capture field cannot have. */}
       {parsed.name.length > 0 && !effectiveProjectId && (
-        <p className="px-2 text-micro text-muted-foreground">
+        <p className="px-3 text-micro text-muted-foreground">
           {projects.length === 0
             ? "Create a project first — tasks belong to one."
             : "Choose a project to add this task."}

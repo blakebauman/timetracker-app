@@ -122,7 +122,7 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   };
 
   return (
-    <div className="flex items-start gap-2.5 rounded-container bg-card p-3">
+    <div className="flex items-start gap-2.5 rounded-container border bg-card p-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{nudge.title}</p>
@@ -265,7 +265,7 @@ export function AssistantPanel() {
               {nudges.length > 0 ? (
                 nudges.map((n) => <NudgeCard key={n.id} nudge={n} />)
               ) : (
-                <div className="flex items-center gap-2.5 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2.5 rounded-container border border-dashed p-3 text-sm text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
                   All caught up — nothing needs your attention right now.
                 </div>
@@ -310,10 +310,13 @@ export function AssistantPanel() {
               {messages.map((m) => (
                 <div
                   key={m.id}
+                  // Two bubbles, one grammar: the user's turn carries the accent
+                  // as a tint and a hairline, the assistant's is a card on the
+                  // rack. Neither has a shadow.
                   className={
                     m.role === "user"
-                      ? "ml-8 rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
-                      : "group mr-4 flex gap-2"
+                      ? "ml-8 rounded-container border border-primary/20 bg-primary/10 px-3 py-2 text-sm whitespace-pre-wrap"
+                      : "group mr-4 flex gap-2 rounded-container border bg-card px-3 py-2.5"
                   }
                 >
                   {m.role === "assistant" && (
@@ -355,7 +358,7 @@ export function AssistantPanel() {
           <ConversationScrollButton />
         </Conversation>
 
-        <div className="border-t p-3">
+        <div className="p-3">
           <PromptInput
             textareaRef={promptRef}
             value={input}

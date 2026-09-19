@@ -6,7 +6,8 @@ import { Users, Ban } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CollectionHeader } from "@/components/layout/CollectionHeader";
+import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -118,29 +119,28 @@ export function AdminPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Admin</h1>
-        <p className="text-sm text-muted-foreground">Manage all timetracker.run users</p>
-      </div>
+    <Pane>
+      <CollectionHeader title="Admin" subtitle="Manage all timetracker.run users" />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Users</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {loading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : users.length === 0 ? (
-            <EmptyState icon={Users} title="No users yet" description="Users will appear here once they sign up." />
-          ) : (
-            users.map((u) => (
-              <div key={u.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
-                <div>
+      <PaneScroll>
+        <h2 className="mb-2 text-base font-semibold">Users</h2>
+
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-container" />
+            ))}
+          </div>
+        ) : users.length === 0 ? (
+          <EmptyState icon={Users} title="No users yet" description="Users will appear here once they sign up." />
+        ) : (
+          <div className="space-y-2">
+            {users.map((u) => (
+              <div
+                key={u.id}
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-container border bg-card px-4 py-3 text-sm"
+              >
+                <div className="min-w-0">
                   <span className="font-medium">{u.name}</span>
                   <span className="ml-2 text-muted-foreground">{u.email}</span>
                   {u.role === "admin" && <Badge className="ml-2" variant="secondary">admin</Badge>}
@@ -171,10 +171,10 @@ export function AdminPage() {
                   )}
                 </div>
               </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            ))}
+          </div>
+        )}
+      </PaneScroll>
 
       {/* Ban dialog — reason is editable, defaulting to the standard wording. */}
       <Dialog open={Boolean(banTarget)} onOpenChange={(o) => !o && setBanTarget(null)}>
@@ -226,6 +226,6 @@ export function AdminPage() {
         confirmLabel="Remove user"
         onConfirm={handleRemove}
       />
-    </div>
+    </Pane>
   );
 }

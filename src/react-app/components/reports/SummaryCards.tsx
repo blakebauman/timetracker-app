@@ -160,7 +160,7 @@ export function SummaryCards({
   // gets the same row, label left and value right, and it is *shorter* than the
   // two-column reflow was because each row is one line instead of two.
   return (
-    <div className="flex animate-fade-up flex-col gap-px overflow-hidden rounded-xl border bg-border sm:flex-row sm:flex-wrap">
+    <div className="flex animate-fade-up flex-col gap-px overflow-hidden rounded-container border bg-border sm:flex-row sm:flex-wrap">
       {shown.map(({ key, icon: Icon, label, value, extra }) => (
         <div
           key={key}

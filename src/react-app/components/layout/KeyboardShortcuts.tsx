@@ -78,7 +78,7 @@ export function KeyboardShortcuts() {
         <div className="space-y-5">
           {GROUPS.map((group) => (
             <div key={group.title}>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
                 {group.title}
               </h3>
               <ul className="space-y-1.5">

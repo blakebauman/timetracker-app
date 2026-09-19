@@ -15,24 +15,27 @@ interface SegmentedControlProps<T extends string> {
 }
 
 /**
- * A small set of mutually exclusive values, shown all at once.
+ * The segment track. One shape for every "pick one of these" control in the
+ * app: a `--muted` track, and the active segment is a recessed `--background`
+ * pill with a hairline edge, recessed into the track rather than lifted off it.
+ * Ink-on-track (not the brand red): the one accent is spent on the primary
+ * action and the running timer, and a settings row is neither.
  *
- * Settings had two of these hand-rolled and diverging: time format was a
- * bordered pill group with a brand-red active segment, and theme was a single
- * unlabelled sun icon opening a menu — which meant the one three-state setting
- * on the page never showed which of its three states was active. They sat two
- * rows apart.
- *
- * The active segment is a solid --foreground pill on a --muted track. It is
- * deliberately NOT the brand red: the one accent is spent on primary actions
- * and the running timer, and a settings row is neither. Ink-on-track is the
- * highest-contrast way to say "this one" without reaching for hue at all,
- * which also means it survives a colour-blind reader unchanged.
- *
- * It replaced a lift-to-`bg-background`-with-a-shadow treatment, which stopped
- * working once cards went borderless and recessed: the "lifted" segment and
- * the page behind it were then the same value, so the control read as flat.
+ * `Tabs` (default variant), `TaskViewTabs`, `TimerViewSwitcher` and the
+ * calendar-view radiogroup inside `CalendarViewOptions` render the same pill;
+ * `tt-segment` / `tt-segment-active` below are the shared class strings so
+ * the five cannot drift.
  */
+// `max-w-full overflow-x-auto` + `whitespace-nowrap`: on a phone a four-option
+// period track is wider than the header row, and without these the labels
+// broke mid-word ("This / month") rather than the track scrolling.
+export const SEGMENT_TRACK =
+  "inline-flex h-8 w-fit max-w-full shrink-0 items-center overflow-x-auto rounded-full border bg-muted p-[3px]";
+export const SEGMENT =
+  "flex h-full shrink-0 items-center whitespace-nowrap rounded-full border border-transparent px-3 text-sm font-medium transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
+export const SEGMENT_ACTIVE = "border-border bg-background text-foreground shadow-sm";
+export const SEGMENT_INACTIVE = "text-muted-foreground hover:text-foreground";
+
 export function SegmentedControl<T extends string>({
   value,
   options,
@@ -41,18 +44,7 @@ export function SegmentedControl<T extends string>({
   className,
 }: SegmentedControlProps<T>) {
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className={cn(
-        // h-8 to match every other control in a toolbar row. Without it the
-        // track sized itself from its buttons' text and landed at 30px beside
-        // 32px inputs and buttons — a 2px step that reads as misalignment
-        // rather than as a smaller control.
-        "inline-flex h-8 w-fit items-center rounded-full bg-muted p-[3px]",
-        className
-      )}
-    >
+    <div role="radiogroup" aria-label={label} className={cn(SEGMENT_TRACK, className)}>
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -62,18 +54,7 @@ export function SegmentedControl<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(option.value)}
-            className={cn(
-              // text-sm, not text-xs: this sits in a toolbar row beside an Input, a
-              // SelectTrigger and a Button, all of which are text-sm, and its
-              // 12px label read as a smaller, secondary control next to them.
-              // `ui/tabs` — the closest relative — was already text-sm, so the
-              // 12px was the outlier on both axes rather than the convention.
-              "flex h-full items-center rounded-full px-3 text-sm font-medium transition-colors duration-fast ease-out-quart",
-              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-              active
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            )}
+            className={cn(SEGMENT, active ? SEGMENT_ACTIVE : SEGMENT_INACTIVE)}
           >
             {option.label}
           </button>

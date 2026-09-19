@@ -229,9 +229,9 @@ export function PlannerImportDialog({ open, onClose, weekDayKeys }: PlannerImpor
           )}
 
           {parsed.rows.length > 0 && (
-            <div className="max-h-64 overflow-auto rounded border">
+            <div className="max-h-64 overflow-auto rounded-md border">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-background text-muted-foreground">
+                <thead className="sticky top-0 bg-popover text-muted-foreground">
                   <tr className="border-b">
                     <th className="px-2 py-1.5 text-left font-medium">Date</th>
                     <th className="px-2 py-1.5 text-left font-medium">Project</th>
@@ -258,7 +258,7 @@ export function PlannerImportDialog({ open, onClose, weekDayKeys }: PlannerImpor
                         {r.error ? (
                           <span className="text-destructive">{r.error}</span>
                         ) : r.outsideWeek ? (
-                          <span className="text-amber-600 dark:text-amber-500">
+                          <span className="text-warning-ink">
                             Outside visible week
                           </span>
                         ) : (

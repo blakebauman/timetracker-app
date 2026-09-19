@@ -19,6 +19,7 @@ import {
 } from "@/components/reports/ReportFilterBar";
 import { WeeklyBarChart } from "@/components/reports/WeeklyBarChart";
 import { DetailedTable, type DetailedEntry } from "@/components/reports/DetailedTable";
+import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -185,7 +186,9 @@ export function ReportsPage() {
   );
 
   return (
-    <div className="space-y-4 p-6">
+    // The pane clips and scrolls on screen; print unbinds both so the whole
+    // report flows onto pages (index.css only unbinds `main`).
+    <Pane className="print:h-auto print:overflow-visible">
       {/* Row one is what you DO with a report; row two is what the report IS.
           See ReportRangeControl for why the range sits below rather than up
           here with the actions. */}
@@ -199,116 +202,118 @@ export function ReportsPage() {
         }
       />
 
-      <div className="flex flex-wrap items-start justify-between gap-2 print:hidden">
-        <div className="flex flex-wrap items-center gap-2">
-          <ReportRangeControl range={range} onRangeChange={setRange} />
-          <ReportFilterBar filters={filters} onChange={setFilters} />
-        </div>
-        <div className="flex items-center gap-2">
-          <RoundingControl value={rounding} onChange={setRounding} />
-          <SummaryMetricsMenu visible={visibleMetrics} toggle={toggleMetric} />
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-20" />
-            ))}
+      <PaneScroll className="space-y-4 print:h-auto print:overflow-visible">
+        <div className="flex flex-wrap items-start justify-between gap-2 print:hidden">
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportRangeControl range={range} onRangeChange={setRange} />
+            <ReportFilterBar filters={filters} onChange={setFilters} />
           </div>
-          <Skeleton className="h-60" />
+          <div className="flex items-center gap-2">
+            <RoundingControl value={rounding} onChange={setRounding} />
+            <SummaryMetricsMenu visible={visibleMetrics} toggle={toggleMetric} />
+          </div>
         </div>
-      ) : summary ? (
-        <>
-          <SummaryCards
-            totalSeconds={summary.totalSeconds}
-            billableSeconds={summary.billableSeconds}
-            billableAmount={summary.billableAmount}
-            entryCount={summary.entryCount}
-            avgSeconds={(() => {
-              const sinceMs = range.since ? new Date(range.since).getTime() : NaN;
-              const untilMs = range.until ? new Date(range.until).getTime() : NaN;
-              const daysInRange =
-                isNaN(sinceMs) || isNaN(untilMs)
-                  ? 1
-                  : Math.max(1, Math.round((untilMs - sinceMs) / 86400000) + 1);
-              return summary.totalSeconds / daysInRange;
-            })()}
-            visible={visibleMetrics}
-          />
 
-          <Tabs defaultValue="summary">
-            <TabsList className="print:hidden">
-              <TabsTrigger value="summary">Summary</TabsTrigger>
-              <TabsTrigger value="weekly">Weekly</TabsTrigger>
-              <TabsTrigger value="detailed">
-                Detailed
-                {detailed.length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-micro font-medium tabular-nums text-muted-foreground">
-                    {detailed.length}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
+        {isLoading ? (
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-20" />
+              ))}
+            </div>
+            <Skeleton className="h-60" />
+          </div>
+        ) : summary ? (
+          <>
+            <SummaryCards
+              totalSeconds={summary.totalSeconds}
+              billableSeconds={summary.billableSeconds}
+              billableAmount={summary.billableAmount}
+              entryCount={summary.entryCount}
+              avgSeconds={(() => {
+                const sinceMs = range.since ? new Date(range.since).getTime() : NaN;
+                const untilMs = range.until ? new Date(range.until).getTime() : NaN;
+                const daysInRange =
+                  isNaN(sinceMs) || isNaN(untilMs)
+                    ? 1
+                    : Math.max(1, Math.round((untilMs - sinceMs) / 86400000) + 1);
+                return summary.totalSeconds / daysInRange;
+              })()}
+              visible={visibleMetrics}
+            />
 
-            <TabsContent value="summary" className="mt-4 space-y-4">
-              {/* [&>*]:min-w-0 — grid items default to min-width:auto, so a card
-                  containing a chart inherits the chart's min-content width and
-                  refuses to shrink. Without this the Summary column measured
-                  441px inside a 342px track at 390px wide. */}
-              <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-                <DailyBarChart
-                  data={summary.daily}
-                  since={range.since}
-                  until={range.until}
-                />
-                {subGrouped && grouped ? (
-                  <SummaryTree data={grouped} showAmount header={groupControls} />
-                ) : (
-                  <BreakdownCard
-                    title="Breakdown"
-                    rows={
-                      summary[
-                        GROUP_DIMS.find((d) => d.value === groupDim)!.key
-                      ] as ReportSummary["byProject"]
-                    }
-                    totalSeconds={summary.totalSeconds}
-                    showAmount
-                    header={groupControls}
+            <Tabs defaultValue="summary">
+              <TabsList className="print:hidden">
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="detailed">
+                  Detailed
+                  {detailed.length > 0 && (
+                    <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-micro font-medium tabular-nums text-muted-foreground">
+                      {detailed.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="summary" className="mt-4 space-y-4">
+                {/* [&>*]:min-w-0 — grid items default to min-width:auto, so a card
+                    containing a chart inherits the chart's min-content width and
+                    refuses to shrink. Without this the Summary column measured
+                    441px inside a 342px track at 390px wide. */}
+                <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+                  <DailyBarChart
+                    data={summary.daily}
+                    since={range.since}
+                    until={range.until}
                   />
-                )}
-              </div>
-                </TabsContent>
-
-            <TabsContent value="weekly" className="mt-4">
-              {weeklyLoading ? (
-                <Skeleton className="h-72" />
-              ) : (
-                <WeeklyBarChart data={weekly} />
-              )}
-            </TabsContent>
-
-            <TabsContent value="detailed" className="mt-4">
-              {detailedLoading ? (
-                <div className="space-y-2">
-                  {[...Array(6)].map((_, i) => (
-                    <Skeleton key={i} className="h-10" />
-                  ))}
+                  {subGrouped && grouped ? (
+                    <SummaryTree data={grouped} showAmount header={groupControls} />
+                  ) : (
+                    <BreakdownCard
+                      title="Breakdown"
+                      rows={
+                        summary[
+                          GROUP_DIMS.find((d) => d.value === groupDim)!.key
+                        ] as ReportSummary["byProject"]
+                      }
+                      totalSeconds={summary.totalSeconds}
+                      showAmount
+                      header={groupControls}
+                    />
+                  )}
                 </div>
-              ) : (
-                <DetailedTable entries={detailed as DetailedEntry[]} />
-              )}
-            </TabsContent>
-          </Tabs>
-        </>
-      ) : (
-        <EmptyState
-          icon={BarChart2}
-          title="No data for this period"
-          description="Try a different date range, or start tracking time"
-        />
-      )}
-    </div>
+                  </TabsContent>
+
+              <TabsContent value="weekly" className="mt-4">
+                {weeklyLoading ? (
+                  <Skeleton className="h-72" />
+                ) : (
+                  <WeeklyBarChart data={weekly} />
+                )}
+              </TabsContent>
+
+              <TabsContent value="detailed" className="mt-4">
+                {detailedLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(6)].map((_, i) => (
+                      <Skeleton key={i} className="h-10" />
+                    ))}
+                  </div>
+                ) : (
+                  <DetailedTable entries={detailed as DetailedEntry[]} />
+                )}
+              </TabsContent>
+            </Tabs>
+          </>
+        ) : (
+          <EmptyState
+            icon={BarChart2}
+            title="No data for this period"
+            description="Try a different date range, or start tracking time"
+          />
+        )}
+      </PaneScroll>
+    </Pane>
   );
 }

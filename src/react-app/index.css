@@ -39,6 +39,7 @@
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-rail: var(--rail);
   --color-chart-ink-soft: var(--chart-ink-soft);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -46,96 +47,85 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   /* Geometry is chosen by what an element IS, not by taste (DESIGN.md §5).
-     Three families, and the boundary between them is density:
+     Four families, and the boundary between them is density:
 
        controls   — `rounded-full`. Buttons, badges, inputs, segments, icon
-                    buttons. A pill costs nothing at 24-40px and it is the
-                    single loudest cue in the new language.
+                    buttons, the rail's circular nav buttons.
        containers — `rounded-container` (this token). Cards, dialogs, sheets,
-                    popovers. 20px, up from the 12px `rounded-xl` they used.
-       data cells — unchanged `rounded-md`/`-lg`. Entry rows, timesheet cells,
-                    calendar blocks, planner cells, table cells. Pills on a
-                    30-row list would trade the app's actual job for a look.
-
-     Named rather than spelled `rounded-[1.25rem]` at each call site so the
-     container radius moves in one place, and so a reviewer can see which
-     family a surface belongs to from the class name alone. */
-  --radius-container: 1.25rem;
+                    popovers, list rows that are cards. 12px: the instrument
+                    rack's panels are tight-cornered, not pillowy.
+       capsule    — `rounded-capsule` (2rem). Exactly one surface: the floating
+                    composer that hovers over the content. It is the loudest
+                    shape in the system and it is spent on the one thing the
+                    app exists to do.
+       data cells — unchanged `rounded-md`/`-lg`. Timesheet cells, calendar
+                    blocks, planner cells, table cells. */
+  --radius-container: 0.75rem;
+  --radius-capsule: 2rem;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
   /* Micro — the documented floor of the type ramp (DESIGN.md §3), for
-     chrome-level detail only: kbd chips, dense inline badges, counts. It was
-     always a real step; it was just spelled as a 10px arbitrary value at 28
-     call sites, which reads as drift and trips the design-system check. Named
-     so it can be used as `text-micro` and so the floor moves in one place.
-
-     Deliberately no `--text-micro--line-height`: the arbitrary values it
-     replaces set font-size only and inherited their leading, so pinning one
-     here would quietly reflow 28 dense call sites. This swap is meant to be
-     byte-identical in output.
-
+     chrome-level detail only: kbd chips, dense inline badges, counts.
+     Deliberately no line-height: the call sites inherit their leading.
      (Don't write the arbitrary form in this comment — Tailwind scans CSS
      comments too and will emit a dead utility for it.) */
   --text-micro: 0.625rem;
 
-  /* Layering. The values are the ones already in use (10/20/50) — this names
-     the three tiers that existed by convention so a new surface picks a
-     meaning rather than a number, and so the order is greppable in one place.
+  /* Layering. Named tiers so a new surface picks a meaning, not a number.
 
-       sticky   — headers and frozen first columns inside a scrolling grid
+       sticky   — headers and frozen first columns inside a scrolling grid,
+                  and the floating pane headers that sit over a scroll-fade
        overlay  — something covering a pane but not the app (calendar error
-                  wash, the ghost-count button, a sticky corner cell that has to
-                  win against its sticky neighbours)
+                  wash, the ghost-count button, a sticky corner cell)
+       dock     — the app-wide timer surfaces: the floating composer and the
+                  docked running bar. Above every pane, below every portal, so
+                  a dialog still covers the running readout.
        portal   — dialogs, sheets, popovers, dropdowns, selects
        tooltip  — above portal on purpose: a tooltip on a control *inside* a
-                  dialog was previously the same 50 as the dialog and relied on
-                  DOM order to be visible at all. */
+                  dialog used to share the dialog's 50 and rely on DOM order. */
   --z-index-sticky: 10;
   --z-index-overlay: 20;
+  --z-index-dock: 30;
   --z-index-portal: 50;
   --z-index-tooltip: 60;
 
   /* Motion — natural deceleration curves (no bounce/elastic).
      `--ease-out-quart` is the default: everything uses it unless it has a
      reason not to. Quint is reserved for the one large, slow move (the timer
-     control's width change), where the flatter tail keeps a big element from
-     appearing to overshoot. */
+     capsule docking into the bar), where the flatter tail keeps a big element
+     from appearing to overshoot. */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Duration scale (utilities: duration-fast / -base / -slow).
-     Three steps, chosen by how far the thing being animated travels:
        fast — a state change in place: hover, focus, colour, a chevron.
        base — something appearing or leaving: overlays, popovers, rows.
-       slow — a panel-sized move across the screen: sheets, drawers.
-     Numeric `duration-200` and friends still work; prefer the named steps so
-     the scale stays greppable and a retune happens in one place. */
+       slow — a panel-sized move across the screen: sheets, the dock. */
   --transition-duration-fast: 150ms;
   --transition-duration-base: 200ms;
   --transition-duration-slow: 300ms;
 
-  /* Reusable entrance animations (utilities: animate-fade-in / -up / -scale-in).
-     All three sit on the `base` step: they used to run 250/350/400ms, which read
-     as three different systems on screens that show more than one of them (the
-     reports strip fades up while an empty state scales in). A pure opacity fade
-     can afford to be the slowest of the three since nothing moves. */
+  /* Reusable entrance animations (utilities: animate-fade-in / -up / -scale-in). */
   --animate-fade-in: fade-in var(--transition-duration-slow) var(--ease-out-quart) both;
   --animate-fade-up: fade-up var(--transition-duration-base) var(--ease-out-quart) both;
   --animate-scale-in: scale-in var(--transition-duration-base) var(--ease-out-quart) both;
 
+  /* The docked running bar rises from the bottom edge; the composer settles
+     into place from just below its resting point. Both are the same "one
+     pull deploys" motion at two scales. */
+  --animate-dock-in: dock-in var(--transition-duration-slow) var(--ease-out-quint) both;
+  --animate-capsule-in: capsule-in var(--transition-duration-slow) var(--ease-out-quint) both;
+
   /* "A timer is running" has exactly two forms, and they share a 1.6s cadence
-     so that when both are on screen — the sidebar readout sits under the timer
-     bar — they breathe together instead of drifting against each other.
+     so that when both are on screen — the rail dot and the docked bar — they
+     breathe together instead of drifting against each other.
 
      1. The signature: a flat ring breathes outward from behind the round Stop
-        button. Spends attention deliberately; only used on that one control.
+        button. Only ever on that one control.
      2. The quiet one: a small dot breathes in place, for dense surfaces (the
-        sidebar's running readout, a running block on the calendar grid).
-
-     Both loop symmetrically, so the dot is on `ease-in-out` rather than the
-     house `ease-out-quart` — see DESIGN.md §6. The ring keeps `ease-out-quart`
-     because it *travels* (scale 1 → 1.7) rather than breathing in place. */
+        rail's running dot, a running block on the calendar grid, the live
+        segment of the day ribbon). */
   --animate-recording-pulse: recording-pulse 1.6s var(--ease-out-quart) infinite;
   --animate-running-dot: running-dot 1.6s ease-in-out infinite;
 
@@ -145,7 +135,6 @@
   --animate-stopped:
     fade-up var(--transition-duration-base) var(--ease-out-quart) both,
     row-flash 1.4s var(--ease-out-quart) both;
-
 }
 
 @keyframes fade-in {
@@ -158,6 +147,14 @@
 }
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dock-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes capsule-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: none; }
 }
 /* Just-stopped row flash — a primary wash blooms then recedes, with a left rail
@@ -182,9 +179,8 @@
     opacity: 0;
   }
 }
-/* The quiet running cue — a dot breathing in place, for the sidebar readout and
-   a running block on the calendar grid. Opacity only: these sit inside dense
-   rows where a scaling dot would nudge its neighbours. */
+/* The quiet running cue — a dot breathing in place. Opacity only: these sit
+   inside dense rows where a scaling dot would nudge its neighbours. */
 @keyframes running-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
@@ -195,209 +191,199 @@
   --font-geist-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
   --radius: 0.5rem;
 
-  /* Soft tones: a warm-neutral off-white ground (chroma toward the brand's red
-     hue, not the cliché cream). Ink softened off pure black.
+  /* The instrument rack, light. A true-neutral ramp — no warm or cool tint
+     anywhere, so the one saturated colour (the brand red) and the project
+     swatches are the only hue on the page.
 
-     Surfaces are separated by TONE ALONE — cards carry no border (DESIGN.md §4).
-     The direction of the step is per-theme, chosen for legibility rather than
-     symmetry: in light a card RECEDES below the ground (0.988 -> 0.962), in dark
-     it LIFTS above it (0.185 -> 0.228), because a card darker than an already
-     dark page reads as a hole. Popover keeps the lightest value in light mode on
-     purpose: an overlay floats above the page, so it must not share the card's
-     recessed tone or a dialog reads as part of the surface behind it. */
-  --background: oklch(0.988 0.0015 30);
-  --foreground: oklch(0.22 0.006 30);
-  --card: oklch(0.962 0.0025 30);
-  --card-foreground: oklch(0.22 0.006 30);
-  --popover: oklch(0.995 0.001 30);
-  --popover-foreground: oklch(0.22 0.006 30);
+     Surfaces step UP from the ground in light: page 0.961, card 0.976, popover
+     0.985. A card is a panel sitting on the rack, so it is lighter than the
+     ground and carries a 1px hairline (`--border`) — that hairline is the
+     panel edge and the only structural line in the system. The rail is a step
+     DOWN from the ground (0.943): it is the chassis the panels sit in. */
+  --background: oklch(0.961 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(0.976 0 0);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+  --rail: oklch(0.943 0 0);
   --primary: oklch(0.588 0.207 27.33);
   /* Pure white, not 0.985: on the brand red #fafafa measures 4.40:1 and fails
-     AA for every primary button label. White measures 4.59:1, and #ffffff is
-     what DESIGN.md's button-primary spec already documents. */
+     AA for every primary button label. White measures 4.59:1. */
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.936 0.003 30);
-  --secondary-foreground: oklch(0.26 0.006 30);
-  --muted: oklch(0.936 0.003 30);
-  /* Tuned against the *worst* ground it lands on, not the page background —
-     muted/accent is where secondary text mostly sits (toolbars, sidebar, tab
-     tracks, count badges), and those moved down with the rest of the ramp.
-     L 0.543 was calibrated against the old muted (0.965) and only reaches
-     4.19:1 on the new one. L 0.523 clears AA on all five grounds:
-     background 5.27 / card 4.88 / popover 5.38 / muted 4.52 / accent 4.52. */
-  --muted-foreground: oklch(0.523 0.008 30);
-  --accent: oklch(0.936 0.004 30);
-  --accent-foreground: oklch(0.26 0.006 30);
-  /* Destructive has to be a DIFFERENT RED from the brand, and it wasn't:
-     --primary sat at hue 27.33 and --destructive at 27.325 — the same hue to
-     three decimals, 0.011 apart in lightness. On a 1.5px progress bar a project
-     3% into its budget and one 110% through it were indistinguishable, and the
-     budget ladder ran red -> amber -> red, reversing exactly where it mattered.
-
-     Deeper and cooler: 9 degrees off the brand hue and 0.138 darker, so the two
-     reds separate on lightness as well as hue and destructive reads as the more
-     severe of the pair. The old value also failed AA as small text — 4.27:1 on
-     card, 3.95:1 on muted — which is why `text-destructive` needed no ink
-     variant to go wrong. Measured here: label 7.97:1, text 7.72 background /
-     7.15 card / 6.61 muted, 6.05:1 on its own /10 tint and 5.12:1 on /20. */
+  --secondary: oklch(0.925 0 0);
+  --secondary-foreground: oklch(0.2 0 0);
+  --muted: oklch(0.925 0 0);
+  /* Tuned against the *worst* ground it lands on — the segmented track and the
+     rail (0.925 / 0.943), not the page. L 0.51 clears AA on all of them:
+     background 5.13 / card 5.36 / muted 4.60 / rail 4.85. */
+  --muted-foreground: oklch(0.51 0 0);
+  --accent: oklch(0.91 0 0);
+  --accent-foreground: oklch(0.2 0 0);
+  /* Destructive is a DIFFERENT red from the brand: 9 degrees off the brand hue
+     and materially darker, so a 1.5px progress bar can tell "3% into budget"
+     from "110% through it". Measured 7.97:1 as a label. */
   --destructive: oklch(0.45 0.19 18);
   --destructive-foreground: oklch(1 0 0);
   --success: oklch(0.596 0.145 163.225);
   --success-foreground: oklch(0.985 0 0);
-  /* Success used as TEXT — the third of the same family as --primary-ink and
-     --warning-ink, and it exists for the same measured reason: --success is
-     calibrated as a fill and fails AA as small type on every light ground.
-     Holds hue and chroma, moves lightness only. L 0.488 was tuned against the
-     old ramp; on the new one it misses at 4.31:1 on muted, so it steps to
-     0.468 — background 5.85 / card 5.42 / popover 5.97 / muted 5.02 / accent
-     5.02, and 4.50:1 on its own /10 tint (worst of the three plausible
-     compositing models: linear, oklab, and gamma-space alpha).
-     `/15` is deliberately not in that list: both call sites are `aria-hidden`
-     progress-bar tracks with no text on them. */
-  --success-ink: oklch(0.468 0.145 163.225);
+  /* Success as TEXT. --success is calibrated as a fill and fails AA as small
+     type; this holds hue and chroma and moves lightness only. */
+  --success-ink: oklch(0.45 0.145 163.225);
   --warning: oklch(0.666 0.179 58.318);
   --warning-foreground: oklch(0.985 0 0);
-  /* Warning used as TEXT, exactly as --primary-ink is for the brand red.
-     --warning is calibrated as a fill; as small text it measured 3.15:1 on card
-     (the "Unverified" badge) and 2.77:1 on its own /10 tint (the warning Alert).
-     Holds hue and chroma, moves lightness only. Worst measured ground is the
-     /10 tint at 5.36:1, and 4.52:1 for the alert description's /90 text. */
-  --warning-ink: oklch(0.505 0.179 58.318);
-  --border: oklch(0.898 0.003 30);
-  /* Dense row dividers only (entry list, timesheet). --border measures 1.21:1
-     on a card, which effectively disappears across a 30-row list for a
-     low-vision user. This is ~1.8:1 — deliberately short of the 3:1 non-text
-     target, because a 3:1 divider reads as a structural rule and DESIGN.md
-     keeps borders subtle. Cards no longer have an edge at all (tone separates
-     them); --border now draws input edges and internal dividers only. */
-  --border-strong: oklch(0.78 0.004 30);
-  --input: oklch(0.898 0.003 30);
-  /* Focus gets its own hue. This used to be byte-identical to --primary and
-     0.011 lightness from --destructive, so a focused field read as a validation
-     error and "Save changes" was the same red as "Discard". Hue 265 is the
-     system's own cool tint (see the dark ramp), not a stock blue; L is set per
-     theme so the ring clears 3:1 (WCAG 1.4.11) on background/card/muted/accent —
-     measured 4.44:1 here, 5.01:1 dark. */
+  /* Warning as TEXT, exactly as --primary-ink is for the brand red. */
+  --warning-ink: oklch(0.49 0.179 58.318);
+  /* The hairline. It draws every panel edge, every input, every row card.
+     One device pixel, one value — there is no 2px border anywhere. */
+  --border: oklch(0.888 0 0);
+  /* Row dividers inside a dense grid only (timesheet, planner). Cards no longer
+     need it: they carry their own edge. */
+  --border-strong: oklch(0.8 0 0);
+  --input: oklch(0.888 0 0);
+  /* Focus gets its own hue. Hue 265 is deliberately neither the brand red nor
+     the destructive red, so a focused field never reads as a validation error.
+     L set per theme so the ring clears 3:1 on every ground. */
   --ring: oklch(0.55 0.14 265);
   /* How much of a project/tag swatch survives in text drawn ON that swatch's own
-     tint (the rest is mixed toward --foreground). Ceiling measured across all 18
-     DISTINCT_COLORS over every ground, mixing in oklab as `color-mix` does:
-     50% light (was 52% before the ramp moved down), 64% dark — these sit under
-     it with margin, so the token is unchanged. See .tt-swatch-tint. */
+     tint (the rest is mixed toward --foreground). See .tt-swatch-tint. */
   --swatch-ink-mix: 46%;
-  /* Brand red used as TEXT (active nav item, running pill, the billable "$").
-     --primary is tuned as a fill behind white, and fails AA as small text: 3.59:1
-     on its own /10 tint in light, 4.27:1 in dark, 4.45:1 for the billable glyph.
-     This holds the brand hue and chroma and moves only lightness — down toward
-     ink in light, up in dark. Measured ceilings: light L ≤ 0.52, dark L ≥ 0.74. */
-  --primary-ink: oklch(0.5 0.19 27.33);
-  /* The only chart-specific colour left.
-     --chart-1..5 were stock shadcn values doing two things wrong: they were a
-     *second* categorical palette competing with the 18-colour DISTINCT_COLORS
-     the rest of the app uses for projects and tags, and chart-1 flipped hue
-     family between themes (orange in light, blue-violet in dark). Categorical
-     colour now comes from DISTINCT_COLORS everywhere, and both bar charts encode
-     billable with --success — the same meaning it carries on the KPI strip.
-
-     This is the de-emphasized half of those part-of-whole stacks: the
-     non-billable remainder above the billable green. It has to stay
-     distinguishable from --success on luminance alone, since hue is the one
-     channel a colour-blind reader loses — measured 2.23:1 greyscale in light,
-     3.74:1 in dark, with stack position and a legend carrying the rest. */
-  --chart-ink-soft: oklch(0.84 0.012 30);
+  /* Brand red used as TEXT (the running readout, the billable "$", links).
+     --primary is tuned as a fill behind white and fails AA as small text. */
+  /* L 0.485, not 0.5: on the accent surface plus its own /10 tint the old
+     value measured 4.43:1 (e2e/contrast.spec.ts). Hue and chroma unchanged. */
+  --primary-ink: oklch(0.485 0.19 27.33);
+  /* The de-emphasised half of the billable/non-billable chart stack. Must stay
+     distinguishable from --success on luminance alone. */
+  --chart-ink-soft: oklch(0.84 0 0);
+  /* The glass the composer is made of: the card colour at partial opacity,
+     blurred. Declared as a token so the composer and the docked bar share one
+     material instead of two hand-tuned alphas. */
+  --glass: oklch(0.976 0 0 / 72%);
 }
 
 .dark {
-  /* Soft tones: lift the harsh near-black to a soft charcoal with a faint cool
-     tint (hue 265), so the warm red brand reads against a calm, premium ground
-     rather than pure black. Cards sit a step above the field; ink eased off pure
-     white. */
-  --background: oklch(0.185 0.006 265);
-  --foreground: oklch(0.96 0.003 265);
-  --card: oklch(0.228 0.007 265);
-  --card-foreground: oklch(0.96 0.003 265);
-  --popover: oklch(0.228 0.007 265);
-  --popover-foreground: oklch(0.96 0.003 265);
+  /* The instrument rack, dark. Near-black true-neutral ground (0.168, a 6%
+     grey), cards a step UP (0.191), the rail a step DOWN
+     (0.145) — the chassis is the darkest thing on screen and the panels lift
+     off it. Ink is 95% white, eased off pure. No tint: the brand red is the
+     only warmth on the page, and the running-timer glow is the only light. */
+  --background: oklch(0.168 0 0);
+  --foreground: oklch(0.961 0 0);
+  --card: oklch(0.191 0 0);
+  --card-foreground: oklch(0.961 0 0);
+  --popover: oklch(0.215 0 0);
+  --popover-foreground: oklch(0.961 0 0);
+  --rail: oklch(0.145 0 0);
   --primary: oklch(0.65 0.207 27.33);
-  --primary-foreground: oklch(0.16 0.006 265);
-  --secondary: oklch(0.28 0.008 265);
-  --secondary-foreground: oklch(0.96 0.003 265);
-  --muted: oklch(0.28 0.008 265);
-  --muted-foreground: oklch(0.72 0.012 265);
-  --accent: oklch(0.3 0.009 265);
-  --accent-foreground: oklch(0.96 0.003 265);
-  /* Same separation as light, resolved the other way: on charcoal a deep red
-     disappears, so destructive goes brighter than the brand red rather than
-     darker (0.72 vs --primary's 0.65) and takes the bigger hue step.
-
-     Its foreground flips to ink, which --primary-foreground already does in
-     this theme and --destructive-foreground never did: near-white on this fill
-     measures 2.69:1 and failed AA on every destructive button label in dark
-     mode. Ink measures 7.24:1. Text uses of the token: 6.93 background /
-     6.36 card / 5.63 muted, 5.59:1 on its own /10 tint. */
+  --primary-foreground: oklch(0.13 0 0);
+  --secondary: oklch(0.239 0 0);
+  --secondary-foreground: oklch(0.961 0 0);
+  --muted: oklch(0.239 0 0);
+  /* 0.68 measures 6.6:1 on the ground and 5.7:1 on the muted track. */
+  --muted-foreground: oklch(0.68 0 0);
+  --accent: oklch(0.27 0 0);
+  --accent-foreground: oklch(0.961 0 0);
+  /* On near-black a deep red disappears, so destructive goes brighter than the
+     brand red rather than darker, and takes the bigger hue step. Its
+     foreground is ink: near-white on this fill measured 2.69:1. */
   --destructive: oklch(0.72 0.17 12);
-  --destructive-foreground: oklch(0.16 0.006 265);
+  --destructive-foreground: oklch(0.13 0 0);
   --success: oklch(0.696 0.17 162.48);
-  --success-foreground: oklch(0.16 0.006 265);
-  /* Dark ink is light, so the fill value already clears AA as text here
-     (5.53:1 worst ground). Same value, declared so call sites use one class. */
+  --success-foreground: oklch(0.13 0 0);
   --success-ink: oklch(0.696 0.17 162.48);
   --warning: oklch(0.769 0.188 70.08);
-  --warning-foreground: oklch(0.16 0.006 265);
-  /* Dark ink is light, so the fill value already clears AA as text here
-     (6.36:1 worst ground, 6.06:1 on its own /20 tint). Same value, declared so
-     call sites can use one class in both themes. */
+  --warning-foreground: oklch(0.13 0 0);
   --warning-ink: oklch(0.769 0.188 70.08);
+  /* The hairline, dark: 9% white — visible as an edge, never as a rule. */
   --border: oklch(1 0 0 / 9%);
-  --border-strong: oklch(1 0 0 / 22%);
-  --input: oklch(1 0 0 / 13%);
+  --border-strong: oklch(1 0 0 / 20%);
+  --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.7 0.14 265);
-  /* Dark ink is light, so more of the swatch survives before contrast suffers. */
   --swatch-ink-mix: 55%;
   --primary-ink: oklch(0.76 0.19 27.33);
-  /* Dark ground inverts which end is "muted": the soft mark goes darker than
-     the card, not lighter. Same role, same hue discipline as light. */
-  --chart-ink-soft: oklch(0.40 0.014 265);
+  --chart-ink-soft: oklch(0.40 0 0);
+  --glass: oklch(0.191 0 0 / 70%);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    /* The app is a fixed rack: the panes scroll, the page never does. */
+    @apply overflow-hidden;
+  }
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  /* No scrollbars anywhere, in either engine. Every scrolling pane fades its
+     content out at the top instead (see .tt-pane), which is the rack's way of
+     saying "there is more" without drawing a grey bar down every panel. */
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+}
+
+/* ─── The pane ──────────────────────────────────────────────────────────────
+   Every route is a tall pane: a header that floats over the content, and a
+   scroll region that fades out beneath it. The fade is a gradient from the
+   ground, so content slides under the header rather than being clipped by it.
+   The header's own height is the pane's `--pane-header-h`, set by PaneHeader
+   from its measured box; PaneScroll pads by it. */
+.tt-pane-fade {
+  background: linear-gradient(to bottom, var(--background), transparent);
+}
+
+/* ─── The rail ──────────────────────────────────────────────────────────────
+   The brand mark on the chassis glows in the dark — the one place the brand
+   red is allowed to be a light rather than a fill. Off in light mode, where
+   a glow on a light ground reads as a smudge. */
+.dark .tt-brand-glow {
+  filter:
+    drop-shadow(0 0 6px color-mix(in oklab, var(--primary) 55%, transparent))
+    drop-shadow(0 0 14px color-mix(in oklab, var(--primary) 35%, transparent))
+    drop-shadow(0 0 28px color-mix(in oklab, var(--primary) 20%, transparent));
+}
+
+/* The active rail button carries a ring that fades downward — the rail's
+   signature. A mask on the border, so the ring is brightest where it meets the
+   icon's top edge and gone by two thirds of the way down. */
+.tt-rail-ring {
+  mask-image: linear-gradient(to bottom, black, transparent 60%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 60%);
+}
+
+/* ─── Glass ─────────────────────────────────────────────────────────────────
+   The composer and the docked bar are the only two surfaces made of this. */
+.tt-glass {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  backdrop-filter: blur(24px) saturate(1.2);
 }
 
 /* ─── Swatch tints ──────────────────────────────────────────────────────────
    Project and tag colors are arbitrary palette hexes, so any label drawn on a
-   tint of its own swatch has to be derived, not copied. Setting `color` to the
-   raw swatch (the old ProjectBadge/calendar-event approach) makes legibility a
-   lottery on the hue's luminance — amber landed at 1.88:1 in light mode.
-
-   Mixing the swatch toward --foreground fixes both themes with one expression:
-   light ink is dark so the label darkens, dark ink is light so it lightens.
-   `--swatch-ink-mix` is the measured ceiling per theme; consumers set --swatch. */
-/* Text only — for labels already sitting on a swatch-tinted surface painted by
-   something else (FullCalendar paints the event block itself). */
+   tint of its own swatch has to be derived, not copied. Mixing the swatch
+   toward --foreground fixes both themes with one expression. */
 .tt-swatch-ink {
   color: color-mix(in oklab, var(--swatch) var(--swatch-ink-mix), var(--foreground));
 }
-
-/* Text plus its own tint fill. */
 .tt-swatch-tint {
   background-color: color-mix(in oklab, var(--swatch) 13%, transparent);
   color: color-mix(in oklab, var(--swatch) var(--swatch-ink-mix), var(--foreground));
 }
 
 /* ─── Reveal-on-hover ───────────────────────────────────────────────────────
-   Row actions that fade in with the pointer. The gate must be hover CAPABILITY,
-   not viewport width: the old `sm:opacity-0 sm:group-hover:opacity-100` hid the
-   control on every touch device wider than 640px — i.e. every tablet — where
-   `group-hover` can never fire, so Continue and the row menu were unreachable.
-
-   Default is visible; only a device that can actually hover opts into hiding.
-   focus-within/focus-visible keep it reachable by keyboard. */
+   Row actions that fade in with the pointer. The gate is hover CAPABILITY,
+   not viewport width, so touch devices always see the control. */
 .tt-reveal {
   opacity: 1;
   transition: opacity var(--transition-duration-fast) var(--ease-out-quart);
@@ -416,12 +402,7 @@
 }
 
 /* ─── Touch targets ─────────────────────────────────────────────────────────
-   Gated on input capability, not viewport width — same reasoning as .tt-reveal
-   above. The timer bar's dense controls sit at 28–32px, which is right under a
-   trackpad and misses under a thumb, and the device that decides is the one
-   with the thumb: a 900px-wide tablet is not a desktop. Only the hit area
-   grows; the visual chip keeps its designed height, so the bar doesn't turn
-   chunky on a pointer device that merely reports coarse. */
+   Gated on input capability, not viewport width. Only the hit area grows. */
 @media (pointer: coarse) {
   .tt-touch {
     min-height: 44px;
@@ -429,11 +410,17 @@
   }
 }
 
-/* Secondary text sitting on a swatch tint. --muted-foreground is tuned against
-   the flat background and washes out over a colored fill (3.81:1 worst case),
-   so step it toward ink. Measured ceiling 80% in both themes. */
+/* Secondary text sitting on a swatch tint. */
 .tt-on-tint-muted {
   color: color-mix(in oklab, var(--muted-foreground) 70%, var(--foreground));
+}
+
+/* Dev only: the TanStack Query devtools launcher is a fixed 48px button in
+   the bottom-right corner, which is exactly where the docked running bar's
+   Discard control sits. Lift it clear so the e2e suite (which runs on the dev
+   server) can reach the bar; production never renders the launcher. */
+.tsqd-open-btn-container {
+  bottom: 6.5rem !important;
 }
 
 /* Print: let the fixed app shell expand so the whole report flows onto pages. */
@@ -448,6 +435,7 @@
   main {
     height: auto !important;
     overflow: visible !important;
+    padding-bottom: 0 !important;
   }
 }
 

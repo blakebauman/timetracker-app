@@ -4,6 +4,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  SEGMENT,
+  SEGMENT_ACTIVE,
+  SEGMENT_INACTIVE,
+  SEGMENT_TRACK,
+} from "@/components/ui/segmented-control";
 import { cn } from "@/lib/utils";
 import {
   CALENDAR_SLOT_HEIGHT_MIN,
@@ -35,13 +41,9 @@ interface CalendarViewOptionsProps {
 }
 
 /**
- * The calendar's display preferences, behind one control.
- *
- * These were four separate toolbar items (weekends toggle, gaps toggle, a zoom
- * stepper, a view select) sitting at the same visual weight as "Add entry" —
- * eight of the fourteen controls in the header. They're all persisted
- * preferences you set once, not per-session actions, which is exactly the
- * "overloaded toolbar" PRODUCT.md names as an anti-reference.
+ * The calendar's display preferences, behind one control. They're persisted
+ * preferences you set once, not per-session actions, so they don't earn a
+ * seat in the header beside "Add entry".
  */
 export function CalendarViewOptions({
   calendarView,
@@ -57,8 +59,6 @@ export function CalendarViewOptions({
 }: CalendarViewOptionsProps) {
   const isMonthView = calendarView === "dayGridMonth";
   const isDayView = calendarView === "timeGridDay";
-  // The pane can be too narrow for the chosen span. Say so rather than letting
-  // the selected segment silently disagree with what's on screen.
   const reduced = calendarView !== requestedCalendarView;
 
   return (
@@ -74,32 +74,31 @@ export function CalendarViewOptions({
         <TooltipContent>View options</TooltipContent>
       </Tooltip>
 
-      <PopoverContent align="end" className="w-60 p-3">
+      <PopoverContent align="end" className="w-64 p-3">
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Show</Label>
-              <div
-                role="radiogroup"
-                aria-label="Calendar view"
-                className="grid grid-cols-4 gap-0.5 rounded-full bg-muted p-0.5"
-              >
-                {VIEW_OPTIONS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={requestedCalendarView === value}
-                    onClick={() => onCalendarViewChange(value)}
-                    className={cn(
-                      "rounded-full px-1 py-1 text-xs transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                      requestedCalendarView === value
-                        ? "bg-foreground font-medium text-background"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+            <div
+              role="radiogroup"
+              aria-label="Calendar view"
+              className={cn(SEGMENT_TRACK, "w-full")}
+            >
+              {VIEW_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={requestedCalendarView === value}
+                  onClick={() => onCalendarViewChange(value)}
+                  className={cn(
+                    SEGMENT,
+                    "flex-1 justify-center px-1 text-xs",
+                    requestedCalendarView === value ? SEGMENT_ACTIVE : SEGMENT_INACTIVE
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             {reduced && (
               <p className="text-xs text-muted-foreground">
@@ -133,7 +132,7 @@ export function CalendarViewOptions({
 
               <div className="flex items-center justify-between gap-3">
                 <Label className="text-sm font-normal">Row height</Label>
-                <div className="flex items-center rounded-md border bg-muted/40 p-0.5">
+                <div className="flex items-center rounded-full border bg-muted p-0.5">
                   <Button
                     variant="ghost"
                     size="icon-xs"

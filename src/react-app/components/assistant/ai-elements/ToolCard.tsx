@@ -56,7 +56,7 @@ function toolNameOf(part: ToolPart): string {
 type Tone = "muted" | "ok" | "warn" | "error";
 
 const TONE_SHELL: Record<Tone, string> = {
-  muted: "border-border bg-muted/40",
+  muted: "border-border bg-card",
   ok: "border-success/30 bg-success/5",
   warn: "border-warning/30 bg-warning/5",
   error: "border-destructive/40 bg-destructive/10",
@@ -83,7 +83,7 @@ function Card({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={cn("rounded-lg border px-3 py-2 text-xs", TONE_SHELL[tone])}>
+    <div className={cn("rounded-container border px-3 py-2 text-xs", TONE_SHELL[tone])}>
       <div className="flex items-center gap-2">
         {spin ? (
           <Spinner size="sm" className={TONE_ICON[tone]} />
@@ -350,7 +350,7 @@ function ApprovalPrompt({
         {input.id ? ` on entry ${String(input.id).slice(0, 8)}…` : ""}. Approve?
       </p>
       {details.length > 0 && (
-        <p className="rounded bg-muted/60 px-2 py-1 text-xs text-muted-foreground">{details.join(" · ")}</p>
+        <p className="rounded-md bg-muted/60 px-2 py-1 text-xs text-muted-foreground">{details.join(" · ")}</p>
       )}
       <div className="flex gap-2">
         <Button size="sm" variant="destructive" onClick={() => onApprove(approval.id, true)}>

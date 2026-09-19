@@ -118,12 +118,18 @@ export function SignupPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <BrandMark className="h-9 w-9" />
-          <span className="text-xl font-bold">Time Tracker</span>
+        {/* Logo: the mark over a soft red halo, wordmark beneath. */}
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <div className="relative flex items-center justify-center">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
+            />
+            <BrandMark className="relative size-16" />
+          </div>
+          <span className="text-2xl font-bold tracking-tight">Time Tracker</span>
         </div>
 
         <Card>

@@ -33,6 +33,8 @@ import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 import type { LoggedSegment } from "@/components/timer/TimerWorkspaceHeader";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
+import { Pane, PaneScroll } from "@/components/layout/Pane";
 
 // Review pulls in the project picker and the entry controls; it's only ever
 // opened deliberately, so it shouldn't sit in the Timer landing chunk.
@@ -319,7 +321,7 @@ export function TimerWorkspace() {
           <div ref={calendarPaneRef} className="flex min-h-0 flex-col">
             {calendarFor("split")}
           </div>
-          <div className="flex min-h-0 flex-col overflow-hidden">{list}</div>
+          <div className="flex min-h-0 flex-col overflow-y-auto px-4 pb-4">{list}</div>
         </div>
       </Suspense>
     );
@@ -346,7 +348,7 @@ export function TimerWorkspace() {
     });
 
   return (
-    <div className="flex h-full flex-col">
+    <Pane>
       <TimerWorkspaceHeader
         since={since}
         until={until}
@@ -386,7 +388,12 @@ export function TimerWorkspace() {
           same screen, and a plan you can see beside the day is the whole reason
           the rail exists. Grid views only — the timesheet and planner are their
           own dense grids and a third column would crush them. */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      {/* The list scrolls the pane itself, under the floating header; every
+          grid view owns its scrolling and only starts below the header. */}
+      <PaneScroll
+        padded={effectiveView === "list"}
+        className={effectiveView === "list" ? "px-4 pb-4" : "flex-row"}
+      >
         <div
           id={TIMER_PANEL_ID}
           role="tabpanel"
@@ -394,7 +401,10 @@ export function TimerWorkspace() {
           // min-w-0: FullCalendar's grid has an intrinsic width, so without it
           // this pane refuses to shrink and the rail is pushed off the viewport
           // edge — its collapse control and quick-add clipped by the window.
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 flex-col",
+            effectiveView !== "list" && "overflow-hidden"
+          )}
         >
           {body}
         </div>
@@ -403,7 +413,7 @@ export function TimerWorkspace() {
             <TaskRail />
           </Suspense>
         )}
-      </div>
+      </PaneScroll>
 
       <AddEntryDialog
         open={addEntryOpen}
@@ -424,6 +434,6 @@ export function TimerWorkspace() {
           />
         </Suspense>
       )}
-    </div>
+    </Pane>
   );
 }

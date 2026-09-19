@@ -30,7 +30,6 @@ const DEFAULT_PRODUCTIVITY: ProductivitySettings = {
 };
 
 interface UIStore {
-  sidebarCollapsed: boolean;
   theme: "light" | "dark" | "system";
   timeFormat: "24h" | "12h";
   currency: string;
@@ -91,8 +90,6 @@ interface UIStore {
   taskRailOpen: boolean;
   setTaskRailOpen: (v: boolean) => void;
 
-  toggleSidebar: () => void;
-  setSidebarCollapsed: (v: boolean) => void;
   setTheme: (theme: "light" | "dark" | "system") => void;
   setTimeFormat: (v: "24h" | "12h") => void;
   setCurrency: (v: string) => void;
@@ -130,7 +127,6 @@ export const CALENDAR_SLOT_HEIGHT_DEFAULT = 44;
 export const useUIStore = create<UIStore>()(
   persist(
     (set) => ({
-      sidebarCollapsed: false,
       theme: "system",
       timeFormat: (localStorage.getItem("pref_timeFormat") as "24h" | "12h") ?? "24h",
       currency: localStorage.getItem("pref_currency") ?? "USD",
@@ -163,9 +159,6 @@ export const useUIStore = create<UIStore>()(
       pinnedEntryId: null,
       editEntryId: null,
 
-      toggleSidebar: () =>
-        set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-      setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
       setTheme: (theme) => set({ theme }),
       setTimeFormat: (v) => {
         set({ timeFormat: v });
@@ -252,7 +245,6 @@ export const useUIStore = create<UIStore>()(
       name: "time-tracker-ui",
       // Only persist real preferences — not transient UI like the palette.
       partialize: (s) => ({
-        sidebarCollapsed: s.sidebarCollapsed,
         taskRailOpen: s.taskRailOpen,
         theme: s.theme,
         timeFormat: s.timeFormat,

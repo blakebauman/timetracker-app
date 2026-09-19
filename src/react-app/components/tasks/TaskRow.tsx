@@ -246,8 +246,8 @@ export function TaskRow({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 rounded-md px-2 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/50",
-        nested && "pl-8",
+        "group flex items-center gap-2 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/50",
+        nested && "pl-9",
         running && "bg-primary/5",
         dragging && "opacity-50"
       )}

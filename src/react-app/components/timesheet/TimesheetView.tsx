@@ -237,20 +237,24 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-auto">
+    <div className="flex h-full min-h-0 flex-col px-4 pb-4">
       <span id={TIMESHEET_LOCKED_HELP_ID} className="sr-only">
         This day has several entries — edit them in the list or calendar view.
       </span>
-      {/* min-w forces a horizontal scroller instead of letting seven day columns
+      {/* The grid is one panel on the rack and is its own scroller. min-w
+          forces a horizontal scroller instead of letting seven day columns
           squeeze below legibility; the Task/Project pair stays pinned so a
           narrow screen never loses track of which row it's scrolling. */}
+      <div className="min-h-0 flex-1 overflow-auto rounded-container border bg-card">
       <table className={weekGrid.table}>
-        <thead className="sticky top-0 z-overlay bg-background">
+        <thead className="sticky top-0 z-overlay bg-card">
           <tr className="border-b text-xs text-muted-foreground">
-            <th className={weekGrid.headTask}>
+            {/* The sticky label columns paint over the day columns as they
+                scroll, so they carry the panel's own surface, not the ground. */}
+            <th className={cn(weekGrid.headTask, "bg-card")}>
               Task
             </th>
-            <th className={weekGrid.headProject}>
+            <th className={cn(weekGrid.headProject, "bg-card")}>
               Project
             </th>
             {days.map((d, i) => (
@@ -321,12 +325,12 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                   key={row.key}
                   className="group/row border-b border-border-strong transition-colors duration-fast ease-out-quart hover:bg-muted/30"
                 >
-                  <td className={weekGrid.cellTask}>
+                  <td className={cn(weekGrid.cellTask, "bg-card")}>
                     <div className="w-[108px] truncate" title={row.taskName ?? "No task"}>
                       {row.taskName ?? <span className="italic text-muted-foreground">No task</span>}
                     </div>
                   </td>
-                  <td className={weekGrid.cellProject}>
+                  <td className={cn(weekGrid.cellProject, "bg-card")}>
                     {/* A fixed-width block, not just `truncate`: a <td>'s width is
                         advisory in auto table layout, so the min-content of a long
                         consultancy project name still expanded the column and pushed
@@ -377,7 +381,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                               setEditing({ row: row.key, day: dayIndex });
                             }}
                             className={cn(
-                              "mx-auto flex h-8 w-16 items-center justify-center rounded border text-xs tabular-nums transition-colors duration-fast ease-out-quart",
+                              "mx-auto flex h-8 w-16 items-center justify-center rounded-md border text-xs tabular-nums transition-colors duration-fast ease-out-quart",
                               cell.seconds > 0
                                 ? "border-border font-medium"
                                 : "border-transparent text-muted-foreground/40 hover:border-border",
@@ -407,9 +411,9 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
         </tbody>
         {rows.length > 0 && (
           <tfoot>
-            <tr className="border-t-2 font-medium">
+            <tr className="border-t border-border-strong font-medium">
               <td
-                className={weekGrid.footLabel}
+                className={cn(weekGrid.footLabel, "bg-card")}
                 colSpan={2}
               >
                 Total
@@ -426,12 +430,13 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
           </tfoot>
         )}
       </table>
+      </div>
 
       {/* The empty state owns the actions while the body is empty — rendering
           them here as well put the same labels twice on one screen, 84px
           apart, which reads as a rendering bug. One rule, four screens. */}
       {rows.length > 0 && (
-      <div className="flex flex-wrap items-center gap-2 p-3">
+      <div className="flex flex-wrap items-center gap-2 pt-3">
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" />
           Add row

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { PaneActions, PaneHeader, PaneTitle } from "@/components/layout/Pane";
 import { getDateRangePresets } from "@/lib/dateUtils";
 
 interface DateRange {
@@ -128,10 +129,10 @@ export function ReportRangeControl({ range, onRangeChange }: ReportRangeControlP
 
 export function ReportHeader({ onExport, actions }: ReportHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
-      <h1 className="text-xl font-semibold">Reports</h1>
+    <PaneHeader className="print:static">
+      <PaneTitle>Reports</PaneTitle>
 
-      <div className="flex items-center gap-2 print:hidden">
+      <PaneActions className="print:hidden">
         {onExport && (
           <DropdownMenu>
             <Tooltip>
@@ -162,7 +163,7 @@ export function ReportHeader({ onExport, actions }: ReportHeaderProps) {
         )}
 
         {actions}
-      </div>
-    </div>
+      </PaneActions>
+    </PaneHeader>
   );
 }

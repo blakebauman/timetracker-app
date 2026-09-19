@@ -54,7 +54,7 @@ export function TaskRail() {
 
   if (!open) {
     return (
-      <div className="hidden w-10 shrink-0 flex-col items-center border-l pt-3 lg:flex">
+      <div className="mr-4 mb-4 hidden w-10 shrink-0 flex-col items-center rounded-container border bg-card pt-2 lg:flex">
         <Button
           variant="ghost"
           size="icon-sm"
@@ -74,7 +74,7 @@ export function TaskRail() {
   return (
     <aside
       aria-label="Today's tasks"
-      className="hidden w-72 shrink-0 flex-col border-l lg:flex"
+      className="mr-4 mb-4 hidden w-72 shrink-0 flex-col overflow-hidden rounded-container border bg-card lg:flex"
     >
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <ListChecks className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
@@ -106,7 +106,7 @@ export function TaskRail() {
             Nothing due today. Add one below, or drag any task here from Tasks.
           </p>
         ) : (
-          <div className="space-y-0.5">
+          <div className="divide-y">
             {due.map((task) => (
               <div
                 key={task.id}

@@ -31,7 +31,7 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 
 1. **Sign up** with your email — we send a one-time code or magic link, no password to invent (or use Google). A personal workspace is created for you automatically.
 2. **Add a client and a project** under **Clients** and **Projects** (a project can have a billing rate — that's what turns hours into amounts in Reports).
-3. **Start a timer** from the top bar: type a description, pick a project, hit the red start button.
+3. **Start a timer** from the composer — the capsule floating at the bottom of the page: type a description, pick a project, hit the red start button.
 
 Sign-in is passwordless: a **6-digit email code**, a **magic link**, **Google**, or a **passkey** (add one under Settings → Security for Touch ID / security-key sign-in).
 
@@ -39,7 +39,7 @@ Sign-in is passwordless: a **6-digit email code**, a **magic link**, **Google**,
 
 There are five ways to get time into your timesheet:
 
-- **Live timer** — type a description in the top bar, pick project/task/tags, press start. Press stop when done. The elapsed time of a *running* timer can be edited in place from the top bar if you started it late.
+- **Live timer** — type a description in the composer at the bottom of the page, pick project/task/tags, press the red disc. While a timer runs the composer docks into a bar along the bottom edge: the elapsed readout, the editable description and pills, a ribbon of today's tracked time, and Stop. The elapsed time of a *running* timer can be edited in place by clicking the readout if you started it late.
 
   Whether the time is **billable** is shown by the `$` toggle in the bar, and it answers itself: picking a project adopts that project's billable setting, and with no project it falls back to **Settings → Preferences → Default billable**. Click the toggle to override either way — while a timer is running, the change applies to the running entry immediately. Billable is the only thing Reports uses to work out billable hours and invoiced amounts, so a timer that starts on a billable project now reports as billable without you having to remember.
 - **Manual entry** — **Add Entry** on the Timer page for time you've already spent; pick start/end or a duration.
@@ -47,7 +47,7 @@ There are five ways to get time into your timesheet:
 - **Timesheet grid** — the Timesheet view is a weekly grid: one row per project/task combination, type hours directly into day cells.
 - **Calendar click-to-track** — with Google Calendar connected, click a "ghost" event or an untracked gap block on the calendar to convert it into an entry.
 
-Entries support **description, project, task, tags, billable flag**, and inline editing after the fact. In the list, click a description, a duration, or a time range to edit it in place — each saves on Enter or blur and shows a small check when it lands. A running entry's start time and date are editable the same way (its stop shows "Still running"). Durations accept `1h 30m`, `1:30`, `90m`, or a plain number of minutes; anything unrecognized keeps the field open and marked rather than discarding what you typed. Deleting is undoable from the toast — for a single entry, a selection, or a whole repeated-description group. Suggestions based on your recent entries appear as you type a description — in both the timer bar and the manual entry form. Picking one restores the project, task, and billable flag that title is usually logged against, **plus the tags from its most recent entry** (handy for recurring meetings that get the same tags every day). In the timer bar the carried tags show as removable chips; in the entry form they land in the tag picker for editing. Bulk edit/delete is available from the entry list.
+Entries support **description, project, task, tags, billable flag**, and inline editing after the fact. In the list, click a description, a duration, or a time range to edit it in place — each saves on Enter or blur and shows a small check when it lands. A running entry's start time and date are editable the same way (its stop shows "Still running"). Durations accept `1h 30m`, `1:30`, `90m`, or a plain number of minutes; anything unrecognized keeps the field open and marked rather than discarding what you typed. Deleting is undoable from the toast — for a single entry, a selection, or a whole repeated-description group. Suggestions based on your recent entries appear as you type a description — in both the composer and the manual entry form. Picking one restores the project, task, and billable flag that title is usually logged against, **plus the tags from its most recent entry** (handy for recurring meetings that get the same tags every day). In the composer the carried tags show as removable chips; in the entry form they land in the tag picker for editing. Bulk edit/delete is available from the entry list.
 
 ## The Timer workspace (views)
 
@@ -177,8 +177,8 @@ The line under the field shows what it understood before you commit it.
 
 ## Favorites & recurring entries
 
-- **Continue last** — the ↺ button in the top bar picks up whatever you tracked most recently, with its project, task, tags and billable flag. It's there because three of the five Timer views (calendar, timesheet, planner) show no entry rows, so the per-row **Continue** isn't reachable from them. It only appears when there's something to continue.
-- **Favorites** — save a description + project + task + billable combo and start it with one click from the star menu in the top bar.
+- **Continue last** — the ↺ button in the composer picks up whatever you tracked most recently, with its project, task, tags and billable flag. It's there because three of the five Timer views (calendar, timesheet, planner) show no entry rows, so the per-row **Continue** isn't reachable from them. It only appears when there's something to continue.
+- **Favorites** — save a description + project + task + billable combo and start it with one click from the star menu in the composer.
 - **Recurring entries** (Settings → Recurring entries) — templates like "Weekly team sync, Mondays 30 min" that materialize automatically as real entries on schedule, even while you're not in the app. Edit or pause them any time.
 
 ## Calendar sync & auto-track (Google + Outlook)
@@ -197,7 +197,7 @@ See [CALENDAR_SYNC.md](CALENDAR_SYNC.md) for setup details if you self-host.
 
 ## The Assistant
 
-The Assistant is built in, reachable from the sparkle button in the top bar, the command palette, or `⌘I` / `Ctrl+I` — the panel opens with the chat input focused and suggestions that follow the page you're on.
+The Assistant is built in, reachable from the sparkle button at the bottom of the navigation rail, the command palette, or `⌘I` / `Ctrl+I` — the panel opens with the chat input focused and suggestions that follow the page you're on.
 
 **Nudges** — the Assistant watches for things worth acting on and surfaces them as cards (and, optionally, one-time toasts/browser notifications):
 

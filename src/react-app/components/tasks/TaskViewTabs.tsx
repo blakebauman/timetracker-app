@@ -1,5 +1,11 @@
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
+import {
+  SEGMENT,
+  SEGMENT_ACTIVE,
+  SEGMENT_INACTIVE,
+  SEGMENT_TRACK,
+} from "@/components/ui/segmented-control";
 
 export type TaskView = "today" | "upcoming" | "all";
 
@@ -24,22 +30,10 @@ interface TaskViewTabsProps {
 }
 
 /**
- * The Tasks page's primary navigation.
- *
- * Three things it does that a bare segmented control didn't:
- *
- * 1. **It carries counts.** A view switcher with no numbers makes you open each
- *    tab to find out whether it was worth opening. "Today 3" is the whole reason
- *    to look, and on a planning surface it's the most valuable pixel on the page.
- * 2. **Overdue tints the Today count**, not the label — so lateness is legible
- *    from the tab strip without a second badge, and the strip stays one shape.
- *    Only the count changes colour, which keeps the accent on a number that
- *    means something rather than on a tab that is always there.
- * 3. **It's a `tablist`**, matching the Timer's view switcher: same roving
- *    tabindex, same arrow-key behaviour, same semantics for a control that
- *    swaps a panel. The shared `SegmentedControl` is a `radiogroup` — right for
- *    a setting like 12h/24h, wrong for navigation — so this doesn't reuse it,
- *    but it does reuse its visual treatment (DESIGN.md §5).
+ * The Tasks page's primary navigation: a `tablist` (roving tabindex, arrow
+ * keys) drawn as the shared segment track, carrying counts. Overdue tints the
+ * Today count, not the label, so lateness is legible from the strip without a
+ * second badge.
  */
 export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -74,7 +68,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
       role="tablist"
       aria-label="Task view"
       onKeyDown={onKeyDown}
-      className="inline-flex h-8 items-center rounded-full bg-muted p-[3px]"
+      className={SEGMENT_TRACK}
     >
       {VIEWS.map(({ value, label }) => {
         const active = value === view;
@@ -87,7 +81,6 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
             role="tab"
             data-value={value}
             aria-selected={active}
-            // Roving tabindex: only the selected tab is in the tab order.
             tabIndex={active ? 0 : -1}
             aria-label={
               count > 0
@@ -97,15 +90,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
                 : label
             }
             onClick={() => onChange(value)}
-            className={cn(
-              // text-sm to match the toolbar row it sits in (see SegmentedControl).
-              "flex h-full items-center gap-1.5 rounded-full px-3 text-sm font-medium",
-              "transition-colors duration-fast ease-out-quart",
-              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-              active
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            )}
+            className={cn(SEGMENT, "gap-1.5", active ? SEGMENT_ACTIVE : SEGMENT_INACTIVE)}
           >
             {label}
             {count > 0 && (
@@ -113,11 +98,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
                 aria-hidden
                 className={cn(
                   "tabular-nums",
-                  late
-                    ? "text-destructive"
-                    : active
-                      ? "text-background/70"
-                      : "text-muted-foreground/60"
+                  late ? "text-destructive" : "text-muted-foreground"
                 )}
               >
                 {count}

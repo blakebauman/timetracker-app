@@ -23,13 +23,26 @@ function Tabs({
   )
 }
 
+/**
+ * Two variants, two jobs.
+ *
+ * `default` is the segment track (see `SegmentedControl`): a recessed pill on
+ * a muted track, for swapping panels inside a pane (Reports' Summary / Weekly
+ * / Detailed).
+ *
+ * `line` is the Settings navigation: a hairline under the whole
+ * strip, and the active tab carries a 1px brand-red underline sitting on it.
+ * It is the only place the accent appears as a line, and it is spent on the
+ * one navigation that is itself a page (Settings).
+ */
 const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center rounded-full p-[3px] text-muted-foreground group-data-[orientation=horizontal]/tabs:h-9 group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col data-[variant=line]:rounded-none",
+  "group/tabs-list inline-flex w-fit items-center justify-center text-muted-foreground group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col",
   {
     variants: {
       variant: {
-        default: "bg-muted",
-        line: "gap-1 bg-transparent",
+        default:
+          "h-8 rounded-full border bg-muted p-[3px] group-data-[orientation=horizontal]/tabs:h-8",
+        line: "h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0",
       },
     },
     defaultVariants: {
@@ -62,21 +75,13 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        // Hover is scoped to INACTIVE triggers. It used to sit unscoped in the
-        // base, so hovering the *active* tab set `text-foreground` on a pill
-        // whose background is `bg-foreground` — the label went the same colour
-        // as the thing behind it and disappeared. Broken in both themes
-        // (near-white on near-white in dark, near-black on near-black in
-        // light); dark is only where it is obvious.
-        //
-        // SegmentedControl, TimerViewSwitcher and TaskViewTabs all put hover on
-        // the inactive branch of a ternary and were never affected. Tabs was
-        // the one that expressed the same idea as an unconditional utility.
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-3 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all duration-fast ease-out-quart group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start data-[state=inactive]:hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
-        "group-data-[variant=default]/tabs-list:data-[state=active]:bg-foreground group-data-[variant=default]/tabs-list:data-[state=active]:text-background",
-        "group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground",
-        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity after:duration-fast after:ease-out-quart group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
+        "relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors duration-fast ease-out-quart group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start data-[state=inactive]:hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        // Segment pill.
+        "group-data-[variant=default]/tabs-list:h-full group-data-[variant=default]/tabs-list:flex-1 group-data-[variant=default]/tabs-list:rounded-full group-data-[variant=default]/tabs-list:border group-data-[variant=default]/tabs-list:border-transparent group-data-[variant=default]/tabs-list:px-3",
+        "group-data-[variant=default]/tabs-list:data-[state=active]:border-border group-data-[variant=default]/tabs-list:data-[state=active]:bg-background group-data-[variant=default]/tabs-list:data-[state=active]:text-foreground group-data-[variant=default]/tabs-list:data-[state=active]:shadow-sm",
+        // Underline tab. `-mb-px` sits the accent line ON the strip's hairline.
+        "group-data-[variant=line]/tabs-list:-mb-px group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:border-b group-data-[variant=line]/tabs-list:border-transparent group-data-[variant=line]/tabs-list:px-4 group-data-[variant=line]/tabs-list:py-2",
+        "group-data-[variant=line]/tabs-list:data-[state=active]:border-primary group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground",
         className
       )}
       {...props}
@@ -92,9 +97,7 @@ function TabsContent({
     <TabsPrimitive.Content
       data-slot="tabs-content"
       // Radix gives the panel `tabindex="0"` so keyboard users land on the
-      // content after the tablist — but `outline-none` alone left that stop with
-      // no visible indicator at all (WCAG 2.4.7). The house ring, applied only
-      // on keyboard focus so a mouse click on the panel doesn't flash it.
+      // content after the tablist; the house ring marks that stop.
       className={cn(
         "flex-1 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         className

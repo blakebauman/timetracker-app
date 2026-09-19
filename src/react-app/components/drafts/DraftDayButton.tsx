@@ -22,10 +22,15 @@ export function DraftDayButton({
       className={cn("h-8 gap-1.5", className)}
       onClick={onClick}
       disabled={pending}
+      aria-label={pendingCount > 0 ? `Review ${pendingCount} drafts` : "Draft day"}
       title="Propose entries for the day from your calendar, gaps and weekly habits"
     >
       {pending ? <Spinner size="sm" /> : <Wand2 className="h-3.5 w-3.5" />}
-      {pendingCount > 0 ? `Review ${pendingCount}` : "Draft day"}
+      {/* Icon-only on a phone, where the header row cannot afford the label;
+          the accessible name below keeps the control named. */}
+      <span className="hidden sm:inline">
+        {pendingCount > 0 ? `Review ${pendingCount}` : "Draft day"}
+      </span>
     </Button>
   );
 }
