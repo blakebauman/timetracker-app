@@ -169,7 +169,7 @@ export function ClientDetailPage() {
               {client.notes && (
                 <p
                   className={cn(
-                    "max-w-prose whitespace-pre-line rounded-md bg-background p-3 text-sm",
+                    "max-w-prose whitespace-pre-line rounded-container bg-background p-3 text-sm",
                     (client.email || client.phone || client.address) && "mt-3"
                   )}
                 >

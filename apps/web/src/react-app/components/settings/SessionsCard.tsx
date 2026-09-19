@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 import { formatShortDate, formatEntryTime } from "@/lib/dateUtils";
@@ -112,40 +113,40 @@ export function SessionsCard() {
             const isCurrent = s.token === currentToken;
             const Icon = mobile ? Smartphone : Monitor;
             return (
-              <div
+              <SettingsRow
                 key={s.id}
-                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{label}</span>
-                      {isCurrent && (
-                        <Badge variant="secondary" className="text-micro">
-                          This device
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {s.ipAddress || "Unknown IP"}
-                      {s.createdAt &&
-                        ` · signed in ${formatShortDate(toIso(s.createdAt))} ${formatEntryTime(toIso(s.createdAt))}`}
-                    </p>
-                  </div>
-                </div>
-                {!isCurrent && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => revoke.mutate(s.token)}
-                    disabled={revoke.isPending}
-                  >
-                    {revoke.isPending ? <Spinner size="sm" /> : "Revoke"}
-                  </Button>
-                )}
-              </div>
+                icon={Icon}
+                label={
+                  <>
+                    <span className="truncate">{label}</span>
+                    {isCurrent && (
+                      <Badge variant="secondary" className="text-micro">
+                        This device
+                      </Badge>
+                    )}
+                  </>
+                }
+                description={
+                  <>
+                    {s.ipAddress || "Unknown IP"}
+                    {s.createdAt &&
+                      ` · signed in ${formatShortDate(toIso(s.createdAt))} ${formatEntryTime(toIso(s.createdAt))}`}
+                  </>
+                }
+                trailing={
+                  !isCurrent && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => revoke.mutate(s.token)}
+                      disabled={revoke.isPending}
+                    >
+                      {revoke.isPending ? <Spinner size="sm" /> : "Revoke"}
+                    </Button>
+                  )
+                }
+              />
             );
           })
         )}

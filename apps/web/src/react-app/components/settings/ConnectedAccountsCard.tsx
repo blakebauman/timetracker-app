@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 
@@ -72,44 +73,46 @@ export function ConnectedAccountsCard() {
           PROVIDERS.map((p) => {
             const linked = accounts.find((a) => a.providerId === p.id);
             return (
-              <div
+              <SettingsRow
                 key={p.id}
-                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{p.label}</span>
-                  {linked && (
-                    <Badge variant="secondary" className="text-micro">
-                      Connected
-                    </Badge>
-                  )}
-                </div>
-                {linked ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => unlink.mutate(linked)}
-                    disabled={unlink.isPending || loginMethodCount <= 1}
-                    title={
-                      loginMethodCount <= 1
-                        ? "Add another sign-in method before disconnecting this one"
-                        : undefined
-                    }
-                  >
-                    {unlink.isPending ? <Spinner size="sm" /> : "Disconnect"}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => link.mutate(p.id)}
-                    disabled={link.isPending}
-                  >
-                    {link.isPending ? <Spinner size="sm" /> : "Connect"}
-                  </Button>
-                )}
-              </div>
+                label={
+                  <>
+                    <span className="truncate">{p.label}</span>
+                    {linked && (
+                      <Badge variant="secondary" className="text-micro">
+                        Connected
+                      </Badge>
+                    )}
+                  </>
+                }
+                trailing={
+                  linked ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => unlink.mutate(linked)}
+                      disabled={unlink.isPending || loginMethodCount <= 1}
+                      title={
+                        loginMethodCount <= 1
+                          ? "Add another sign-in method before disconnecting this one"
+                          : undefined
+                      }
+                    >
+                      {unlink.isPending ? <Spinner size="sm" /> : "Disconnect"}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => link.mutate(p.id)}
+                      disabled={link.isPending}
+                    >
+                      {link.isPending ? <Spinner size="sm" /> : "Connect"}
+                    </Button>
+                  )
+                }
+              />
             );
           })
         )}

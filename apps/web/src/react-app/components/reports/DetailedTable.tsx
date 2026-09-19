@@ -244,7 +244,7 @@ export function DetailedTable({ entries }: DetailedTableProps) {
       )}
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className="rounded-container border">
         {/* Its own scroll region so the column headers survive a 500-row report
             and the tabs/filters above stay put. Print unbounds it so the whole
             table still flows onto pages. */}

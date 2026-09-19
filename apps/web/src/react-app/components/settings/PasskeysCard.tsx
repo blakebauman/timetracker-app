@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,39 +66,39 @@ export function PasskeysCard() {
         </p>
 
         {isLoading ? (
-          <p className="text-sm leading-normal text-muted-foreground">Loading…</p>
+          <Skeleton className="h-12 w-full" />
         ) : passkeys.length > 0 ? (
           <div className="space-y-2">
             {passkeys.map((p) => (
-              <div
+              <SettingsRow
                 key={p.id}
-                className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{p.name || "Passkey"}</p>
-                    {p.createdAt && (
-                      <p className="mt-1 text-xs leading-normal text-muted-foreground">
-                        Added {formatShortDate(toIso(p.createdAt))}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  aria-label="Remove passkey"
-                  onClick={() => remove.mutate(p.id)}
-                  disabled={remove.isPending}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+                icon={KeyRound}
+                label={p.name || "Passkey"}
+                description={p.createdAt && `Added ${formatShortDate(toIso(p.createdAt))}`}
+                trailing={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Remove passkey"
+                    onClick={() => remove.mutate(p.id)}
+                    disabled={remove.isPending}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                }
+              />
             ))}
           </div>
-        ) : null}
+        ) : (
+          <EmptyState
+            icon={KeyRound}
+            title="No passkeys yet"
+            description="Add one below and the next sign-in is a fingerprint, not a code."
+            as="h3"
+            className="rounded-container border border-dashed py-6"
+          />
+        )}
 
         <div className="flex items-center gap-2 pt-1">
           <Input

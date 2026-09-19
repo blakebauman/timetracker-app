@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spinner } from "@/components/ui/spinner";
 import {
   useCalendarStatus,
@@ -143,22 +144,20 @@ function ProviderRow({
       </div>
 
       {provider.connected && (
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div className="pr-4">
-            <Label htmlFor={`auto-track-${provider.provider}`}>
-              Auto-track calendar events
-            </Label>
-            <p className="mt-1 text-xs leading-normal text-muted-foreground">
-              Automatically create a time entry when an event on this calendar ends.
-            </p>
-          </div>
-          <Switch
-            id={`auto-track-${provider.provider}`}
-            checked={provider.autoTrack}
-            disabled={autoTrackPending}
-            onCheckedChange={onAutoTrack}
-          />
-        </div>
+        <SettingsRow
+          label={
+            <Label htmlFor={`auto-track-${provider.provider}`}>Auto-track calendar events</Label>
+          }
+          description="Automatically create a time entry when an event on this calendar ends."
+          trailing={
+            <Switch
+              id={`auto-track-${provider.provider}`}
+              checked={provider.autoTrack}
+              disabled={autoTrackPending}
+              onCheckedChange={onAutoTrack}
+            />
+          }
+        />
       )}
     </div>
   );

@@ -90,7 +90,7 @@ export function RouteErrorBoundary({ fullScreen = false }: RouteErrorBoundaryPro
       </div>
 
       {import.meta.env.DEV && (
-        <details className="mt-6 w-full max-w-lg rounded-lg border bg-muted/40 text-left">
+        <details className="mt-6 w-full max-w-lg rounded-container border bg-muted/40 text-left">
           <summary className="cursor-pointer select-none px-4 py-2 text-sm font-medium text-muted-foreground">
             Error details (dev only)
           </summary>

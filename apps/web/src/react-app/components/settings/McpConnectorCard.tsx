@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Check, Copy, KeyRound, Plug, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,35 +47,39 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
-      <KeyRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">{apiKey.name}</span>
-          <Badge variant="outline" className="text-micro">
-            {apiKey.scope === "read_write" ? "Read + write" : "Read only"}
-          </Badge>
-        </div>
-        <p className="mt-0.5 font-mono text-micro text-muted-foreground">
-          {apiKey.prefix}…{" "}
-          <span className="font-sans">
-            · created {formatShortDate(apiKey.createdAt)} ·{" "}
+    <>
+      <SettingsRow
+        icon={KeyRound}
+        label={
+          <>
+            <span className="truncate">{apiKey.name}</span>
+            <Badge variant="outline" className="text-micro">
+              {apiKey.scope === "read_write" ? "Read + write" : "Read only"}
+            </Badge>
+          </>
+        }
+        description={
+          <>
+            <span className="font-mono">{apiKey.prefix}…</span> · created{" "}
+            {formatShortDate(apiKey.createdAt)} ·{" "}
             {apiKey.lastUsedAt
               ? `last used ${formatShortDate(apiKey.lastUsedAt)}`
               : "never used"}
-          </span>
-        </p>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="text-muted-foreground"
-        onClick={() => setConfirming(true)}
-        aria-label={`Revoke ${apiKey.name}`}
-        title="Revoke"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+          </>
+        }
+        trailing={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground"
+            onClick={() => setConfirming(true)}
+            aria-label={`Revoke ${apiKey.name}`}
+            title="Revoke"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        }
+      />
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
@@ -82,7 +88,7 @@ function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string) =
         confirmLabel="Revoke"
         onConfirm={() => onRevoke(apiKey.id)}
       />
-    </div>
+    </>
   );
 }
 
@@ -205,9 +211,7 @@ export function McpConnectorCard() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-4">
-            <Spinner className="text-muted-foreground" />
-          </div>
+          <Skeleton className="h-12 w-full" />
         ) : keys.length > 0 ? (
           <div className="space-y-2">
             {keys.map((k) => (
