@@ -18,6 +18,7 @@ import type {
 } from "@timetracker/core/schemas";
 import { startOfDay, subDays, endOfDay, parseISO } from "date-fns";
 import { useDayRollover } from "@/hooks/useDayRollover";
+import { settleEntryId } from "@/lib/pendingStart";
 
 // A rolling window anchored to today — so, like every other "now"-relative
 // range in the app, it has to move when the calendar day does (useDayRollover).
@@ -337,8 +338,14 @@ export function useCreateEntry() {
 export function useUpdateEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTimeEntry }) =>
-      api.timeEntries.update(id, data as Record<string, unknown>) as Promise<TimeEntry>,
+    mutationFn: async ({ id, data }: { id: string; data: UpdateTimeEntry }) => {
+      // The running entry is an optimistic placeholder until its start request
+      // returns; a tag chip or the debounced description edited in that window
+      // must wait for the real id rather than 404 against the placeholder.
+      const entryId = await settleEntryId(id);
+      if (!entryId) throw new Error("The timer did not start, so there is nothing to update");
+      return api.timeEntries.update(entryId, data as Record<string, unknown>) as Promise<TimeEntry>;
+    },
     // Optimistically patch the cached entry so inline edits (duration, description,
     // project, billable) land instantly instead of after the round-trip.
     onMutate: async ({ id, data }) => {

@@ -63,16 +63,30 @@ test("timer bar: suggestion carries newest tags as removable chips", async ({ pa
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
   await page.getByRole("button", { name: "Remove tag meeting" }).click();
   await expect(page.getByRole("button", { name: "Remove tag meeting" })).toBeHidden();
+  // Stop is optimistic in the UI, so wait for the server before reading it
+  // back — otherwise the read can land first and the only stopped one-tag
+  // "Recurring standup" is the seeded ["old-tag"] entry.
+  const stopped = page.waitForResponse(
+    (r) => r.url().includes("/api/time_entries/") && r.url().endsWith("/stop")
+  );
   await page.getByRole("button", { name: "Stop" }).click();
   await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+  await stopped;
 
   // The stopped entry keeps the remaining tag only.
-  const res = await page.request.get("/api/time_entries");
-  const entries = (await res.json()) as { description: string; tags: string[]; stop: string | null }[];
-  const stopped = entries.find(
-    (e) => e.description === "Recurring standup" && e.stop && e.tags.length === 1
-  );
-  expect(stopped?.tags).toEqual(["internal"]);
+  await expect
+    .poll(async () => {
+      const res = await page.request.get("/api/time_entries");
+      const entries = (await res.json()) as {
+        description: string;
+        tags: string[];
+        stop: string | null;
+      }[];
+      return entries
+        .filter((e) => e.description === "Recurring standup" && e.stop && !e.tags.includes("old-tag"))
+        .map((e) => e.tags.slice().sort());
+    })
+    .toEqual([["internal"], ["internal", "meeting"]]);
 });
 
 test("add-entry form: suggestion fills TagPicker with carried tags", async ({ page }) => {

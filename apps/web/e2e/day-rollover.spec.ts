@@ -25,8 +25,15 @@ test.describe("day boundaries in the Timer list", () => {
     const list = page.getByRole("tabpanel");
     const input = page.getByPlaceholder("What are you working on?");
     await input.fill("After midnight task");
+    // Assert once the create has landed, not on the optimistic frame: the
+    // fast-forward above can leave a "Today" refetch in flight, and a refetch
+    // that resolves before the POST does briefly overwrites the optimistic row.
+    const created = page.waitForResponse(
+      (r) => r.url().endsWith("/api/time_entries") && r.request().method() === "POST"
+    );
     await page.getByRole("button", { name: "Start timer" }).click();
     await expect(page.getByRole("button", { name: "Stop timer" })).toBeVisible();
+    await created;
     await expect(list.getByText("After midnight task")).toBeVisible();
 
     // The regression: the list was still querying yesterday's window, so the

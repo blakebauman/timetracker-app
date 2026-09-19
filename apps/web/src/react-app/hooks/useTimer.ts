@@ -8,6 +8,7 @@ import { invalidateEntryDerived } from "@/hooks/useEntries";
 import { api } from "@/lib/api";
 import { formatSeconds, formatDurationShort } from "@/lib/dateUtils";
 import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
+import { trackPendingStart, settleEntryId } from "@/lib/pendingStart";
 import { compareLocalDates, todayLocalDate } from "@timetracker/core/task-recurrence";
 import type { TimeEntry, Task } from "@timetracker/core/schemas";
 
@@ -135,6 +136,11 @@ export function useTimer() {
     onSuccess: async (entry, _partial, context) => {
       setRunningEntry(entry, new Date(entry.start).getTime());
       if (context) replaceInCache(context.optimisticId, entry);
+      // A list refetch that was already in flight when the POST went out (a
+      // focus refetch, a day rollover re-keying its range) resolves without
+      // the new entry and overwrites the optimistic row. Reconcile once the
+      // server has it; the row is already in the cache, so nothing flashes.
+      void queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       await saveTimerState({
         entryId: entry.id,
         startedAt: new Date(entry.start).getTime(),
@@ -273,11 +279,9 @@ export function useTimer() {
 
   // ─── Stop at a specific time (used to trim idle time) ─────────────────────
   const stopAtMutation = useMutation({
-    mutationFn: (iso: string) => {
-      if (!runningEntry) throw new Error("No running timer");
-      return api.timeEntries.update(runningEntry.id, { stop: iso }) as Promise<TimeEntry>;
-    },
-    onMutate: (iso) => {
+    mutationFn: ({ id, iso }: { id: string; iso: string }) =>
+      api.timeEntries.update(id, { stop: iso }) as Promise<TimeEntry>,
+    onMutate: ({ iso }) => {
       patchStopInCache(iso);
       clearTimer();
     },
@@ -311,14 +315,13 @@ export function useTimer() {
   // setRunningEntry derives the displayed elapsed from the new start, so no
   // separate setElapsed call is needed to avoid a flash.
   const editElapsedMutation = useMutation({
-    mutationFn: (seconds: number) => {
-      if (!runningEntry) throw new Error("No running timer");
+    mutationFn: ({ id, seconds }: { id: string; seconds: number }) => {
       const newStart = Date.now() - seconds * 1000;
-      return api.timeEntries.update(runningEntry.id, {
+      return api.timeEntries.update(id, {
         start: new Date(newStart).toISOString(),
       }) as Promise<TimeEntry>;
     },
-    onMutate: async (seconds) => {
+    onMutate: async ({ seconds }) => {
       if (!runningEntry) return;
       const previousStart = useTimerStore.getState().localStartTime;
       const newStart = Date.now() - seconds * 1000;
@@ -351,30 +354,46 @@ export function useTimer() {
   });
 
   const startTimer = useCallback(
-    (partial: StartTimerInput = {}) => startMutation.mutate(partial),
+    (partial: StartTimerInput = {}) => {
+      // mutateAsync so a stop or edit that lands before the request settles
+      // can wait for the real id (lib/pendingStart); onError handles rejection.
+      trackPendingStart(startMutation.mutateAsync(partial));
+    },
     [startMutation]
   );
 
   const stopTimer = useCallback(() => {
-    if (runningEntry) stopMutation.mutate(runningEntry.id);
+    if (!runningEntry) return;
+    void settleEntryId(runningEntry.id).then((id) => {
+      if (id) stopMutation.mutate(id);
+    });
   }, [runningEntry, stopMutation]);
 
   const discardTimer = useCallback(() => {
-    if (runningEntry) discardMutation.mutate(runningEntry.id);
+    if (!runningEntry) return;
+    void settleEntryId(runningEntry.id).then((id) => {
+      if (id) discardMutation.mutate(id);
+    });
   }, [runningEntry, discardMutation]);
 
   // Stop the running timer at an explicit ISO time (e.g. trim idle time back to
   // when the user went away).
   const stopTimerAt = useCallback(
     (iso: string) => {
-      if (runningEntry) stopAtMutation.mutate(iso);
+      if (!runningEntry) return;
+      void settleEntryId(runningEntry.id).then((id) => {
+        if (id) stopAtMutation.mutate({ id, iso });
+      });
     },
     [runningEntry, stopAtMutation]
   );
 
   const editElapsed = useCallback(
     (seconds: number) => {
-      if (runningEntry && seconds >= 0) editElapsedMutation.mutate(seconds);
+      if (!runningEntry || seconds < 0) return;
+      void settleEntryId(runningEntry.id).then((id) => {
+        if (id) editElapsedMutation.mutate({ id, seconds });
+      });
     },
     [runningEntry, editElapsedMutation]
   );
