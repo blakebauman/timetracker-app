@@ -42,7 +42,8 @@ export interface LoggedSegment {
 interface TimerWorkspaceHeaderProps {
   since: Date;
   until: Date;
-  totalSeconds: number;
+  /** Seconds logged in the period, or null when the range could not be loaded. */
+  totalSeconds: number | null;
   segments: LoggedSegment[];
   view: TimerView;
   onViewChange: (view: TimerView) => void;
@@ -320,7 +321,9 @@ export function TimerWorkspaceHeader({
         <div
           role="img"
           aria-label={
-            totalSeconds > 0
+            totalSeconds === null
+              ? `Couldn't load what was logged ${periodSummary}`
+              : totalSeconds > 0
               ? `Logged ${periodSummary}: ${formatDurationShort(totalSeconds)}. ` +
                 segments
                   .map(
@@ -333,10 +336,11 @@ export function TimerWorkspaceHeader({
           }
           className={cn(
             "flex flex-1 overflow-hidden rounded-full bg-muted transition-all duration-fast ease-out-quart",
-            totalSeconds > 0 ? "h-2" : "h-px"
+            totalSeconds !== null && totalSeconds > 0 ? "h-2" : "h-px"
           )}
         >
-          {totalSeconds > 0 &&
+          {totalSeconds !== null &&
+            totalSeconds > 0 &&
             segments.map((seg) => (
               <Tooltip key={seg.projectId ?? "none"}>
                 <TooltipTrigger asChild>
@@ -359,8 +363,10 @@ export function TimerWorkspaceHeader({
               </Tooltip>
             ))}
         </div>
+        {/* A failed range fetch used to read "0m" here while the body showed
+            the error — two panes, one lying. Unknown is a dash. */}
         <span className="font-mono text-xs font-semibold tabular-nums">
-          {formatDurationShort(totalSeconds)}
+          {totalSeconds === null ? "—" : formatDurationShort(totalSeconds)}
         </span>
         <Link
           to="/reports"

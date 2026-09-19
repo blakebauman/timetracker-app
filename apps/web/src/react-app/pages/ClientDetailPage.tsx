@@ -8,6 +8,7 @@ import {
   MapPin,
   ChevronDown,
   FolderOpen,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,12 @@ export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: client, isLoading, isError } = useClient(id);
-  const { data: allProjects = [] } = useAllProjects();
+  const {
+    data: allProjects = [],
+    isLoading: projectsLoading,
+    isError: projectsError,
+    refetch: refetchProjects,
+  } = useAllProjects();
   const [showEdit, setShowEdit] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // Same period vocabulary and the same aggregation as the Clients list, so
@@ -228,89 +234,116 @@ export function ClientDetailPage() {
           )}
         </div>
 
-        {/* Projects */}
+        {/* Projects. The heading counts only once the list has landed: "0
+            projects" over a column of skeletons, or over a failed fetch, is a
+            claim the page can't yet make. */}
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold">
-            {projects.length} project{projects.length !== 1 ? "s" : ""}
+            {projectsLoading || projectsError
+              ? "Projects"
+              : `${projects.length} project${projects.length !== 1 ? "s" : ""}`}
           </h2>
-          {totalTracked > 0 && (
+          {!projectsLoading && !projectsError && totalTracked > 0 && (
             <span className="text-xs text-muted-foreground">
               {formatDurationShort(totalTracked)} tracked all time
             </span>
           )}
         </div>
 
-        <div className="space-y-2">
-          {projects.map((project) => {
-            const isExpanded = expanded.has(project.id);
-            return (
-              <Collapsible
-                key={project.id}
-                open={isExpanded}
-                onOpenChange={() => toggle(project.id)}
-              >
-                <div className="rounded-container border bg-card">
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: project.color }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-sm font-medium",
-                            !project.active && "text-muted-foreground line-through"
+        {projectsLoading && (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-container" />
+            ))}
+          </div>
+        )}
+
+        {projectsError && !projectsLoading && (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load projects"
+            description="The request didn't get through. Your tracked time is safe."
+            action={
+              <Button variant="outline" size="sm" onClick={() => refetchProjects()}>
+                Try again
+              </Button>
+            }
+          />
+        )}
+
+        {!projectsLoading && !projectsError && (
+          <div className="space-y-2">
+            {projects.map((project) => {
+              const isExpanded = expanded.has(project.id);
+              return (
+                <Collapsible
+                  key={project.id}
+                  open={isExpanded}
+                  onOpenChange={() => toggle(project.id)}
+                >
+                  <div className="rounded-container border bg-card">
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: project.color }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "text-sm font-medium",
+                              !project.active && "text-muted-foreground line-through"
+                            )}
+                          >
+                            {project.name}
+                          </span>
+                          {!project.active && (
+                            <Badge variant="outline" className="text-xs">Archived</Badge>
                           )}
-                        >
-                          {project.name}
-                        </span>
-                        {!project.active && (
-                          <Badge variant="outline" className="text-xs">Archived</Badge>
+                        </div>
+                        {project.trackedSeconds > 0 && (
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {formatDurationShort(project.trackedSeconds)} all time
+                          </div>
                         )}
                       </div>
-                      {project.trackedSeconds > 0 && (
-                        <div className="mt-0.5 text-xs text-muted-foreground">
-                          {formatDurationShort(project.trackedSeconds)} all time
-                        </div>
-                      )}
+
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground"
+                          title="Show tasks"
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "h-3.5 w-3.5 transition-transform duration-fast ease-out-quart",
+                              isExpanded && "rotate-180"
+                            )}
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
                     </div>
 
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground"
-                        title="Show tasks"
-                      >
-                        <ChevronDown
-                          className={cn(
-                            "h-3.5 w-3.5 transition-transform duration-fast ease-out-quart",
-                            isExpanded && "rotate-180"
-                          )}
-                        />
-                      </Button>
-                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="border-t px-4 pb-3">
+                        <TaskList projectId={project.id} />
+                      </div>
+                    </CollapsibleContent>
                   </div>
+                </Collapsible>
+              );
+            })}
 
-                  <CollapsibleContent>
-                    <div className="border-t px-4 pb-3">
-                      <TaskList projectId={project.id} />
-                    </div>
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
-            );
-          })}
-
-          {projects.length === 0 && (
-            <EmptyState
-              icon={FolderOpen}
-              title="No projects for this client"
-              description="Assign a project to this client from the Projects page."
-            />
-          )}
-        </div>
+            {projects.length === 0 && (
+              <EmptyState
+                icon={FolderOpen}
+                title="No projects for this client"
+                description="Assign a project to this client from the Projects page."
+              />
+            )}
+          </div>
+        )}
       </PaneScroll>
 
       {showEdit && (

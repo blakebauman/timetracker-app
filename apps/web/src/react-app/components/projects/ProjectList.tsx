@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Plus, MoreHorizontal, Archive, Edit2, ChevronDown, FolderOpen, Search } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  Archive,
+  Edit2,
+  ChevronDown,
+  FolderOpen,
+  Search,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +70,7 @@ export function ProjectList() {
   const range = resolveCollectionPeriod(period);
   const periodLabel =
     COLLECTION_PERIODS.find((p) => p.value === period)?.label ?? "All time";
-  const { data: projects = [], isLoading } = useAllProjects(range);
+  const { data: projects = [], isLoading, isError, refetch } = useAllProjects(range);
   // Pacing covers active projects only (an archived project has nothing left to
   // pace), so the row falls back to the plain percentage when it's absent.
   const { data: pacing = [] } = useProjectPacing();
@@ -133,7 +142,7 @@ export function ProjectList() {
         // Nothing while loading: "0 active" over a column of skeletons is a
         // claim the page can't yet make.
         subtitle={
-          isLoading
+          isLoading || isError
             ? undefined
             : q
               ? `${visible.length} of ${projects.length} shown`
@@ -198,7 +207,22 @@ export function ProjectList() {
           </div>
         )}
 
-        {!isLoading && (
+        {/* A failed fetch is not "no projects yet": that empty state invites
+            creating a first project on top of a list that may well exist. */}
+        {isError && !isLoading && (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load projects"
+            description="The request didn't get through. Your tracked time is safe."
+            action={
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Try again
+              </Button>
+            }
+          />
+        )}
+
+        {!isLoading && !isError && (
           <div className="space-y-2">
             {visible.map((project) => {
               // budgetSeconds, not trackedSeconds: the bar is cumulative against

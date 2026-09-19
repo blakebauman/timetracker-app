@@ -139,10 +139,22 @@ export function CalendarBody({
   const createEntry = useCreateEntry();
   const deleteEntry = useDeleteEntry();
 
-  const { data: externalEvents = [] } = useCalendarEvents(
+  const { data: externalEvents = [], isError: externalEventsError } = useCalendarEvents(
     range.start.toISOString(),
     range.end.toISOString()
   );
+
+  // The grid can't show an absence of ghost blocks any differently from a
+  // calendar with nothing on it, so a failed read gets one toast per failure
+  // rather than an overlay on a grid whose own entries loaded fine.
+  useEffect(() => {
+    if (externalEventsError) {
+      toast.error("Couldn't load calendar events", {
+        id: "calendar-events-error",
+        description: "Your tracked time is unaffected.",
+      });
+    }
+  }, [externalEventsError]);
 
   // Drafts are stored against the user's LOCAL date, so the range is asked for
   // in those terms rather than as UTC instants.

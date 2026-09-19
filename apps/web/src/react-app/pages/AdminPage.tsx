@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Users, Ban } from "lucide-react";
+import { Users, Ban, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
-import { api } from "@/lib/api";
+import { api, mutationErrorMessage } from "@/lib/api";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,8 +45,20 @@ export function AdminPage() {
   const [banPending, setBanPending] = useState(false);
   // Remove flow: hard-deletes the user and purges their solo workspaces.
   const [removeTarget, setRemoveTarget] = useState<AdminUser | null>(null);
+  // Impersonate signs the admin in as someone else and reloads the app — a
+  // one-click ghost button next to Ban was too easy to hit by accident.
+  const [impersonateTarget, setImpersonateTarget] = useState<AdminUser | null>(null);
+  // Which row's unban / impersonate call is in flight, so the button it came
+  // from can say so and can't be pressed twice.
+  const [unbanPendingId, setUnbanPendingId] = useState<string | null>(null);
+  const [impersonatePendingId, setImpersonatePendingId] = useState<string | null>(null);
 
-  const { data: users = [], isLoading: loading } = useQuery({
+  const {
+    data: users = [],
+    isLoading: loading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: async () => {
       const { data } = await authClient.admin.listUsers({ query: { limit: 100 } });
@@ -66,7 +79,7 @@ export function AdminPage() {
   };
 
   const handleBan = async () => {
-    if (!banTarget) return;
+    if (!banTarget || banPending) return;
     setBanPending(true);
     const { error } = await authClient.admin.banUser({
       userId: banTarget.id,
@@ -74,7 +87,7 @@ export function AdminPage() {
     });
     setBanPending(false);
     if (error) {
-      toast.error(error.message || "Failed to ban user");
+      toast.error(mutationErrorMessage(error, "Failed to ban user"));
       return;
     }
     setBanTarget(null);
@@ -83,9 +96,12 @@ export function AdminPage() {
   };
 
   const handleUnban = async (userId: string) => {
+    if (unbanPendingId) return;
+    setUnbanPendingId(userId);
     const { error } = await authClient.admin.unbanUser({ userId });
+    setUnbanPendingId(null);
     if (error) {
-      toast.error(error.message || "Failed to unban user");
+      toast.error(mutationErrorMessage(error, "Failed to unban user"));
       return;
     }
     toast.success("User unbanned");
@@ -109,18 +125,24 @@ export function AdminPage() {
     }
   };
 
-  const handleImpersonate = async (userId: string) => {
-    const { error } = await authClient.admin.impersonateUser({ userId });
+  const handleImpersonate = async () => {
+    if (!impersonateTarget || impersonatePendingId) return;
+    const target = impersonateTarget;
+    setImpersonateTarget(null);
+    setImpersonatePendingId(target.id);
+    const { error } = await authClient.admin.impersonateUser({ userId: target.id });
     if (error) {
-      toast.error(error.message || "Failed to impersonate user");
+      setImpersonatePendingId(null);
+      toast.error(mutationErrorMessage(error, "Failed to impersonate user"));
       return;
     }
+    // Stays pending on purpose: the page is about to reload as the other user.
     window.location.href = "/";
   };
 
   return (
     <Pane>
-      <CollectionHeader title="Admin" subtitle="Manage all timetracker.run users" />
+      <CollectionHeader title="Admin" subtitle="Manage every user" />
 
       <PaneScroll>
         <h2 className="mb-2 text-base font-semibold">Users</h2>
@@ -131,6 +153,19 @@ export function AdminPage() {
               <Skeleton key={i} className="h-12 w-full rounded-container" />
             ))}
           </div>
+        ) : isError ? (
+          // A failed list must not read as "no users yet" — on an admin page
+          // that would be a very confident lie.
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load users"
+            description="The request didn't get through. Nothing has changed."
+            action={
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Try again
+              </Button>
+            }
+          />
         ) : users.length === 0 ? (
           <EmptyState icon={Users} title="No users yet" description="Users will appear here once they sign up." />
         ) : (
@@ -143,12 +178,18 @@ export function AdminPage() {
                 <div className="min-w-0">
                   <span className="font-medium">{u.name}</span>
                   <span className="ml-2 text-muted-foreground">{u.email}</span>
-                  {u.role === "admin" && <Badge className="ml-2" variant="secondary">admin</Badge>}
-                  {u.banned && <Badge className="ml-2" variant="destructive">banned</Badge>}
+                  {u.role === "admin" && <Badge className="ml-2" variant="secondary">Admin</Badge>}
+                  {u.banned && <Badge className="ml-2" variant="destructive">Banned</Badge>}
                 </div>
                 <div className="flex items-center gap-2">
                   {u.banned ? (
-                    <Button size="sm" variant="outline" onClick={() => handleUnban(u.id)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUnban(u.id)}
+                      disabled={unbanPendingId === u.id}
+                    >
+                      {unbanPendingId === u.id && <Spinner size="sm" />}
                       Unban
                     </Button>
                   ) : (
@@ -156,7 +197,13 @@ export function AdminPage() {
                       Ban
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" onClick={() => handleImpersonate(u.id)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setImpersonateTarget(u)}
+                    disabled={impersonatePendingId === u.id}
+                  >
+                    {impersonatePendingId === u.id && <Spinner size="sm" />}
                     Impersonate
                   </Button>
                   {u.id !== user.id && (
@@ -196,7 +243,7 @@ export function AdminPage() {
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleBan();
+                if (e.key === "Enter" && !banPending) handleBan();
               }}
               autoFocus
             />
@@ -211,11 +258,21 @@ export function AdminPage() {
               onClick={handleBan}
               disabled={banPending}
             >
+              {banPending && <Spinner size="sm" />}
               {banPending ? "Banning…" : "Ban user"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(impersonateTarget)}
+        onOpenChange={(o) => !o && setImpersonateTarget(null)}
+        title={`Impersonate ${impersonateTarget?.name || "this user"}?`}
+        description="You'll be signed in as them until you sign out."
+        confirmLabel="Impersonate"
+        onConfirm={handleImpersonate}
+      />
 
       {/* Remove confirmation — hard delete, including solo-owned workspaces. */}
       <ConfirmDialog

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, ListChecks, CalendarCheck, SearchX } from "lucide-react";
+import { Plus, ListChecks, CalendarCheck, SearchX, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -71,7 +71,7 @@ function nodeSeconds(node: TaskNode) {
 }
 
 export function TaskBoardList() {
-  const { data: tasks = [], isLoading } = useAllTasks();
+  const { data: tasks = [], isLoading, isError, refetch } = useAllTasks();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
@@ -280,7 +280,23 @@ export function TaskBoardList() {
   // nothing" is a dead end that needs a way out. Collapsing them into a single
   // "Nothing here" is how an empty Today comes across as a broken page.
   let empty: React.ReactNode = null;
-  if (isEmpty && !isLoading) {
+  if (isError && !isLoading) {
+    // A failed fetch must never read as the first-run invitation: "What do you
+    // plan to work on?" over a list that exists is the wrong question.
+    empty = (
+      <EmptyState
+        icon={AlertTriangle}
+        title="Couldn't load tasks"
+        description="The request didn't get through. Your tracked time is safe."
+        className="py-24"
+        action={
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    );
+  } else if (isEmpty && !isLoading) {
     if (!hasAnyTask) {
       empty = (
         <EmptyState
