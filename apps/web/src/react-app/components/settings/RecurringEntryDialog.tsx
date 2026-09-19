@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -84,6 +85,9 @@ export function RecurringEntryDialog({ open, onClose, editing }: RecurringEntryD
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit recurring entry" : "New recurring entry"}</DialogTitle>
+          <DialogDescription>
+            An entry is added automatically on each chosen day at the scheduled time.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
@@ -113,15 +114,19 @@ export function AiQuickAddDialog({ open, onClose }: AiQuickAddDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
-            AI quick add
+            Quick add
           </DialogTitle>
+          <DialogDescription>
+            Describe the work in a sentence. You review the entry before it's saved.
+          </DialogDescription>
         </DialogHeader>
 
         {!result ? (
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Describe what you worked on</Label>
+              <Label htmlFor="qa-text">Describe what you worked on</Label>
               <Textarea
+                id="qa-text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder='e.g. "2h on Acme redesign yesterday afternoon"'
@@ -169,8 +174,9 @@ export function AiQuickAddDialog({ open, onClose }: AiQuickAddDialogProps) {
             )}
 
             <div className="space-y-1.5">
-              <Label>Description</Label>
+              <Label htmlFor="qa-description">Description</Label>
               <Textarea
+                id="qa-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="min-h-20 resize-none"
@@ -188,7 +194,7 @@ export function AiQuickAddDialog({ open, onClose }: AiQuickAddDialogProps) {
               />
               {result.projectName && !result.projectMatched && (
                 <p className="text-xs text-muted-foreground">
-                  AI guess: "{result.projectName}" (not matched — pick one above)
+                  Suggested "{result.projectName}", which isn't one of your projects — pick one above
                 </p>
               )}
             </div>
@@ -207,12 +213,12 @@ export function AiQuickAddDialog({ open, onClose }: AiQuickAddDialogProps) {
 
             <div className="flex gap-3">
               <div className="flex-1 space-y-1.5">
-                <Label>Start</Label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <Label htmlFor="qa-start">Start</Label>
+                <Input id="qa-start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
               </div>
               <div className="flex-1 space-y-1.5">
-                <Label>Stop</Label>
-                <Input type="time" value={stopTime} onChange={(e) => setStopTime(e.target.value)} />
+                <Label htmlFor="qa-stop">Stop</Label>
+                <Input id="qa-stop" type="time" value={stopTime} onChange={(e) => setStopTime(e.target.value)} />
               </div>
             </div>
 

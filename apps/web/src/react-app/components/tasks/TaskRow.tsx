@@ -206,7 +206,12 @@ export function TaskRow({
   const doneToggle = (
     <button
       onClick={() => completeTask(task, task.active)}
-      aria-label={task.active ? "Mark task done" : "Mark task not done"}
+      // Priority was colour-only (the ring) plus a pointer-only title; the
+      // accessible name carries it too, so it survives a screen reader and
+      // colour blindness alike.
+      aria-label={`${task.active ? "Mark task done" : "Mark task not done"}${
+        task.priority < 4 ? ` — priority ${PRIORITY_LABEL[task.priority]}` : ""
+      }`}
       aria-pressed={!task.active}
       title={task.priority < 4 ? `Priority: ${PRIORITY_LABEL[task.priority]}` : undefined}
       className={cn(
@@ -296,6 +301,7 @@ export function TaskRow({
           <button
             type="button"
             title="Click to rename"
+            aria-label={`Rename ${task.name}`}
             onClick={() => {
               setName(task.name);
               setEditingName(true);

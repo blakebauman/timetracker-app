@@ -95,7 +95,7 @@ export function DigestCard() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Label>Send at</Label>
+            <Label htmlFor="digest-hour">Send at</Label>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Your local time
             </p>
@@ -105,7 +105,7 @@ export function DigestCard() {
             onValueChange={(v) => patch({ digestHour: Number(v) })}
             disabled={!anyOn}
           >
-            <SelectTrigger className="w-32 text-sm" aria-label="Digest send time">
+            <SelectTrigger id="digest-hour" className="w-32 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -122,7 +122,7 @@ export function DigestCard() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Label>Preview</Label>
+            <p className="text-sm font-medium">Preview</p>
             <p className="mt-1 text-xs leading-normal text-muted-foreground">
               Sends one to your own address right now, covering yesterday
             </p>

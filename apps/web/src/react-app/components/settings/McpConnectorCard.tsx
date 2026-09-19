@@ -142,7 +142,7 @@ export function McpConnectorCard() {
             can also start and stop timers and log entries.
           </p>
           <div className="mt-3">
-            <Label>Server URL</Label>
+            <p className="text-sm font-medium">Server URL</p>
             <div className="mt-1 flex items-center gap-2">
               <code className="flex-1 truncate rounded-md border bg-muted px-2 py-1.5 font-mono text-xs">
                 {MCP_URL}

@@ -99,30 +99,34 @@ export function CommandPalette() {
   ];
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title="Command Palette">
+    <CommandDialog open={open} onOpenChange={setOpen} title="Command palette">
       <CommandInput
         placeholder="Search or start a timer…"
         value={search}
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors duration-fast ease-out-quart hover:bg-accent"
-            onClick={handleStartTimer}
-          >
-            <Play className="h-4 w-4 text-primary" />
-            <span>
-              Start timer
-              {search && (
-                <>
-                  {": "}
-                  <span className="font-medium">"{search}"</span>
-                </>
-              )}
-            </span>
-          </button>
-        </CommandEmpty>
+        <CommandEmpty>No matches.</CommandEmpty>
+
+        {/* Typed text that matches nothing is a description for a new timer.
+            This used to be a plain button inside CommandEmpty, which cmdk does
+            not make arrow-selectable, so from a no-results query the only way
+            to start was the mouse. A force-mounted item stays in the list and
+            in the keyboard order whatever the filter says. */}
+        {search.trim() && (
+          <CommandGroup forceMount heading="Start">
+            <CommandItem
+              forceMount
+              value={`__start-timer ${search}`}
+              onSelect={handleStartTimer}
+            >
+              <Play className="h-4 w-4 text-primary" />
+              <span>
+                Start timer: <span className="font-medium">"{search}"</span>
+              </span>
+            </CommandItem>
+          </CommandGroup>
+        )}
 
         {/* Timer actions */}
         <CommandGroup heading="Timer">

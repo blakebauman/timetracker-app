@@ -133,6 +133,7 @@ export function ReportFilterBar({ filters, onChange }: ReportFilterBarProps) {
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
           placeholder="Search description…"
+          aria-label="Search descriptions"
           className="h-8 w-48 pl-8 text-sm"
         />
       </div>

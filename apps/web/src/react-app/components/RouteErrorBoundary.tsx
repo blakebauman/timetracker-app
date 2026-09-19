@@ -21,10 +21,9 @@ function describeError(error: unknown): {
   if (isRouteErrorResponse(error)) {
     return {
       title: `${error.status} ${error.statusText}`.trim(),
-      description:
-        typeof error.data === "string" && error.data
-          ? error.data
-          : "The page couldn't be loaded. Please try again.",
+      // `error.data` is the raw response body; it goes in the dev details,
+      // never in the sentence a user reads.
+      description: "The page couldn't be loaded. Please try again.",
       message: `${error.status} ${error.statusText}`,
     };
   }

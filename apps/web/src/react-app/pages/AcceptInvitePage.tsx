@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { Button } from "@/components/ui/button";
 import { BrandGlow } from "@/components/brand/BrandGlow";
 
 export function AcceptInvitePage() {
@@ -27,20 +28,16 @@ export function AcceptInvitePage() {
     authClient.organization.acceptInvitation({ invitationId }).then(({ error: acceptError }) => {
       if (acceptError) {
         setStatus("error");
-        setError(acceptError.message ?? "This invitation is invalid or has expired.");
+        setError("This invitation is invalid or has expired. Ask for a new one.");
         return;
       }
       navigate("/");
     });
   }, [isLoading, user, invitationId, navigate]);
 
-  if (!invitationId) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background px-4">
-        <p className="text-sm text-muted-foreground">Missing invitation.</p>
-      </main>
-    );
-  }
+  // An incomplete link and a rejected one are the same dead end: name it and
+  // give a way out. The card below handles both; this only picks the copy.
+  const failed = !invitationId || status === "error";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -56,13 +53,25 @@ export function AcceptInvitePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle as="h1" className="text-xl">Joining workspace…</CardTitle>
+            <CardTitle as="h1" className="text-xl">
+              {failed ? "Couldn't join the workspace" : "Joining workspace…"}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            {status === "error" ? (
+          <CardContent className="space-y-4">
+            {!invitationId ? (
+              <p className="text-sm text-muted-foreground">
+                This invitation link is incomplete. Open the link from the email again,
+                or ask the person who invited you for a new one.
+              </p>
+            ) : status === "error" ? (
               <p className="text-sm text-destructive">{error}</p>
             ) : (
               <p className="text-sm text-muted-foreground">Please wait a moment.</p>
+            )}
+            {failed && (
+              <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
+                Go to the app
+              </Button>
             )}
           </CardContent>
         </Card>

@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -107,14 +109,19 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{project ? "Edit Project" : "New Project"}</DialogTitle>
+          <DialogTitle>{project ? "Edit project" : "New project"}</DialogTitle>
+          <DialogDescription>
+            A name and a colour are enough to start tracking. Budgets, dates and
+            integrations can come later.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label>Name</Label>
+            <Label htmlFor="project-name">Name</Label>
             <Input
+              id="project-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Project name"
@@ -124,8 +131,8 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
 
           {/* Color */}
           <div className="space-y-1.5">
-            <Label>Color</Label>
-            <div className="flex flex-wrap gap-2">
+            <Label id="project-color-label">Color</Label>
+            <div role="group" aria-labelledby="project-color-label" className="flex flex-wrap gap-2">
               {PROJECT_COLORS.map((c) => (
                 <button
                   key={c}
@@ -172,16 +179,18 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
           {/* Date range */}
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
-              <Label>Start date</Label>
+              <Label htmlFor="project-start">Start date</Label>
               <Input
+                id="project-start"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
             <div className="flex-1 space-y-1.5">
-              <Label>End date</Label>
+              <Label htmlFor="project-end">End date</Label>
               <Input
+                id="project-end"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
@@ -198,8 +207,11 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
               </div>
               {billable && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Rate</span>
+                  <Label htmlFor="project-rate" className="text-sm font-normal text-muted-foreground">
+                    Rate
+                  </Label>
                   <Input
+                    id="project-rate"
                     type="number"
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
@@ -214,8 +226,11 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <Label className="shrink-0 text-sm text-muted-foreground">Estimated hours</Label>
+              <Label htmlFor="project-estimate" className="shrink-0 text-sm text-muted-foreground">
+                Estimated hours
+              </Label>
               <Input
+                id="project-estimate"
                 type="number"
                 value={estimatedHours}
                 onChange={(e) => setEstimatedHours(e.target.value)}
@@ -252,24 +267,26 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
                 <div className="space-y-2">
                   <div className="flex gap-3">
                     <div className="flex-1 space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
+                      <Label htmlFor="project-external-id" className="text-xs text-muted-foreground">
                         {selectedIntegration.type === "workfront" ? "Workfront project ID" : "Dynamics project ID"}
                       </Label>
                       <Input
+                        id="project-external-id"
                         value={externalProjectId}
                         onChange={(e) => setExternalProjectId(e.target.value)}
-                        placeholder={selectedIntegration.type === "workfront" ? "optional if task set" : "GUID (required)"}
+                        placeholder={selectedIntegration.type === "workfront" ? "Optional when a task ID is set" : "Required GUID"}
                         className="text-sm"
                       />
                     </div>
                     <div className="flex-1 space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
+                      <Label htmlFor="project-external-task-id" className="text-xs text-muted-foreground">
                         {selectedIntegration.type === "workfront" ? "Workfront task ID" : "Dynamics task ID"}
                       </Label>
                       <Input
+                        id="project-external-task-id"
                         value={externalTaskId}
                         onChange={(e) => setExternalTaskId(e.target.value)}
-                        placeholder="optional"
+                        placeholder="Optional"
                         className="text-sm"
                       />
                     </div>
@@ -300,6 +317,7 @@ export function ProjectForm({ project, open, onClose }: ProjectFormProps) {
             onClick={handleSave}
             disabled={!name.trim() || isPending || integrationMissingRequiredId}
           >
+            {isPending && <Spinner size="sm" />}
             {project ? "Save changes" : "Create project"}
           </Button>
         </DialogFooter>

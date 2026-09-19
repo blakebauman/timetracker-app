@@ -290,7 +290,7 @@ export function TimerWorkspaceHeader({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={onAiQuickAdd}>
                   <Sparkles className="mr-2 h-3.5 w-3.5" />
-                  Add with AI…
+                  Quick add…
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

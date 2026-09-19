@@ -35,8 +35,14 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h1>
           <p className="mb-6 max-w-md text-sm text-muted-foreground">
-            {this.state.error.message || "An unexpected error occurred."}
+            The app hit an error it couldn't recover from. Reloading brings it
+            back; nothing you tracked is lost.
           </p>
+          {import.meta.env.DEV && (
+            <pre className="mb-6 max-h-40 max-w-lg overflow-auto whitespace-pre-wrap rounded-container border bg-muted/40 px-4 py-3 text-left font-mono text-xs text-muted-foreground">
+              {this.state.error.message}
+            </pre>
+          )}
           <Button onClick={() => window.location.reload()}>
             <RotateCw />
             Reload page

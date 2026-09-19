@@ -17,7 +17,7 @@ import { ProjectForm } from "@/components/projects/ProjectForm";
  *
  * Deliberately not a modal, a tour, or a checklist. PRODUCT.md's register is
  * "the tool disappears into the task", and these users arrive fluent in
- * Linear/Toggl — they don't need to be walked through a timer. They need the
+ * modern planning and tracking tools — they don't need to be walked through a timer. They need the
  * one door opened, in place, with an honest way past it.
  */
 export function FirstProjectPrompt({ onAddEntry }: { onAddEntry?: () => void }) {
@@ -36,7 +36,7 @@ export function FirstProjectPrompt({ onAddEntry }: { onAddEntry?: () => void }) 
             </Button>
             {onAddEntry && (
               <Button variant="ghost" size="sm" onClick={onAddEntry}>
-                Skip — just log time
+                Skip — just add an entry
               </Button>
             )}
           </div>
