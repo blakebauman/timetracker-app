@@ -122,7 +122,7 @@ export function TaskList({ projectId }: TaskListProps) {
               onClick={() => handleToggleDone(task)}
               aria-label={task.active ? "Mark task done" : "Mark task not done"}
               aria-pressed={!task.active}
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart ${
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
                 !task.active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-muted-foreground/40 hover:border-primary"
@@ -199,7 +199,9 @@ export function TaskList({ projectId }: TaskListProps) {
                 <button
                   // `block`: a bare <button> is inline-block and ran onto the task
                   // name's line. The other two states are flex and drop below.
-                  className="mt-0.5 block text-micro text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors duration-fast ease-out-quart hover:text-muted-foreground!"
+                  // `tt-reveal`, as on the Tasks page: gated on hover capability,
+                  // so a touch device sees it, at full muted ink when it shows.
+                  className="tt-reveal mt-0.5 block rounded-sm text-micro text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   onClick={() => handleStartEditTime(task)}
                 >
                   add estimate

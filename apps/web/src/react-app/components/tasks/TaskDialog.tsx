@@ -82,11 +82,15 @@ export function TaskDialog({
   const [priority, setPriority] = useState(task?.priority ?? 4);
   const [repeat, setRepeat] = useState(repeatValue(task?.recurRule ?? null));
 
-  // The dialog stays mounted between openings; reseed when it opens on another
-  // task (or switches between create and edit).
-  const [syncedId, setSyncedId] = useState<string | null>(task?.id ?? null);
-  if (open && (task?.id ?? null) !== syncedId) {
-    setSyncedId(task?.id ?? null);
+  // The dialog stays mounted between openings; reseed every time it *opens*.
+  // Keying the reseed on the task id alone froze the create form's defaults at
+  // first mount: opened from Today it seeded "due today", and stayed due today
+  // when opened again from All, where the default is no date at all.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+  }
+  if (open && !wasOpen) {
     setName(task?.name ?? "");
     setDescription(task?.description ?? "");
     setProjectId(task?.projectId ?? defaultProjectId);
@@ -97,7 +101,6 @@ export function TaskDialog({
   }
 
   const reset = () => {
-    setSyncedId(null);
     setName("");
     setDescription("");
     setProjectId(defaultProjectId);
@@ -237,9 +240,9 @@ export function TaskDialog({
                   pushes Clear off the edge of the dialog. */}
               <div className="min-w-0 flex-1">
                 <DatePicker
-                  value={dueDate ? localDateToDate(dueDate) : new Date()}
+                  value={dueDate ? localDateToDate(dueDate) : null}
                   onSelect={(d) => setDueDate(dateToLocalDate(d))}
-                  className={dueDate ? undefined : "text-muted-foreground"}
+                  placeholder="No due date"
                 />
               </div>
               {dueDate && (

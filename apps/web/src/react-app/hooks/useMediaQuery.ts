@@ -23,5 +23,6 @@ export function useMediaQuery(query: string): boolean {
 // Tailwind's md/lg, as media queries. Kept here so the JS breakpoints that gate
 // *behaviour* (which calendar view, whether Split exists) can't drift from the
 // CSS breakpoints that gate layout.
+export const BELOW_SM = "(max-width: 639px)";
 export const BELOW_MD = "(max-width: 767px)";
 export const BELOW_LG = "(max-width: 1023px)";
