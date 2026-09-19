@@ -6,7 +6,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDayHeader, localDayKey } from "@/lib/dateUtils";
@@ -184,21 +184,6 @@ export function useGroupedEntriesRange(sinceIso: string, untilIso: string) {
   return { days: groupEntriesByDay(entries, pinnedEntryId), entries, ...rest };
 }
 
-/**
- * An edit that never reached the network was still persisted for replay (see
- * `ApiError.queued`). Rolling it back would show the user their correction being
- * undone and a "Failed to update" toast — and then, minutes later, silently
- * reapply it when the queue drains. Keep the optimistic value on screen and say
- * what's actually true.
- */
-function isQueuedOffline(err: unknown): err is ApiError {
-  return err instanceof ApiError && err.queued;
-}
-
-/** The generic fallback only when the server didn't say something more useful. */
-function mutationErrorMessage(err: unknown, fallback: string): string {
-  return err instanceof ApiError && err.status >= 400 && err.message ? err.message : fallback;
-}
 
 /**
  * Entries changed, so anything derived from them is stale.

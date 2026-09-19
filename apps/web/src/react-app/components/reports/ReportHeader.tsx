@@ -46,8 +46,12 @@ interface ReportRangeControlProps {
  */
 export function ReportRangeControl({ range, onRangeChange }: ReportRangeControlProps) {
   const presets = getDateRangePresets();
-  const [customSince, setCustomSince] = useState("");
-  const [customUntil, setCustomUntil] = useState("");
+  // Seeded from the range in force, so switching to "Custom range" keeps the
+  // report on screen and the inputs show where the user is starting from.
+  // Clearing them used to disable every query, and the page answered "No data
+  // for this period" to a question the user had not finished asking.
+  const [customSince, setCustomSince] = useState(range.since);
+  const [customUntil, setCustomUntil] = useState(range.until);
 
   const handleCustomSince = (value: string) => {
     setCustomSince(value);
@@ -114,9 +118,9 @@ export function ReportRangeControl({ range, onRangeChange }: ReportRangeControlP
           ))}
           <DropdownMenuItem
             onClick={() => {
-              setCustomSince("");
-              setCustomUntil("");
-              onRangeChange({ since: "", until: "", label: "Custom range" });
+              setCustomSince(range.since);
+              setCustomUntil(range.until);
+              onRangeChange({ since: range.since, until: range.until, label: "Custom range" });
             }}
           >
             Custom range

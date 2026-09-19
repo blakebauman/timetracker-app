@@ -62,6 +62,26 @@ export class ApiError extends Error {
 }
 
 /**
+ * An edit that never reached the network was still persisted for replay (see
+ * `ApiError.queued`). Rolling it back would show the user their correction being
+ * undone and a "Failed to update" toast — and then, minutes later, silently
+ * reapply it when the queue drains. Keep the optimistic value on screen and say
+ * what's actually true. Every mutation hook branches on this in `onError`.
+ */
+export function isQueuedOffline(err: unknown): err is ApiError {
+  return err instanceof ApiError && err.queued;
+}
+
+/**
+ * The message a toast or inline error shows: the server's own words when it
+ * said something useful (a 4xx with a body), otherwise the caller's fallback.
+ * Never the raw text of a network failure or a stack.
+ */
+export function mutationErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError && err.status >= 400 && err.message ? err.message : fallback;
+}
+
+/**
  * Pull the human-readable message out of a Hono `zValidator` rejection.
  *
  * Its body is `{ success: false, error: <ZodError> }`, and both levels are
