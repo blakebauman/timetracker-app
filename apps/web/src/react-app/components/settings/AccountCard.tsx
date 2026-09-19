@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { UserAvatar } from "@/components/layout/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import { authClient } from "@/lib/auth-client";
+import { mutationErrorMessage } from "@/lib/api";
 
 export function AccountCard() {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export function AccountCard() {
   // — Name
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(user?.name ?? "");
+  const [namePending, setNamePending] = useState(false);
 
   // — Avatar (image URL)
   const [editingImage, setEditingImage] = useState(false);
@@ -31,11 +33,17 @@ export function AccountCard() {
 
   const emailVerified = Boolean(user?.emailVerified);
 
+  // Better Auth's error is a plain object, never an ApiError, so every handler
+  // below lands on its curated line — the server's wording never reaches a toast.
   const handleSaveName = async () => {
     const trimmed = nameValue.trim();
-    if (!trimmed) return;
+    // Enter and the check button both land here; the flag keeps a fast pair
+    // of them from sending the same name twice.
+    if (!trimmed || namePending) return;
+    setNamePending(true);
     const { error } = await authClient.updateUser({ name: trimmed });
-    if (error) return toast.error(error.message ?? "Failed to update name");
+    setNamePending(false);
+    if (error) return toast.error(mutationErrorMessage(error, "Couldn't update your name"));
     toast.success("Name updated");
     setEditingName(false);
   };
@@ -44,7 +52,7 @@ export function AccountCard() {
     setImagePending(true);
     const { error } = await authClient.updateUser({ image: imageValue.trim() || null });
     setImagePending(false);
-    if (error) return toast.error(error.message ?? "Failed to update photo");
+    if (error) return toast.error(mutationErrorMessage(error, "Couldn't update your photo"));
     toast.success("Photo updated");
     setEditingImage(false);
   };
@@ -57,7 +65,7 @@ export function AccountCard() {
       type: "email-verification",
     });
     setVerifyPending(false);
-    if (error) return toast.error(error.message ?? "Failed to send code");
+    if (error) return toast.error(mutationErrorMessage(error, "Couldn't send the verification code"));
     toast.success("Verification code sent — check your email");
     setVerifyStage("code");
   };
@@ -67,7 +75,7 @@ export function AccountCard() {
     setVerifyPending(true);
     const { error } = await authClient.emailOtp.verifyEmail({ email: user.email, otp });
     setVerifyPending(false);
-    if (error) return toast.error(error.message ?? "Invalid code");
+    if (error) return toast.error(mutationErrorMessage(error, "That code didn't match — check it and try again"));
     toast.success("Email verified");
     setVerifyStage("idle");
     setOtp("");
@@ -90,16 +98,34 @@ export function AccountCard() {
                   value={nameValue}
                   onChange={(e) => setNameValue(e.target.value)}
                   className="h-8 text-sm"
+                  aria-label="Name"
+                  disabled={namePending}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSaveName();
                     if (e.key === "Escape") setEditingName(false);
                   }}
                   autoFocus
                 />
-                <Button size="icon-sm" variant="ghost" className="shrink-0" onClick={handleSaveName} aria-label="Save name">
-                  <Check className="h-4 w-4 text-success" />
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="shrink-0"
+                  onClick={handleSaveName}
+                  disabled={namePending}
+                  aria-label="Save name"
+                  title="Save name"
+                >
+                  {namePending ? <Spinner size="sm" /> : <Check className="h-4 w-4 text-success" />}
                 </Button>
-                <Button size="icon-sm" variant="ghost" className="shrink-0" onClick={() => setEditingName(false)} aria-label="Cancel">
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="shrink-0"
+                  onClick={() => setEditingName(false)}
+                  disabled={namePending}
+                  aria-label="Cancel"
+                  title="Cancel"
+                >
                   <X className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>

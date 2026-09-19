@@ -83,7 +83,10 @@ export function CalendarSyncCard() {
                     onAutoTrack={(enabled) =>
                       setAutoTrack.mutate({ provider: provider.provider, enabled })
                     }
-                    autoTrackPending={setAutoTrack.isPending}
+                    autoTrackPending={
+                      setAutoTrack.isPending &&
+                      setAutoTrack.variables?.provider === provider.provider
+                    }
                   />
                 </div>
               ))}

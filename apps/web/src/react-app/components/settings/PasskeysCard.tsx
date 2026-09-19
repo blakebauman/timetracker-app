@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { authClient } from "@/lib/auth-client";
+import { mutationErrorMessage } from "@/lib/api";
 import { formatShortDate } from "@/lib/dateUtils";
 
 function toIso(d: Date | string): string {
@@ -19,6 +21,7 @@ function toIso(d: Date | string): string {
 export function PasskeysCard() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
 
   const { data: passkeys = [], isLoading } = useQuery({
     queryKey: ["auth", "passkeys"],
@@ -40,7 +43,9 @@ export function PasskeysCard() {
       setName("");
       queryClient.invalidateQueries({ queryKey: ["auth", "passkeys"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    // Better Auth's error is a plain object, never an ApiError, so this always
+    // lands on the curated line — the server's wording never reaches the toast.
+    onError: (e) => toast.error(mutationErrorMessage(e, "Couldn't add that passkey")),
   });
 
   const remove = useMutation({
@@ -52,7 +57,7 @@ export function PasskeysCard() {
       toast.success("Passkey removed");
       queryClient.invalidateQueries({ queryKey: ["auth", "passkeys"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) => toast.error(mutationErrorMessage(e, "Couldn't remove that passkey")),
   });
 
   return (
@@ -69,26 +74,33 @@ export function PasskeysCard() {
           <Skeleton className="h-12 w-full" />
         ) : passkeys.length > 0 ? (
           <div className="space-y-2">
-            {passkeys.map((p) => (
-              <SettingsRow
-                key={p.id}
-                icon={KeyRound}
-                label={p.name || "Passkey"}
-                description={p.createdAt && `Added ${formatShortDate(toIso(p.createdAt))}`}
-                trailing={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground hover:text-destructive"
-                    aria-label="Remove passkey"
-                    onClick={() => remove.mutate(p.id)}
-                    disabled={remove.isPending}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                }
-              />
-            ))}
+            {passkeys.map((p) => {
+              const label = p.name || "Passkey";
+              // Only the row being removed shows it working; the mutation is
+              // shared, so `variables` says which row that is.
+              const isRemoving = remove.isPending && remove.variables === p.id;
+              return (
+                <SettingsRow
+                  key={p.id}
+                  icon={KeyRound}
+                  label={label}
+                  description={p.createdAt && `Added ${formatShortDate(toIso(p.createdAt))}`}
+                  trailing={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label={`Remove passkey ${label}`}
+                      title="Remove passkey"
+                      onClick={() => setRemoving({ id: p.id, name: label })}
+                      disabled={isRemoving}
+                    >
+                      {isRemoving ? <Spinner size="sm" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </Button>
+                  }
+                />
+              );
+            })}
           </div>
         ) : (
           <EmptyState
@@ -104,7 +116,9 @@ export function PasskeysCard() {
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add.mutate()}
+            // Guarded: Enter while the WebAuthn prompt is up would open a
+            // second one on top of the first.
+            onKeyDown={(e) => e.key === "Enter" && !add.isPending && add.mutate()}
             placeholder="Passkey name (e.g. MacBook)"
             aria-label="Passkey name"
             className="h-8 text-sm"
@@ -121,6 +135,18 @@ export function PasskeysCard() {
           </Button>
         </div>
       </CardContent>
+
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => !open && setRemoving(null)}
+        title={`Remove passkey ${removing?.name ?? ""}?`}
+        description="You won't be able to sign in with it any more. Other passkeys and sign-in methods aren't affected."
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (removing) remove.mutate(removing.id);
+          setRemoving(null);
+        }}
+      />
     </Card>
   );
 }

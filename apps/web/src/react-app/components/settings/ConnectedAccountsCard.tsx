@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spinner } from "@/components/ui/spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { authClient } from "@/lib/auth-client";
+import { mutationErrorMessage } from "@/lib/api";
 
 interface AccountRow {
   id: string;
@@ -20,6 +23,9 @@ const PROVIDERS = [{ id: "google", label: "Google" }] as const;
 
 export function ConnectedAccountsCard() {
   const queryClient = useQueryClient();
+  const [unlinking, setUnlinking] = useState<{ account: AccountRow; label: string } | null>(
+    null
+  );
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["auth", "accounts"],
@@ -39,7 +45,9 @@ export function ConnectedAccountsCard() {
       });
       if (error) throw new Error(error.message ?? "Failed to start linking");
     },
-    onError: (e: Error) => toast.error(e.message),
+    // Better Auth's error is a plain object, never an ApiError, so this always
+    // lands on the curated line — the server's wording never reaches the toast.
+    onError: (e) => toast.error(mutationErrorMessage(e, "Couldn't start connecting that account")),
   });
 
   const unlink = useMutation({
@@ -54,7 +62,7 @@ export function ConnectedAccountsCard() {
       toast.success("Account disconnected");
       queryClient.invalidateQueries({ queryKey: ["auth", "accounts"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) => toast.error(mutationErrorMessage(e, "Couldn't disconnect that account")),
   });
 
   // A user with only one credential (their social login) can't unlink their last
@@ -91,7 +99,7 @@ export function ConnectedAccountsCard() {
                       variant="ghost"
                       size="sm"
                       className="text-muted-foreground hover:text-destructive"
-                      onClick={() => unlink.mutate(linked)}
+                      onClick={() => setUnlinking({ account: linked, label: p.label })}
                       disabled={unlink.isPending || loginMethodCount <= 1}
                       title={
                         loginMethodCount <= 1
@@ -117,6 +125,18 @@ export function ConnectedAccountsCard() {
           })
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={unlinking !== null}
+        onOpenChange={(open) => !open && setUnlinking(null)}
+        title={`Disconnect ${unlinking?.label ?? "this account"}?`}
+        description="You won't be able to sign in with it until you connect it again. Your tracked time isn't affected."
+        confirmLabel="Disconnect"
+        onConfirm={() => {
+          if (unlinking) unlink.mutate(unlinking.account);
+          setUnlinking(null);
+        }}
+      />
     </Card>
   );
 }

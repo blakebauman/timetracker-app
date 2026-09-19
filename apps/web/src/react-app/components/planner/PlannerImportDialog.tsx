@@ -161,6 +161,7 @@ export function PlannerImportDialog({ open, onClose, weekDayKeys }: PlannerImpor
   const handleFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => setText(String(reader.result ?? ""));
+    reader.onerror = () => toast.error("Couldn't read that file");
     reader.readAsText(file);
   };
 

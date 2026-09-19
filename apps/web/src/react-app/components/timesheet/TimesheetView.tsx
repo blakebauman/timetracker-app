@@ -82,6 +82,9 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
   const [copying, setCopying] = useState(false);
   const [editing, setEditing] = useState<{ row: string; day: number } | null>(null);
   const [draft, setDraft] = useState("");
+  // The open cell's input didn't parse. Held open and marked rather than
+  // closed: on a timesheet a silently dropped "1.5h" is a wrong invoice.
+  const [draftInvalid, setDraftInvalid] = useState(false);
 
   // Build rows + a rowKey→dayIndex→Cell lookup from the week's entries.
   const { rows, cells } = useMemo(() => {
@@ -139,13 +142,22 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
   }, [cells]);
   const grandTotal = dayTotals.reduce((s, n) => s + n, 0);
 
+  const closeCell = () => {
+    setEditing(null);
+    setDraftInvalid(false);
+  };
+
   const commitCell = (row: RowMeta, dayIndex: number) => {
     const cell = cells.get(row.key)![dayIndex];
-    setEditing(null);
     const parsed = parseTimeInput(draft.trim());
-    // Invalid input → ignore. Empty or 0 → clear (delete single entry).
+    // Empty or 0 → clear (delete single entry).
     const seconds = draft.trim() === "" ? 0 : parsed;
-    if (seconds === null) return;
+    if (seconds === null) {
+      // Same rule as EntryRow's duration: hold the field open and say so.
+      setDraftInvalid(true);
+      return;
+    }
+    closeCell();
     if (cell.entries.length > 1) return; // read-only aggregate
 
     if (cell.entries.length === 1) {
@@ -358,13 +370,26 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
                           <Input
                             autoFocus
                             value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
+                            onChange={(e) => {
+                              setDraft(e.target.value);
+                              if (draftInvalid) setDraftInvalid(false);
+                            }}
                             onBlur={() => commitCell(row, dayIndex)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") commitCell(row, dayIndex);
-                              if (e.key === "Escape") setEditing(null);
+                              if (e.key === "Escape") closeCell();
                             }}
-                            className="h-8 w-16 px-1 text-center font-mono text-xs tabular-nums"
+                            aria-label={`Time for ${row.projectName ?? "Without project"} on ${format(days[dayIndex], "EEE d")}`}
+                            aria-invalid={draftInvalid}
+                            title={
+                              draftInvalid
+                                ? "Enter a duration like 1h 30m, 1:30, or 90m"
+                                : undefined
+                            }
+                            className={cn(
+                              "h-8 w-16 px-1 text-center font-mono text-xs tabular-nums",
+                              draftInvalid && "text-destructive"
+                            )}
                           />
                         ) : (
                           <button

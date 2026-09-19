@@ -5,6 +5,8 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Spinner } from "@/components/ui/spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProjectBadge } from "@/components/ProjectBadge";
 import { RecurringEntryDialog } from "./RecurringEntryDialog";
 import {
@@ -31,6 +33,7 @@ export function RecurringEntriesCard() {
   const deleteRecurring = useDeleteRecurring();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringEntry | null>(null);
+  const [deleting, setDeleting] = useState<RecurringEntry | null>(null);
 
   const openNew = () => {
     setEditing(null);
@@ -62,51 +65,70 @@ export function RecurringEntriesCard() {
             New occurrences are created automatically at the scheduled time.
           </p>
         ) : (
-          items.map((r) => (
-            <SettingsRow
-              key={r.id}
-              label={
-                <>
-                  <span className="truncate">
-                    {r.description || <span className="text-muted-foreground">(no description)</span>}
-                  </span>
-                  {r.projectName && <ProjectBadge name={r.projectName} color={r.projectColor} />}
-                </>
-              }
-              description={scheduleLabel(r)}
-              trailing={
-                <>
-                  <Switch
-                    checked={r.active}
-                    onCheckedChange={(checked) =>
-                      updateRecurring.mutate({ id: r.id, data: { active: checked } })
-                    }
-                    aria-label={r.active ? "Pause" : "Resume"}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground"
-                    onClick={() => openEdit(r)}
-                    aria-label="Edit recurring entry"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => deleteRecurring.mutate(r.id)}
-                    aria-label="Delete recurring entry"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </>
-              }
-            />
-          ))
+          items.map((r) => {
+            // Only the row being deleted shows it working; the mutation is
+            // shared, so `variables` says which row that is.
+            const isDeleting = deleteRecurring.isPending && deleteRecurring.variables === r.id;
+            return (
+              <SettingsRow
+                key={r.id}
+                label={
+                  <>
+                    <span className="truncate">
+                      {r.description || <span className="text-muted-foreground">(no description)</span>}
+                    </span>
+                    {r.projectName && <ProjectBadge name={r.projectName} color={r.projectColor} />}
+                  </>
+                }
+                description={scheduleLabel(r)}
+                trailing={
+                  <>
+                    <Switch
+                      checked={r.active}
+                      onCheckedChange={(checked) =>
+                        updateRecurring.mutate({ id: r.id, data: { active: checked } })
+                      }
+                      aria-label={r.active ? "Pause" : "Resume"}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground"
+                      onClick={() => openEdit(r)}
+                      aria-label="Edit recurring entry"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleting(r)}
+                      disabled={isDeleting}
+                      aria-label="Delete recurring entry"
+                      title="Delete recurring entry"
+                    >
+                      {isDeleting ? <Spinner size="sm" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </Button>
+                  </>
+                }
+              />
+            );
+          })
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title={`Delete the recurring entry${deleting?.description ? ` "${deleting.description}"` : ""}?`}
+        description="It stops being scheduled. Entries it already created stay on your timesheet."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleting) deleteRecurring.mutate(deleting.id);
+          setDeleting(null);
+        }}
+      />
 
       {dialogOpen && (
         <RecurringEntryDialog

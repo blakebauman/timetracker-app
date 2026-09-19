@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -21,6 +24,7 @@ import {
   useUpdateIntegration,
   useTestIntegration,
 } from "@/hooks/useIntegrations";
+import { mutationErrorMessage } from "@/lib/api";
 import type {
   CreateIntegration,
   Integration,
@@ -114,12 +118,18 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
   const handleTest = async () => {
     if (!integration) return;
     setTestStatus(null);
-    const result = await testIntegration.mutateAsync(integration.id);
-    setTestStatus(
-      result.ok
-        ? { ok: true, message: "Connection successful" }
-        : { ok: false, message: result.error ?? "Connection failed" }
-    );
+    try {
+      const result = await testIntegration.mutateAsync(integration.id);
+      setTestStatus(
+        result.ok
+          ? { ok: true, message: "Connection successful" }
+          : { ok: false, message: result.error ?? "Connection failed" }
+      );
+    } catch (err) {
+      // The hook has no onError of its own, so an unhandled rejection here was
+      // a silent "Testing…" that simply stopped.
+      toast.error(mutationErrorMessage(err, "Couldn't reach the integration"));
+    }
   };
 
   return (
@@ -127,6 +137,11 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit integration" : "Add integration"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Rename the connection or rotate its credentials."
+              : "Connect a system you can push tracked time to."}
+          </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4 py-2" onSubmit={handleSubmit} noValidate>
@@ -150,8 +165,9 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
 
           {/* Name */}
           <div className="space-y-1.5">
-            <Label>Name</Label>
+            <Label htmlFor="integration-name">Name</Label>
             <Input
+              id="integration-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Workfront – Acme"
@@ -161,8 +177,11 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
 
           {/* Base URL */}
           <div className="space-y-1.5">
-            <Label>{type === "workfront" ? "Workfront domain" : "Organization URL"}</Label>
+            <Label htmlFor="integration-base-url">
+              {type === "workfront" ? "Workfront domain" : "Organization URL"}
+            </Label>
             <Input
+              id="integration-base-url"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
               placeholder={BASE_URL_HINT[type]}
@@ -171,46 +190,61 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
           </div>
 
           {/* Credentials */}
-          <div className="space-y-2">
-            <Label>Credentials</Label>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium leading-none">Credentials</legend>
             <p className="text-xs text-muted-foreground">
               {type === "workfront"
                 ? "Create an API key in Workfront (Setup → System → API Keys), or reuse your personal API key."
                 : "From your Microsoft Entra ID app registration: tenant ID, client ID, and a client secret."}
               {isEdit ? " Leave blank to keep the current credentials." : ""}
             </p>
+            {/* Visible labels rather than placeholders: a placeholder vanishes
+                on the first keystroke, and a pasted secret with no label is
+                unverifiable — which one is the tenant id? */}
             {type === "workfront" ? (
-              <Input
-                type="password"
-                placeholder="API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                autoComplete="off"
-              />
-            ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="integration-api-key">API key</Label>
                 <Input
-                  placeholder="Tenant ID"
-                  value={tenantId}
-                  onChange={(e) => setTenantId(e.target.value)}
-                  autoComplete="off"
-                />
-                <Input
-                  placeholder="Client ID"
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  autoComplete="off"
-                />
-                <Input
+                  id="integration-api-key"
                   type="password"
-                  placeholder="Client secret"
-                  value={clientSecret}
-                  onChange={(e) => setClientSecret(e.target.value)}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
                   autoComplete="off"
                 />
               </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="integration-tenant-id">Tenant ID</Label>
+                  <Input
+                    id="integration-tenant-id"
+                    value={tenantId}
+                    onChange={(e) => setTenantId(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="integration-client-id">Client ID</Label>
+                  <Input
+                    id="integration-client-id"
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="integration-client-secret">Client secret</Label>
+                  <Input
+                    id="integration-client-secret"
+                    type="password"
+                    value={clientSecret}
+                    onChange={(e) => setClientSecret(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
             )}
-          </div>
+          </fieldset>
 
           {testStatus && (
             <p className={`text-xs ${testStatus.ok ? "text-success-ink" : "text-destructive"}`}>
@@ -225,15 +259,17 @@ export function IntegrationForm({ integration, open, onClose }: IntegrationFormP
                 variant="outline"
                 onClick={handleTest}
                 disabled={testIntegration.isPending}
-                className="mr-auto"
+                className="mr-auto gap-1.5"
               >
+                {testIntegration.isPending && <Spinner size="sm" />}
                 {testIntegration.isPending ? "Testing…" : "Test connection"}
               </Button>
             )}
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!canSubmit}>
+            <Button type="submit" disabled={!canSubmit} className="gap-1.5">
+              {isPending && <Spinner size="sm" />}
               {isEdit ? "Save changes" : "Add integration"}
             </Button>
           </DialogFooter>

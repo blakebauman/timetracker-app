@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
+import { mutationErrorMessage } from "@/lib/api";
 import { formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 
 // The auth client deserializes timestamps to Date; our formatters take ISO strings.
@@ -67,7 +68,9 @@ export function SessionsCard() {
       toast.success("Session signed out");
       queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    // Better Auth's error is a plain object, never an ApiError, so this always
+    // lands on the curated line — the server's wording never reaches the toast.
+    onError: (e) => toast.error(mutationErrorMessage(e, "Couldn't revoke that session")),
   });
 
   const revokeOthers = useMutation({
@@ -79,7 +82,8 @@ export function SessionsCard() {
       toast.success("Signed out all other devices");
       queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) =>
+      toast.error(mutationErrorMessage(e, "Couldn't sign out the other devices")),
   });
 
   const otherCount = sessions.filter((s) => s.token !== currentToken).length;
@@ -96,7 +100,11 @@ export function SessionsCard() {
             onClick={() => revokeOthers.mutate()}
             disabled={revokeOthers.isPending}
           >
-            <LogOut className="h-3.5 w-3.5" />
+            {revokeOthers.isPending ? (
+              <Spinner size="sm" />
+            ) : (
+              <LogOut className="h-3.5 w-3.5" />
+            )}
             Sign out other devices
           </Button>
         )}
@@ -112,6 +120,9 @@ export function SessionsCard() {
             const { label, mobile } = describeUserAgent(s.userAgent);
             const isCurrent = s.token === currentToken;
             const Icon = mobile ? Smartphone : Monitor;
+            // Only the row being revoked shows it working; the mutation is
+            // shared, so `variables` says which row that is.
+            const revoking = revoke.isPending && revoke.variables === s.token;
             return (
               <SettingsRow
                 key={s.id}
@@ -140,9 +151,9 @@ export function SessionsCard() {
                       size="sm"
                       className="text-muted-foreground hover:text-destructive"
                       onClick={() => revoke.mutate(s.token)}
-                      disabled={revoke.isPending}
+                      disabled={revoking}
                     >
-                      {revoke.isPending ? <Spinner size="sm" /> : "Revoke"}
+                      {revoking ? <Spinner size="sm" /> : "Revoke"}
                     </Button>
                   )
                 }

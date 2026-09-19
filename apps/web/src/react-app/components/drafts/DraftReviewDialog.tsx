@@ -116,6 +116,9 @@ export function DraftReviewDialog({ open, localDate, onClose }: DraftReviewDialo
   // the running total derived from the cards — so nudging a card's minutes moves
   // it, without an effect syncing two sources of truth.
   const [typedTotal, setTypedTotal] = useState<string | null>(null);
+  // Which ±minutes chip is the one working. `updateDraft` is shared by rename,
+  // project and billable too, so its `variables` can't say which chip it was.
+  const [adjustingStep, setAdjustingStep] = useState<number | null>(null);
 
   const draftSeconds = drafts.reduce((sum, d) => sum + d.duration, 0);
   const proposedTotal = confirmedSeconds + draftSeconds;
@@ -128,20 +131,34 @@ export function DraftReviewDialog({ open, localDate, onClose }: DraftReviewDialo
   const goBack = () => setIndex((i) => Math.max(0, i - 1));
 
   const handleDiscard = (draft: DraftEntry) => {
+    if (discardDraft.isPending) return;
+    // The discard is optimistic, so the list shortens at once and the card
+    // that was *after* this one slides into the same index — staying put is
+    // what lands on the next card. Only clamp when this was the last card,
+    // so the index can't point past the shorter list.
+    const nextLength = drafts.length - 1;
     discardDraft.mutate(draft.id);
-    // The list shortens under us, so staying put lands on the next card.
-    setIndex((i) => Math.min(i, Math.max(0, drafts.length - 2)));
+    setIndex((i) => Math.min(i, Math.max(0, nextLength - 1)));
   };
 
   const adjustMinutes = (draft: DraftEntry, deltaMinutes: number) => {
+    if (updateDraft.isPending) return;
     const nextDuration = Math.max(60, draft.duration + deltaMinutes * 60);
-    updateDraft.mutate({
-      id: draft.id,
-      data: {
-        stop: new Date(new Date(draft.start).getTime() + nextDuration * 1000).toISOString(),
+    setAdjustingStep(deltaMinutes);
+    updateDraft.mutate(
+      {
+        id: draft.id,
+        data: {
+          stop: new Date(new Date(draft.start).getTime() + nextDuration * 1000).toISOString(),
+        },
       },
-    });
+      { onSettled: () => setAdjustingStep(null) }
+    );
   };
+
+  // One flag for the card's controls: Keep is a pure step, but stepping past a
+  // card whose minutes are still saving lands the fix on the wrong entry.
+  const cardBusy = updateDraft.isPending || discardDraft.isPending;
 
   const parsedTotal = parseTimeInput(totalInput);
   const targetDayTotal = parsedTotal ?? proposedTotal;
@@ -241,7 +258,7 @@ export function DraftReviewDialog({ open, localDate, onClose }: DraftReviewDialo
                     ) : (
                       <Check className="h-4 w-4" />
                     )}
-                    Add {drafts.length} to timesheet
+                    Add {drafts.length} {drafts.length === 1 ? "entry" : "entries"}
                   </Button>
                 </div>
               </div>
@@ -267,6 +284,9 @@ export function DraftReviewDialog({ open, localDate, onClose }: DraftReviewDialo
                 onDiscard={() => handleDiscard(current)}
                 onKeep={goNext}
                 onBack={index > 0 ? goBack : undefined}
+                busy={cardBusy}
+                discarding={discardDraft.isPending}
+                adjustingStep={adjustingStep}
               />
             ) : null}
 
@@ -300,6 +320,12 @@ interface DraftCardProps {
   onDiscard: () => void;
   onKeep: () => void;
   onBack?: () => void;
+  /** A save or discard is in flight: every step control waits for it. */
+  busy: boolean;
+  /** The discard specifically — puts the spinner on that button. */
+  discarding: boolean;
+  /** The ±minutes chip whose save is in flight, if any. */
+  adjustingStep: number | null;
 }
 
 function DraftCard({
@@ -315,6 +341,9 @@ function DraftCard({
   onDiscard,
   onKeep,
   onBack,
+  busy,
+  discarding,
+  adjustingStep,
 }: DraftCardProps) {
   // Seeded once per card — the card is keyed by draft id, so switching cards
   // remounts it rather than syncing state through an effect.
@@ -396,9 +425,17 @@ function DraftCard({
                 size="sm"
                 className="h-7 px-2 font-mono text-micro tabular-nums"
                 onClick={() => onAdjust(step)}
+                disabled={busy}
                 aria-label={`${step > 0 ? "Add" : "Remove"} ${Math.abs(step)} minutes`}
+                title={`${step > 0 ? "Add" : "Remove"} ${Math.abs(step)} minutes`}
               >
-                {step > 0 ? `+${step}` : step}
+                {adjustingStep === step ? (
+                  <Spinner size="sm" className="h-3 w-3" />
+                ) : step > 0 ? (
+                  `+${step}`
+                ) : (
+                  step
+                )}
               </Button>
             ))}
           </div>
@@ -417,13 +454,14 @@ function DraftCard({
             variant="ghost"
             size="sm"
             onClick={onDiscard}
+            disabled={busy}
             className="text-muted-foreground"
           >
-            <Trash2 className="h-4 w-4" />
+            {discarding ? <Spinner size="sm" /> : <Trash2 className="h-4 w-4" />}
             Discard
           </Button>
         </div>
-        <Button size="sm" onClick={onKeep} className="gap-1.5">
+        <Button size="sm" onClick={onKeep} disabled={busy} className="gap-1.5">
           <Check className="h-4 w-4" />
           Keep
         </Button>
