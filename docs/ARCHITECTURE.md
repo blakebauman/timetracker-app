@@ -59,7 +59,8 @@ Plugins in play: **email OTP** and **magic link** (the primary passwordless sign
 
 Notable decisions:
 
-- `session.freshAge = 0` — otherwise Better Auth's `list-sessions` 403s (`SESSION_NOT_FRESH`) after a day and breaks the Settings sessions card. Freshness is re-imposed selectively on sensitive ops (`update-user`, `unlink-account`).
+- `session.freshAge = 0` — otherwise Better Auth's `list-sessions` 403s (`SESSION_NOT_FRESH`) after a day and breaks the Settings sessions card. Freshness is re-imposed selectively on sensitive ops (`update-user`, `unlink-account`, `delete-user`).
+- **Account deletion is email-verified** because passwords are retired: `user.deleteUser.sendDeleteAccountVerification` is configured, so `POST /delete-user` only emails a one-time link (`DeleteAccountEmail`, token valid 24 hours) and the account is deleted when `GET /delete-user/callback` is opened from a browser holding the session — the token alone is not enough, and the callback redirects to `/login?deleted=1`.
 - A DB hook auto-creates a personal workspace on signup.
 - `trustedOrigins` includes the pinned `chrome-extension://<id>` origin — the extension is trusted by origin, CSRF stays on for the cookie web app (see `apps/extension/SECURITY_AUDIT.md`).
 - **Email** goes out through the `EMAIL` send_email binding (MIME built with `mimetext`, from `noreply@timetracker.run`): invites, OTP codes, magic links. Bodies are React Email templates (`apps/web/src/worker/emails/*.tsx`) rendered on the worker with `render`/`toPlainText` from `react-email`; the plain-text MIME part is derived from the HTML, and `pnpm email:dev` serves a local template preview.

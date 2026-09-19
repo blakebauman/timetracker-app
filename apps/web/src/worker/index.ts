@@ -82,7 +82,8 @@ const app = new Hono<{ Bindings: Env }>()
   // Better Auth's freshAge:0 (needed for the sessions card) would otherwise leave
   // ungated. See middleware/fresh-session.ts. delete-user is included: with
   // freshAge 0, Better Auth skips its own freshness check on deletion entirely
-  // (and no delete-verification email is configured), so without this gate any
+  // (the request-the-email step; the emailed callback stands on its one-time
+  // token plus the session cookie), so without this gate any
   // stolen cookie or bearer token could irreversibly delete the account.
   .use("/api/auth/update-user", requireFreshSession)
   .use("/api/auth/unlink-account", requireFreshSession)
