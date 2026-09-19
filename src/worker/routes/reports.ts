@@ -76,8 +76,15 @@ export const reportsRouter = new Hono<{
     // All six aggregations share the same WHERE/bindings — one db.batch() round
     // trip (consistent snapshot) instead of six serial D1 queries, which from a
     // far-away PoP is the difference between ~1 RTT and ~6.
-    const [totalsRes, byProjectRes, byClientRes, byTaskRes, byTagRes, dailyRes] =
-      await c.env.DB.batch<Record<string, unknown>>([
+    const [
+      totalsRes,
+      byProjectRes,
+      byClientRes,
+      byTaskRes,
+      byTagRes,
+      dailyRes,
+      dailyByProjectRes,
+    ] = await c.env.DB.batch<Record<string, unknown>>([
         // Total stats
         c.env.DB.prepare(
           `
@@ -174,6 +181,27 @@ export const reportsRouter = new Hono<{
       ORDER BY date ASC
     `
         ).bind(...bindings),
+        // Daily breakdown by project — the same day buckets as above, split by
+        // project, so the daily chart can stack a day by what it was spent on.
+        // Same WHERE and the same rounding expressions, so a day's project
+        // segments always sum to that day's `daily` total.
+        c.env.DB.prepare(
+          `
+      SELECT
+        date(te.start) as date,
+        te.project_id as project_id,
+        p.name as project_name,
+        p.color as color,
+        ${e.total} as total_seconds,
+        ${e.billable} as billable_seconds,
+        COUNT(*) as entry_count
+      FROM time_entries te
+      LEFT JOIN projects p ON p.id = te.project_id
+      WHERE ${where}
+      GROUP BY date(te.start), te.project_id
+      ORDER BY date ASC, total_seconds DESC
+    `
+        ).bind(...bindings),
       ]);
     const totals = totalsRes.results as Record<string, number>[];
     const byProject = byProjectRes.results;
@@ -181,6 +209,7 @@ export const reportsRouter = new Hono<{
     const byTask = byTaskRes.results;
     const byTag = byTagRes.results;
     const daily = dailyRes.results;
+    const dailyByProject = dailyByProjectRes.results;
 
     const mapBreakdown = (
       rows: Record<string, unknown>[],
@@ -213,6 +242,15 @@ export const reportsRouter = new Hono<{
         totalSeconds: r.total_seconds as number,
         billableSeconds: (r.billable_seconds as number) ?? 0,
         entryCount: r.entry_count as number,
+      })),
+      dailyByProject: dailyByProject.map((r) => ({
+        date: r.date as string,
+        projectId: (r.project_id as string | null) ?? null,
+        projectName: (r.project_name as string | null) ?? "No project",
+        color: (r.color as string | null) ?? "#94a3b8",
+        totalSeconds: (r.total_seconds as number) ?? 0,
+        billableSeconds: (r.billable_seconds as number) ?? 0,
+        entryCount: (r.entry_count as number) ?? 0,
       })),
     });
   })

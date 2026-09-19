@@ -264,6 +264,7 @@ export function ReportsPage() {
                 <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
                   <DailyBarChart
                     data={summary.daily}
+                    byProject={summary.dailyByProject ?? []}
                     since={range.since}
                     until={range.until}
                   />
