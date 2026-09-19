@@ -64,13 +64,14 @@ Until the two secrets below are set, the app runs fine and the Settings card sho
 
 3. **Production** — set as Worker secrets:
    ```
+   cd apps/web
    wrangler secret put GOOGLE_CALENDAR_CLIENT_ID
    wrangler secret put GOOGLE_CALENDAR_CLIENT_SECRET
    ```
 
 4. **Database** — apply the migration that adds `time_entries.calendar_event_id`:
    ```
-   wrangler d1 migrations apply time-tracker --remote
+   cd apps/web && wrangler d1 migrations apply time-tracker --remote
    ```
 
 ## One-time Entra ID setup (Outlook / Microsoft 365)
@@ -110,7 +111,8 @@ MICROSOFT_CALENDAR_CLIENT_ID=...
 MICROSOFT_CALENDAR_CLIENT_SECRET=...
 MICROSOFT_CALENDAR_TENANT=common   # or your tenant id
 
-# Production
+# Production (from apps/web, where wrangler.jsonc lives)
+cd apps/web
 npx wrangler secret put MICROSOFT_CALENDAR_CLIENT_ID
 npx wrangler secret put MICROSOFT_CALENDAR_CLIENT_SECRET
 npx wrangler secret put MICROSOFT_CALENDAR_TENANT
@@ -169,15 +171,15 @@ Recurring events are expanded into individual instances (`singleEvents=true`).
 
 | Concern | Where |
 |---|---|
-| Provider shapes + registry | `src/worker/lib/calendar-providers.ts` |
-| Google OAuth + Calendar v3 | `src/worker/lib/google-calendar.ts` |
-| Microsoft OAuth + Graph | `src/worker/lib/microsoft-calendar.ts` |
-| Loading/refreshing connections, merged reads | `src/worker/lib/calendar-connections.ts` |
-| Connect/callback/status/disconnect routes | `src/worker/routes/calendar.ts` |
-| Auto-track + range convert | `src/worker/lib/calendar-autotrack.ts` |
-| Settings card | `src/react-app/components/settings/CalendarSyncCard.tsx` |
+| Provider shapes + registry | `apps/web/src/worker/lib/calendar-providers.ts` |
+| Google OAuth + Calendar v3 | `apps/web/src/worker/lib/google-calendar.ts` |
+| Microsoft OAuth + Graph | `apps/web/src/worker/lib/microsoft-calendar.ts` |
+| Loading/refreshing connections, merged reads | `apps/web/src/worker/lib/calendar-connections.ts` |
+| Connect/callback/status/disconnect routes | `apps/web/src/worker/routes/calendar.ts` |
+| Auto-track + range convert | `apps/web/src/worker/lib/calendar-autotrack.ts` |
+| Settings card | `apps/web/src/react-app/components/settings/CalendarSyncCard.tsx` |
 | Tests | `e2e/calendar-providers.spec.ts` |
 
 Tokens are encrypted at rest with AES-GCM keyed by `AUTH_SECRET`
-(`src/worker/lib/crypto.ts`) in `integrations.credentials`, one row per provider
+(`apps/web/src/worker/lib/crypto.ts`) in `integrations.credentials`, one row per provider
 per workspace.

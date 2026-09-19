@@ -11,7 +11,8 @@ import { writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 // Shared with the in-app <BrandMark> component so the shipped assets and the
-// UI can never render two different marks (node strips the types natively).
+// UI can never render two different marks. Resolves through the workspace link
+// to packages/core/src — node strips the types natively.
 import {
   BRAND_RED,
   GROUND_DARK,
@@ -19,10 +20,12 @@ import {
   MUTED_INK_DARK,
   MARK_FACE_RATIO,
   clockGlyph,
-} from "../src/shared/brand-mark.ts";
+} from "@timetracker/core/brand-mark";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
+const webPublic = path.join(root, "apps", "web", "public");
+const extIcons = path.join(root, "apps", "extension", "icons");
 
 const RED = BRAND_RED;
 const DARK = GROUND_DARK;
@@ -146,35 +149,35 @@ const png = (svg, size) => sharp(Buffer.from(svg)).resize(size, size).png().toBu
 // ── Extension action icons (unchanged mark, same four sizes) ───────────────
 for (const size of [16, 32, 48, 128]) {
   const data = await png(markSVG(size), size);
-  writeFileSync(path.join(root, "extension", "icons", `icon${size}.png`), data);
-  console.log(`✓ extension/icons/icon${size}.png`);
+  writeFileSync(path.join(extIcons, `icon${size}.png`), data);
+  console.log(`✓ apps/extension/icons/icon${size}.png`);
 }
 
 // ── Web favicon: SVG (modern browsers) + multi-res .ico (fallback) ─────────
-writeFileSync(path.join(root, "public", "logo.svg"), markSVG(32));
-console.log("✓ public/logo.svg");
+writeFileSync(path.join(webPublic, "logo.svg"), markSVG(32));
+console.log("✓ apps/web/public/logo.svg");
 
 const icoSizes = [16, 32, 48];
 const icoImages = [];
 for (const size of icoSizes) {
   icoImages.push({ size, data: await png(markSVG(size), size) });
 }
-writeFileSync(path.join(root, "public", "favicon.ico"), pngsToIco(icoImages));
-console.log("✓ public/favicon.ico");
+writeFileSync(path.join(webPublic, "favicon.ico"), pngsToIco(icoImages));
+console.log("✓ apps/web/public/favicon.ico");
 
 // ── PWA manifest icons — "any" (inscribed circle) + "maskable" (full-bleed) ─
 for (const size of [192, 512]) {
-  writeFileSync(path.join(root, "public", `logo${size}.png`), await png(markSVG(size), size));
-  console.log(`✓ public/logo${size}.png`);
-  writeFileSync(path.join(root, "public", `maskable-${size}.png`), await png(maskableSVG(size), size));
-  console.log(`✓ public/maskable-${size}.png`);
+  writeFileSync(path.join(webPublic, `logo${size}.png`), await png(markSVG(size), size));
+  console.log(`✓ apps/web/public/logo${size}.png`);
+  writeFileSync(path.join(webPublic, `maskable-${size}.png`), await png(maskableSVG(size), size));
+  console.log(`✓ apps/web/public/maskable-${size}.png`);
 }
 
 // ── apple-touch-icon: 180×180, full-bleed background — iOS fills any
 // transparent area with black (not white), so this must not rely on the
 // inscribed-circle "any" mark's transparent corners. ───────────────────────
-writeFileSync(path.join(root, "public", "apple-touch-icon.png"), await png(maskableSVG(180), 180));
-console.log("✓ public/apple-touch-icon.png");
+writeFileSync(path.join(webPublic, "apple-touch-icon.png"), await png(maskableSVG(180), 180));
+console.log("✓ apps/web/public/apple-touch-icon.png");
 
 // ── PWA shortcut icons (Start Timer / Reports / Projects) ──────────────────
 const shortcuts = [
@@ -183,12 +186,12 @@ const shortcuts = [
   ["shortcut-projects", projectsSVG(96)],
 ];
 for (const [name, svg] of shortcuts) {
-  writeFileSync(path.join(root, "public", `${name}.png`), await png(svg, 96));
-  console.log(`✓ public/${name}.png`);
+  writeFileSync(path.join(webPublic, `${name}.png`), await png(svg, 96));
+  console.log(`✓ apps/web/public/${name}.png`);
 }
 
 // ── Open Graph / Twitter share image ────────────────────────────────────────
-await sharp(Buffer.from(ogImageSVG())).png().toFile(path.join(root, "public", "og-image.png"));
-console.log("✓ public/og-image.png");
+await sharp(Buffer.from(ogImageSVG())).png().toFile(path.join(webPublic, "og-image.png"));
+console.log("✓ apps/web/public/og-image.png");
 
 console.log("\nAll icons generated.");

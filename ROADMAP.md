@@ -39,7 +39,7 @@ Entra registration steps. Still deferred:
 The provider seam (`lib/calendar-providers.ts` registry +
 `lib/calendar-connections.ts`) — a third provider is a new module and one
 registry entry, nothing else. Plus the `integrations` table + workspace scoping,
-`encryptJSON`/`decryptJSON` (`src/worker/lib/crypto.ts`), the `scheduled()` cron
+`encryptJSON`/`decryptJSON` (`apps/web/src/worker/lib/crypto.ts`), the `scheduled()` cron
 handler + per-workspace sweep pattern (`lib/calendar-autotrack.ts`), the calendar
 view + `CalendarCreateDialog`, the `calendar_event_id` link on `time_entries`,
 and the WebSocket `broadcast` for live refresh.
@@ -98,7 +98,7 @@ through the app.
 - **Cross-isolate auth rate limiting** — the credential-endpoint limiter
   (`middleware/rate-limit.ts`) is in-isolate only; a distributed attacker (or one
   user spread across colos) gets N× the configured limit. Flagged in
-  `extension/SECURITY_AUDIT.md` and again in the July 2026 audit. Cheapest
+  `apps/extension/SECURITY_AUDIT.md` and again in the July 2026 audit. Cheapest
   durable fix: a zone-level **WAF rate-limiting rule on `/api/auth/*`**
   (dashboard config, no code); alternatives are the Workers Rate Limiting
   binding or a DO-backed counter for the email-sending + AI endpoints
@@ -212,13 +212,13 @@ what the audit turned up; nothing here is outstanding.*
 
 ## Loose ends
 
-- **Extension is not published** — `trustedOrigins` in `src/worker/auth.ts`
+- **Extension is not published** — `trustedOrigins` in `apps/web/src/worker/auth.ts`
   pins only the dev-key extension ID
   (`chrome-extension://nogikmhdpnnedmfldanickgpikmifcje`). Chrome Web Store
   upload is the blocker; after the first upload the store-assigned ID has to be
   added alongside it (or the manifest `key` kept so the ID matches), per
-  `extension/PUBLISHING.md`. Until then the extension only authenticates when
-  loaded unpacked from `extension/.keys/extension.pem`.
+  `apps/extension/PUBLISHING.md`. Until then the extension only authenticates when
+  loaded unpacked from `apps/extension/.keys/extension.pem`.
 - **Dead `two_factor` table** — migration `0017_two_factor_and_passkey.sql`
   still creates it, but nothing has referenced `twoFactor` since passwords were
   retired in #73 (the enable flow required a password). Passkey from the same

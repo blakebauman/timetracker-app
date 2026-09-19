@@ -2,7 +2,7 @@
  * Seed the LOCAL dev workspace with data that actually exercises drafting,
  * budget pacing and the email digest.
  *
- * `seeds/dev-seed.sql` gives you a workspace with some history, but its data is
+ * `apps/web/seeds/dev-seed.sql` gives you a workspace with some history, but its data is
  * too flat to reach the interesting paths: no project has a budget, so pacing
  * reports `no_budget` for everything; nothing is missing from today, so drafting
  * proposes nothing. This fills those gaps — and running it is how two real bugs
@@ -64,7 +64,7 @@ const isoDate = (dayDelta = 0) => {
 const signin = await api("POST", "/api/auth/sign-in/email", DEMO);
 if (!signin?.user) {
   console.error("Sign-in failed. Apply the dev seed first:");
-  console.error("  npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql");
+  console.error("  pnpm --filter @timetracker/web exec wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql");
   process.exit(1);
 }
 console.log(`signed in as ${signin.user.email}`);

@@ -11,16 +11,18 @@ Drive it with Playwright; don't substitute typecheck/tests for observation.
 
 ## Handle (launch)
 
-Playwright is already configured (`playwright.config.ts`) and its `webServer`
-block auto-runs `pnpm dev` against `http://localhost:5173` with
-`reuseExistingServer` on, so you don't manage the server yourself.
+Playwright lives in the `apps/web` workspace (`apps/web/playwright.config.ts`) and its
+`webServer` block auto-runs `pnpm dev` against `http://localhost:5173` with
+`reuseExistingServer` on, so you don't manage the server yourself. Run it via
+`pnpm --filter @timetracker/web exec playwright …` from the repo root (there is no
+root Playwright binary); a throwaway config goes at `apps/web/playwright.verify.config.ts`.
 
-Write a **throwaway driver spec** in `e2e/_verify_*.spec.ts`, run just it, then
+Write a **throwaway driver spec** in `apps/web/e2e/_verify_*.spec.ts`, run just it, then
 delete it:
 
 ```bash
-pnpm exec playwright test _verify_myflow --reporter=list
-rm e2e/_verify_myflow.spec.ts
+pnpm --filter @timetracker/web exec playwright test _verify_myflow --reporter=list
+rm apps/web/e2e/_verify_myflow.spec.ts
 ```
 
 Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
@@ -28,7 +30,7 @@ Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
 
 ## Auth + seeding
 
-- `signUp(page)` from `e2e/auth.ts` creates a fresh account/workspace and lands
+- `signUp(page)` from `apps/web/e2e/auth.ts` creates a fresh account/workspace and lands
   on `/`. Each call is isolated — entries never collide.
 - The project/task pickers have **no inline create**. Seed via the authenticated
   API using the page's cookie jar:

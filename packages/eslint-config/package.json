@@ -8,11 +8,11 @@
 		".": "./base.js"
 	},
 	"dependencies": {
-		"@eslint/js": "10.0.1",
-		"eslint-plugin-react-hooks": "7.1.1",
-		"eslint-plugin-react-refresh": "0.5.3",
-		"globals": "17.7.0",
-		"typescript-eslint": "8.64.0"
+		"@eslint/js": "catalog:",
+		"eslint-plugin-react-hooks": "catalog:",
+		"eslint-plugin-react-refresh": "catalog:",
+		"globals": "catalog:",
+		"typescript-eslint": "catalog:"
 	},
 	"peerDependencies": {
 		"eslint": ">=9"

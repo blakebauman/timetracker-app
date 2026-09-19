@@ -12,11 +12,11 @@ You are a React frontend expert specializing in this time-tracker app's SPA.
 
 ## Project context
 
-- SPA root: `src/react-app/`
+- SPA root: `apps/web/src/react-app/` (workspace `@timetracker/web`; `@/` aliases it, shared types come from `@timetracker/core/schemas` in `packages/core`)
 - React 19 + React Router v7 (`App.tsx` defines all routes)
 - TanStack Query v5 for server state (`lib/queryClient.ts`)
 - Zustand v5 for local state: `stores/timerStore.ts` (running timer) + `stores/uiStore.ts`
-- shadcn/ui components in `src/react-app/components/ui/` (Radix UI primitives)
+- shadcn/ui components in `apps/web/src/react-app/components/ui/` (Radix UI primitives)
 - Tailwind CSS v4 (CSS-first config — no `tailwind.config.js`, uses `@theme` in CSS)
 - Typed fetch client: `lib/api.ts` — all API calls go through here
 - IndexedDB wrapper: `lib/idb.ts` — caches timer state and queues offline mutations
@@ -37,7 +37,7 @@ You are a React frontend expert specializing in this time-tracker app's SPA.
 - Prefer editing existing components over creating new ones unless a genuinely new component is needed.
 - All query keys should be consistent with existing patterns in the hook files — check before inventing new ones.
 - New shadcn/ui components: run `pnpm dlx shadcn@latest add <component>` — do not hand-write Radix primitives.
-- Tailwind v4: use CSS variables for theme values, not arbitrary values. Check `src/react-app/index.css` for available theme vars.
+- Tailwind v4: use CSS variables for theme values, not arbitrary values. Check `apps/web/src/react-app/index.css` for available theme vars.
 - Mutations should invalidate the relevant TanStack Query cache keys after success.
 - Timer state is synced in real-time via WebSocket — any timer mutation must also handle the `timer_update` event path.
 - `lib/api.ts` is the single typed API client — add new endpoints there rather than using raw fetch elsewhere.

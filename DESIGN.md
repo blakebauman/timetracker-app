@@ -466,7 +466,7 @@ A raw numeric layer fails ESLint. Sonner manages the toast layer itself and is l
 
 The brand mark is a **circled analog clock reading ~10:10** (the classic "watch ad" angle): a brand-red circle, a white ring at 90% opacity, two rounded white hands, and a centre dot. It is the one place the brand red is a fill by definition — and, on the dark rail, the one place it is a light: three stacked red drop-shadows behind the mark, off in light mode.
 
-**Single source of truth:** `src/shared/brand-mark.ts` — glyph geometry (`clockGlyph`), face ratio (0.39), and the pre-converted sRGB hexes of the brand tokens for surfaces that can't use `oklch()` (static assets, email, OG image):
+**Single source of truth:** `packages/core/src/brand-mark.ts` — glyph geometry (`clockGlyph`), face ratio (0.39), and the pre-converted sRGB hexes of the brand tokens for surfaces that can't use `oklch()` (static assets, email, OG image):
 
 | Token | oklch | hex |
 |---|---|---|
@@ -476,9 +476,9 @@ The brand mark is a **circled analog clock reading ~10:10** (the classic "watch 
 The file also exports `GROUND_LIGHT`, `GROUND_DARK` and `MUTED_INK_DARK` hexes that still encode the retired tinted ramp (0.988/0.185/0.72 with chroma); the app's own `--background` and `--muted-foreground` are the frontmatter values above, and those constants are stale drift, not a rule: regenerate them from the current tokens before the next `pnpm generate-icons`.
 
 **Two consumers, one geometry:**
-- `src/react-app/components/brand/BrandMark.tsx` — the in-app mark (the rail's brand slot, the phone brand strip and nav sheet, login/signup). Fills the circle with `var(--primary)` so it tracks the theme.
+- `apps/web/src/react-app/components/brand/BrandMark.tsx` — the in-app mark (the rail's brand slot, the phone brand strip and nav sheet, login/signup). Fills the circle with `var(--primary)` so it tracks the theme.
 - `scripts/generate-icons.mjs` (`pnpm generate-icons`) — every static asset: favicon (`logo.svg` + multi-res `favicon.ico`), PWA `any` + `maskable` icons, `apple-touch-icon`, PWA shortcut icons, OG share image, and the extension's four action icons.
 
 **Named rule — One Clock.** No surface may draw its own clock glyph (including lucide's `Clock`) as a brand stand-in. The mark is always the shared geometry; change it in `brand-mark.ts` and re-run `pnpm generate-icons`. The lucide `Timer` icon on the rail is a *navigation* icon, not a brand mark — that distinction is the line.
 
-**Satellite surfaces:** the extension popup consumes the same oklch tokens directly in its inline CSS (Chrome-only surface); transactional email uses the pre-converted hexes via `src/worker/emails/theme.ts` and a deliberately text-only header ("timetracker.run") — no image logo in email, since image blocking would break it.
+**Satellite surfaces:** the extension popup consumes the same oklch tokens directly in its inline CSS (Chrome-only surface); transactional email uses the pre-converted hexes via `apps/web/src/worker/emails/theme.ts` and a deliberately text-only header ("timetracker.run") — no image logo in email, since image blocking would break it.

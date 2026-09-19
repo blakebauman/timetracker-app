@@ -196,11 +196,11 @@ tools are only registered for read+write.
 
 | Concern | Where |
 |---|---|
-| Tool definitions, `serverInfo`, `instructions` | `src/worker/mcp/server.ts` |
-| Key creation, hashing, resolution | `src/worker/lib/api-keys.ts` |
-| Key management API (session-only) | `src/worker/routes/api-keys.ts` |
-| `/mcp` request gate | `handleMcpRequest` in `src/worker/index.ts` |
-| Settings card | `src/react-app/components/settings/McpConnectorCard.tsx` |
+| Tool definitions, `serverInfo`, `instructions` | `apps/web/src/worker/mcp/server.ts` |
+| Key creation, hashing, resolution | `apps/web/src/worker/lib/api-keys.ts` |
+| Key management API (session-only) | `apps/web/src/worker/routes/api-keys.ts` |
+| `/mcp` request gate | `handleMcpRequest` in `apps/web/src/worker/index.ts` |
+| Settings card | `apps/web/src/react-app/components/settings/McpConnectorCard.tsx` |
 | Tests | `e2e/mcp.spec.ts` |
 
 Transport is `agents/mcp`'s `createMcpHandler` — Streamable HTTP, stateless. A

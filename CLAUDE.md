@@ -5,31 +5,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-pnpm dev              # Start Vite + Cloudflare Worker dev server (http://localhost:5173) via @cloudflare/vite-plugin
-pnpm build            # TypeScript compile + Vite bundle
-pnpm build:ext        # Build browser extension to dist/extension/
-pnpm zip:ext          # Build + package dist/timetracker-extension.zip for Chrome Web Store upload
-pnpm ext:id           # Print the dev extension ID derived from extension/.keys/extension.pem
-pnpm email:dev        # React Email preview server for src/worker/emails/ templates (http://localhost:3333)
+pnpm dev              # turbo: start every app's dev task — today that is apps/web's Vite + Cloudflare Worker dev server (http://localhost:5173) via @cloudflare/vite-plugin
+pnpm dev:web          # The same dev server without turbo in front of it (pnpm --filter @timetracker/web dev)
+pnpm build            # turbo run build — Vite bundles for apps/web (dist/client + worker) and apps/extension. Does NOT typecheck; `pnpm check` does
+pnpm typecheck        # turbo run typecheck — apps/web `tsc -b` (app/worker/node projects), apps/extension + packages/core `tsc --noEmit`
+pnpm lint             # turbo run lint — per-workspace `eslint .` with the shared @timetracker/eslint-config
+pnpm check            # Full validation in apps/web: tsc -b + vite build + wrangler deploy --dry-run
+pnpm run deploy       # turbo run deploy — build, then `wrangler deploy` from apps/web (use `run` — `pnpm deploy` hits pnpm's built-in)
+pnpm build:ext        # Build the browser extension to apps/extension/dist/ (pnpm --filter @timetracker/extension build)
+pnpm zip:ext          # Build + package apps/extension/timetracker-extension.zip for Chrome Web Store upload
+pnpm ext:id           # Print the dev extension ID derived from apps/extension/.keys/extension.pem
+pnpm email:dev        # React Email preview server for apps/web/src/worker/emails/ templates (http://localhost:3333)
 pnpm seed:demo        # Seed the LOCAL dev workspace with data that exercises drafting, pacing and digests (needs `pnpm dev` running)
-pnpm lint             # ESLint
-pnpm check            # Full validation: typecheck + build + wrangler dry-run deploy
-pnpm run deploy       # Deploy to Cloudflare Workers (use `run` — `pnpm deploy` hits pnpm's built-in)
-pnpm cf-typegen       # Regenerate TS types from wrangler.jsonc bindings (run after binding changes)
-npx wrangler tail     # Stream live worker logs
-pnpm test:e2e         # Run Playwright e2e tests (spins up `pnpm dev` against localhost:5173)
+pnpm generate-icons   # Regenerate apps/web/public icons + apps/extension/icons from packages/core's brand mark
+pnpm cf-typegen       # Regenerate apps/web/worker-configuration.d.ts from wrangler.jsonc bindings (run after binding changes)
+pnpm test:e2e         # Run Playwright e2e tests in apps/web (spins up `pnpm dev` against localhost:5173)
+cd apps/web && npx wrangler tail   # Stream live worker logs (wrangler commands run where wrangler.jsonc lives)
 ```
 
-No unit test framework is configured. Playwright e2e tests live in `e2e/` and drive the app through a real browser against the Vite dev server.
+Every root script except `seed:demo` and `generate-icons` delegates to a workspace (`turbo run …` or `pnpm --filter …`). Running a workspace script directly (`cd apps/web && pnpm dev`) is always fine.
+
+No unit test framework is configured. Playwright e2e tests live in `apps/web/e2e/` and drive the app through a real browser against the Vite dev server.
 
 ### CI / merging
 
-`.github/workflows/e2e.yml` runs the Playwright suite on every push to `main` and every PR (applies local D1 migrations, then `pnpm test:e2e`). This `e2e` check is a **required branch-protection check** — `gh pr merge` is blocked until it reports `pass`; poll `gh pr checks <PR#>` rather than assuming an immediate merge succeeds.
+`.github/workflows/e2e.yml` runs the Playwright suite on every push to `main` and every PR (applies local D1 migrations from `apps/web`, then `pnpm test:e2e`). This `e2e` check is a **required branch-protection check** — `gh pr merge` is blocked until it reports `pass`; poll `gh pr checks <PR#>` rather than assuming an immediate merge succeeds. `.github/workflows/ci.yml` runs `pnpm lint`, `pnpm typecheck` and `pnpm build` as three parallel jobs alongside it.
+
+Git hooks are managed by **lefthook** (`lefthook.yml`, installed by the root `prepare` script): pre-commit runs `eslint --fix` on staged `.ts`/`.tsx`, commit-msg runs commitlint (conventional commits; `design` and `polish` are allowed types alongside the standard set — see `.commitlintrc.json`), and pre-push runs `pnpm lint` + `pnpm typecheck`. The e2e suite is deliberately not a hook.
 
 ### Deploy sequence
 
 1. Land the PR (CI green, then merge + `git pull --ff-only` on `main`).
-2. If the change added a file in `migrations/`, apply it to the **remote** D1 database first: `npx wrangler d1 migrations apply time-tracker --remote` (the `db`/`migrate` skills default to local).
+2. If the change added a file in `apps/web/migrations/`, apply it to the **remote** D1 database first: `cd apps/web && npx wrangler d1 migrations apply time-tracker --remote` (the `db`/`migrate` skills default to local).
 3. `pnpm check` (dry-run validation), then `pnpm run deploy`.
 4. Smoke-check: `curl -s -o /dev/null -w "%{http_code}" https://timetracker.run/` should be `200`.
 
@@ -39,18 +46,29 @@ Migrations must land before the worker code that queries their new columns/table
 
 Full-stack TypeScript time tracker (Toggl-like) running entirely on Cloudflare's edge platform.
 
-### Layout
+### Monorepo structure (pnpm workspaces + Turborepo)
 
-- `src/react-app/` — React 19 SPA (Vite, TailwindCSS v4, shadcn/ui)
-- `src/worker/` — Hono backend on Cloudflare Workers
-- `src/shared/schemas.ts` — Zod schemas shared by both sides
-- `extension/` — Browser extension (separate Vite build)
-- `migrations/` — Cloudflare D1 SQL migration files
+```
+apps/
+  web/           @timetracker/web — the SPA (src/react-app) and the Hono Worker (src/worker), built and deployed as ONE Worker with static assets; owns wrangler.jsonc, migrations/, seeds/, e2e/, public/, index.html
+  extension/     @timetracker/extension — MV3 Chrome extension, separate Vite build to apps/extension/dist
+packages/
+  core/          @timetracker/core — Zod schemas, task-recurrence, brand mark; TypeScript source exported via an exports map (no build step); import as @timetracker/core/schemas etc.
+  tsconfig/      @timetracker/tsconfig — base / dom / worker / library presets (no root tsconfig)
+  eslint-config/ @timetracker/eslint-config — shared flat config incl. the design-system guards; every workspace has a one-line eslint.config.ts re-export
+scripts/         repo-level scripts: generate-icons.mjs (writes apps/web/public + apps/extension/icons), seed-feature-demo.mjs
+```
 
-### Backend (`src/worker/`)
+- **Versions live in the `catalog:` in `pnpm-workspace.yaml`.** Every workspace dependency is `catalog:` (third-party) or `workspace:*` (internal), never a literal range — add a new dependency to the catalog first, then reference it. `allowBuilds` in the same file lists the packages allowed to run install scripts.
+- **Turbo tasks** (`turbo.json`): `build`, `typecheck`, `lint`, `dev`, `deploy`. `build` caches `dist/**` and `.wrangler/deploy/**` only — `apps/web/.wrangler/state` is the local D1 database and must never be a cached output.
+- **Generated — do not hand-edit:** `apps/web/worker-configuration.d.ts` (`pnpm cf-typegen`), `apps/web/public/*.png` / `*.ico` / `logo.svg` and `apps/extension/icons/*.png` (`pnpm generate-icons`), `pnpm-lock.yaml` (`pnpm install`).
+- `pnpm run deploy`, NOT `pnpm deploy` — pnpm has a built-in by that name.
+- Node >= 22; pnpm 10.33 pinned via `packageManager` (the `preinstall` script rejects npm/yarn).
+
+### Backend (`apps/web/src/worker/`)
 
 - `index.ts` — Hono app entry; mounts all route groups and auth middleware, and exports the worker's `scheduled()` handler (see Cron below) plus both DO classes alongside `fetch`. Requests to `/agents/*` are intercepted **before** Hono: after auth, the agent-instance URL segment is rewritten to the caller's workspace id (tenant isolation for chat) and handed to the Agents SDK's `routeAgentRequest`.
-- `auth.ts` — Better Auth config: passwordless sign-in (email OTP + magic link) + bearer tokens (extension), plus `admin` (site-wide role: list/ban/impersonate), `organization` (workspace = organization; owner/admin/member roles, email invites via the `EMAIL` send_email binding + `mimetext`), passkey, and Google social login. All outgoing email bodies are React Email templates (`src/worker/emails/*.tsx`, shared brand tokens in `emails/theme.ts`) rendered in `sendEmail` via `render`/`toPlainText` from the consolidated `react-email` package (v6 — do NOT add the deprecated `@react-email/components`); preview with `pnpm email:dev`. Email/password is dev/e2e-only, gated on `ENABLE_PASSWORD_AUTH` (set in `.dev.vars` + CI, never deployed) — the e2e `signUp` helper and the seed demo login use the API endpoints directly. TOTP twoFactor was removed with passwords (its enable flow requires one). DB hook auto-creates a personal workspace on signup. `session.freshAge` is explicitly `0` — Better Auth's `list-sessions` endpoint 403s (`SESSION_NOT_FRESH`) once a session passes the default 1-day freshness window otherwise, which broke the Settings → Active Sessions card for every returning user; freshness is re-imposed on sensitive ops (`update-user`, `unlink-account`, `delete-user`). Workspace membership is re-verified against `member` on every request (`middleware/workspace.ts` `resolveWorkspace`, shared with the `/agents/*` gate) — Better Auth only clears `activeOrganizationId` on self-removal.
+- `auth.ts` — Better Auth config: passwordless sign-in (email OTP + magic link) + bearer tokens (extension), plus `admin` (site-wide role: list/ban/impersonate), `organization` (workspace = organization; owner/admin/member roles, email invites via the `EMAIL` send_email binding + `mimetext`), passkey, and Google social login. All outgoing email bodies are React Email templates (`src/worker/emails/*.tsx` under `apps/web`, shared brand tokens in `emails/theme.ts`) rendered in `sendEmail` via `render`/`toPlainText` from the consolidated `react-email` package (v6 — do NOT add the deprecated `@react-email/components`); preview with `pnpm email:dev`. Email/password is dev/e2e-only, gated on `ENABLE_PASSWORD_AUTH` (set in `.dev.vars` + CI, never deployed) — the e2e `signUp` helper and the seed demo login use the API endpoints directly. TOTP twoFactor was removed with passwords (its enable flow requires one). DB hook auto-creates a personal workspace on signup. `session.freshAge` is explicitly `0` — Better Auth's `list-sessions` endpoint 403s (`SESSION_NOT_FRESH`) once a session passes the default 1-day freshness window otherwise, which broke the Settings → Active Sessions card for every returning user; freshness is re-imposed on sensitive ops (`update-user`, `unlink-account`, `delete-user`). Workspace membership is re-verified against `member` on every request (`middleware/workspace.ts` `resolveWorkspace`, shared with the `/agents/*` gate) — Better Auth only clears `activeOrganizationId` on self-removal.
 - `middleware/workspace.ts` — Extracts workspace context from every authenticated request; all route handlers expect `c.get('workspace')`
 - `routes/` — One file per resource: `time-entries`, `projects` (includes `POST /recolor`, AI-assisted, and `GET /pacing`), `clients`, `tasks` (the planning model — see Tasks below), `tags` (includes color), `favorites`, `recurring`, `drafts` (proposed entries awaiting review — see Drafting below), `reports` (summary/grouped/weekly/detailed, rounding in SQL), `saved-reports`, `planner` (per-user planned allocations for the Planner view: cell upsert + bulk import), `settings` (per-user prefs on the auth `user` row, incl. digest prefs + `POST /digest/send`), `calendar` (multi-provider sync — `/:provider/connect|callback`, `GET /status` per provider, auto-track toggle, `POST /convert`), `ai` (`/quick-entry` NL parse, `/summary` draft; rate-limited), `assistant` (`GET /nudges` deterministic, `POST /track-event`, memory list/delete — chat is NOT here, see ChatAgent below), `api-keys` (workspace keys for MCP; session-only), `integrations` (Workfront/Dynamics push, SSRF-guarded), `admin` (`DELETE /users/:id`), `websocket`
 - `db/queries.ts` — Direct SQL helpers for D1; `ENTRY_SELECT` is the canonical JOIN for time entries; `broadcast()` sends WebSocket events via Durable Object; `upsertTags()` auto-assigns a deterministic color to new tags
@@ -61,13 +79,13 @@ Full-stack TypeScript time tracker (Toggl-like) running entirely on Cloudflare's
 - `lib/calendar-autotrack.ts` / `lib/recurring.ts` / `lib/digest.ts` — Cron-driven jobs (see below).
 - `lib/calendar-providers.ts` / `lib/calendar-connections.ts` / `lib/google-calendar.ts` / `lib/microsoft-calendar.ts` — **Calendar sync is multi-provider**: Google Calendar and Outlook / Microsoft 365, each optional, and a workspace may connect BOTH (one `integrations` row per provider, keyed by `type`). Everything downstream — ghost blocks, auto-track, nudges, day drafting — calls `fetchWorkspaceEvents()` and never knows the source. Two Microsoft-only traps, both handled and both silent if reintroduced: refresh tokens **rotate** (Google's don't), and Graph returns **local-naive timestamps** that must be read as UTC via `Prefer: outlook.timezone` — the latter looks correct on a Worker (UTC) and is wrong for every user west of it. See `docs/CALENDAR_SYNC.md`.
 - `lib/drafts.ts` — **Drafting a day.** Deterministic candidates (calendar events that ended untracked, uncovered stretches in the day's working window, weekday habits from the last 8 weeks) → **one** AI enrichment call for description + project → validation with a deterministic fallback. Drafts live in their own `draft_entries` table, never behind a status column on `time_entries`: a draft must never reach a report, invoice, project total or integration push, and a separate table makes that structural rather than a promise every aggregate query has to keep. Confirming inserts a real entry and deletes the draft; `POST /drafts/confirm` optionally scales the batch to a reported day total (`scaleDurations`), moving each entry's *end*, never its start. Regeneration is idempotent by unique index on the calendar event and on the slot.
-- `routes/tasks.ts` + `src/shared/task-recurrence.ts` — **Tasks.** Tasks are the *plan* side of the timer, `time_entries` the *actual* side. `tasks` carries `due_date` (a local `YYYY-MM-DD` — a due date is a **day**, never an instant), `priority` (1–4, default 4), `sort_order` (REAL, fractional index so a drag writes one row), a self-referencing `parent_id` (**one level only**, enforced in `routes/tasks.ts` since SQLite can't express it), `completed_at`, `recur_rule`, and `description` (the task's **own** notes — distinct from a time entry's description, which goes to a client; conflating them puts acceptance criteria on an invoice line). Three invariants are server-side: the task row's `tracked_seconds` **includes its subtasks'** (a parent is a container; without the rollup it reads as zero all sprint), completing a repeating task **spawns the next occurrence inside the same `PUT`** from the client-supplied `completedOn` local date (no cron, and the UTC worker never guesses a due date), and the rule moves to the new occurrence so reopening the old one can't mint a second. Recurrence vocabulary + local-date arithmetic live in `src/shared/task-recurrence.ts`, shared by worker and client. Quick-add token parsing (`tomorrow`, `fri`, `3d`, `p1`, `#project`) is **deterministic, no AI** — same reasoning as pacing: capture must be instant and repeatable.
+- `routes/tasks.ts` + `packages/core/src/task-recurrence.ts` — **Tasks.** Tasks are the *plan* side of the timer, `time_entries` the *actual* side. `tasks` carries `due_date` (a local `YYYY-MM-DD` — a due date is a **day**, never an instant), `priority` (1–4, default 4), `sort_order` (REAL, fractional index so a drag writes one row), a self-referencing `parent_id` (**one level only**, enforced in `routes/tasks.ts` since SQLite can't express it), `completed_at`, `recur_rule`, and `description` (the task's **own** notes — distinct from a time entry's description, which goes to a client; conflating them puts acceptance criteria on an invoice line). Three invariants are server-side: the task row's `tracked_seconds` **includes its subtasks'** (a parent is a container; without the rollup it reads as zero all sprint), completing a repeating task **spawns the next occurrence inside the same `PUT`** from the client-supplied `completedOn` local date (no cron, and the UTC worker never guesses a due date), and the rule moves to the new occurrence so reopening the old one can't mint a second. Recurrence vocabulary + local-date arithmetic live in `packages/core/src/task-recurrence.ts` (imported as `@timetracker/core/task-recurrence`), shared by worker and client. Quick-add token parsing (`tomorrow`, `fri`, `3d`, `p1`, `#project`) is **deterministic, no AI** — same reasoning as pacing: capture must be instant and repeatable.
 - `lib/pacing.ts` — Project budget pacing: share of budget spent, burn per **working** day over a trailing 14-day window, working days left, projected total and overrun. **No AI** — pacing goes in front of a client, so it must be reproducible from the entries alone. One computation feeds `GET /api/projects/pacing`, the `budget_risk` nudge, and the digest.
 - `lib/mailer.ts` — Shared `sendEmail` (React Email → MIME → the `EMAIL` binding). Used by both `auth.ts` and the digest cron. **Bodies are base64-encoded by hand**: left to itself mimetext (3.0.28) writes raw UTF-8 while declaring `Content-Transfer-Encoding: 7bit`, and the 8-bit bytes get mangled downstream (a `·` arrived as a replacement character, an en dash as a literal `\u2013`); asking it for `base64`/`quoted-printable` sets the header without transforming the body. This assumes mimetext passes `data` through untouched — re-check on any mimetext upgrade, since a version that honours `encoding` would double-encode.
 - `lib/api-keys.ts` — Workspace API keys (`tt_live_…`) for MCP. SHA-256 only; the plaintext is shown once at creation and is unrecoverable. Membership is re-verified against `member` on every resolution — a key outlives the session that minted it.
 - `lib/assistant.ts` — the Assistant: deterministic nudge computation (untracked/current/upcoming calendar meetings via the same Google read-through as `routes/calendar.ts`, long-running timer, empty weekday timesheet) plus the grounding-context builder for its chat. Nudge dismissals and seen-markers live client-side (`stores/assistantStore.ts`, persisted); the global UI (launcher on the navigation rail, right-side sheet in `AppShell`, and `AssistantNudgeNotifier` — one-time toast + hidden-tab browser notification per new nudge, toggleable under Settings → Productivity) is `react-app/components/assistant/`. Global shortcut `⌘I`/`Ctrl+I` toggles the panel (input-focused, contextual suggestion chips). **Branding: the feature is called "Assistant" — never "Aski" (retired codename) or "AI Assistant".**
 
-### MCP server (`src/worker/mcp/`)
+### MCP server (`apps/web/src/worker/mcp/`)
 
 `/mcp` is intercepted in `index.ts` **before** Hono (like `/agents/*`), authenticated by an API key rather than a session, and served by `agents/mcp`'s `createMcpHandler` — Streamable HTTP, stateless, no Durable Object. A fresh `McpServer` is built per request bound to the resolved workspace. Two invariants: **no tool takes a workspace id** (it's fixed at construction, so nothing a model invents reaches a tenant boundary), and **write tools are registered only for a `read_write` key** (a read key isn't shown them at all). Every tool wraps a helper the REST API already uses, so a chat answer and a Reports answer can't disagree.
 
@@ -75,7 +93,7 @@ The server advertises `title` "TimeTracker", `websiteUrl`, a description and `ic
 
 ### Cron (`scheduled()` handler, `*/5 * * * *`)
 
-Configured in `wrangler.jsonc` under `triggers.crons`. Three independent jobs run every 5 minutes:
+Configured in `apps/web/wrangler.jsonc` under `triggers.crons`. Three independent jobs run every 5 minutes:
 - **Calendar auto-track** (`runAutoTrack`): for workspaces with a connected Google Calendar and auto-track enabled, materializes calendar events that have already ended into time entries. Idempotent via `time_entries.calendar_event_id`.
 - **Recurring entries** (`runRecurring`): materializes each active `recurring_entries` template's occurrence once its scheduled UTC time has passed for the day. Idempotent via `recurring_entries.last_materialized` (UTC date). Schedules are stored in UTC weekday + minutes-of-day; the client converts to/from the browser's local timezone (`lib/recurrence.ts`).
 
@@ -85,13 +103,13 @@ All three jobs iterate their subjects independently and swallow per-subject erro
 
 ### Database
 
-Cloudflare D1 (SQLite). Direct SQL — no ORM (Drizzle is only a peer dep for Better Auth's adapter). Add schema changes as new migration files in `migrations/`. Run `wrangler types` after modifying `wrangler.jsonc` bindings.
+Cloudflare D1 (SQLite). Direct SQL — no ORM (Drizzle is only a peer dep for Better Auth's adapter). Add schema changes as new migration files in `apps/web/migrations/` (wrangler resolves `migrations_dir` relative to `apps/web/wrangler.jsonc`, so every `wrangler d1` command runs from `apps/web`). Run `pnpm cf-typegen` after modifying `wrangler.jsonc` bindings.
 
 Multi-tenant: every row is scoped to a `workspace_id`. Better Auth tables use camelCase column names; all other tables use snake_case.
 
-**Dev seed data is NOT a migration.** Sample data + the demo login (`blake.bauman@gmail.com` / `TestPassApps2026`) live in `seeds/dev-seed.sql`, applied to your **local** D1 only: `npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql`. It was moved out of `migrations/` (0005/0006 are now no-ops) so `wrangler d1 migrations apply --remote` can never seed a known-credential account into production. Never add seed/demo data as a tracked migration.
+**Dev seed data is NOT a migration.** Sample data + the demo login (`blake.bauman@gmail.com` / `TestPassApps2026`) live in `apps/web/seeds/dev-seed.sql`, applied to your **local** D1 only: `cd apps/web && npx wrangler d1 execute time-tracker --local --file=seeds/dev-seed.sql`. It was moved out of `migrations/` (0005/0006 are now no-ops) so `wrangler d1 migrations apply --remote` can never seed a known-credential account into production. Never add seed/demo data as a tracked migration.
 
-### Frontend (`src/react-app/`)
+### Frontend (`apps/web/src/react-app/`)
 
 - `App.tsx` — React Router v7 routes; `AuthGuard` wraps protected pages
 - `lib/api.ts` — Typed fetch client for all backend endpoints
@@ -104,10 +122,11 @@ Multi-tenant: every row is scoped to a `workspace_id`. Better Auth tables use ca
 - `components/calendar/` — FullCalendar wrapper (`timeGrid` + `dayGrid` plugins: week/5-day/day/month). `lib/calendarMapping.ts` builds three event kinds on the same grid: real entries, unconfirmed Google "ghost" events, and clickable "untracked gap" blocks (`buildGapEvents`) between same-day completed entries.
 - `hooks/useTimer.ts` — timer lifecycle (start/stop/discard/editElapsed/stopTimerAt). Stop is **optimistic**: `patchStopInCache` marks the entry completed in the TanStack Query cache before `clearTimer()` so day/Today totals don't visibly dip during the refetch round-trip.
 - Server state via TanStack Query; local/offline state via Zustand + IndexedDB
+- `@/` is the app-local alias for `src/react-app` (declared in `apps/web/tsconfig.app.json` + `vite.config.ts`); shared types come from `@timetracker/core/schemas`, never a relative path into `packages/`
 
 ### Design system
 
-Tailwind v4 (OKLCH tokens in `index.css`) + shadcn/ui on the **v4 CLI** (`components.json` is `style: radix-maia`, `baseColor: neutral`, plus the v4-only `rtl` / `menuColor` / `menuAccent` / `registries` keys). `index.css` imports `shadcn/tailwind.css`, which supplies the `data-open` / `data-closed` / `data-checked` / `data-active` / `data-horizontal` / `data-vertical` custom variants that v4 components are written against, so `pnpm dlx shadcn@latest add <component>` emits code that compiles here. The world is **"the instrument rack"** (DESIGN.md): a true-neutral ground in both themes, hairline-edged panels, one brand-red accent, an 80px icon rail, panes whose headers float over a scroll-fade, and a timer that is a floating glass composer when idle and a bottom-docked transport bar while running. Conventions worth knowing before touching UI:
+Tailwind v4 (OKLCH tokens in `index.css`) + shadcn/ui on the **v4 CLI** (`components.json` is `style: radix-maia`, `baseColor: neutral`, plus the v4-only `rtl` / `menuColor` / `menuAccent` / `registries` keys). `index.css` imports `shadcn/tailwind.css`, which supplies the `data-open` / `data-closed` / `data-checked` / `data-active` / `data-horizontal` / `data-vertical` custom variants that v4 components are written against, so `pnpm dlx shadcn@latest add <component>` (run from `apps/web`, where `components.json` lives) emits code that compiles here. The world is **"the instrument rack"** (DESIGN.md): a true-neutral ground in both themes, hairline-edged panels, one brand-red accent, an 80px icon rail, panes whose headers float over a scroll-fade, and a timer that is a floating glass composer when idle and a bottom-docked transport bar while running. Conventions worth knowing before touching UI:
 
 - **Every route is a `Pane`** (`components/layout/Pane.tsx`): `PaneHeader` (floats over the content; `CollectionHeader` is the collection-page shorthand with a 24px bold `PaneTitle` + `PaneActions`) and `PaneScroll` (pads by the measured header height; `padded={false}` for grids that own their scrolling). There are no scrollbars anywhere (`index.css` hides them globally); the top fade is what says "there is more". `<main>` pads its bottom by `--dock-h` so the last row clears the timer.
 - **The timer has two bodies and one mind** (`components/timer/TimerBar.tsx`): idle = the composer capsule (`rounded-capsule`, `tt-glass`, red Start disc with a red shadow); running = the docked bar (Stop disc + pulse ring, elapsed readout at `text-2xl` mono in `--primary-ink`, the same description/pills, `DayRibbon` — today as a trace with the live red segment). Both are `fixed`, `z-dock`, and share one draft/lifecycle. The e2e contract is `header[aria-label="Timer controls"]` and the control aria-labels.
@@ -118,14 +137,14 @@ Tailwind v4 (OKLCH tokens in `index.css`) + shadcn/ui on the **v4 CLI** (`compon
 - **Cards carry a 1px hairline and no shadow.** `--card` is one step lighter than the ground in both themes and `--border` (one device pixel, one value) is the panel edge; there is no 2px border and no resting shadow anywhere. Inputs and selects are `bg-background` — recessed wells on a card. The only shadows are overlays and the two timer surfaces.
 - **The five segmented controls must not diverge** (The Segmented Rule): `SegmentedControl`, `Tabs` (default variant), `TaskViewTabs`, `TimerViewSwitcher` and the calendar-view radiogroup in `CalendarViewOptions` all consume `SEGMENT_TRACK` / `SEGMENT` / `SEGMENT_ACTIVE` / `SEGMENT_INACTIVE` from `ui/segmented-control.tsx`: the active segment is a recessed `--background` pill with a hairline on a `--muted` track, ink is `--foreground`. `Tabs variant="line"` (hairline strip, 1px brand-red underline on the active tab) is reserved for Settings' section nav.
 - **Never run `shadcn init` against `index.css`.** `add` is safe; `init -f` is not. It overwrites every stock token value under this file's comments with the preset's palette and re-adds the `--chart-1..5` and `--sidebar-*` blocks this app deliberately removed; the v4 config was hand-written for exactly this reason.
-- **Theme is a true-neutral ramp, not shadcn defaults and not "soft tones".** Dark: ground 0.168, card 0.191, rail 0.145, popover 0.215 (all chroma 0). Light: ground 0.961, card 0.976, rail 0.943, popover 0.985. `--muted-foreground` is tuned against the segment track and the rail, its worst grounds. The brand red (`--primary`), its text calibration (`--primary-ink`), the semantic `-ink` variants, the cool focus ring (`--ring`, never the brand or destructive red) and the project/tag palette (`lib/colorUtils.ts` `DISTINCT_COLORS`, mirrored in `worker/lib/colors.ts`) are the only hue on the page. `e2e/contrast.spec.ts` guards the swatch-ink and primary-ink ratios.
+- **Theme is a true-neutral ramp, not shadcn defaults and not "soft tones".** Dark: ground 0.168, card 0.191, rail 0.145, popover 0.215 (all chroma 0). Light: ground 0.961, card 0.976, rail 0.943, popover 0.985. `--muted-foreground` is tuned against the segment track and the rail, its worst grounds. The brand red (`--primary`), its text calibration (`--primary-ink`), the semantic `-ink` variants, the cool focus ring (`--ring`, never the brand or destructive red) and the project/tag palette (`lib/colorUtils.ts` `DISTINCT_COLORS`, mirrored in `worker/lib/colors.ts`) are the only hue on the page. `apps/web/e2e/contrast.spec.ts` guards the swatch-ink and primary-ink ratios.
 - **Motion is one scale and one curve.** `duration-fast` / `-base` / `-slow` (150/200/300ms, tokens in `index.css`) chosen by how far a thing travels, always with `ease-out-quart` (`ease-out-quint` only for the dock). A bare `transition-colors` silently falls back to Tailwind's default curve — pair every transition with a duration and the easing. `prefers-reduced-motion` is handled globally in `index.css`, but anything whose timing is coordinated in JS must check the preference itself. **`Spinner`** (`ui/spinner.tsx`) for "this action is working", `Skeleton` for "this surface hasn't loaded". "A timer is running" has exactly two forms, `animate-recording-pulse` (the Stop disc's ring) and `animate-running-dot` (the rail dot, calendar blocks, the ribbon's live segment); both loop at 1.6s. **ESLint enforces the motion, focus-ring, font-size and z-index rules** (`no-restricted-syntax` in `packages/eslint-config/base.js`).
 
-### Browser Extension (`extension/`)
+### Browser Extension (`apps/extension/`)
 
-Built separately with its own `vite.config.ts`. Auth uses the **standard better-auth client** (`extension/lib/auth-client.ts`, `makeAuthClient(baseURL)`) with the server's `bearer()` plugin: the popup calls `authClient.signIn.email` / `getSession` / `signOut`, the session token arrives in the `set-auth-token` response header, and the client persists it to `chrome.storage.local` so the background service worker can reuse it for badge polling. There is no refresh flow — on a 401 the service worker clears the token and the popup drops back to the login form. The extension is trusted server-side by its pinned origin: `chrome-extension://<id>` (ID pinned via the manifest `key`, see `extension/.keys/README.md`) is listed in `trustedOrigins` in `src/worker/auth.ts`; CSRF/origin checks stay on for the cookie-based web app. The API base URL is user-configurable but validated against an allow-list (`extension/lib/apiUrl.ts`: `timetracker.run`, `*.workers.dev`, `localhost`) so the token is never sent to an arbitrary origin.
+A separate workspace (`@timetracker/extension`) with its own `package.json` and `vite.config.ts`; it imports nothing from `apps/web`. Auth uses the **standard better-auth client** (`apps/extension/lib/auth-client.ts`, `makeAuthClient(baseURL)`) with the server's `bearer()` plugin: the popup calls `authClient.signIn.email` / `getSession` / `signOut`, the session token arrives in the `set-auth-token` response header, and the client persists it to `chrome.storage.local` so the background service worker can reuse it for badge polling. There is no refresh flow — on a 401 the service worker clears the token and the popup drops back to the login form. The extension is trusted server-side by its pinned origin: `chrome-extension://<id>` (ID pinned via the manifest `key`, see `apps/extension/.keys/README.md`) is listed in `trustedOrigins` in `apps/web/src/worker/auth.ts`; CSRF/origin checks stay on for the cookie-based web app. The API base URL is user-configurable but validated against an allow-list (`apps/extension/lib/apiUrl.ts`: `timetracker.run`, `*.workers.dev`, `localhost`) so the token is never sent to an arbitrary origin.
 
-Docs: `extension/README.md` (overview + local dev), `extension/PUBLISHING.md` (Chrome Web Store flow — note the extension ID/`trustedOrigins` reconciliation after first upload), `extension/PRIVACY.md` (privacy-policy draft), `extension/SECURITY_AUDIT.md` (security model). The signing key lives in `extension/.keys/` (private key gitignored). Package for the store with `pnpm zip:ext`.
+Docs: `apps/extension/README.md` (overview + local dev), `apps/extension/PUBLISHING.md` (Chrome Web Store flow — note the extension ID/`trustedOrigins` reconciliation after first upload), `apps/extension/PRIVACY.md` (privacy-policy draft), `apps/extension/SECURITY_AUDIT.md` (security model). The signing key lives in `apps/extension/.keys/` (private key gitignored). Package for the store with `pnpm zip:ext`.
 
 ### Real-time
 
@@ -146,4 +165,4 @@ Your knowledge of Cloudflare Workers APIs and limits may be outdated. Always ret
 - Docs: https://developers.cloudflare.com/workers/
 - Node.js compat flag is enabled (`nodejs_compat`) — most Node built-ins are available
 - **Error 1102** (CPU/memory exceeded): check `/workers/platform/limits/`
-- After changing bindings in `wrangler.jsonc`, run `pnpm cf-typegen` to update `worker-configuration.d.ts`
+- After changing bindings in `apps/web/wrangler.jsonc`, run `pnpm cf-typegen` to update `apps/web/worker-configuration.d.ts`

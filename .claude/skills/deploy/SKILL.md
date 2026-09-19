@@ -1,7 +1,7 @@
 ---
 name: deploy
 description: Validate then deploy the time-tracker app to Cloudflare Workers production. Always runs pnpm check first and confirms before deploying.
-allowed-tools: Bash(pnpm check) Bash(pnpm run deploy) Bash(npx wrangler d1 migrations apply *)
+allowed-tools: Bash(pnpm check) Bash(pnpm run deploy) Bash(cd apps/web && npx wrangler d1 migrations apply *)
 argument-hint: "[--skip-check]"
 ---
 
@@ -11,7 +11,7 @@ Deploy the time-tracker app to production (`timetracker.run`). Arguments: `$ARGU
 
 Pending migrations (unapplied to remote):
 ```!
-cd /Users/blake/Projects/timetracker-app && ls migrations/ | sort
+cd /Users/blake/Projects/timetracker-app/apps/web && ls migrations/ | sort
 ```
 
 Git status:
@@ -30,7 +30,7 @@ git -C /Users/blake/Projects/timetracker-app log --oneline -5
    ```
 5. If there are unapplied migrations, remind the user to run:
    ```bash
-   npx wrangler d1 migrations apply DB --remote
+   cd apps/web && npx wrangler d1 migrations apply DB --remote
    ```
 6. Report the deployed worker URL from wrangler output.
 
@@ -38,5 +38,5 @@ git -C /Users/blake/Projects/timetracker-app log --oneline -5
 
 - [ ] `pnpm check` passes
 - [ ] Any new D1 migrations noted (must be applied separately with `--remote`)
-- [ ] Any new DO classes have a migration entry in `wrangler.jsonc`
+- [ ] Any new DO classes have a migration entry in `apps/web/wrangler.jsonc`
 - [ ] `pnpm cf-typegen` run if bindings changed

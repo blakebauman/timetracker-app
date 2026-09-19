@@ -1,0 +1,7 @@
+{
+  "extends": "@timetracker/tsconfig/dom.json",
+  "compilerOptions": {
+    "types": ["chrome", "node"]
+  },
+  "include": ["background", "content", "lib", "popup", "vite.config.ts"]
+}

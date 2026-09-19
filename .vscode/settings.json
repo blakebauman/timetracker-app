@@ -2,5 +2,6 @@
 	"files.associations": {
 		"wrangler.jsonc": "jsonc"
 	},
-	"css.lint.unknownAtRules": "ignore"
+	"css.lint.unknownAtRules": "ignore",
+	"eslint.workingDirectories": [{ "mode": "auto" }]
 }

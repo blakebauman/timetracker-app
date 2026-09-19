@@ -257,7 +257,7 @@ A Chrome (MV3) extension mirrors the timer in your toolbar:
 - **Popup** — sign in, see the running entry, start/stop.
 - On **GitHub, Jira, and Linear** pages, the extension reads the current issue/PR title so a new timer's description is pre-filled with what you're actually working on. It reads nothing else, on no other sites.
 
-Install: load `dist/extension/` unpacked (dev) or via the Chrome Web Store listing. Details in [../extension/README.md](../extension/README.md).
+Install: load `apps/extension/dist/` unpacked (dev) or via the Chrome Web Store listing. Details in [../apps/extension/README.md](../apps/extension/README.md).
 
 ## Integrations (Workfront, Dynamics)
 
