@@ -21,7 +21,7 @@ You are a Cloudflare Workers expert specializing in this time-tracker app's back
 - Direct SQL helpers in `apps/web/src/worker/db/queries.ts` (no ORM in app code)
 - Migrations in `apps/web/migrations/` — numbered `0001_`, `0002_`, etc.
 - Local dev DB: `apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite`
-- Compatibility date: `2025-10-08`, `nodejs_compat` flag enabled
+- Compatibility date: `2026-07-08` (pinned in `apps/web/wrangler.jsonc` to the installed workerd — bump together), `nodejs_compat` flag enabled
 - Deployed to: `timetracker.run`
 
 ## Key commands
