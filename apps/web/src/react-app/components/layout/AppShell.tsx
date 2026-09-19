@@ -41,6 +41,11 @@ const LogTaskTimeSheet = lazyWithReload(() =>
  * as `--dock-h` on the shell, in case a page needs it for its own geometry.
  */
 const DOCK_CLEARANCE = { idle: "8.5rem", running: "6.5rem" } as const;
+// Desktop toasts stack up from the bottom-right, where the composer (idle) or
+// the docked bar (running) already is. The offset follows the same clearance
+// plus one gutter, so an Undo toast never lands under the timer surface at the
+// widths where the composer reaches the right half of the pane.
+const TOAST_BOTTOM_PX = { idle: 8.5 * 16 + 16, running: 6.5 * 16 + 16 } as const;
 
 export function AppShell() {
   useWebSocket();
@@ -163,7 +168,7 @@ export function AppShell() {
         position={belowMd ? "top-center" : "bottom-right"}
         // Sonner reads `mobileOffset` below 600px and `offset` above it, so
         // both are set: the phone toast must clear the 56px brand bar.
-        offset={belowMd ? { top: 72 } : { bottom: 112 }}
+        offset={belowMd ? { top: 72 } : { bottom: running ? TOAST_BOTTOM_PX.running : TOAST_BOTTOM_PX.idle }}
         mobileOffset={{ top: 72 }}
       />
     </div>
