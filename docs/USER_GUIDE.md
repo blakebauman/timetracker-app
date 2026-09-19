@@ -218,7 +218,7 @@ Dismissals stick per-device. Turn nudge alerts on/off under Settings → Product
 
 The Reports page has three tabs:
 
-- **Summary** — totals (tracked, billable, amount, entries, avg/day), a daily bar chart, a cumulative chart, and a breakdown you can group and sub-group by **project / client / task / tag** (e.g. client → project).
+- **Summary** — totals (tracked, billable, amount, entries, avg/day), a daily bar chart that stacks each day **by project** (or by billable share — the toggle on the card remembers your choice; hover a day for the per-project split, and the eight busiest projects get their own colour with the rest folded into "Other"), and a breakdown you can group and sub-group by **project / client / task / tag** (e.g. client → project).
 - **Weekly** — hours per day nested under ISO weeks.
 - **Detailed** — every entry as a row with project, client, task, tags, duration, and amount.
 
