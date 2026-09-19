@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import type {
   RecurringEntry,
   CreateRecurringEntry,
@@ -24,7 +24,10 @@ export function useCreateRecurring() {
       queryClient.invalidateQueries({ queryKey: ["recurring"] });
       toast.success("Recurring entry saved");
     },
-    onError: () => toast.error("Failed to save recurring entry"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the recurring entry will be saved when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to save recurring entry")),
   });
 }
 
@@ -34,7 +37,10 @@ export function useUpdateRecurring() {
     mutationFn: ({ id, data }: { id: string; data: UpdateRecurringEntry }) =>
       api.recurring.update(id, data as Record<string, unknown>) as Promise<RecurringEntry>,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recurring"] }),
-    onError: () => toast.error("Failed to update recurring entry"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the recurring entry will be updated when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to update recurring entry")),
   });
 }
 
@@ -46,6 +52,9 @@ export function useDeleteRecurring() {
       queryClient.invalidateQueries({ queryKey: ["recurring"] });
       toast.success("Recurring entry removed");
     },
-    onError: () => toast.error("Failed to remove recurring entry"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the recurring entry will be removed when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to remove recurring entry")),
   });
 }

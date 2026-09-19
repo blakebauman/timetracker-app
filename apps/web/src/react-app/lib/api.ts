@@ -26,6 +26,11 @@ export interface CalendarProviderStatus {
 const API_BASE = "/api";
 
 const MUTABLE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+// Writes whose *response* is the point are never queued for replay: a key's
+// plaintext secret exists only in the create response, and a connection test
+// answers a question the user is no longer asking by the time it drains. Both
+// would replay "successfully" into nothing.
+const NON_REPLAYABLE = [/^\/keys$/, /^\/integrations\/[^/]+\/test$/];
 
 /**
  * Identifies this tab for the lifetime of the page.
@@ -156,7 +161,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   } catch (err) {
     // Queue mutating requests when the network is unavailable so they can be
     // replayed by useOfflineSync once connectivity is restored.
-    if (err instanceof TypeError && MUTABLE_METHODS.has(method)) {
+    if (
+      err instanceof TypeError &&
+      MUTABLE_METHODS.has(method) &&
+      !NON_REPLAYABLE.some((re) => re.test(path))
+    ) {
       const body = options?.body ? JSON.parse(options.body as string) : undefined;
       await addPendingMutation({ method: method as "POST" | "PUT" | "PATCH" | "DELETE", url: `${API_BASE}${path}`, body });
       throw new ApiError("Offline — saved locally, will sync when you reconnect", 0, true);

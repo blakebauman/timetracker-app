@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDueDate } from "@/lib/taskUtils";
 import {
@@ -45,7 +45,10 @@ export function useCreateTask() {
       queryClient.invalidateQueries({ queryKey: ["projects"] }); // updates trackedSeconds
       toast.success(`Task "${task.name}" created`);
     },
-    onError: () => toast.error("Failed to create task"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the task will be saved when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to create task")),
   });
 }
 
@@ -85,13 +88,23 @@ export function useUpdateTask() {
       );
       return { snapshot };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
+      if (isQueuedOffline(err)) {
+        // Keep the optimistic value — the write is queued, not lost.
+        toast.info("Offline — the task will be updated when you reconnect");
+        return;
+      }
       for (const [key, data] of context?.snapshot ?? []) {
         queryClient.setQueryData(key, data);
       }
-      toast.error("Failed to update task");
+      toast.error(mutationErrorMessage(err, "Failed to update task"));
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    // A refetch while offline would fail and drop the optimistic row anyway;
+    // the queue drain invalidates once the write has actually landed.
+    onSettled: (_data, err) => {
+      if (isQueuedOffline(err)) return;
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
   });
 }
 
@@ -153,6 +166,9 @@ export function useDeleteTask() {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("Task deleted");
     },
-    onError: () => toast.error("Failed to delete task"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the task will be deleted when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to delete task")),
   });
 }

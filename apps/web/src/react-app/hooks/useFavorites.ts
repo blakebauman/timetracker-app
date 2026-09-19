@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import type { Favorite, CreateFavorite } from "@timetracker/core/schemas";
 
 export function useFavorites() {
@@ -20,7 +20,10 @@ export function useCreateFavorite() {
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
       toast.success("Saved to favorites");
     },
-    onError: () => toast.error("Failed to save favorite"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the favorite will be saved when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to save favorite")),
   });
 }
 
@@ -32,6 +35,9 @@ export function useDeleteFavorite() {
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
       toast.success("Removed favorite");
     },
-    onError: () => toast.error("Failed to remove favorite"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the favorite will be removed when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Failed to remove favorite")),
   });
 }

@@ -50,7 +50,7 @@ const TOAST_BOTTOM_PX = { idle: 8.5 * 16 + 16, running: 6.5 * 16 + 16 } as const
 export function AppShell() {
   useWebSocket();
   useHydrateSettings();
-  const { isOnline } = useOfflineSync();
+  const { isOnline, pendingCount } = useOfflineSync();
   const location = useLocation();
   const quickAddOpen = useUIStore((s) => s.quickAddOpen);
   const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
@@ -114,10 +114,12 @@ export function AppShell() {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Offline banner */}
         {!isOnline && (
-          <Alert variant="destructive" className="rounded-none border-x-0 border-t-0 py-2">
+          <Alert variant="warning" className="rounded-none border-x-0 border-t-0 py-2">
             <WifiOff className="h-4 w-4" />
             <AlertDescription>
-              You're offline — changes will sync when your connection is restored.
+              {pendingCount > 0
+                ? `You're offline — ${pendingCount} ${pendingCount === 1 ? "change" : "changes"} will sync when you reconnect.`
+                : "You're offline — changes will sync when your connection is restored."}
             </AlertDescription>
           </Alert>
         )}

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import { useCalendarStatus } from "@/hooks/useCalendarSync";
 import type { DraftEntry } from "@timetracker/core/schemas";
 
@@ -73,7 +73,10 @@ export function useGenerateDrafts(localDate: string) {
         );
       }
     },
-    onError: () => toast.error("Couldn't draft the day"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the day will be drafted when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Couldn't draft the day")),
   });
 }
 
@@ -83,7 +86,10 @@ export function useUpdateDraft(localDate: string) {
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       api.drafts.update(id, data),
     onSuccess: () => invalidateDay(queryClient, localDate),
-    onError: () => toast.error("Couldn't update the draft"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the draft will be updated when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Couldn't update the draft")),
   });
 }
 
@@ -102,13 +108,21 @@ export function useDiscardDraft(localDate: string) {
       );
       return { previous };
     },
-    onError: (_err, _id, context) => {
+    onError: (err, _id, context) => {
+      if (isQueuedOffline(err)) {
+        // Keep the card gone — the discard is queued, not lost.
+        toast.info("Offline — the draft will be discarded when you reconnect");
+        return;
+      }
       if (context?.previous) {
         queryClient.setQueryData(["drafts", localDate], context.previous);
       }
-      toast.error("Couldn't discard the draft");
+      toast.error(mutationErrorMessage(err, "Couldn't discard the draft"));
     },
-    onSettled: () => invalidateDay(queryClient, localDate),
+    onSettled: (_data, err) => {
+      if (isQueuedOffline(err)) return;
+      invalidateDay(queryClient, localDate);
+    },
   });
 }
 
@@ -120,7 +134,10 @@ export function useDiscardDay(localDate: string) {
       invalidateDay(queryClient, localDate);
       if (deleted > 0) toast.success(`Discarded ${deleted} drafts`);
     },
-    onError: () => toast.error("Couldn't discard the drafts"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the drafts will be discarded when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Couldn't discard the drafts")),
   });
 }
 
@@ -145,6 +162,9 @@ export function useConfirmDrafts(localDate: string) {
         `${confirmed} ${confirmed === 1 ? "entry" : "entries"} added to your timesheet`
       );
     },
-    onError: () => toast.error("Couldn't confirm the drafts"),
+    onError: (err) =>
+      isQueuedOffline(err)
+        ? toast.info("Offline — the drafts will be confirmed when you reconnect")
+        : toast.error(mutationErrorMessage(err, "Couldn't confirm the drafts")),
   });
 }
