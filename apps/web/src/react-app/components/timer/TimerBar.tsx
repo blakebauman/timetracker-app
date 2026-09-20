@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Kbd } from "@/components/ui/kbd";
 import { TimerControl } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { ResumeLastButton } from "./ResumeLastButton";
@@ -366,7 +367,7 @@ export function TimerBar() {
           </TooltipTrigger>
           <TooltipContent>
             Discard timer
-            <span className="ml-1.5 text-background/60">Alt+Shift+X</span>
+            <Kbd className="ml-1.5">Alt+Shift+X</Kbd>
           </TooltipContent>
         </Tooltip>
       </div>

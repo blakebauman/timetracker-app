@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LIT_DISC } from "@/components/ui/lit-disc";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Kbd } from "@/components/ui/kbd";
 import { useTimerStore } from "@/stores/timerStore";
 import { useTimer } from "@/hooks/useTimer";
 import { formatDurationShort, formatSeconds, parseTimeInput } from "@/lib/dateUtils";
@@ -99,7 +100,7 @@ export function TimerControl({ isRunning, onStart, onStop }: TimerControlProps) 
       </TooltipTrigger>
       <TooltipContent>
         {isRunning ? "Stop timer" : "Start timer"}
-        <span className="ml-1.5 text-background/60">Alt+Shift+S</span>
+        <Kbd className="ml-1.5">Alt+Shift+S</Kbd>
       </TooltipContent>
     </Tooltip>
   );

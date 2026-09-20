@@ -47,22 +47,36 @@ const navItems: { to: string; icon: LucideIcon; label: string }[] = [
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
+
 /**
  * A rail button: a 48px circle. The active one lifts a step off the chassis
  * and carries a brand-red ring that fades downward (`tt-rail-ring`) — the
  * rail's signature, in the brand's colour. Everything else on the rail
  * is muted ink that brightens on hover.
+ *
+ * The lift is in the transition list alongside the colours, and the ring is
+ * always mounted and crossfaded, so switching routes moves both together at
+ * the fast duration instead of popping the ring and easing the fill.
  */
-const RAIL_BUTTON =
-  "relative flex size-12 items-center justify-center rounded-full transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
+const RAIL_BUTTON = `relative flex size-12 items-center justify-center rounded-full transition-[color,background-color,box-shadow] duration-fast ease-out-quart ${FOCUS_RING}`;
 const RAIL_ACTIVE = "bg-foreground/6 text-foreground shadow-lg";
 const RAIL_IDLE = "text-muted-foreground hover:bg-foreground/6 hover:text-foreground";
 
-function RailRing() {
+/** The sheet nav's rows: the rail's buttons, unrolled into labelled pills. */
+const SHEET_ROW = `flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium tt-touch relative transition-colors duration-fast ease-out-quart ${FOCUS_RING}`;
+const SHEET_ROW_ACTIVE = "bg-foreground/6 text-foreground";
+const SHEET_ROW_IDLE = "text-muted-foreground hover:bg-foreground/6 hover:text-foreground";
+
+function RailRing({ shown }: { shown: boolean }) {
   return (
     <span
       aria-hidden
-      className="tt-rail-ring pointer-events-none absolute inset-0 rounded-full border border-primary/60"
+      className={cn(
+        "tt-rail-ring pointer-events-none absolute inset-0 rounded-full border border-primary/60 transition-opacity duration-fast ease-out-quart",
+        shown ? "opacity-100" : "opacity-0"
+      )}
     />
   );
 }
@@ -86,16 +100,56 @@ function useIsActive() {
   return (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
 }
 
-/** The quiet running cue on the Timer icon: a breathing red dot. */
-function RunningDot() {
-  const running = useTimerStore((s) => Boolean(s.runningEntry));
-  if (!running) return null;
+/** True while a timer is running — the cue the Timer nav item carries. */
+function useTimerRunning() {
+  return useTimerStore((s) => Boolean(s.runningEntry));
+}
+
+/**
+ * The quiet running cue: a breathing red dot. It is decoration for the eye
+ * only — the state reaches a screen reader through the item's own name, since
+ * an `aria-label` would swallow any text nested inside the link.
+ */
+function RunningDot({ className }: { className?: string }) {
   return (
     <span
       aria-hidden
-      className="absolute top-2.5 right-2.5 size-2 rounded-full bg-primary animate-running-dot"
+      className={cn("absolute size-2 rounded-full bg-primary animate-running-dot", className)}
     />
   );
+}
+
+/** The Assistant's unread nudges, on the rail button and the phone strip. */
+function NudgeBadge({ count, className }: { count: number; className?: string }) {
+  if (count < 1) return null;
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-micro font-medium leading-none text-primary-foreground",
+        className
+      )}
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
+/**
+ * The toggle's name stays "Assistant" whether the panel is open or shut —
+ * `aria-pressed` already says which, and a button that reads "Open Assistant"
+ * while the Assistant is open contradicts it.
+ */
+function assistantLabel(count: number) {
+  return count > 0 ? `Assistant — ${count} ${count === 1 ? "nudge" : "nudges"}` : "Assistant";
+}
+
+/** A name to greet by, and the email only when it isn't already the name. */
+function useIdentity() {
+  const { user } = useAuth();
+  if (!user) return null;
+  const name = user.name?.trim();
+  return { name: name || user.email, secondary: name ? user.email : null };
 }
 
 /** Icon rail for md and up. */
@@ -103,7 +157,9 @@ function Rail() {
   const items = useNavItems();
   const isActive = useIsActive();
   const { user, signOut } = useAuth();
+  const identity = useIdentity();
   const navigate = useNavigate();
+  const running = useTimerRunning();
   const openCommand = useUIStore((s) => s.openCommand);
   const openShortcuts = useUIStore((s) => s.openShortcuts);
   const toggleAssistant = useAssistantStore((s) => s.toggleOpen);
@@ -124,29 +180,35 @@ function Rail() {
       <NavLink
         to="/"
         aria-label="Time Tracker home"
-        className="mb-5 flex size-12 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className={`mb-5 flex size-12 items-center justify-center rounded-full ${FOCUS_RING}`}
       >
         <BrandMark className="tt-brand-glow size-9" />
       </NavLink>
 
       <nav aria-label="Main" className="flex flex-col items-center gap-2">
-        {items.map(({ to, icon: Icon, label }) => (
-          <Tooltip key={to}>
-            <TooltipTrigger asChild>
-              <NavLink
-                to={to}
-                end={to === "/"}
-                aria-label={label}
-                className={cn(RAIL_BUTTON, isActive(to) ? RAIL_ACTIVE : RAIL_IDLE)}
-              >
-                {isActive(to) && <RailRing />}
-                <Icon className="relative size-5" />
-                {to === "/" && <RunningDot />}
-              </NavLink>
-            </TooltipTrigger>
-            <TooltipContent side="right">{label}</TooltipContent>
-          </Tooltip>
-        ))}
+        {items.map(({ to, icon: Icon, label }) => {
+          // "Timer — running" rather than a silent dot: the rail is the only
+          // place the running state shows once the route has moved on.
+          const timerRunning = to === "/" && running;
+          const name = timerRunning ? `${label} — running` : label;
+          return (
+            <Tooltip key={to}>
+              <TooltipTrigger asChild>
+                <NavLink
+                  to={to}
+                  end={to === "/"}
+                  aria-label={name}
+                  className={cn(RAIL_BUTTON, isActive(to) ? RAIL_ACTIVE : RAIL_IDLE)}
+                >
+                  <RailRing shown={isActive(to)} />
+                  <Icon className="relative size-5" />
+                  {timerRunning && <RunningDot className="top-2.5 right-2.5" />}
+                </NavLink>
+              </TooltipTrigger>
+              <TooltipContent side="right">{name}</TooltipContent>
+            </Tooltip>
+          );
+        })}
       </nav>
 
       <div className="mt-auto flex flex-col items-center gap-2">
@@ -158,28 +220,17 @@ function Rail() {
               type="button"
               onClick={toggleAssistant}
               aria-pressed={assistantOpen}
-              aria-label={
-                nudges.length > 0
-                  ? `Open Assistant — ${nudges.length} ${nudges.length === 1 ? "nudge" : "nudges"}`
-                  : "Open Assistant"
-              }
+              aria-label={assistantLabel(nudges.length)}
               className={cn(RAIL_BUTTON, assistantOpen ? RAIL_ACTIVE : RAIL_IDLE)}
             >
-              {assistantOpen && <RailRing />}
+              <RailRing shown={assistantOpen} />
               <Sparkles className="relative size-5" />
-              {nudges.length > 0 && (
-                <span
-                  aria-hidden
-                  className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-micro font-medium leading-none text-primary-foreground"
-                >
-                  {nudges.length > 9 ? "9+" : nudges.length}
-                </span>
-              )}
+              <NudgeBadge count={nudges.length} className="top-1.5 right-1.5" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
             Assistant
-            <span className="ml-1.5 text-background/60">{modKey}I</span>
+            <Kbd className="ml-1.5">{modKey}I</Kbd>
           </TooltipContent>
         </Tooltip>
 
@@ -188,7 +239,7 @@ function Rail() {
             <button
               type="button"
               onClick={openCommand}
-              aria-label="Open command palette (Command or Control K)"
+              aria-label="Search and commands"
               className={cn(RAIL_BUTTON, RAIL_IDLE)}
             >
               <Search className="size-5" />
@@ -196,18 +247,18 @@ function Rail() {
           </TooltipTrigger>
           <TooltipContent side="right">
             Search and commands
-            <span className="ml-1.5 text-background/60">{modKey}K</span>
+            <Kbd className="ml-1.5">{modKey}K</Kbd>
           </TooltipContent>
         </Tooltip>
 
-        {user && (
+        {user && identity && (
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    aria-label={`Account menu — ${user.name || user.email}`}
+                    aria-label={`Account menu — ${identity.name}`}
                     className={cn(RAIL_BUTTON, RAIL_IDLE, "mt-1")}
                   >
                     <UserAvatar
@@ -223,10 +274,15 @@ function Rail() {
             </Tooltip>
             <DropdownMenuContent side="right" align="end" className="w-60">
               <DropdownMenuLabel className="flex flex-col">
-                <span className="truncate">{user.name}</span>
-                <span className="truncate text-xs font-normal text-muted-foreground">
-                  {user.email}
-                </span>
+                <span className="truncate">{identity.name}</span>
+                {identity.secondary && (
+                  <span
+                    title={identity.secondary}
+                    className="truncate text-xs font-normal text-muted-foreground"
+                  >
+                    {identity.secondary}
+                  </span>
+                )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={openShortcuts}>
@@ -253,12 +309,18 @@ function Rail() {
   );
 }
 
-/** The labelled nav list inside the phone sheet. */
+/**
+ * The labelled nav list inside the phone sheet — the rail, unrolled. It wears
+ * the rail's own signature on the active row (the fading red ring) because on
+ * a phone it is the only thing that says which route you are on.
+ */
 function SheetNav({ onNavigate }: { onNavigate: () => void }) {
   const items = useNavItems();
   const isActive = useIsActive();
   const { user, signOut } = useAuth();
+  const identity = useIdentity();
   const navigate = useNavigate();
+  const running = useTimerRunning();
   const openCommand = useUIStore((s) => s.openCommand);
   const openShortcuts = useUIStore((s) => s.openShortcuts);
 
@@ -270,35 +332,40 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <nav aria-label="Main" className="flex-1 space-y-1 p-3">
-        {items.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            aria-label={label}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors duration-fast ease-out-quart focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-              isActive(to)
-                ? "bg-foreground/6 text-foreground"
-                : "text-muted-foreground hover:bg-foreground/6 hover:text-foreground"
-            )}
-          >
-            <Icon className="size-4 shrink-0" />
-            {label}
-          </NavLink>
-        ))}
+        {items.map(({ to, icon: Icon, label }) => {
+          const timerRunning = to === "/" && running;
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/"}
+              onClick={onNavigate}
+              className={cn(SHEET_ROW, isActive(to) ? SHEET_ROW_ACTIVE : SHEET_ROW_IDLE)}
+            >
+              <RailRing shown={isActive(to)} />
+              <span className="relative shrink-0">
+                <Icon className="size-4" />
+                {timerRunning && <RunningDot className="-top-0.5 -right-1" />}
+              </span>
+              <span className="relative">{label}</span>
+              {timerRunning && <span className="sr-only"> — running</span>}
+            </NavLink>
+          );
+        })}
         <button
           type="button"
           onClick={() => {
             openCommand();
             onNavigate();
           }}
-          className="flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-foreground/6 hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className={cn(SHEET_ROW, SHEET_ROW_IDLE)}
         >
           <Search className="size-4 shrink-0" />
           <span className="flex-1 text-left">Search</span>
-          <Kbd>{modKey}K</Kbd>
+          {/* A shortcut chip on a device that has no modifier key is an
+              instruction it can't follow; the sheet also opens in a narrow
+              desktop window, where it can. */}
+          <Kbd className="pointer-coarse:hidden">{modKey}K</Kbd>
         </button>
         <button
           type="button"
@@ -306,26 +373,28 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
             openShortcuts();
             onNavigate();
           }}
-          className="flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-foreground/6 hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className={cn(SHEET_ROW, SHEET_ROW_IDLE)}
         >
           <Keyboard className="size-4 shrink-0" />
           <span className="flex-1 text-left">Keyboard shortcuts</span>
-          <Kbd>?</Kbd>
+          <Kbd className="pointer-coarse:hidden">?</Kbd>
         </button>
       </nav>
-      {user && (
+      {user && identity && (
         <div className="flex items-center gap-3 border-t p-4">
           <UserAvatar name={user.name} email={user.email} image={user.image} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{user.name}</p>
-            <p title={user.email} className="truncate text-xs text-muted-foreground">
-              {user.email}
-            </p>
+            <p className="truncate text-sm font-medium">{identity.name}</p>
+            {identity.secondary && (
+              <p title={identity.secondary} className="truncate text-xs text-muted-foreground">
+                {identity.secondary}
+              </p>
+            )}
           </div>
           <Button
             variant="ghost"
             size="icon-sm"
-            className="shrink-0 text-muted-foreground hover:text-destructive"
+            className="tt-touch shrink-0 text-muted-foreground hover:text-destructive"
             onClick={handleSignOut}
             aria-label="Sign out"
           >
@@ -340,37 +409,32 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const toggleAssistant = useAssistantStore((s) => s.toggleOpen);
+  const assistantOpen = useAssistantStore((s) => s.open);
   const { nudges } = useAssistantNudges();
 
   return (
     <>
       {/* Phone: a chassis strip across the top, with the nav in a sheet. */}
       <div className="flex h-14 shrink-0 items-center justify-between border-b bg-rail px-3 md:hidden">
-        <div className="flex items-center gap-2">
+        <NavLink
+          to="/"
+          end
+          className={`-mx-2 flex items-center gap-2 rounded-full px-2 py-1 ${FOCUS_RING}`}
+        >
           <BrandMark className="tt-brand-glow size-6 shrink-0" />
           <span className="font-semibold tracking-tight">Time Tracker</span>
-        </div>
+        </NavLink>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon-lg"
             className="tt-touch relative text-muted-foreground"
             onClick={toggleAssistant}
-            aria-label={
-              nudges.length > 0
-                ? `Open Assistant — ${nudges.length} ${nudges.length === 1 ? "nudge" : "nudges"}`
-                : "Open Assistant"
-            }
+            aria-pressed={assistantOpen}
+            aria-label={assistantLabel(nudges.length)}
           >
             <Sparkles className="size-5" />
-            {nudges.length > 0 && (
-              <span
-                aria-hidden
-                className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-micro font-medium leading-none text-primary-foreground"
-              >
-                {nudges.length > 9 ? "9+" : nudges.length}
-              </span>
-            )}
+            <NudgeBadge count={nudges.length} className="top-1 right-1" />
           </Button>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
