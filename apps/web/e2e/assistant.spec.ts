@@ -38,7 +38,9 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
 
   // The launcher lives on the navigation rail (the phone top bar's copy is
   // display:none at this width, so the role query resolves to the rail's).
-  const launcher = page.getByRole("button", { name: /Open Assistant/ });
+  // Its name starts with "Assistant" — the toast's own action button is the
+  // one called "Open Assistant", so the anchor keeps the two apart.
+  const launcher = page.getByRole("button", { name: /^Assistant/ });
   await expect(launcher).toBeVisible();
   await expect(launcher).toHaveAccessibleName(/\d+ nudge/);
 
@@ -65,7 +67,7 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   // After a reload the nudge stays dismissed — no card, and no re-toast (both
   // the dismissal and the seen-marker persist per browser).
   await page.reload();
-  await page.getByRole("button", { name: "Open Assistant" }).click();
+  await page.getByRole("button", { name: /^Assistant/ }).click();
   const reopened = page.getByRole("dialog");
   await expect(reopened).toContainText("Assistant");
   await expect(reopened.getByText("Timer still running")).toBeHidden();
