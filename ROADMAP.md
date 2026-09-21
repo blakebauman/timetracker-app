@@ -129,13 +129,15 @@ through the app.
   owner and member are indistinguishable. If owner/admin-only is wanted it is
   a ~30-line `requireRole` middleware over `member.role` in
   `middleware/workspace.ts` applied to those three routers.
-- **Dashboard-only hardening (no code)** — zone: minimum TLS 1.2 (was 1.0),
-  Always Use HTTPS on, then `; preload` on HSTS after 30 clean days; WAF
-  rate-limiting rules on `/api/auth/*` and `/mcp` as the cross-colo backstop
-  to the Workers bindings; confirm the account is on Workers Paid (D1 Time
-  Travel 30 days, not 7). GitHub: enable Dependabot alerts + security updates
-  and CodeQL default setup; make `Lint (eslint)`, `Typecheck` and `Build`
-  required checks alongside `e2e`; `enforce_admins`. Chrome Web Store: upload
+- **Dashboard-only hardening (no code)** — done via the API on 2026-09-21:
+  zone minimum TLS 1.2 (was 1.0) and Always Use HTTPS on; Dependabot alerts
+  + automated security fixes and CodeQL default setup enabled; `main` now
+  requires `e2e`, `Lint (eslint)`, `Typecheck` and `Build`, with
+  `enforce_admins`; D1 Time Travel answered a 10-day-old timestamp, so the
+  account is on the 30-day retention tier. **Still open:** WAF rate-limiting
+  rules on `/api/auth/*` and `/mcp` (the local API token has no zone
+  rulesets permission — dashboard, or a token with WAF write); `; preload` on
+  HSTS after 30 clean days of Always Use HTTPS; Chrome Web Store upload of
   extension 1.0.3, then add the store-assigned `chrome-extension://<id>` to
   `trustedOrigins` and `ALLOWED_ORIGINS`.
 
