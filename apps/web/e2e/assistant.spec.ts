@@ -84,10 +84,17 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
 // AI project inference is best-effort and unavailable in CI — this exercises
 // the fallback path: the entry must still materialize, just uncategorized.
 test("track-event materializes a meeting idempotently", async ({ page }) => {
+  // Pin the browser clock to a mid-week afternoon. The meeting is placed 1–2h
+  // before "now", and the Timer opens on the current week: run in the first two
+  // hours of Monday UTC (as CI did), a real-clock meeting lands in *last* week
+  // and the final visibility check fails for reasons that have nothing to do
+  // with track-event.
+  const NOW = new Date("2026-09-16T17:00:00.000Z"); // Wednesday
+  await page.clock.install({ time: NOW });
   await signUp(page);
 
-  const start = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-  const stop = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const start = new Date(NOW.getTime() - 2 * 60 * 60 * 1000).toISOString();
+  const stop = new Date(NOW.getTime() - 60 * 60 * 1000).toISOString();
   const body = { calendarEventId: "evt-e2e-track", title: "Design sync", start, stop };
 
   const first = await page.request.post("/api/assistant/track-event", { data: body });

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { corsMiddleware } from "./middleware/cors";
 import { securityHeaders } from "./middleware/security-headers";
-import { rateLimit } from "./middleware/rate-limit";
+import { rateLimit, rateLimitOrReject, byUser, byWorkspace } from "./middleware/rate-limit";
 import { workspaceMiddleware, resolveWorkspace } from "./middleware/workspace";
 import { requireFreshSession } from "./middleware/fresh-session";
 import { timeEntriesRouter } from "./routes/time-entries";
@@ -34,25 +34,32 @@ import { resolveApiKey, touchApiKey } from "./lib/api-keys";
 export { TimerRoom } from "./durable-objects/TimerRoom";
 export { ChatAgent } from "./durable-objects/ChatAgent";
 
-// 10 attempts per minute on auth endpoints. Relaxed in the Vite dev server
-// (which is what `pnpm dev` and the CI e2e run use) so the Playwright suite's
-// one-signup-per-test pattern can't trip it — production builds keep 10/min.
-const authRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 10, 60_000);
-// AI calls have real latency/cost — cap per-workspace request rate
-const aiRateLimit = rateLimit(20, 60_000);
+// Limits live on Workers Rate Limiting bindings (wrangler.jsonc `ratelimits`,
+// middleware/rate-limit.ts) so they hold across isolates. The dev server the
+// Playwright suite runs against consults the binding but never rejects, so the
+// one-signup-per-test pattern can't trip it.
+//
+// 10 attempts per minute per IP on the credential endpoints the app fronts
+// itself; Better Auth's own DB-backed limiter (auth.ts) covers the rest of
+// /api/auth/*.
+const authRateLimit = rateLimit((env) => env.RL_AUTH);
+// AI calls have real latency/cost — cap per workspace, the unit that pays.
+const aiRateLimit = rateLimit((env) => env.RL_AI, byWorkspace);
 // Nudges are deterministic but read through to Google Calendar. The client
 // polls at 5-minute intervals, so 6/min is pure headroom — this only guards
-// against a runaway poller re-introducing a tight refetch loop. Relaxed in
-// dev for the same Playwright reason as authRateLimit.
-const nudgesRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 6, 60_000);
+// against a runaway poller re-introducing a tight refetch loop.
+const nudgesRateLimit = rateLimit((env) => env.RL_NUDGES, byUser);
 // /test, /push and /calendar/convert each trigger an outbound fetch to a
 // third-party host — cap them so an authenticated caller can't use the worker as
-// a request amplifier. Relaxed in dev for the Playwright suite.
-const outboundRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 30, 60_000);
+// a request amplifier.
+const outboundRateLimit = rateLimit((env) => env.RL_OUTBOUND, byWorkspace);
 // "Send me a digest now" costs an outbound email and an AI call. Deliberately
 // tighter than the other limits: the endpoint mails a real inbox, so an
 // authenticated caller shouldn't be able to use it as a flooding primitive.
-const emailRateLimit = rateLimit(import.meta.env.DEV ? 1000 : 5, 60_000);
+const emailRateLimit = rateLimit((env) => env.RL_EMAIL, byUser);
+// /reports/detailed buffers up to 10k joined rows per call and the reports
+// routes had no ceiling at all — a tight refetch loop was a self-DoS.
+const reportsRateLimit = rateLimit((env) => env.RL_REPORTS, byUser);
 
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
@@ -103,6 +110,7 @@ const app = new Hono<{ Bindings: Env }>()
   .use("/api/settings/digest/send", emailRateLimit)
   .use("/api/integrations/*", outboundRateLimit)
   .use("/api/calendar/convert", outboundRateLimit)
+  .use("/api/reports/*", reportsRateLimit)
   .route("/api/time_entries", timeEntriesRouter)
   .route("/api/projects", projectsRouter)
   .route("/api/clients", clientsRouter)
@@ -193,6 +201,12 @@ async function handleMcpRequest(
       }
     );
   }
+
+  // Limited AFTER authentication and keyed by the key's row id: an attacker
+  // can't burn a key's budget without holding it, and a leaked key can't turn
+  // draft_day (Workers AI + a calendar read per call) into an unbounded bill.
+  const limited = await rateLimitOrReject(env.RL_MCP, `mcp:${resolved.id}`);
+  if (limited) return limited;
 
   ctx.waitUntil(touchApiKey(env.DB, resolved.id));
 

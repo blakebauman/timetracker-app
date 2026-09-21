@@ -95,15 +95,14 @@ through the app.
 
 ## Backend hardening
 
-- **Cross-isolate auth rate limiting** — the credential-endpoint limiter
-  (`middleware/rate-limit.ts`) is in-isolate only; a distributed attacker (or one
-  user spread across colos) gets N× the configured limit. Flagged in
-  `apps/extension/SECURITY_AUDIT.md` and again in the July 2026 audit. Cheapest
-  durable fix: a zone-level **WAF rate-limiting rule on `/api/auth/*`**
-  (dashboard config, no code); alternatives are the Workers Rate Limiting
-  binding or a DO-backed counter for the email-sending + AI endpoints
-  specifically. OTP brute force is already safe regardless (Better Auth's
-  DB-backed 3-attempt limit holds across isolates).
+- ~~**Cross-isolate auth rate limiting**~~ — shipped September 2026: the app's
+  limiters moved to Workers Rate Limiting bindings (per workspace / user / API
+  key, shared across isolates in a colo) and Better Auth's own limiter — which
+  had been silently disabled in production because it keys off `NODE_ENV` — is
+  now pinned on with D1 storage (migration 0033). See `docs/ARCHITECTURE.md` →
+  "Rate limiting". **Still to do (dashboard, no code):** the zone-level WAF
+  rate-limiting rule on `/api/auth/*` and `/mcp`, which is the cross-colo
+  backstop for the per-colo binding.
 - **CSP tightening** — two CSPs exist and only one of them matters much.
   `public/_headers` governs the **document** (where the Assistant renders LLM
   output) and is already tight: connect-src pinned to `'self'

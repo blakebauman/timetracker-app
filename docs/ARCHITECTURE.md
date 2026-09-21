@@ -25,7 +25,7 @@ The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together 
 `apps/web/src/worker/index.ts` exports `{ fetch, scheduled }` and both DO classes. The fetch handler branches **before** Hono for `/agents/*`:
 
 1. **`/agents/*`** — authenticates the session, resolves the caller's workspace, then **rewrites the agent-instance segment of the URL to that workspace id** before calling `routeAgentRequest` (Agents SDK). This is the tenant-isolation guarantee for chat: a client can name any instance it likes; it always lands on its own workspace's `ChatAgent`.
-2. **Everything else** — the Hono app. `/api/auth/*` goes to the Better Auth handler (with in-isolate rate limiting on credential endpoints). All other `/api/*` route groups sit behind `middleware/workspace.ts`, which resolves `{ userId, workspaceId }` from the session (cookie or bearer token) and puts them on context. **Every query in every route filters by `workspace_id`** — this is the multi-tenancy model; there is no row-level magic beyond discipline plus the e2e tenant-isolation suite.
+2. **Everything else** — the Hono app. `/api/auth/*` goes to the Better Auth handler (credential endpoints sit behind a Workers Rate Limiting binding, and Better Auth's own D1-backed limiter is enabled explicitly — see "Rate limiting" below). All other `/api/*` route groups sit behind `middleware/workspace.ts`, which resolves `{ userId, workspaceId }` from the session (cookie or bearer token) and puts them on context. **Every query in every route filters by `workspace_id`** — this is the multi-tenancy model; there is no row-level magic beyond discipline plus the e2e tenant-isolation suite.
 3. Non-API paths fall through to static assets with SPA `not_found_handling` (`run_worker_first` covers `/api/*` and `/agents/*`).
 
 ### Route groups (`apps/web/src/worker/routes/`)
@@ -145,7 +145,13 @@ Separate workspace (`@timetracker/extension`) with its own Vite build. Popup aut
 
 ## Security posture (audit history)
 
-Four hardening passes landed as PRs #64–#67 (see git history): cross-tenant IDOR closure on read-backs/tag writes/token cache; SPA headers + prod seed removal + re-gated sensitive auth ops; assistant prompt-injection/tool-abuse/cost-abuse hardening; SSRF guard + outbound rate limits + OAuth workspace binding + extension token clearing. The extension had its own audit (`apps/extension/SECURITY_AUDIT.md`). Known accepted gap: auth rate limiting is in-isolate only (a cross-isolate attacker isn't throttled) — candidate for a DO/KV-backed limiter.
+Four hardening passes landed as PRs #64–#67 (see git history): cross-tenant IDOR closure on read-backs/tag writes/token cache; SPA headers + prod seed removal + re-gated sensitive auth ops; assistant prompt-injection/tool-abuse/cost-abuse hardening; SSRF guard + outbound rate limits + OAuth workspace binding + extension token clearing. The extension had its own audit (`apps/extension/SECURITY_AUDIT.md`).
+
+**Rate limiting** (September 2026 hardening). Three layers, each covering what the others can't:
+
+1. **Workers Rate Limiting bindings** (`wrangler.jsonc` `ratelimits`, `middleware/rate-limit.ts`) — the app's own limiters: sign-in/sign-up/OTP-send/invite per IP, AI and outbound-fetch routes per workspace, nudges/digest-send/reports per user, and `/mcp` per API key (checked *after* the key resolves, so nobody can burn a key's budget without holding it). Shared across isolates within a colo; the old module-level `Map` was per-isolate, so every ceiling was really `limit × isolates`. The dev server consults the binding but never rejects, so the e2e suite's one-signup-per-test pattern can't trip it.
+2. **Better Auth's built-in limiter** (`auth.ts` `rateLimit`) — covers the `/api/auth/*` paths the app never enumerates (OTP verify/check, magic-link verify, passkey, accept-invitation, admin). Its default is `enabled: isProduction`, derived from `NODE_ENV` — which is never set in a deployed Worker — so until it was pinned to `!import.meta.env.DEV` every plugin rule was inert in production. `storage: "database"` (table `rateLimit`, migration 0033) makes the count cross-isolate and the increment atomic. `advanced.ipAddress.ipAddressHeaders` is pinned to `cf-connecting-ip`: Better Auth's default reads `x-forwarded-for` and returns null on multi-hop chains, and Cloudflare *appends* to a client-supplied XFF, so any caller sending their own would have collapsed everyone into one shared bucket.
+3. **Zone WAF rate-limiting rule** on `/api/auth/*` and `/mcp` (dashboard) — the cross-colo backstop for the per-colo binding.
 
 ## Testing & CI
 

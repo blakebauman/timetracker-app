@@ -20,6 +20,11 @@ async function seed(page: import("@playwright/test").Page) {
 }
 
 test("a task with an estimate seeds the span", async ({ page }) => {
+  // The sheet seeds start = now − estimate. Pin "now" to a mid-week afternoon
+  // so the 2h span can't straddle a week boundary (in the first two hours of
+  // Monday UTC the seeded entry belongs to last week and never shows on the
+  // Timer's default current-week view — which is how this failed in CI).
+  await page.clock.install({ time: new Date("2026-09-16T17:00:00.000Z") }); // Wednesday
   await seed(page);
   await page.goto("/tasks");
   await page.waitForLoadState("networkidle");
