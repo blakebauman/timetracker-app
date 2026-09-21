@@ -20,6 +20,7 @@ pnpm seed:demo        # Seed the LOCAL dev workspace with data that exercises dr
 pnpm generate-icons   # Regenerate apps/web/public icons + apps/extension/icons from packages/core's brand mark
 pnpm cf-typegen       # Regenerate apps/web/worker-configuration.d.ts from wrangler.jsonc bindings (run after binding changes)
 pnpm test:e2e         # Run Playwright e2e tests in apps/web (spins up `pnpm dev` against localhost:5173)
+pnpm backup:d1        # Export the PRODUCTION D1 to backups/*.sql.gz (plaintext, gitignored) — run before any remote migration; see docs/RUNBOOK.md
 cd apps/web && npx wrangler tail   # Stream live worker logs (wrangler commands run where wrangler.jsonc lives)
 ```
 
@@ -36,9 +37,11 @@ Git hooks are managed by **lefthook** (`lefthook.yml`, installed by the root `pr
 ### Deploy sequence
 
 1. Land the PR (CI green, then merge + `git pull --ff-only` on `main`).
-2. If the change added a file in `apps/web/migrations/`, apply it to the **remote** D1 database first: `cd apps/web && npx wrangler d1 migrations apply time-tracker --remote` (the `db`/`migrate` skills default to local).
-3. `pnpm check` (dry-run validation), then `pnpm run deploy`.
-4. Smoke-check: `curl -s -o /dev/null -w "%{http_code}" https://timetracker.run/` should be `200`.
+2. If the change added a file in `apps/web/migrations/`: **`pnpm backup:d1` first** (off-platform export; migrations are one-way), then apply it to the **remote** D1 database: `cd apps/web && npx wrangler d1 migrations apply time-tracker --remote` (the `db`/`migrate` skills default to local).
+3. `pnpm check` (typecheck + build + the no-secrets-in-client tripwire + dry-run), then `pnpm run deploy`.
+4. Smoke-check: `curl -s -o /dev/null -w "%{http_code}" https://timetracker.run/` should be `200`, and `curl -s https://timetracker.run/api/health` should be `{"ok":true}`.
+
+Restore procedures, the backup cadence and the production check commands are in `docs/RUNBOOK.md`.
 
 Migrations must land before the worker code that queries their new columns/tables — D1 is one shared remote database, not a per-deploy migration step.
 

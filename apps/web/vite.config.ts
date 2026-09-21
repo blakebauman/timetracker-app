@@ -18,4 +18,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src/react-app"),
     },
   },
+  // Source maps for the WORKER only. wrangler.jsonc has upload_source_maps on,
+  // but that only uploads a map that exists — and the Cloudflare plugin emits
+  // one only when this environment asks for it, so until now every stack trace
+  // in the observability logs was minified. The client build stays map-free on
+  // purpose (nothing that ships to browsers should carry one; `pnpm check`
+  // enforces it). The environment name is the worker name with `-` → `_`.
+  environments: {
+    timetracker_app: {
+      build: { sourcemap: true },
+    },
+  },
 });

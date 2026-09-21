@@ -16,7 +16,19 @@
     "nodejs_compat"
   ],
   "observability": {
-    "enabled": true
+    "enabled": true,
+    // Explicit rather than defaulted: 1.0 means every invocation is logged,
+    // which is right at today's volume (a handful of users) and is the line
+    // item to lower once traffic makes Workers Logs a bill. Errors are only as
+    // visible as this rate.
+    "head_sampling_rate": 1
+  },
+  // Per-invocation CPU ceiling. The default is 30 s already; pinning it here
+  // makes the budget a reviewed decision rather than a platform default, and
+  // is the knob to lower if a report or AI path ever runs away. Cron
+  // invocations have their own (higher) platform limit.
+  "limits": {
+    "cpu_ms": 30000
   },
   // Explicitly off (wrangler infers false once routes exist, but a config edit
   // could silently re-enable them). A second live origin on *.workers.dev would
