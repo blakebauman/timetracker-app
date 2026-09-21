@@ -215,12 +215,11 @@ what the audit turned up; nothing here is outstanding.*
   added alongside it (or the manifest `key` kept so the ID matches), per
   `apps/extension/PUBLISHING.md`. Until then the extension only authenticates when
   loaded unpacked from `apps/extension/.keys/extension.pem`.
-- **Dead `two_factor` table** — migration `0017_two_factor_and_passkey.sql`
-  still creates it, but nothing has referenced `twoFactor` since passwords were
-  retired in #73 (the enable flow required a password). Passkey from the same
-  migration is live; only the TOTP half is orphaned. Drop it in a migration
-  whenever the next schema change lands — no urgency, it costs nothing but
-  reads as live schema.
+- ~~**Dead `two_factor` table**~~ — dropped in migration 0034 (September 2026),
+  which also gave `saved_reports` and `assistant_memory` the cascading tenant
+  foreign keys every other table had, and made `(organizationId, userId)`
+  unique on `member`. `user.twoFactorEnabled` stays (a column drop is another
+  table rebuild; the default 0 is harmless).
 
 ## Deferred from the September 2026 polish pass
 

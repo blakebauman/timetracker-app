@@ -55,7 +55,7 @@ The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together 
 
 ## Auth (Better Auth, `apps/web/src/worker/auth.ts`)
 
-Plugins in play: **email OTP** and **magic link** (the primary passwordless sign-in paths), **bearer** (extension tokens via `set-auth-token` header), **admin** (site-wide `user.role === "admin"`: list/ban/impersonate/remove), **organization** (workspace = organization; owner/admin/member roles, email invites), **passkey**, Google social login. Email/password is disabled in production — `emailAndPassword.enabled` is gated on `ENABLE_PASSWORD_AUTH` (set only in `.dev.vars` and CI), which keeps the sign-up/sign-in endpoints alive for the e2e suite and the local seed demo login. TOTP two-factor was removed along with passwords (Better Auth's enable/disable flow requires the account password); its D1 tables remain but are unused.
+Plugins in play: **email OTP** and **magic link** (the primary passwordless sign-in paths), **bearer** (extension tokens via `set-auth-token` header), **admin** (site-wide `user.role === "admin"`: list/ban/impersonate/remove), **organization** (workspace = organization; owner/admin/member roles, email invites), **passkey**, Google social login. Email/password is disabled in production — `emailAndPassword.enabled` is gated on `ENABLE_PASSWORD_AUTH` (set only in `.dev.vars` and CI), which keeps the sign-up/sign-in endpoints alive for the e2e suite and the local seed demo login. TOTP two-factor was removed along with passwords (Better Auth's enable/disable flow requires the account password); its `twoFactor` table was dropped in migration 0034 (`user.twoFactorEnabled` remains, always 0).
 
 Notable decisions:
 
