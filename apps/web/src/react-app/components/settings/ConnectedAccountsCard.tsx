@@ -52,8 +52,9 @@ export function ConnectedAccountsCard() {
 
   const unlink = useMutation({
     mutationFn: async (account: AccountRow) => {
+      // Better Auth 1.7 keys unlink by the account row alone (accountId is
+      // unique per user); providerId was dropped from the endpoint's body.
       const { error } = await authClient.unlinkAccount({
-        providerId: account.providerId,
         accountId: account.accountId,
       });
       if (error) throw new Error(error.message ?? "Failed to disconnect");

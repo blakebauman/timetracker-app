@@ -11,11 +11,24 @@ import { signUp } from "./auth";
 const webDir = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 
 function sql<T = Record<string, unknown>>(command: string): T[] {
-  const out = execSync(
-    `pnpm exec wrangler d1 execute time-tracker --local --json --command ${JSON.stringify(command)}`,
-    { cwd: webDir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
-  );
-  return (JSON.parse(out) as Array<{ results: T[] }>)[0].results;
+  // The dev server is writing to the same SQLite file under the rest of the
+  // suite, so a CLI read can hit SQLITE_BUSY; retry briefly rather than fail
+  // the assertion on lock contention that has nothing to do with the schema.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const out = execSync(
+        `pnpm exec wrangler d1 execute time-tracker --local --json --command ${JSON.stringify(command)}`,
+        { cwd: webDir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+      return (JSON.parse(out) as Array<{ results: T[] }>)[0].results;
+    } catch (e) {
+      lastError = e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500 * (attempt + 1));
+    }
+  }
+  const stderr = (lastError as { stderr?: Buffer | string })?.stderr?.toString() ?? "";
+  throw new Error(`d1 execute failed after retries: ${command}\n${stderr.slice(-400)}`);
 }
 
 test.describe("tenant rows follow their workspace", () => {
