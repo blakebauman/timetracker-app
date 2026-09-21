@@ -8,6 +8,7 @@ import type { AssistantNudge } from "@timetracker/core/schemas";
 import { fetchWorkspaceEvents } from "./calendar-connections";
 import type { ExternalEvent } from "./calendar-providers";
 import { atRiskProjects, loadProjectPacing, type ProjectPacing } from "./pacing";
+import { promptSafe } from "./untrusted-text";
 
 // How far ahead a meeting can be and still get a "starts soon" nudge.
 const SOON_WINDOW_MS = 15 * 60 * 1000;
@@ -323,7 +324,7 @@ export async function buildAssistantContext(
     ? entries.results
         .map((e) => {
           const hours = (((e.duration as number) ?? 0) / 3600).toFixed(2);
-          return `- ${t(e.start as string)}–${t(e.stop as string)} | ${(e.project_name as string) ?? "No project"} | ${hours}h | ${e.billable ? "billable" : "non-billable"} | ${(e.description as string) || "(no description)"}`;
+          return `- ${t(e.start as string)}–${t(e.stop as string)} | ${promptSafe(e.project_name ?? "No project", 80)} | ${hours}h | ${e.billable ? "billable" : "non-billable"} | ${promptSafe(e.description) || "(no description)"}`;
         })
         .join("\n")
     : "(none yet)";
@@ -341,13 +342,13 @@ export async function buildAssistantContext(
               : new Date(e.start).getTime() <= nowMs
                 ? "happening now"
                 : "upcoming";
-          return `- ${t(e.start)}–${t(e.stop)} | ${e.title} | ${state}`;
+          return `- ${t(e.start)}–${t(e.stop)} | ${promptSafe(e.title) || "(untitled)"} | ${state}`;
         })
         .join("\n")
     : "(no calendar events today, or no calendar connected)";
 
   const runningLine = facts.running
-    ? `"${facts.running.description || "(no description)"}" — started ${t(facts.running.start)}, running for ${formatDuration(nowMs - new Date(facts.running.start).getTime())}`
+    ? `"${promptSafe(facts.running.description) || "(no description)"}" — started ${t(facts.running.start)}, running for ${formatDuration(nowMs - new Date(facts.running.start).getTime())}`
     : "(none)";
 
   return `Local date: ${localDate}, local time now: ${nowLocal}.
@@ -361,5 +362,5 @@ Total tracked today: ${(facts.totalSeconds / 3600).toFixed(2)}h across ${facts.e
 Today's calendar events (start–stop | title | status):
 ${eventLines}
 
-Active projects: ${projects.results.map((p) => p.name).join(", ") || "(none)"}`;
+Active projects: ${projects.results.map((p) => promptSafe(p.name, 80)).join(", ") || "(none)"}`;
 }

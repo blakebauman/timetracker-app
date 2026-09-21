@@ -4,6 +4,8 @@
 // slice into the system prompt (buildMemoryBlock) and exposes `remember` /
 // `search` as tools so the model can persist and look up facts on demand.
 
+import { promptSafe } from "./untrusted-text";
+
 const MAX_MEMORIES = 200;
 const RECALL_LIMIT = 40;
 
@@ -34,7 +36,10 @@ export async function rememberFact(
 ): Promise<{ key: string }> {
   const slug = slugify(key) || `note-${Date.now()}`;
   const now = new Date().toISOString();
-  const trimmed = content.trim().slice(0, 1000);
+  // Sanitized on write so a stored fact can never carry a fence-closing tag
+  // into a future prompt, whatever path reads it back. (The key is a slug
+  // already and is the upsert identity — never rewrite it.)
+  const trimmed = promptSafe(content, 1000);
 
   await db
     .prepare(
@@ -136,8 +141,12 @@ export async function clearMemories(db: D1Database, workspaceId: string): Promis
   await db.prepare(`DELETE FROM assistant_memory WHERE workspace_id = ?`).bind(workspaceId).run();
 }
 
-/** Plain-text block of known facts for the chat system prompt (empty if none). */
+/**
+ * Plain-text block of known facts for the chat system prompt (empty if none).
+ * Content is model-authored (rememberPreference) from user chat, so it is
+ * sanitized here as well as on write — a fact is one fenced line, never markup.
+ */
 export function buildMemoryBlock(memories: Memory[]): string {
   if (!memories.length) return "";
-  return memories.map((m) => `- ${m.content}`).join("\n");
+  return memories.map((m) => `- ${promptSafe(m.content, 1000)}`).join("\n");
 }
