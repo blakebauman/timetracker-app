@@ -157,6 +157,34 @@ export function createAuth(env: Env, baseURL: string) {
         origin: rpURL.origin,
       }),
     ],
+    rateLimit: {
+      // Better Auth's default is `enabled: isProduction`, computed from
+      // NODE_ENV — which is never set in a deployed Worker (config `vars` is
+      // empty and the bundle reads it at runtime). Left implicit, every rule
+      // the plugins declare (emailOTP's 3/min on verify-email and
+      // check-verification-otp, the global 100/10s) was inert in production.
+      // Pin it to the build instead: on for the deployed worker, off for the
+      // Vite dev server the Playwright suite runs against.
+      enabled: !import.meta.env.DEV,
+      // D1-backed (migration 0033), so the count is shared across isolates and
+      // the increment is atomic. Costs one or two D1 queries per /api/auth/*
+      // request; getSession from the cookie cache is untouched.
+      storage: "database",
+      // Paths that neither a plugin rule nor index.ts's own limiter covers.
+      // Relative to /api/auth; plugin rules (email-otp/*) already apply once
+      // enabled. Windows are seconds.
+      customRules: {
+        "/magic-link/verify": { window: 60, max: 10 },
+        "/verify-email": { window: 60, max: 10 },
+        "/forget-password": { window: 60, max: 5 },
+        "/reset-password": { window: 60, max: 5 },
+        "/organization/accept-invitation": { window: 60, max: 10 },
+        "/passkey/verify-authentication": { window: 60, max: 10 },
+        "/passkey/verify-registration": { window: 60, max: 10 },
+        "/delete-user/callback": { window: 60, max: 5 },
+        "/admin/*": { window: 60, max: 30 },
+      },
+    },
     advanced: {
       // CSRF/origin checks stay ON. The web app (cookies) and the browser
       // extension are both covered by trustedOrigins above — the extension's
@@ -164,6 +192,12 @@ export function createAuth(env: Env, baseURL: string) {
       // bearer tokens (bearer() plugin) rather than cookies.
       // Prefix for cookie names, to avoid collisions with other apps on the same domain
       cookiePrefix: "timetracker",
+      // Rate-limit keys and session IPs come from Cloudflare's header only.
+      // Better Auth's default reads x-forwarded-for and gives up (null) when
+      // the chain has more than one hop — and Cloudflare APPENDS to a
+      // client-supplied XFF, so any caller who sends their own would collapse
+      // every request into one shared bucket and lock real users out.
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
     },
   });
 

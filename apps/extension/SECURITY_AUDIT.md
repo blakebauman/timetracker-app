@@ -26,7 +26,7 @@ The extension is structurally sound: correct MV3 patterns (state in `chrome.stor
 
 - **Token at rest in `chrome.storage.local`** (unencrypted). Standard for extensions; the token is a session bearer credential and is now only ever sent to allow-listed origins. Acceptable for MV3.
 - **`https://*.workers.dev/*` host permission.** Broad but required for Cloudflare preview deploys; mitigated by the apiUrl allow-list.
-- **Auth-endpoint rate limiting** (`middleware/rate-limit.ts`) is in-isolate only and bypassable across isolates. Out of scope for the extension audit; noted for the worker backlog (consider a Durable Object / KV-backed limiter for credential endpoints). Applies to the standard `/api/auth/sign-in/*` limiter now used by the extension.
+- ~~**Auth-endpoint rate limiting** (`middleware/rate-limit.ts`) is in-isolate only and bypassable across isolates.~~ Resolved September 2026: the limiter now runs on a Workers Rate Limiting binding (shared across isolates in a colo) and Better Auth's own D1-backed limiter is enabled for the rest of `/api/auth/*`. See `docs/ARCHITECTURE.md` → "Rate limiting".
 
 ## Follow-up: standard better-auth client (post-audit)
 
