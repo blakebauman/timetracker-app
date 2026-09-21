@@ -15,14 +15,21 @@ export function applySecurityHeaders(headers: Headers, secure: boolean) {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set(
     "Content-Security-Policy",
+    // Kept identical to public/_headers so there is one policy to reason
+    // about, even though this copy only ever lands on JSON and WebSocket
+    // responses. No 'unsafe-inline' for scripts: the document's only
+    // pre-bundle script is the external public/boot.js.
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'", // inline needed by Vite dev & React
+      "script-src 'self'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      "img-src 'self' data: blob: https:",
       "font-src 'self'",
-      "connect-src 'self' wss: ws:",
+      "connect-src 'self' https://timetracker.run wss://timetracker.run",
       "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "form-action 'self'",
     ].join("; "),
   );
   if (secure) {
