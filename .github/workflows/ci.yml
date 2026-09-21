@@ -80,7 +80,6 @@ jobs:
   audit:
     name: Audit (pnpm audit --prod)
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
     steps:
@@ -91,4 +90,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Step-level, not job-level: a job-level continue-on-error still reports
+      # the check as failed on the PR (red X), which reads like a broken build
+      # for what is meant to be an advisory. This way the findings are in the
+      # log and the job stays green until the noise floor justifies enforcing.
       - run: pnpm audit --prod --audit-level=high
+        continue-on-error: true
