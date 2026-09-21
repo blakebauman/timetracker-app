@@ -44,3 +44,6 @@ yarn.lock
 # `git add -A` sweeps ~100 tool files into an unrelated commit — which is
 # exactly how it got into #95.
 .claude/skills/impeccable/
+
+# D1 backups (pnpm backup:d1) — plaintext exports of production, never committed
+backups/

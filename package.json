@@ -26,7 +26,8 @@
 		"test:e2e": "pnpm --filter @timetracker/web test:e2e",
 		"email:dev": "pnpm --filter @timetracker/web email:dev",
 		"seed:demo": "node scripts/seed-feature-demo.mjs",
-		"generate-icons": "node scripts/generate-icons.mjs"
+		"generate-icons": "node scripts/generate-icons.mjs",
+    "backup:d1": "node scripts/backup-d1.mjs"
 	},
 	"devDependencies": {
 		"@commitlint/cli": "catalog:",

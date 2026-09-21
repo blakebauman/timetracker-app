@@ -10,7 +10,7 @@
 		"preview": "pnpm build && vite preview",
 		"typecheck": "tsc -b",
 		"lint": "eslint .",
-		"check": "tsc -b && vite build && wrangler deploy --dry-run",
+		"check": "tsc -b && vite build && node ../../scripts/assert-no-secrets-in-client.mjs && wrangler deploy --dry-run",
 		"deploy": "wrangler deploy",
 		"cf-typegen": "wrangler types",
 		"test:e2e": "playwright test",
