@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../lib/validate";
 import { CreateTaskSchema, UpdateTaskSchema } from "@timetracker/core/schemas";
 import { nextOccurrence, normalizeRecurRule } from "@timetracker/core/task-recurrence";
 

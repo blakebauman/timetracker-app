@@ -9,6 +9,7 @@ import type {
   ApiKeyScope,
   CreatedApiKey,
 } from "@timetracker/core/schemas";
+import { BULK_ENTRY_IDS_MAX } from "@timetracker/core/schemas";
 
 export type CalendarProviderId = "google" | "microsoft";
 
@@ -26,6 +27,12 @@ export interface CalendarProviderStatus {
 const API_BASE = "/api";
 
 const MUTABLE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
 // Writes whose *response* is the point are never queued for replay: a key's
 // plaintext secret exists only in the create response, and a connection test
 // answers a question the user is no longer asking by the time it drains. Both
@@ -128,7 +135,13 @@ function zodIssueMessage(value: unknown): string | null {
 function errorMessage(raw: string, statusText: string): string {
   if (!raw) return statusText;
   try {
-    const parsed = JSON.parse(raw) as { error?: unknown };
+    const parsed = JSON.parse(raw) as { error?: unknown; issues?: unknown };
+    // The worker's validator replies `{ error: <first message>, issues: [{ path,
+    // message }] }` (lib/validate.ts) — the first issue is the message.
+    if (Array.isArray(parsed.issues)) {
+      const first = parsed.issues[0] as { message?: unknown } | undefined;
+      if (typeof first?.message === "string" && first.message) return first.message;
+    }
     // Before the plain-string branch: a zod rejection's `error` IS a string.
     const zod = zodIssueMessage(parsed.error);
     if (zod) return zod;
@@ -223,10 +236,27 @@ export const api = {
       request<unknown>(`/time_entries/${id}/stop`, { method: "PATCH" }),
     delete: (id: string) =>
       request<unknown>(`/time_entries/${id}`, { method: "DELETE" }),
-    bulkUpdate: (body: { ids: string[]; patch: Record<string, unknown> }) =>
-      request<unknown>("/time_entries/bulk", { method: "PATCH", body: JSON.stringify(body) }),
-    bulkDelete: (ids: string[]) =>
-      request<unknown>("/time_entries/bulk", { method: "DELETE", body: JSON.stringify({ ids }) }),
+    // The server takes at most BULK_ENTRY_IDS_MAX ids per call (D1's bound-
+    // parameter limit); a larger selection goes up in sequential chunks so a
+    // select-all on the detailed report still works.
+    bulkUpdate: async (body: { ids: string[]; patch: Record<string, unknown> }) => {
+      for (const ids of chunk(body.ids, BULK_ENTRY_IDS_MAX)) {
+        await request<unknown>("/time_entries/bulk", {
+          method: "PATCH",
+          body: JSON.stringify({ ids, patch: body.patch }),
+        });
+      }
+      return { ok: true, updated: body.ids.length };
+    },
+    bulkDelete: async (allIds: string[]) => {
+      for (const ids of chunk(allIds, BULK_ENTRY_IDS_MAX)) {
+        await request<unknown>("/time_entries/bulk", {
+          method: "DELETE",
+          body: JSON.stringify({ ids }),
+        });
+      }
+      return { ok: true, deleted: allIds.length };
+    },
   },
 
   // ─── Projects ─────────────────────────────────────────────────────────────

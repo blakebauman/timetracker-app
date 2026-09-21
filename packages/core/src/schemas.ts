@@ -408,26 +408,33 @@ export const UpdateTimeEntrySchema = z
     start: z.string().optional(),
     stop: z.string().nullable().optional(),
     billable: z.boolean().optional(),
-    tags: z.array(z.string()).optional(),
+    tags: z.array(z.string().max(100)).max(50).optional(),
   })
   .refine(
     (data) => !data.start || !data.stop || new Date(data.stop) > new Date(data.start),
     { message: "Stop time must be after start time", path: ["stop"] }
   );
 
+// D1 allows 100 bound parameters per statement. A bulk `WHERE id IN (…)`
+// spends one per id plus a few for the workspace and patch values, so 90 is
+// the ceiling a single statement can honour; the client chunks larger
+// selections (lib/api.ts) rather than the server silently truncating them.
+export const BULK_ENTRY_IDS_MAX = 90;
+const BulkEntryIds = z.array(z.string().max(64)).min(1).max(BULK_ENTRY_IDS_MAX);
+
 export const BulkUpdateTimeEntriesSchema = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: BulkEntryIds,
   patch: z.object({
     projectId: z.string().nullable().optional(),
     taskId: z.string().nullable().optional(),
     billable: z.boolean().optional(),
-    tags: z.array(z.string()).optional(),
-    description: z.string().optional(),
+    tags: z.array(z.string().max(100)).max(50).optional(),
+    description: z.string().max(2000).optional(),
   }),
 });
 
 export const BulkDeleteTimeEntriesSchema = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: BulkEntryIds,
 });
 
 // ─── Drafted entries ─────────────────────────────────────────────────────────
@@ -503,10 +510,17 @@ export const GenerateDraftsResultSchema = z.object({
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
 // Optional comma-separated list of IDs → string[] (e.g. "a,b,c"). Undefined when absent.
+// Bounded like the bulk ids: each list becomes `?` placeholders in one
+// statement, and D1 stops at 100 bound parameters — an unbounded list was a
+// cheap way to turn a report request into a 500.
 const csvIds = z
   .string()
+  .max(4000)
   .optional()
-  .transform((v) => (v ? v.split(",").filter(Boolean) : undefined));
+  .transform((v) => (v ? v.split(",").filter(Boolean) : undefined))
+  .refine((v) => !v || (v.length <= BULK_ENTRY_IDS_MAX && v.every((id) => id.length <= 64)), {
+    message: `At most ${BULK_ENTRY_IDS_MAX} ids per filter`,
+  });
 
 export const RoundingModeSchema = z.enum(["off", "nearest", "up", "down"]);
 
@@ -521,7 +535,7 @@ export const ReportQuerySchema = z.object({
   // billable = only billable entries, nonbillable = only non-billable
   billable: z.enum(["billable", "nonbillable"]).optional(),
   // free-text search over the entry description
-  search: z.string().optional(),
+  search: z.string().max(200).optional(),
   // per-entry duration rounding applied before aggregation
   roundMode: RoundingModeSchema.optional(),
   roundMinutes: z.coerce.number().int().min(0).max(1440).optional(),
@@ -555,7 +569,11 @@ export const SavedReportSchema = z.object({
 
 export const CreateSavedReportSchema = z.object({
   name: z.string().min(1).max(120),
-  config: z.record(z.string(), z.unknown()),
+  // Stored as JSON text as-is; a filter config is a few hundred bytes, so 16 KiB
+  // is headroom, not a cap — without it this was an arbitrary-size write.
+  config: z
+    .record(z.string(), z.unknown())
+    .refine((c) => JSON.stringify(c).length <= 16 * 1024, { message: "Report config is too large" }),
 });
 
 export type DraftSource = z.infer<typeof DraftSourceSchema>;
@@ -632,13 +650,15 @@ export const CreatedApiKeySchema = z.object({
 export const IntegrationTypeSchema = z.enum(["workfront", "dynamics"]);
 
 // Per-type credential shapes (only ever sent to the server, never returned).
+// Encrypted and stored as-is, so bounded: no real credential is anywhere near
+// 512 chars, and an unbounded one was a storage-amplification write.
 export const WorkfrontCredentialsSchema = z.object({
-  apiKey: z.string().min(1),
+  apiKey: z.string().min(1).max(512),
 });
 export const DynamicsCredentialsSchema = z.object({
-  tenantId: z.string().min(1),
-  clientId: z.string().min(1),
-  clientSecret: z.string().min(1),
+  tenantId: z.string().min(1).max(512),
+  clientId: z.string().min(1).max(512),
+  clientSecret: z.string().min(1).max(512),
 });
 export const IntegrationCredentialsSchema = z.union([
   WorkfrontCredentialsSchema,
@@ -702,11 +722,18 @@ export const PushResultSchema = z.object({
 
 // ─── AI ──────────────────────────────────────────────────────────────────────
 
+// A timestamp the server will Date.parse: bounded and checked here so a bad
+// value is a 400 with a reason rather than `Invalid Date` arithmetic downstream.
+const IsoInstantSchema = z
+  .string()
+  .max(64)
+  .refine((s) => !Number.isNaN(Date.parse(s)), { message: "Expected an ISO 8601 timestamp" });
+
 export const AiQuickEntryRequestSchema = z.object({
   text: z.string().min(1).max(1000),
   // Client's local "now" and timezone offset, so relative phrases like
   // "yesterday afternoon" resolve against the user's clock, not the server's.
-  referenceDate: z.string(),
+  referenceDate: IsoInstantSchema,
   timezoneOffsetMinutes: z.number(),
 });
 
@@ -741,8 +768,8 @@ export const AiQuickEntryResultSchema = z.object({
 });
 
 export const AiSummaryRequestSchema = z.object({
-  since: z.string(),
-  until: z.string(),
+  since: IsoInstantSchema,
+  until: IsoInstantSchema,
   projectId: z.string().optional(),
   clientId: z.string().optional(),
   style: z.enum(["narrative", "bullets"]).default("bullets"),
@@ -801,8 +828,8 @@ export const AssistantTrackEventRequestSchema = z
   .object({
     calendarEventId: z.string().min(1).max(500),
     title: z.string().max(500),
-    start: z.string(),
-    stop: z.string(),
+    start: IsoInstantSchema,
+    stop: IsoInstantSchema,
   })
   .refine((d) => new Date(d.stop) > new Date(d.start), {
     message: "Stop time must be after start time",

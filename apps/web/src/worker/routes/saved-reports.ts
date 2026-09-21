@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../lib/validate";
 import { CreateSavedReportSchema } from "@timetracker/core/schemas";
 
 // Per-user saved report views (workspace + user scoped).
