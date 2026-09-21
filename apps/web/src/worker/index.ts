@@ -1,6 +1,9 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { corsMiddleware } from "./middleware/cors";
-import { securityHeaders } from "./middleware/security-headers";
+import { securityHeaders, applySecurityHeaders } from "./middleware/security-headers";
+import { onError, notFound, payloadTooLarge } from "./lib/http-errors";
+import { bodyTooLarge, limitBody } from "./lib/body-guard";
 import { rateLimit, rateLimitOrReject, byUser, byWorkspace } from "./middleware/rate-limit";
 import { workspaceMiddleware, resolveWorkspace } from "./middleware/workspace";
 import { requireFreshSession } from "./middleware/fresh-session";
@@ -61,9 +64,19 @@ const emailRateLimit = rateLimit((env) => env.RL_EMAIL, byUser);
 // routes had no ceiling at all — a tight refetch loop was a self-DoS.
 const reportsRateLimit = rateLimit((env) => env.RL_REPORTS, byUser);
 
+// Request bodies are buffered before validation, so cap them before anything
+// reads them. Nothing legitimate is large: the biggest payload in the app is a
+// 500-row planner import (~100 KiB); auth payloads are a few KiB.
+const API_BODY_MAX = 1024 * 1024;
+const AUTH_BODY_MAX = 64 * 1024;
+// /mcp and /agents/* are answered before Hono — see bodyTooLarge/limitBody.
+const RAW_BODY_MAX = 256 * 1024;
+
 const app = new Hono<{ Bindings: Env }>()
   .use("*", corsMiddleware)
   .use("*", securityHeaders)
+  .use("/api/auth/*", bodyLimit({ maxSize: AUTH_BODY_MAX, onError: payloadTooLarge }))
+  .use("/api/*", bodyLimit({ maxSize: API_BODY_MAX, onError: payloadTooLarge }))
   // Authenticated JSON must never be stored by any shared or disk cache — a
   // zone-level cache rule change would otherwise be one step from leaking user
   // data. The WS upgrade (101) response from the DO has immutable headers.
@@ -129,7 +142,11 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/assistant", assistantRouter)
   .route("/api/admin", adminRouter)
   .route("/api/keys", apiKeysRouter)
-  .route("/api/ws", websocketRouter);
+  .route("/api/ws", websocketRouter)
+  // JSON 404s, and a 500 that carries a request id, no-store and the security
+  // headers (a throw skips every middleware's post-next body).
+  .notFound(notFound)
+  .onError(onError);
 
 export type AppType = typeof app;
 
@@ -141,6 +158,9 @@ export type AppType = typeof app;
  * as the timer WebSocket (routes/websocket.ts).
  */
 async function handleAgentRequest(request: Request, env: Env): Promise<Response> {
+  const tooLarge = bodyTooLarge(request, RAW_BODY_MAX);
+  if (tooLarge) return tooLarge;
+
   const resolved = await resolveWorkspace(env, request);
   if (!resolved.ok) return new Response("Unauthorized", { status: 401 });
 
@@ -151,16 +171,8 @@ async function handleAgentRequest(request: Request, env: Env): Promise<Response>
     segments[3] = resolved.workspaceId;
     url.pathname = segments.join("/");
   }
-  const rewritten = new Request(url, request);
-  const response =
-    (await routeAgentRequest(rewritten, env)) ?? new Response("Not found", { status: 404 });
-
-  // Same no-store policy as /api/* — but never touch a WebSocket upgrade, and
-  // re-wrap instead of mutating (subrequest response headers are immutable).
-  if (response.status === 101 || response.webSocket) return response;
-  const wrapped = new Response(response.body, response);
-  wrapped.headers.set("Cache-Control", "no-store");
-  return wrapped;
+  const rewritten = new Request(url, limitBody(request, RAW_BODY_MAX));
+  return (await routeAgentRequest(rewritten, env)) ?? new Response("Not found", { status: 404 });
 }
 
 /**
@@ -182,6 +194,9 @@ async function handleMcpRequest(
   env: Env,
   ctx: ExecutionContext
 ): Promise<Response> {
+  const tooLarge = bodyTooLarge(request, RAW_BODY_MAX);
+  if (tooLarge) return tooLarge;
+
   const resolved = await resolveApiKey(env.DB, request.headers.get("Authorization"));
   if (!resolved) {
     return new Response(
@@ -216,22 +231,31 @@ async function handleMcpRequest(
     userId: resolved.userId,
     scope: resolved.scope,
   });
-  const response = await createMcpHandler(server, { route: "/mcp" })(request, env, ctx);
+  return createMcpHandler(server, { route: "/mcp" })(limitBody(request, RAW_BODY_MAX), env, ctx);
+}
 
-  // Same no-store policy as /api/*, minus the WebSocket case MCP never hits.
+/**
+ * The response policy Hono's middleware gives /api/* (no-store + the security
+ * headers), applied to everything the two pre-Hono handlers return — their
+ * 401s and 404s included. Never touches a WebSocket upgrade, and re-wraps
+ * rather than mutates: subrequest response headers are immutable.
+ */
+function finishRawResponse(response: Response, request: Request): Response {
+  if (response.status === 101 || response.webSocket) return response;
   const wrapped = new Response(response.body, response);
   wrapped.headers.set("Cache-Control", "no-store");
+  applySecurityHeaders(wrapped.headers, new URL(request.url).protocol === "https:");
   return wrapped;
 }
 
 export default {
-  fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
     const { pathname } = new URL(request.url);
     if (pathname.startsWith("/agents/")) {
-      return handleAgentRequest(request, env);
+      return finishRawResponse(await handleAgentRequest(request, env), request);
     }
     if (pathname === "/mcp" || pathname.startsWith("/mcp/")) {
-      return handleMcpRequest(request, env, ctx);
+      return finishRawResponse(await handleMcpRequest(request, env, ctx), request);
     }
     return app.fetch(request, env, ctx);
   },

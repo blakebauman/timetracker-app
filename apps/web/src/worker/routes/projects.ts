@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../lib/validate";
 import { CreateProjectSchema, UpdateProjectSchema } from "@timetracker/core/schemas";
 import { DISTINCT_COLORS, spreadColor } from "../lib/colors";
 import { runProjectColorAssignment } from "../lib/ai";

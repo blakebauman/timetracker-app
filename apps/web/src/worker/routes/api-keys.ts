@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../lib/validate";
 import { CreateApiKeySchema } from "@timetracker/core/schemas";
 import { createApiKey, listApiKeys, revokeApiKey } from "../lib/api-keys";
 

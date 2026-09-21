@@ -177,19 +177,34 @@ export async function upsertTags(
 
   // Single atomic batch (1 D1 round trip) instead of 3 serial queries per tag:
   // create any missing tags, then link the entry to all of them by name.
+  await db.batch(tagLinkStatements(db, workspaceId, [entryId], tagNames));
+}
+
+/**
+ * The statements behind upsertTags, for callers that link the same tags to
+ * several entries at once (bulk edit): the missing tags are created once, then
+ * one link statement per entry. Callers must have proven every entry id
+ * belongs to `workspaceId` — time_entry_tags has no workspace column.
+ */
+export function tagLinkStatements(
+  db: D1Database,
+  workspaceId: string,
+  entryIds: string[],
+  tagNames: string[]
+): D1PreparedStatement[] {
+  if (!tagNames.length || !entryIds.length) return [];
   const insertTag = db.prepare(
     `INSERT OR IGNORE INTO tags (id, workspace_id, name, color) VALUES (?, ?, ?, ?)`
   );
   const placeholders = tagNames.map(() => "?").join(",");
-  await db.batch([
+  const link = db.prepare(
+    `INSERT OR IGNORE INTO time_entry_tags (time_entry_id, tag_id)
+     SELECT ?, id FROM tags WHERE workspace_id = ? AND name IN (${placeholders})`
+  );
+  return [
     ...tagNames.map((name) =>
       insertTag.bind(crypto.randomUUID(), workspaceId, name, colorForTagName(name))
     ),
-    db
-      .prepare(
-        `INSERT OR IGNORE INTO time_entry_tags (time_entry_id, tag_id)
-         SELECT ?, id FROM tags WHERE workspace_id = ? AND name IN (${placeholders})`
-      )
-      .bind(entryId, workspaceId, ...tagNames),
-  ]);
+    ...entryIds.map((entryId) => link.bind(entryId, workspaceId, ...tagNames)),
+  ];
 }

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../lib/validate";
 import { UpdateTagSchema } from "@timetracker/core/schemas";
 
 export const tagsRouter = new Hono<{

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../lib/validate";
 import {
   CreateTimeEntrySchema,
   UpdateTimeEntrySchema,
@@ -18,6 +18,7 @@ import {
   formatEntry,
   getEntryById,
   upsertTags,
+  tagLinkStatements,
   ENTRY_SELECT,
 } from "../db/queries";
 
@@ -263,11 +264,19 @@ export const timeEntriesRouter = new Hono<{
       const { results: ownedEntries } = await c.env.DB.prepare(
         `SELECT id FROM time_entries WHERE workspace_id = ? AND id IN (${placeholders})`
       ).bind(workspaceId, ...ids).all<{ id: string }>();
-      for (const { id } of ownedEntries) {
-        await c.env.DB.prepare(`DELETE FROM time_entry_tags WHERE time_entry_id = ?`).bind(id).run();
-        if (patch.tags.length) {
-          await upsertTags(c.env.DB, workspaceId, id, patch.tags);
-        }
+      const owned = ownedEntries.map((e) => e.id);
+      if (owned.length) {
+        // One batch for the whole selection (it used to be two serial round
+        // trips per entry): clear the owned entries' tags, create any missing
+        // tags once, then link every entry. ids is capped at BULK_ENTRY_IDS_MAX
+        // so the delete stays under D1's bound-parameter limit.
+        const ownedPlaceholders = owned.map(() => "?").join(",");
+        await c.env.DB.batch([
+          c.env.DB
+            .prepare(`DELETE FROM time_entry_tags WHERE time_entry_id IN (${ownedPlaceholders})`)
+            .bind(...owned),
+          ...tagLinkStatements(c.env.DB, workspaceId, owned, patch.tags),
+        ]);
       }
     }
 

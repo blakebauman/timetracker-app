@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../lib/validate";
 import { ReportQuerySchema, GroupedReportQuerySchema } from "@timetracker/core/schemas";
 import { buildReportWhere, durationExpr } from "../db/queries";
 
@@ -94,7 +94,7 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         ${e.amount} as billable_amount
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
     `
         ).bind(...bindings),
@@ -108,7 +108,7 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         ${e.amount} as billable_amount
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY te.project_id
       ORDER BY total_seconds DESC
@@ -124,8 +124,8 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         ${e.amount} as billable_amount
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
-      LEFT JOIN clients cl ON cl.id = p.client_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
+      LEFT JOIN clients cl ON cl.id = p.client_id AND cl.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY p.client_id
       ORDER BY total_seconds DESC
@@ -141,8 +141,8 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         ${e.amount} as billable_amount
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
-      LEFT JOIN tasks tk ON tk.id = te.task_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
+      LEFT JOIN tasks tk ON tk.id = te.task_id AND tk.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY te.task_id
       ORDER BY total_seconds DESC
@@ -158,9 +158,9 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         ${e.amount} as billable_amount
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       LEFT JOIN time_entry_tags tet ON tet.time_entry_id = te.id
-      LEFT JOIN tags t ON t.id = tet.tag_id
+      LEFT JOIN tags t ON t.id = tet.tag_id AND t.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY t.id
       ORDER BY total_seconds DESC
@@ -175,7 +175,7 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY date(te.start)
       ORDER BY date ASC
@@ -196,7 +196,7 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY date(te.start), te.project_id
       ORDER BY date ASC, total_seconds DESC
@@ -268,14 +268,14 @@ export const reportsRouter = new Hono<{
 
       // Assemble only the joins the chosen dimensions require.
       const needs = new Set([g.needs, sub?.needs].filter(Boolean));
-      const joins = ["LEFT JOIN projects p ON p.id = te.project_id"];
+      const joins = ["LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id"];
       if (needs.has("clients"))
-        joins.push("LEFT JOIN clients cl ON cl.id = p.client_id");
+        joins.push("LEFT JOIN clients cl ON cl.id = p.client_id AND cl.workspace_id = te.workspace_id");
       if (needs.has("tasks"))
-        joins.push("LEFT JOIN tasks tk ON tk.id = te.task_id");
+        joins.push("LEFT JOIN tasks tk ON tk.id = te.task_id AND tk.workspace_id = te.workspace_id");
       if (needs.has("tags")) {
         joins.push("LEFT JOIN time_entry_tags tet ON tet.time_entry_id = te.id");
-        joins.push("LEFT JOIN tags t ON t.id = tet.tag_id");
+        joins.push("LEFT JOIN tags t ON t.id = tet.tag_id AND t.workspace_id = te.workspace_id");
       }
 
       const cols = [
@@ -311,7 +311,7 @@ export const reportsRouter = new Hono<{
         SELECT COUNT(*) as entry_count, ${e.total} as total_seconds,
           ${e.billable} as billable_seconds, ${e.amount} as billable_amount
         FROM time_entries te
-        LEFT JOIN projects p ON p.id = te.project_id
+        LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
         WHERE ${where}
       `
         ).bind(...bindings),
@@ -397,7 +397,7 @@ export const reportsRouter = new Hono<{
         ${e.billable} as billable_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY date(te.start)
       ORDER BY date ASC
@@ -439,11 +439,11 @@ export const reportsRouter = new Hono<{
         tk.name as task_name,
         GROUP_CONCAT(t.name) as tag_names
       FROM time_entries te
-      LEFT JOIN projects p ON p.id = te.project_id
-      LEFT JOIN clients c ON c.id = p.client_id
-      LEFT JOIN tasks tk ON tk.id = te.task_id
+      LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
+      LEFT JOIN clients c ON c.id = p.client_id AND c.workspace_id = te.workspace_id
+      LEFT JOIN tasks tk ON tk.id = te.task_id AND tk.workspace_id = te.workspace_id
       LEFT JOIN time_entry_tags tet ON tet.time_entry_id = te.id
-      LEFT JOIN tags t ON t.id = tet.tag_id
+      LEFT JOIN tags t ON t.id = tet.tag_id AND t.workspace_id = te.workspace_id
       WHERE ${where}
       GROUP BY te.id
       ORDER BY te.start DESC
