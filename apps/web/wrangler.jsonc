@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "timetracker-app",
   "main": "./src/worker/index.ts",
-  // Pinned to the installed workerd's date (1.20260708.1), not "today": a
+  // Pinned to the installed workerd's date (1.20260918.1), not "today": a
   // compat date ahead of the local runtime makes `wrangler dev` and the e2e
   // suite run on different semantics than the config claims, and warns on every
   // invocation. Bump this together with the workerd/wrangler dependency.
@@ -11,7 +11,7 @@
   // against production, that did NOT actually reciprocate Close frames — the
   // wire showed 1006 once the manual handshake was removed — so TimerRoom still
   // closes by hand. Read its webSocketClose comment before touching that again.
-  "compatibility_date": "2026-07-08",
+  "compatibility_date": "2026-09-18",
   "compatibility_flags": [
     "nodejs_compat"
   ],
