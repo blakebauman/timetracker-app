@@ -112,6 +112,32 @@ through the app.
   there is one CSP to reason about even though the worker's copy only lands
   on JSON and WebSocket responses. Still open: `style-src 'unsafe-inline'`,
   which React, FullCalendar and Recharts need for `style=` attributes.
+- ~~**Agents SDK 0.17 → 0.24 (+ `@cloudflare/ai-chat` 0.12)**~~ — shipped in
+  #147. The one code change was `/mcp` calling `createLegacyMcpHandler` by
+  name: since 0.20 `createMcpHandler` expects an MCP SDK **v2** server
+  factory, and this server is built on `@modelcontextprotocol/sdk` 1.x. **Still
+  open:** the SDK v2 move itself (new `@modelcontextprotocol/server` package,
+  `createMcpHandler` with a factory, and then the stateless handler's
+  `allowedOriginHostnames` becomes relevant). First deploy after #147 runs the
+  SDK's one-way Durable Object SQLite migrations on each agent's first wake;
+  a rollback after that loses at most the 100-message chat history.
+- **Workspace role policy (decision, not a bug)** — every route gates on
+  membership only; any member can mint a `read_write` API key with no expiry
+  (`routes/api-keys.ts`), rewrite or delete integration credentials
+  (`routes/integrations.ts`) and disconnect the calendar (`routes/calendar.ts`).
+  Membership already grants full read/write, so this is not escalation, but
+  owner and member are indistinguishable. If owner/admin-only is wanted it is
+  a ~30-line `requireRole` middleware over `member.role` in
+  `middleware/workspace.ts` applied to those three routers.
+- **Dashboard-only hardening (no code)** — zone: minimum TLS 1.2 (was 1.0),
+  Always Use HTTPS on, then `; preload` on HSTS after 30 clean days; WAF
+  rate-limiting rules on `/api/auth/*` and `/mcp` as the cross-colo backstop
+  to the Workers bindings; confirm the account is on Workers Paid (D1 Time
+  Travel 30 days, not 7). GitHub: enable Dependabot alerts + security updates
+  and CodeQL default setup; make `Lint (eslint)`, `Typecheck` and `Build`
+  required checks alongside `e2e`; `enforce_admins`. Chrome Web Store: upload
+  extension 1.0.3, then add the store-assigned `chrome-extension://<id>` to
+  `trustedOrigins` and `ALLOWED_ORIGINS`.
 
 ---
 
