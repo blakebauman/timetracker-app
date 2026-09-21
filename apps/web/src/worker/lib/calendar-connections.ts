@@ -19,9 +19,12 @@ import {
 
 export interface CalendarConnection {
   id: string;
+  workspaceId: string;
   provider: CalendarProvider;
   tokens: CalendarTokens;
   autoTrack: boolean;
+  /** The ciphertext these tokens were decrypted from — the compare half of the compare-and-set persist. */
+  credentials: string;
 }
 
 /** Every configured, connected calendar for a workspace. */
@@ -49,9 +52,11 @@ export async function loadCalendarConnections(
     try {
       out.push({
         id: row.id,
+        workspaceId,
         provider,
         tokens: await decryptJSON<CalendarTokens>(env.AUTH_SECRET, row.credentials),
         autoTrack: Boolean(row.auto_track),
+        credentials: row.credentials,
       });
     } catch (e) {
       // A row that won't decrypt (AUTH_SECRET rotated, corrupted write) must not
@@ -83,10 +88,49 @@ export async function accessTokenFor(
   if (refreshed) {
     // Microsoft rotates refresh tokens, so this persists more than an expiry
     // bump — skip it and the connection dies when the old token is retired.
+    //
+    // Compare-and-set against the ciphertext we loaded: the cron sweep and a
+    // user request can both find the token expired and both refresh. With a
+    // provider that rotates, the loser's refresh token is already dead, and a
+    // blind UPDATE would store it over the winner's live one — killing the
+    // connection with no error anywhere. If the row moved under us, take the
+    // winner's tokens instead of persisting ours.
     const credentials = await encryptJSON(env.AUTH_SECRET, conn.tokens);
-    await env.DB.prepare(`UPDATE integrations SET credentials = ? WHERE id = ?`)
-      .bind(credentials, conn.id)
-      .run();
+    try {
+      const res = await env.DB.prepare(
+        `UPDATE integrations SET credentials = ?
+         WHERE id = ? AND workspace_id = ? AND credentials = ?`
+      )
+        .bind(credentials, conn.id, conn.workspaceId, conn.credentials)
+        .run();
+      if (res.meta.changes === 1) {
+        conn.credentials = credentials;
+      } else {
+        const row = await env.DB.prepare(
+          `SELECT credentials FROM integrations WHERE id = ? AND workspace_id = ?`
+        )
+          .bind(conn.id, conn.workspaceId)
+          .first<{ credentials: string }>();
+        if (row) {
+          conn.credentials = row.credentials;
+          conn.tokens = await decryptJSON<CalendarTokens>(env.AUTH_SECRET, row.credentials);
+          console.warn("calendar: concurrent token refresh, adopted the persisted rotation", {
+            workspaceId: conn.workspaceId,
+            provider: conn.provider.id,
+          });
+          return conn.tokens.accessToken || accessToken;
+        }
+      }
+    } catch (e) {
+      // The IdP has already consumed the old refresh token; if this write is
+      // lost the connection is dead on its next refresh. Say so loudly — this
+      // used to surface only as a generic "provider read failed" warning.
+      console.error("calendar: failed to persist rotated tokens — reconnect may be needed", {
+        workspaceId: conn.workspaceId,
+        provider: conn.provider.id,
+        error: String(e),
+      });
+    }
   }
   return accessToken;
 }

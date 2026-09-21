@@ -11,6 +11,7 @@ import { sendEmail } from "./mailer";
 import { DailyBriefEmail, type BriefBudgetLine, type BriefProjectLine } from "../emails/daily-brief";
 import { atRiskProjects, loadProjectPacing } from "./pacing";
 import { runBriefNarrative } from "./ai";
+import { forEachLimited, SWEEP_CONCURRENCY } from "./concurrency";
 
 const APP_URL = "https://timetracker.run";
 /** Top N projects in the split — past this it stops being a glance. */
@@ -292,11 +293,13 @@ export async function runDigests(env: Env, nowMs: number = Date.now()): Promise<
      WHERE (u.digest_daily = 1 OR u.digest_weekly = 1) AND u.email IS NOT NULL`
   ).all<DigestRow>();
 
-  for (const row of results) {
-    if (!row.workspace_id) continue;
+  // Bounded concurrency (not a serial loop): each send is an AI narrative call
+  // plus an email, and the whole sweep has to finish inside one invocation.
+  await forEachLimited(results, SWEEP_CONCURRENCY, async (row) => {
+    if (!row.workspace_id) return;
 
     const local = new Date(nowMs - row.digest_tz_offset * 60_000);
-    if (local.getUTCHours() !== row.digest_hour) continue;
+    if (local.getUTCHours() !== row.digest_hour) return;
 
     const localDate = local.toISOString().slice(0, 10);
     const user: DigestUser = {
@@ -318,14 +321,24 @@ export async function runDigests(env: Env, nowMs: number = Date.now()): Promise<
     }
 
     for (const kind of due) {
+      const column = kind === "daily" ? "digest_daily_sent" : "digest_weekly_sent";
+      const previous = kind === "daily" ? row.digest_daily_sent : row.digest_weekly_sent;
+
+      // Claim, then send. The cron ticks twelve times inside the target hour
+      // and two invocations can overlap; marking *after* the send meant a
+      // failed UPDATE (or an invocation cut off between the two awaits)
+      // re-sent the same briefing five minutes later. The conditional UPDATE
+      // is the lock: exactly one tick flips the column for this local date.
+      const claim = await env.DB.prepare(
+        `UPDATE "user" SET ${column} = ? WHERE id = ? AND (${column} IS NULL OR ${column} <> ?)`
+      )
+        .bind(localDate, row.id, localDate)
+        .run();
+      if (!claim.meta.changes) continue;
+
       try {
         // Daily covers yesterday; weekly covers the seven days ending yesterday.
         await sendDigest(env, user, kind, shiftLocalDate(localDate, -1));
-        await env.DB.prepare(
-          `UPDATE "user" SET ${kind === "daily" ? "digest_daily_sent" : "digest_weekly_sent"} = ? WHERE id = ?`
-        )
-          .bind(localDate, row.id)
-          .run();
       } catch (e) {
         // One undeliverable address must not abort the sweep — but a persistent
         // failure means that person silently stops hearing from us.
@@ -334,7 +347,19 @@ export async function runDigests(env: Env, nowMs: number = Date.now()): Promise<
           kind,
           error: String(e),
         });
+        // Release the claim so the next tick retries, but only if it is still
+        // ours — never clobber a later, successful send.
+        await env.DB.prepare(`UPDATE "user" SET ${column} = ? WHERE id = ? AND ${column} = ?`)
+          .bind(previous ?? null, row.id, localDate)
+          .run()
+          .catch((releaseError) => {
+            console.error("digest: could not release send claim", {
+              userId: row.id,
+              kind,
+              error: String(releaseError),
+            });
+          });
       }
     }
-  }
+  });
 }

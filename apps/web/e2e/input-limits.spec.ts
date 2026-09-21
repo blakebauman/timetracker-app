@@ -43,9 +43,15 @@ test.describe("input limits", () => {
   test("an oversized body is a 413 before anything parses it", async ({ page }) => {
     await signUp(page);
     const origin = new URL(page.url()).origin;
-    const res = await page.request.post("/api/time_entries", {
+    // The auth surface has the tighter cap (64 KiB), so a 96 KiB body trips the
+    // same body-limit middleware while still fitting in a socket buffer. The
+    // worker answers from Content-Length without reading the body; with a
+    // multi-megabyte payload the Vite dev proxy on Linux tears the connection
+    // down mid-write ("fetch failed" → 500) — an artifact of the proxy, not the
+    // limit, and one the Cloudflare edge doesn't have.
+    const res = await page.request.post("/api/auth/sign-in/email", {
       headers: { origin, "content-type": "application/json" },
-      data: JSON.stringify({ description: "x".repeat(2 * 1024 * 1024), start: new Date().toISOString() }),
+      data: JSON.stringify({ email: "nobody@example.com", password: "x".repeat(96 * 1024) }),
     });
     expect(res.status()).toBe(413);
     expect(await res.json()).toEqual({ error: "Payload too large" });

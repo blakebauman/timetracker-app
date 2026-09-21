@@ -3,6 +3,7 @@
 // (UTC date) keeps it idempotent across the 5-minute cron cycles.
 
 import { broadcast, upsertTags } from "../db/queries";
+import { forEachLimited, SWEEP_CONCURRENCY } from "./concurrency";
 
 export async function runRecurring(env: Env): Promise<void> {
   const now = new Date();
@@ -24,17 +25,20 @@ export async function runRecurring(env: Env): Promise<void> {
     .bind(nowMinutes, todayStr, `,${todayDay},`)
     .all<Record<string, unknown>>();
 
-  for (const row of results) {
+  // Bounded concurrency like the other sweeps — this was the last fully serial
+  // one, so it would have hit the invocation wall first despite being the
+  // cheapest per row.
+  await forEachLimited(results, SWEEP_CONCURRENCY, async (row) => {
     try {
       const days = String(row.days_of_week ?? "")
         .split(",")
         .filter(Boolean)
         .map(Number);
-      if (!days.includes(todayDay)) continue;
+      if (!days.includes(todayDay)) return;
 
       const timeUtc = row.time_utc as number;
-      if (nowMinutes < timeUtc) continue; // scheduled time hasn't passed yet today
-      if (row.last_materialized === todayStr) continue; // already created today
+      if (nowMinutes < timeUtc) return; // scheduled time hasn't passed yet today
+      if (row.last_materialized === todayStr) return; // already created today
 
       const startMs =
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) +
@@ -91,5 +95,5 @@ export async function runRecurring(env: Env): Promise<void> {
         error: String(e),
       });
     }
-  }
+  });
 }

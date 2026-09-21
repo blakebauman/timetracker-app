@@ -112,6 +112,18 @@ const app = new Hono<{ Bindings: Env }>()
     const origin = new URL(c.req.url).origin;
     return createAuth(c.env, origin).handler(c.req.raw);
   })
+  // Unauthenticated liveness probe for an uptime monitor: is the worker up and
+  // can it reach D1. Deliberately says nothing else — no version, no env name,
+  // no bindings — and sits before workspaceMiddleware so a monitor needs no
+  // session.
+  .get("/api/health", async (c) => {
+    try {
+      await c.env.DB.prepare("SELECT 1").first();
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ ok: false }, 503);
+    }
+  })
   .use("/api/*", workspaceMiddleware)
   .use("/api/ai/*", aiRateLimit)
   // track-event hits Workers AI (project inference); nudge polling is capped well
@@ -269,6 +281,22 @@ export default {
   // has arrived. Each sweep swallows its own per-workspace/per-user errors, so
   // one broken connection can't stop the others.
   scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(Promise.all([runAutoTrack(env), runRecurring(env), runDigests(env)]));
+    // allSettled, not all: the per-row try/catch inside each sweep can't cover
+    // its own driving query, and one job's rejection must neither mask the
+    // other two nor surface as an unhandled rejection with no name on it.
+    const jobs = [
+      ["autotrack", runAutoTrack(env)],
+      ["recurring", runRecurring(env)],
+      ["digests", runDigests(env)],
+    ] as const;
+    ctx.waitUntil(
+      Promise.allSettled(jobs.map(([, p]) => p)).then((results) => {
+        results.forEach((r, i) => {
+          if (r.status === "rejected") {
+            console.error("cron: job failed", { job: jobs[i][0], error: String(r.reason) });
+          }
+        });
+      })
+    );
   },
 } satisfies ExportedHandler<Env>;
