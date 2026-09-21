@@ -128,6 +128,17 @@ for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code} " -X POST \
   -d '{"email":"nobody@example.com","otp":"000000"}'; done; echo
 ```
 
+WebSocket origin gate (only observable here — the dev proxy swallows upgrade
+requests before the worker sees them): a foreign Origin must be refused on
+both upgrade paths —
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
+  -H 'Origin: https://evil.example' https://timetracker.run/api/ws                      # 403
+curl -s -o /dev/null -w "%{http_code}\n" -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
+  -H 'Origin: https://evil.example' https://timetracker.run/agents/chat-agent/assistant # 403
+```
+
 `/api/health` is the endpoint to point an uptime monitor at. A `500` from any
 API route carries an `X-Request-Id` (Cloudflare's ray id); search Workers
 Logs for it.

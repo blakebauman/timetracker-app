@@ -126,6 +126,15 @@ export function createAuth(env: Env, baseURL: string) {
             fields: { createdAt: "created_at" },
           },
         },
+        // Explicit ceilings rather than library defaults (100 members, no cap
+        // on organizations or invitations per user). This is a handful of
+        // people per workspace; the numbers are headroom, and they turn an
+        // authenticated account into a bounded source of rows and emails.
+        organizationLimit: 10,
+        membershipLimit: 25,
+        invitationLimit: 50,
+        invitationExpiresIn: 60 * 60 * 48,
+        cancelPendingInvitationsOnReInvite: true,
         async sendInvitationEmail(data) {
           const url = `${baseURL}/accept-invite?id=${data.id}`;
           await sendEmail(
