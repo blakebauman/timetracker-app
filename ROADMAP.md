@@ -112,6 +112,34 @@ through the app.
   there is one CSP to reason about even though the worker's copy only lands
   on JSON and WebSocket responses. Still open: `style-src 'unsafe-inline'`,
   which React, FullCalendar and Recharts need for `style=` attributes.
+- **Agents SDK 0.17 → 0.24 (+ `@cloudflare/ai-chat` 0.12)** — left out of the
+  September 2026 dependency PRs on purpose; it is a migration, not a bump.
+  Known breaks from the changelogs: `onChatMessage`'s callback type (0.19);
+  `createMcpHandler` expects MCP SDK v2, so `/mcp` needs
+  `createLegacyMcpHandler` or an SDK upgrade (0.20); the Workers handler
+  gained Origin checks that default to localhost + workers.dev — pass
+  `allowedOriginHostnames: ["timetracker.run"]` or every production Assistant
+  WebSocket is refused (0.20); one-way DO SQLite migrations run on first wake
+  (0.22–0.24, ai-chat 0.12), so a rollback after the first production wake
+  loses migrated chat history (capped at 100 messages — low value, but say so
+  in the PR). Rehearse against a copy of a real workspace's DO state first.
+- **Workspace role policy (decision, not a bug)** — every route gates on
+  membership only; any member can mint a `read_write` API key with no expiry
+  (`routes/api-keys.ts`), rewrite or delete integration credentials
+  (`routes/integrations.ts`) and disconnect the calendar (`routes/calendar.ts`).
+  Membership already grants full read/write, so this is not escalation, but
+  owner and member are indistinguishable. If owner/admin-only is wanted it is
+  a ~30-line `requireRole` middleware over `member.role` in
+  `middleware/workspace.ts` applied to those three routers.
+- **Dashboard-only hardening (no code)** — zone: minimum TLS 1.2 (was 1.0),
+  Always Use HTTPS on, then `; preload` on HSTS after 30 clean days; WAF
+  rate-limiting rules on `/api/auth/*` and `/mcp` as the cross-colo backstop
+  to the Workers bindings; confirm the account is on Workers Paid (D1 Time
+  Travel 30 days, not 7). GitHub: enable Dependabot alerts + security updates
+  and CodeQL default setup; make `Lint (eslint)`, `Typecheck` and `Build`
+  required checks alongside `e2e`; `enforce_admins`. Chrome Web Store: upload
+  extension 1.0.3, then add the store-assigned `chrome-extension://<id>` to
+  `trustedOrigins` and `ALLOWED_ORIGINS`.
 
 ---
 
