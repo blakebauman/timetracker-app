@@ -31,7 +31,7 @@ import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
 import { runDigests } from "./lib/digest";
 import { routeAgentRequest } from "agents";
-import { createMcpHandler } from "agents/mcp";
+import { createLegacyMcpHandler } from "agents/mcp";
 import { buildMcpServer } from "./mcp/server";
 import { resolveApiKey, touchApiKey } from "./lib/api-keys";
 export { TimerRoom } from "./durable-objects/TimerRoom";
@@ -248,7 +248,15 @@ async function handleMcpRequest(
     userId: resolved.userId,
     scope: resolved.scope,
   });
-  return createMcpHandler(server, { route: "/mcp" })(limitBody(request, RAW_BODY_MAX), env, ctx);
+  // Agents SDK ≥ 0.20: createMcpHandler expects an MCP SDK v2 factory and
+  // only shims a v1 McpServer instance with a deprecation warning. This server
+  // is built on SDK v1 (@modelcontextprotocol/sdk 1.x), so call the legacy
+  // handler by name; moving to v2 is its own change.
+  return createLegacyMcpHandler(server, { route: "/mcp" })(
+    limitBody(request, RAW_BODY_MAX),
+    env,
+    ctx
+  );
 }
 
 /**

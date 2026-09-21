@@ -203,6 +203,6 @@ tools are only registered for read+write.
 | Settings card | `apps/web/src/react-app/components/settings/McpConnectorCard.tsx` |
 | Tests | `e2e/mcp.spec.ts` |
 
-Transport is `agents/mcp`'s `createMcpHandler` — Streamable HTTP, stateless. A
+Transport is `agents/mcp`'s `createLegacyMcpHandler` — Streamable HTTP, stateless. ("Legacy" is the Agents SDK's name for its MCP SDK v1 path; `createMcpHandler` now expects an SDK v2 server factory, and this server is built on `@modelcontextprotocol/sdk` 1.x. Moving to v2 is a separate change.) A
 fresh `McpServer` is built per request, bound to the workspace the key resolved
 to. See `docs/ARCHITECTURE.md` for how it sits in the request lifecycle.

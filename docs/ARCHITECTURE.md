@@ -50,7 +50,7 @@ The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together 
 | `/api/ws` | `websocket.ts` | upgrade → `TimerRoom` (`idFromName(workspaceId)`) |
 | `/api/health` | `index.ts` | unauthenticated liveness probe: `SELECT 1` against D1 → `{ ok }` and nothing else (no version, env or bindings) |
 
-`/mcp` is **not** a Hono route: like `/agents/*` it is intercepted in `index.ts` before the app, authenticated by API key rather than session, and handed to `agents/mcp`'s `createMcpHandler`. See MCP below.
+`/mcp` is **not** a Hono route: like `/agents/*` it is intercepted in `index.ts` before the app, authenticated by API key rather than session, and handed to `agents/mcp`'s `createLegacyMcpHandler`. See MCP below.
 
 `db/queries.ts` holds the shared SQL helpers — `ENTRY_SELECT` is the canonical time-entry JOIN; `broadcast()` fans WebSocket events out through the DO; `upsertTags()` implicitly creates tags with deterministic colors.
 
@@ -109,7 +109,7 @@ Deliberately AI-free — pacing goes in front of a client, so it must be reprodu
 
 ## MCP server (`mcp/server.ts`, `lib/api-keys.ts`)
 
-`/mcp` speaks Streamable HTTP via `agents/mcp`'s `createMcpHandler` — stateless, no Durable Object. A fresh `McpServer` is built per request, bound to the workspace resolved from the API key.
+`/mcp` speaks Streamable HTTP via `agents/mcp`'s `createLegacyMcpHandler` — stateless, no Durable Object. A fresh `McpServer` is built per request, bound to the workspace resolved from the API key.
 
 - **Eleven tools**, each a thin wrapper over the helpers the REST API already uses (report builder, pacing, draft pipeline), so a chat answer and a Reports page answer come from one implementation.
 - **No tool takes a workspace id** — it is fixed at construction, so nothing a model can invent reaches a tenant boundary.
