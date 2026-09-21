@@ -37,8 +37,8 @@ catalog:
   # cloudflare
   wrangler: 4.135.0
   "@cloudflare/vite-plugin": 1.56.0
-  "@cloudflare/ai-chat": ^0.9.3
-  agents: ^0.17.4
+  "@cloudflare/ai-chat": ^0.12.0
+  agents: ^0.24.0
   workers-ai-provider: ^3.3.1
 
   # react
