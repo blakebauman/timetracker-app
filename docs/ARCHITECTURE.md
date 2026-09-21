@@ -48,6 +48,7 @@ The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together 
 | `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push` (takes the client's IANA `timezone`; the route resolves each entry's work date with `lib/local-date.ts` before handing it to an adapter), SSRF-guarded (https only, public-host allow-list, redirects refused, upstream bodies never echoed), outbound rate limits |
 | `/api/admin` | `admin.ts` | `DELETE /users/:id` (site-admin user removal + orphan cleanup); list/ban/impersonate go through Better Auth's admin plugin client-side |
 | `/api/ws` | `websocket.ts` | upgrade → `TimerRoom` (`idFromName(workspaceId)`) |
+| `/api/health` | `index.ts` | unauthenticated liveness probe: `SELECT 1` against D1 → `{ ok }` and nothing else (no version, env or bindings) |
 
 `/mcp` is **not** a Hono route: like `/agents/*` it is intercepted in `index.ts` before the app, authenticated by API key rather than session, and handed to `agents/mcp`'s `createMcpHandler`. See MCP below.
 
@@ -88,7 +89,7 @@ Three independent, idempotent jobs, each iterating its own subjects and swallowi
 
 - **Calendar auto-track** (`lib/calendar-autotrack.ts`) — for workspaces with any calendar connected + auto-track on, converts *ended* events into entries. Provider-agnostic (`lib/calendar-connections.ts`); idempotent via `time_entries.calendar_event_id`.
 - **Recurring entries** (`lib/recurring.ts`) — materializes each active template once its scheduled UTC time passes. Idempotent via `last_materialized` (UTC date). Schedules stored as UTC weekday + minutes-of-day; the client converts to local time (`react-app/lib/recurrence.ts`).
-- **Email digests** (`lib/digest.ts`) — the morning briefing and the Monday weekly summary, for users who opted in. The cron has no request to read a timezone from, so it works off `user.digest_tz_offset` (reconciled client-side by `useHydrateSettings` whenever it drifts, so a DST change doesn't send an hour off for months). The 5-minute cron ticks twelve times inside the target hour, so the send is exactly-once by comparing `digest_daily_sent`/`digest_weekly_sent` against the user's **local** date rather than by locking.
+- **Email digests** (`lib/digest.ts`) — the morning briefing and the Monday weekly summary, for users who opted in. The cron has no request to read a timezone from, so it works off `user.digest_tz_offset` (reconciled client-side by `useHydrateSettings` whenever it drifts, so a DST change doesn't send an hour off for months). The 5-minute cron ticks twelve times inside the target hour (and invocations can overlap), so the send is exactly-once by **claim-then-send**: a conditional `UPDATE` sets `digest_daily_sent`/`digest_weekly_sent` to the user's **local** date only if it isn't already that date — exactly one tick wins — then the email goes out, and a failed send releases the claim (only if still its own) so the next tick retries. Marking after the send used to re-mail the same briefing five minutes later whenever the mark failed. All three sweeps run with bounded concurrency (`lib/concurrency.ts`, 5 at a time), and `scheduled()` awaits them with `allSettled` so one job's driving-query failure is logged by name rather than masking the other two.
 
 ## Drafting a day (`lib/drafts.ts`)
 

@@ -4,6 +4,7 @@
 // workspace's events and never knows which calendar they came from.
 
 import { broadcast } from "../db/queries";
+import { forEachLimited, SWEEP_CONCURRENCY } from "./concurrency";
 import { inferEventProjects, type InferredEventProject } from "./ai";
 import {
   fetchWorkspaceEvents,
@@ -116,25 +117,20 @@ export async function runAutoTrack(env: Env): Promise<void> {
   // Bounded concurrency: a serial sweep head-of-line-blocks every workspace
   // behind one slow provider response; unbounded Promise.all would breach the
   // 6-simultaneous-connection limit. Chunks of 5 keep the sweep O(n/5).
-  const CONCURRENCY = 5;
-  for (let i = 0; i < workspaceIds.length; i += CONCURRENCY) {
-    await Promise.all(
-      workspaceIds.slice(i, i + CONCURRENCY).map(async (workspaceId) => {
-        try {
-          await convertRange(env, workspaceId, since, until, {
-            onlyEnded: true,
-            onlyAutoTrack: true,
-          });
-        } catch (e) {
-          // One workspace failing (revoked token, transient provider error) must
-          // not abort the rest of the sweep — but a persistent failure means
-          // that workspace's entries silently stop materializing, so log it.
-          console.error("autotrack: workspace sweep failed", {
-            workspaceId,
-            error: String(e),
-          });
-        }
-      })
-    );
-  }
+  await forEachLimited(workspaceIds, SWEEP_CONCURRENCY, async (workspaceId) => {
+    try {
+      await convertRange(env, workspaceId, since, until, {
+        onlyEnded: true,
+        onlyAutoTrack: true,
+      });
+    } catch (e) {
+      // One workspace failing (revoked token, transient provider error) must
+      // not abort the rest of the sweep — but a persistent failure means
+      // that workspace's entries silently stop materializing, so log it.
+      console.error("autotrack: workspace sweep failed", {
+        workspaceId,
+        error: String(e),
+      });
+    }
+  });
 }
