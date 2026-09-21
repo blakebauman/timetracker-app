@@ -166,11 +166,16 @@ async function handleAgentRequest(request: Request, env: Env): Promise<Response>
 
   const url = new URL(request.url);
   // /agents/<kebab-class>/<instance>[/subpath] → pin <instance> to the workspace.
+  // Only the chat agent is reachable this way, and only with an instance
+  // segment to pin: a bare /agents/chat-agent (nothing to rewrite) or
+  // /agents/timer-room/* (the timer DO has its own authenticated route) used to
+  // fall through to routeAgentRequest unpinned.
   const segments = url.pathname.split("/"); // ["", "agents", "chat-agent", "<instance>", ...]
-  if (segments.length >= 4) {
-    segments[3] = resolved.workspaceId;
-    url.pathname = segments.join("/");
+  if (segments[2] !== "chat-agent" || segments.length < 4 || !segments[3]) {
+    return new Response("Not found", { status: 404 });
   }
+  segments[3] = resolved.workspaceId;
+  url.pathname = segments.join("/");
   const rewritten = new Request(url, limitBody(request, RAW_BODY_MAX));
   return (await routeAgentRequest(rewritten, env)) ?? new Response("Not found", { status: 404 });
 }

@@ -343,11 +343,20 @@ function ApprovalPrompt({
   }
   if (typeof input.billable === "boolean") details.push(input.billable ? "billable" : "non-billable");
 
+  // startTimer only asks when a timer is already running (the server decides),
+  // so the thing to approve is the stop, not the start.
+  const consequence =
+    name === "startTimer"
+      ? " This will stop the timer that is running now."
+      : name === "stopTimer"
+        ? " This ends the running entry."
+        : "";
+
   return (
     <div className="space-y-2">
       <p>
         The assistant wants to run <span className="font-medium text-foreground">{name}</span>
-        {input.id ? ` on entry ${String(input.id).slice(0, 8)}…` : ""}. Approve?
+        {input.id ? ` on entry ${String(input.id).slice(0, 8)}…` : ""}.{consequence} Approve?
       </p>
       {details.length > 0 && (
         <p className="rounded-md bg-muted/60 px-2 py-1 text-xs text-muted-foreground">{details.join(" · ")}</p>

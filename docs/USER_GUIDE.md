@@ -210,7 +210,7 @@ The Assistant is built in, reachable from the sparkle button at the bottom of th
 
 Dismissals stick per-device. Turn nudge alerts on/off under Settings → Productivity.
 
-**Chat** — ask the Assistant things in plain language: *"start a timer for the Acme redesign"*, *"how much did I bill this week?"*, *"log 2 hours of code review yesterday afternoon"*, *"track my 10am meeting"*. It can start/stop timers, log and delete entries, track meetings, summarize your time, and look up your projects — anything that **writes or deletes data asks for your approval first** with an in-chat confirm card.
+**Chat** — ask the Assistant things in plain language: *"start a timer for the Acme redesign"*, *"how much did I bill this week?"*, *"log 2 hours of code review yesterday afternoon"*, *"track my 10am meeting"*. It can start/stop timers, log and delete entries, track meetings, summarize your time, and look up your projects — anything that **changes time already on your sheet asks for your approval first** with an in-chat confirm card: logging, deleting, stopping a running timer, or starting a new one while another is running. Starting a timer when nothing is running just starts it.
 
 **Memory** — tell the Assistant to remember preferences ("remember that standups are never billable") and it stores them per-workspace, using them in future conversations. Review and delete everything it knows under **Settings → Assistant memory**.
 

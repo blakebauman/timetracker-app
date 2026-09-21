@@ -57,6 +57,18 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
           .nullish()
           .describe("Override billable; defaults to the project's default"),
       }),
+      // Starting a timer while one is running truncates the running entry —
+      // the one write here that changes billable time already on the sheet.
+      // That is exactly what an instruction smuggled in through a calendar
+      // title would go for, so it needs a human's approval; an idle start
+      // costs nothing to undo and stays one step.
+      needsApproval: async () =>
+        Boolean(
+          await db
+            .prepare(`SELECT 1 FROM time_entries WHERE workspace_id = ? AND stop IS NULL LIMIT 1`)
+            .bind(workspaceId)
+            .first()
+        ),
       execute: async ({ description, projectName, billable }) => {
         const now = new Date().toISOString();
         const proj = await resolveProject(env, workspaceId, projectName);
@@ -102,6 +114,8 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
       description:
         "Stop the currently running timer. No-op (ok:false) if nothing is running.",
       inputSchema: z.object({}),
+      // Ends a live billable block — confirm, same as logTimeEntry/deleteEntry.
+      needsApproval: true,
       execute: async () => {
         const running = await db
           .prepare(`SELECT id, start FROM time_entries WHERE workspace_id = ? AND stop IS NULL LIMIT 1`)
