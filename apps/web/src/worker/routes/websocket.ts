@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { isAllowedOrigin } from "../middleware/cors";
 
 export const websocketRouter = new Hono<{
   Bindings: Env;
@@ -9,6 +10,11 @@ export const websocketRouter = new Hono<{
   const upgradeHeader = c.req.header("Upgrade");
   if (upgradeHeader !== "websocket") {
     return c.text("Expected WebSocket upgrade", 426);
+  }
+  // A cross-site page can open a WebSocket with the user's cookies attached;
+  // refuse the handshake unless the Origin is ours (see isAllowedOrigin).
+  if (!isAllowedOrigin(c.req.header("Origin"))) {
+    return c.text("Forbidden origin", 403);
   }
 
   // Route to the TimerRoom Durable Object for this workspace

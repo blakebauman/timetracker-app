@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { corsMiddleware } from "./middleware/cors";
+import { corsMiddleware, isAllowedOrigin } from "./middleware/cors";
 import { securityHeaders, applySecurityHeaders } from "./middleware/security-headers";
 import { onError, notFound, payloadTooLarge } from "./lib/http-errors";
 import { bodyTooLarge, limitBody } from "./lib/body-guard";
@@ -172,6 +172,16 @@ export type AppType = typeof app;
 async function handleAgentRequest(request: Request, env: Env): Promise<Response> {
   const tooLarge = bodyTooLarge(request, RAW_BODY_MAX);
   if (tooLarge) return tooLarge;
+
+  // Same Origin gate as /api/ws: a cross-site page must not be able to open
+  // the chat WebSocket with the user's cookies. Only the upgrade carries an
+  // Origin a browser is forced to send, so plain HTTP calls are left alone.
+  if (
+    request.headers.get("Upgrade")?.toLowerCase() === "websocket" &&
+    !isAllowedOrigin(request.headers.get("Origin"))
+  ) {
+    return new Response("Forbidden origin", { status: 403 });
+  }
 
   const resolved = await resolveWorkspace(env, request);
   if (!resolved.ok) return new Response("Unauthorized", { status: 401 });

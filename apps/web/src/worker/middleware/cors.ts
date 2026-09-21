@@ -13,6 +13,18 @@ const ALLOWED_ORIGINS = new Set<string>([
   ...(import.meta.env.DEV ? ["http://localhost:5173", "http://localhost:8787"] : []),
 ]);
 
+/**
+ * Whether a browser-supplied Origin is one of ours. Shared with the two
+ * WebSocket upgrade paths (/api/ws and /agents/*): CORS can only decorate a
+ * cross-site handshake, not refuse it, and the only thing keeping evil.example
+ * from opening wss://timetracker.run/api/ws with a victim's cookies was the
+ * session cookie's SameSite=Lax — a library default rather than a check of
+ * our own. Browsers always send Origin on a WebSocket handshake.
+ */
+export function isAllowedOrigin(origin: string | undefined | null): boolean {
+  return !!origin && ALLOWED_ORIGINS.has(origin);
+}
+
 export const corsMiddleware = cors({
   origin: (origin) => {
     if (!origin) return "*";

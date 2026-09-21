@@ -1,6 +1,17 @@
 import { DurableObject } from "cloudflare:workers";
 
+// One room per workspace. A workspace is a handful of people with a few tabs
+// each, so 64 concurrent sockets is headroom; past that something is looping.
+const MAX_SOCKETS = 64;
+// The client throttles heartbeats to one per 30 s; anything faster than two a
+// second is not a person and only burns this object's CPU fanning out.
+const MIN_HEARTBEAT_GAP_MS = 500;
+
 export class TimerRoom extends DurableObject<Env> {
+  // In-memory only — resets when the object hibernates, which is fine: the
+  // guard is against a tight loop, not a long average.
+  private lastHeartbeat = new WeakMap<WebSocket, number>();
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     // Answer the client's "ping" without waking a hibernated object.
@@ -12,7 +23,11 @@ export class TimerRoom extends DurableObject<Env> {
 
     if (url.pathname === "/ws" || url.pathname.endsWith("/api/ws")) {
       // Note: Upgrade header may be stripped by Cloudflare when forwarding to DO,
-      // but the Hono route already validates it before forwarding here.
+      // but the Hono route already validates it (and the Origin) before
+      // forwarding here.
+      if (this.ctx.getWebSockets().length >= MAX_SOCKETS) {
+        return new Response("Too many connections for this workspace", { status: 429 });
+      }
       const [client, server] = Object.values(new WebSocketPair()) as [
         WebSocket,
         WebSocket,
@@ -67,6 +82,11 @@ export class TimerRoom extends DurableObject<Env> {
       return;
     }
     if (parsed?.type !== "activity") return;
+
+    const now = Date.now();
+    const last = this.lastHeartbeat.get(ws) ?? 0;
+    if (now - last < MIN_HEARTBEAT_GAP_MS) return;
+    this.lastHeartbeat.set(ws, now);
 
     const userId = (ws.deserializeAttachment() as { userId?: string } | null)
       ?.userId;

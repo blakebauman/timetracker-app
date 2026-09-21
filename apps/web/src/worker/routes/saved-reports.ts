@@ -63,11 +63,14 @@ export const savedReportsRouter = new Hono<{
     const workspaceId = c.get("workspaceId");
     const userId = c.get("userId");
     const id = c.req.param("id");
-    await c.env.DB.prepare(
+    const res = await c.env.DB.prepare(
       `DELETE FROM saved_reports WHERE id = ? AND workspace_id = ? AND user_id = ?`
     )
       .bind(id, workspaceId, userId)
       .run();
+    // Say so when nothing matched: a 204 for someone else's id (or a stale one)
+    // reads as success and hides a client bug.
+    if (!res.meta.changes) return c.json({ error: "Not found" }, 404);
     return c.body(null, 204);
   });
 
