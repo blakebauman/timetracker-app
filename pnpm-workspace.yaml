@@ -35,8 +35,8 @@ catalog:
   "@playwright/test": ^1.61.1
 
   # cloudflare
-  wrangler: 4.110.0
-  "@cloudflare/vite-plugin": 1.44.0
+  wrangler: 4.135.0
+  "@cloudflare/vite-plugin": 1.56.0
   "@cloudflare/ai-chat": ^0.9.3
   agents: ^0.17.4
   workers-ai-provider: ^3.3.1
