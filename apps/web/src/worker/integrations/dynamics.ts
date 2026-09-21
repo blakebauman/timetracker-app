@@ -5,7 +5,7 @@ import {
   type IntegrationAdapter,
   type PushContext,
 } from "./types";
-import { safeIntegrationOrigin } from "./url-guard";
+import { safeIntegrationOrigin, guardedFetch, upstreamErrorMessage } from "./url-guard";
 
 const API_VERSION = "v9.2";
 
@@ -32,7 +32,7 @@ async function getAccessToken(connection: Connection): Promise<string> {
   const cached = tokenCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.token;
 
-  const res = await fetch(
+  const res = await guardedFetch(
     `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`,
     {
       method: "POST",
@@ -63,18 +63,6 @@ async function getAccessToken(connection: Connection): Promise<string> {
   return body.access_token;
 }
 
-async function readError(res: Response): Promise<string> {
-  // Cap the surfaced upstream body — it reaches the client; don't echo an
-  // arbitrary/large response back as an oracle.
-  const text = (await res.text().catch(() => "")).slice(0, 200);
-  try {
-    const json = JSON.parse(text);
-    return json?.error?.message ?? text ?? res.statusText;
-  } catch {
-    return text || res.statusText;
-  }
-}
-
 export const dynamicsAdapter: IntegrationAdapter = {
   async pushTimeEntry(ctx: PushContext): Promise<{ externalId: string }> {
     const { connection, project, entry, comment } = ctx;
@@ -98,7 +86,7 @@ export const dynamicsAdapter: IntegrationAdapter = {
       record["msdyn_projecttask@odata.bind"] = `/msdyn_projecttasks(${project.externalTaskId})`;
     }
 
-    const res = await fetch(`${origin}/api/data/${API_VERSION}/msdyn_timeentries`, {
+    const res = await guardedFetch(`${origin}/api/data/${API_VERSION}/msdyn_timeentries`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -111,7 +99,7 @@ export const dynamicsAdapter: IntegrationAdapter = {
       body: JSON.stringify(record),
     });
     if (!res.ok) {
-      throw new IntegrationError(`Dynamics push failed: ${await readError(res)}`);
+      throw new IntegrationError(`Dynamics push failed: ${await upstreamErrorMessage(res, "dynamics")}`);
     }
 
     const body = (await res.json().catch(() => ({}))) as { msdyn_timeentryid?: string };
