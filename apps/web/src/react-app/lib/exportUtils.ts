@@ -47,9 +47,21 @@ function exportRow(e: ExportEntry): (string | number)[] {
   ];
 }
 
+// A cell that starts with = + - @ or a tab/CR is executed as a formula by
+// spreadsheet apps when the CSV is opened — quoting does not stop it. A
+// description like `=HYPERLINK(...)` (typed by a teammate, or arriving via a
+// calendar title) would run on the reviewer's machine. Prefix a literal
+// apostrophe, the standard neutraliser; the XLSX path writes inline strings
+// and is not affected.
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+
+export function csvCell(v: string | number): string {
+  if (typeof v === "number") return String(v);
+  const s = FORMULA_LEAD.test(v) ? `'${v}` : v;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 export function exportToCSV(entries: ExportEntry[], filename = "time-entries"): void {
-  const csvCell = (v: string | number) =>
-    typeof v === "number" ? String(v) : `"${v.replace(/"/g, '""')}"`;
   const lines = [
     EXPORT_HEADERS.join(","),
     ...entries.map((e) => exportRow(e).map(csvCell).join(",")),

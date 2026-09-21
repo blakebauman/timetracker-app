@@ -45,7 +45,7 @@ removal. Timer data is retained by the Time Tracker service per its own policy.
 
 - `storage` — cache the session token and timer state locally.
 - `alarms` — periodically refresh the timer and update the toolbar badge.
-- Host access to `timetracker.run` / `*.workers.dev` / `localhost` — call the
+- Host access to `timetracker.run` / `localhost` — call the
   Time Tracker API you are signed in to.
 - Content-script access to `github.com` / `*.atlassian.net` / `linear.app` —
   read the current issue/PR title to pre-fill the description.

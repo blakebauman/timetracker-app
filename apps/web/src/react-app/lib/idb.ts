@@ -105,4 +105,21 @@ export async function deletePendingMutation(id: number): Promise<void> {
   notifyPendingMutationsChange();
 }
 
+export async function clearPendingMutations(): Promise<void> {
+  const db = await getDB();
+  await db.clear("pending_mutations");
+  notifyPendingMutationsChange();
+}
+
+/**
+ * Everything this browser remembers about the account, for sign-out. No
+ * credential lives here — the session is a cookie — but the timer snapshot
+ * and the un-replayed offline queue hold entry descriptions, project ids and
+ * whatever else a queued write carried, which is PII on a shared machine.
+ * Each store is cleared independently so one failure can't keep the other.
+ */
+export async function clearOfflineState(): Promise<void> {
+  await Promise.allSettled([clearTimerState(), clearPendingMutations()]);
+}
+
 export type { TimerState, PendingMutation };

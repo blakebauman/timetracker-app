@@ -82,7 +82,7 @@ In the [developer dashboard](https://chrome.google.com/webstore/devconsole):
    - **Permission justifications:**
      - `storage` — cache the session token and running-timer state locally.
      - `alarms` — periodically refresh the timer and update the toolbar badge.
-     - `host_permissions` (`timetracker.run`, `*.workers.dev`, `localhost`) —
+     - `host_permissions` (`timetracker.run`, `localhost`) —
        call the Time Tracker API the user is signed in to.
      - content-script hosts (`github.com`, `*.atlassian.net`, `linear.app`) —
        read the current issue/PR title to pre-fill the timer description.
