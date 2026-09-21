@@ -129,14 +129,19 @@ for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code} " -X POST \
 ```
 
 WebSocket origin gate (only observable here — the dev proxy swallows upgrade
-requests before the worker sees them): a foreign Origin must be refused on
-both upgrade paths —
+requests before the worker sees them). Two things the probe needs: HTTP/1.1
+(`Upgrade` has no meaning on HTTP/2 and the edge drops it) and the real
+handshake headers (without them the edge does not forward the upgrade). On
+`/agents/*` the Origin check runs before authentication, so a foreign Origin
+is a 403 with no session; on `/api/ws` the session check comes first, so an
+unauthenticated probe is a 401 either way and the 403 needs a logged-in cookie.
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
-  -H 'Origin: https://evil.example' https://timetracker.run/api/ws                      # 403
-curl -s -o /dev/null -w "%{http_code}\n" -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
-  -H 'Origin: https://evil.example' https://timetracker.run/agents/chat-agent/assistant # 403
+curl -s -o /dev/null -w "%{http_code}\n" --http1.1 \
+  -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
+  -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Sec-WebSocket-Version: 13' \
+  -H 'Origin: https://evil.example' https://timetracker.run/agents/chat-agent/assistant   # 403
+# same request with -H 'Origin: https://timetracker.run' → 401 (no session), never 403
 ```
 
 `/api/health` is the endpoint to point an uptime monitor at. A `500` from any
