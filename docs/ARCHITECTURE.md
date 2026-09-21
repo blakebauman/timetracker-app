@@ -45,7 +45,7 @@ The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together 
 | `/api/calendar` | `calendar.ts` | Multi-provider (Google, Microsoft): `GET /:provider/connect`, `GET /:provider/callback`, `DELETE /:provider`, `GET /status` (one row per provider), `GET /events` (merged read-through), `PATCH /auto-track`, `POST /convert` |
 | `/api/ai` | `ai.ts` | `POST /quick-entry` (NL→entry), `POST /summary` (AI report draft); rate-limited |
 | `/api/assistant` | `assistant.ts` | `GET /nudges`, `POST /track-event`, memory list/delete. **Chat is NOT here** — see the Assistant below |
-| `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push` (takes the client's IANA `timezone`; the route resolves each entry's work date with `lib/local-date.ts` before handing it to an adapter), SSRF-guarded, outbound rate limits |
+| `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push` (takes the client's IANA `timezone`; the route resolves each entry's work date with `lib/local-date.ts` before handing it to an adapter), SSRF-guarded (https only, public-host allow-list, redirects refused, upstream bodies never echoed), outbound rate limits |
 | `/api/admin` | `admin.ts` | `DELETE /users/:id` (site-admin user removal + orphan cleanup); list/ban/impersonate go through Better Auth's admin plugin client-side |
 | `/api/ws` | `websocket.ts` | upgrade → `TimerRoom` (`idFromName(workspaceId)`) |
 

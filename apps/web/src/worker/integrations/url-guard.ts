@@ -74,3 +74,51 @@ export function safeIntegrationOrigin(
 
   return url.origin;
 }
+
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+/**
+ * fetch() for integration adapters. The origin was validated by
+ * safeIntegrationOrigin, but Workers' fetch follows redirects by default, so
+ * a validated host could still 3xx the worker to anywhere. Redirects are
+ * never followed: a real Workfront/Dynamics API answers in place, and a
+ * redirect from a configured base URL is a misconfiguration worth surfacing
+ * rather than a hop worth taking.
+ */
+export async function guardedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, { ...init, redirect: "manual" });
+  if (REDIRECT_STATUSES.has(res.status)) {
+    await res.body?.cancel().catch(() => {});
+    throw new IntegrationError(
+      "The service redirected the request; redirects are not followed. Check the base URL.",
+    );
+  }
+  return res;
+}
+
+/**
+ * A user-presentable reason from a failed upstream response. Only a
+ * structured error message is surfaced (`error.message` / `message` from a
+ * JSON body, capped); a raw body is never echoed — with a user-configured
+ * host on the other end that would be a small read oracle — it is logged
+ * server-side instead, where the person debugging the connection can see it.
+ */
+export async function upstreamErrorMessage(res: Response, service: string): Promise<string> {
+  const text = (await res.text().catch(() => "")).slice(0, 500);
+  let message: string | undefined;
+  try {
+    const json = JSON.parse(text) as { error?: { message?: unknown }; message?: unknown };
+    const candidate = json?.error?.message ?? json?.message;
+    if (typeof candidate === "string" && candidate.trim()) message = candidate.trim().slice(0, 200);
+  } catch {
+    // Not JSON — nothing structured to surface.
+  }
+  if (!message) {
+    console.warn("integration: upstream error without a structured message", {
+      service,
+      status: res.status,
+      snippet: text.slice(0, 200),
+    });
+  }
+  return message ?? `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ""}`;
+}

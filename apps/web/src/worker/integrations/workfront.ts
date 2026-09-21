@@ -5,7 +5,7 @@ import {
   type IntegrationAdapter,
   type PushContext,
 } from "./types";
-import { safeIntegrationOrigin } from "./url-guard";
+import { safeIntegrationOrigin, guardedFetch, upstreamErrorMessage } from "./url-guard";
 
 const API_VERSION = "v15.0";
 
@@ -18,18 +18,6 @@ function apiRoot(baseUrl: string): string {
 
 function creds(connection: Connection): WorkfrontCredentials {
   return connection.credentials as WorkfrontCredentials;
-}
-
-// Cap the surfaced upstream body: it reaches the client, so don't let it echo an
-// arbitrary/large response back as an oracle.
-async function readError(res: Response): Promise<string> {
-  const text = (await res.text().catch(() => "")).slice(0, 200);
-  try {
-    const json = JSON.parse(text);
-    return json?.error?.message ?? json?.message ?? text ?? res.statusText;
-  } catch {
-    return text || res.statusText;
-  }
 }
 
 export const workfrontAdapter: IntegrationAdapter = {
@@ -55,7 +43,7 @@ export const workfrontAdapter: IntegrationAdapter = {
     // "Method Not Allowed"). apiKey + method go on the query, object fields in
     // the form-encoded body.
     const auth = new URLSearchParams({ apiKey, method: "POST" });
-    const res = await fetch(`${apiRoot(connection.baseUrl)}/hour?${auth}`, {
+    const res = await guardedFetch(`${apiRoot(connection.baseUrl)}/hour?${auth}`, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -64,7 +52,7 @@ export const workfrontAdapter: IntegrationAdapter = {
       body: fields.toString(),
     });
     if (!res.ok) {
-      throw new IntegrationError(`Workfront push failed: ${await readError(res)}`);
+      throw new IntegrationError(`Workfront push failed: ${await upstreamErrorMessage(res, "workfront")}`);
     }
 
     const body = (await res.json()) as { data?: { ID?: string } };
@@ -79,12 +67,12 @@ export const workfrontAdapter: IntegrationAdapter = {
     const { apiKey } = creds(connection);
     // A minimal authenticated read: valid keys return data, invalid keys error.
     const params = new URLSearchParams({ apiKey, $$LIMIT: "1" });
-    const res = await fetch(
+    const res = await guardedFetch(
       `${apiRoot(connection.baseUrl)}/user/search?${params}`,
       { headers: { Accept: "application/json" } },
     );
     if (!res.ok) {
-      throw new IntegrationError(`Workfront connection failed: ${await readError(res)}`);
+      throw new IntegrationError(`Workfront connection failed: ${await upstreamErrorMessage(res, "workfront")}`);
     }
   },
 };
