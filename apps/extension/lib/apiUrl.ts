@@ -28,17 +28,17 @@ export function normalizeApiUrl(input: string): string | null {
     protocol === "http:" &&
     (hostname === "localhost" || hostname === "127.0.0.1");
 
-  // Production.
+  // Production. Exact hostname match on the parsed URL, so lookalikes such as
+  // `timetracker.run.attacker.com` are rejected.
+  //
+  // `*.workers.dev` used to be allowed too, "for preview deploys" — but the
+  // worker has `workers_dev: false` and `preview_urls: false`, so no such
+  // origin exists, while workers.dev is a shared space anyone can register a
+  // name in. A user talked into pasting `https://evil.workers.dev` would have
+  // handed that name their session token.
   const isProd = protocol === "https:" && hostname === "timetracker.run";
 
-  // Cloudflare preview deploys. Uses the parsed hostname so lookalikes such as
-  // `phish.workers.dev.attacker.com` (hostname ends in `.attacker.com`) are
-  // rejected.
-  const isWorkersDev =
-    protocol === "https:" &&
-    (hostname === "workers.dev" || hostname.endsWith(".workers.dev"));
-
-  if (!isLocalhost && !isProd && !isWorkersDev) return null;
+  if (!isLocalhost && !isProd) return null;
 
   return url.origin;
 }
