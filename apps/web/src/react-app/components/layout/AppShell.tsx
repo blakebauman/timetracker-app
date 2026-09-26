@@ -17,7 +17,6 @@ import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useHydrateSettings } from "@/hooks/useSettings";
 import { useUIStore } from "@/stores/uiStore";
 import { useMediaQuery, BELOW_MD } from "@/hooks/useMediaQuery";
-import { useTimerStore } from "@/stores/timerStore";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { lazyWithReload } from "@/lib/lazyWithReload";
 
@@ -35,23 +34,17 @@ const LogTaskTimeSheet = lazyWithReload(() =>
 );
 
 /**
- * How much of the bottom edge the timer surfaces cover, so every pane pads
- * its last row clear of them. TimerBar publishes its rendered height as
- * `--timer-h` (it varies with width, wrapping and the safe-area inset); the
- * composer floats above the edge, so idle adds its lift plus a gutter. The
- * fallbacks are the old fixed values, for the frame before the first measure.
- * Exposed as `--dock-h` on the shell, in case a page needs it for its own
- * geometry.
+ * How much of the bottom edge the timer bar covers, so every pane pads its
+ * last row clear of it. The bar is docked to the edge in both states, and
+ * publishes its rendered height as `--timer-h` (it varies with width,
+ * wrapping and the safe-area inset); the fallback is for the frame before the
+ * first measure. Exposed as `--dock-h` on the shell, in case a page needs it
+ * for its own geometry.
  */
-const DOCK_CLEARANCE = {
-  idle: "calc(var(--timer-h, 6.5rem) + 2rem + env(safe-area-inset-bottom))",
-  running: "var(--timer-h, 6.5rem)",
-} as const;
-// Desktop toasts stack up from the bottom-right, where the composer (idle) or
-// the docked bar (running) already is. The offset follows the same clearance
-// plus one gutter, so an Undo toast never lands under the timer surface at the
-// widths where the composer reaches the right half of the pane.
-const TOAST_BOTTOM_PX = { idle: 8.5 * 16 + 16, running: 6.5 * 16 + 16 } as const;
+const DOCK_CLEARANCE = "var(--timer-h, 6.5rem)";
+// Desktop toasts stack up from the bottom-right, above the docked bar: its
+// usual height plus one gutter, so an Undo toast never lands under it.
+const TOAST_BOTTOM_PX = 6.5 * 16 + 16;
 
 export function AppShell() {
   useWebSocket();
@@ -62,8 +55,7 @@ export function AppShell() {
   const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
   const logTimeTaskId = useUIStore((s) => s.logTimeTaskId);
   const assistantOpen = useAssistantStore((s) => s.open);
-  const running = useTimerStore((s) => Boolean(s.runningEntry));
-  // On a phone the composer spans the whole bottom edge, so a bottom toast
+  // On a phone the timer bar spans the whole bottom edge, so a bottom toast
   // lands on it; toasts drop in from the top there instead.
   const belowMd = useMediaQuery(BELOW_MD);
   // Mount on first open and keep mounted after, so chat state and the sheet's
@@ -101,7 +93,7 @@ export function AppShell() {
   return (
     <div
       className="flex h-screen flex-col overflow-hidden bg-background md:flex-row"
-      style={{ "--dock-h": running ? DOCK_CLEARANCE.running : DOCK_CLEARANCE.idle } as CSSProperties}
+      style={{ "--dock-h": DOCK_CLEARANCE } as CSSProperties}
     >
       {/* Every page load costs a keyboard user a dozen tab stops through the
           rail before the composer — the one field the whole app exists around.
@@ -176,7 +168,7 @@ export function AppShell() {
         position={belowMd ? "top-center" : "bottom-right"}
         // Sonner reads `mobileOffset` below 600px and `offset` above it, so
         // both are set: the phone toast must clear the 56px brand bar.
-        offset={belowMd ? { top: 72 } : { bottom: running ? TOAST_BOTTOM_PX.running : TOAST_BOTTOM_PX.idle }}
+        offset={belowMd ? { top: 72 } : { bottom: TOAST_BOTTOM_PX }}
         mobileOffset={{ top: 72 }}
       />
     </div>

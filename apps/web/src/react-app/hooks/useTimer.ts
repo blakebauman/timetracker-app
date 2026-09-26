@@ -361,7 +361,7 @@ export function useTimer() {
    * with no tracked time) is carried by useCompleteTask.
    */
   const offerTaskDone = useCallback(
-    (entry: TimeEntry, cancel?: { label: string; onClick: () => void }): boolean => {
+    (entry: TimeEntry): boolean => {
       if (!entry.taskId) return false;
       let task: Task | undefined;
       for (const [, data] of queryClient.getQueriesData<Task[]>({ queryKey: ["tasks"] })) {
@@ -392,7 +392,6 @@ export function useTimer() {
               .catch(() => toast.error("Failed to update task"));
           },
         },
-        cancel,
         id: STOP_RECEIPT_TOAST,
         duration: KEEP_RUNNING_MS,
       });

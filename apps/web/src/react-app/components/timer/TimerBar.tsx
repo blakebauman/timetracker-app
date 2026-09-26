@@ -32,13 +32,13 @@ import type { EntrySuggestion } from "@timetracker/core/schemas";
 /**
  * The timer has two bodies and one mind.
  *
- * Idle, it is the **composer**: a glass capsule floating over the bottom of
- * the pane, asking what you're working on, with the project / task / billable
- * pills beneath and the red Start disc at the right. Running, the capsule
- * docks into the **transport bar**: a full-width strip on the bottom edge
- * carrying the Stop disc and its breathing ring, the elapsed readout at
- * display size, the same editable description and pills, and the day ribbon
- * — today drawn as a trace, with the live segment growing.
+ * Both bodies are the same glass strip docked to the bottom edge, full width
+ * from the rail. Idle, it asks what you're working on: the description and
+ * its chips, today's ribbon, the day's total, resume and favourites, and the
+ * red Start disc at the right-hand end. Running, it is the transport bar: the
+ * elapsed readout, the same editable description and chips, the ribbon with
+ * the live segment growing, Discard, and the Stop disc — where Start was, so
+ * starting and stopping are pressed in the same spot.
  *
  * Everything below the render is unchanged from the top-bar era and is the
  * single source of truth for "what the bar would start": the draft, the sync
@@ -426,8 +426,8 @@ export function TimerBar() {
     }
   };
 
-  // The pills under the field. Shared by both bodies so the composer and the
-  // bar can't drift — same controls, same order, same accessible names.
+  // The pills under the field. Shared by both bodies so idle and running
+  // can't drift — same controls, same order, same accessible names.
   const chipClass =
     "tt-touch relative h-8 min-w-0 max-w-48 shrink rounded-full max-sm:max-w-40 border border-border bg-background px-2.5 hover:bg-foreground/6";
   // An unassigned project is an unbillable hour. Said on the chip before the
@@ -508,15 +508,15 @@ export function TimerBar() {
       onOpenChange={setSuggestionsOpen}
       onEscape={revertDescription}
       className={cn(
-        // Bare in both bodies: the capsule or the bar is the field's edge. The
+        // Bare in both bodies: the docked strip is the field's edge. The
         // inset ring is the only focus signal here, at full opacity, because
         // with `border-0` there is no border to shift colour. `truncate` ends
         // a long description on an ellipsis rather than mid-word.
         "tt-touch h-9 min-w-0 flex-1 truncate border-0 bg-transparent px-2 text-base shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset md:text-base dark:bg-transparent",
-        // Running, the field sits bare in the bar and read as a label; a hover
-        // wash says it's editable.
-        isRunning &&
-          "font-medium transition-colors duration-fast ease-out-quart hover:bg-foreground/4 focus-visible:bg-transparent"
+        // The field sits bare on the strip in both bodies and could read as a
+        // label; a hover wash says it's editable.
+        "transition-colors duration-fast ease-out-quart hover:bg-foreground/4 focus-visible:bg-transparent",
+        isRunning && "font-medium"
       )}
     />
   );
@@ -543,40 +543,75 @@ export function TimerBar() {
     />
   );
 
+  // Both bodies are the same docked strip, and the disc is the last thing in
+  // it — far right on a desktop, bottom-right on a phone — so Start and Stop
+  // are pressed in the same place. Last in the DOM too: Tab runs describe →
+  // assign → start. Neither body animates in; nothing moves when one replaces
+  // the other.
+  const dockClass = "tt-glass fixed inset-x-0 bottom-0 z-dock border-t md:left-20";
+  const rowClass =
+    "mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6";
+  // `basis-0`, not `auto`: the column takes the room that's left instead of a
+  // long description or a row of chips pushing the right-hand controls onto
+  // a line of their own. Capped so it doesn't strand the ribbon.
+  const columnClass =
+    "flex min-w-0 basis-full flex-col gap-1.5 max-md:order-2 md:max-w-2xl md:basis-0 md:flex-1";
+  // Today as a trace, where there is room for it to be read.
+  const ribbon = <DayRibbon className="hidden min-w-48 max-w-md flex-1 lg:block" />;
+  // The disc at the end of the chip row is the phone's (bottom-right, the
+  // thumb's corner); the one at the end of the strip is everyone else's.
+  const disc = (where: "phone" | "wide") => (
+    <TransportDisc
+      isRunning={isRunning}
+      pending={!isRunning && restoring}
+      onStart={handleStart}
+      onStop={handleStop}
+      discRef={where === "phone" ? phoneDiscRef : discRef}
+      className={where === "phone" ? "ml-auto md:hidden" : "max-md:hidden"}
+    />
+  );
+  const pillsRow = (
+    // One line at every width, the chips truncating, ending in the phone disc.
+    <div className="flex flex-nowrap items-center gap-1.5 px-1">
+      {pills}
+      {disc("phone")}
+    </div>
+  );
+
   if (!isRunning) {
     return (
       <>
         {liveRegion}
-        <header
-          ref={measureRef}
-          aria-label="Timer controls"
-          // One focus signal: the field's cool ring. The capsule's red edge no
-          // longer brightens on focus-within as a second, weaker one.
-          className="group/composer tt-glass grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-dock animate-capsule-in rounded-capsule border border-primary/20 p-3 shadow-2xl md:bottom-6 md:left-[calc(5rem+1.5rem)] md:right-auto md:w-[min(46rem,calc(100vw-5rem-3rem))]"
-        >
-          <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
-            {descriptionField}
-            {billableToggle}
-            {/* Said while you're typing, where you're looking — the hotkey
-                lives in the tooltip, which a keyboard user never hovers. */}
-            {description.trim() && (
-              <span
-                aria-hidden
-                className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity duration-fast ease-out-quart group-focus-within/composer:opacity-100 sm:pointer-fine:flex"
-              >
-                <Kbd>Enter</Kbd> to start
-              </span>
-            )}
-            {!description.trim() && <KeepRunningPill />}
-          </div>
+        <header ref={measureRef} aria-label="Timer controls" className={cn(dockClass, "group/composer")}>
+          <div className={rowClass}>
+            <div className={columnClass}>
+              <div className="flex min-w-0 items-center gap-1">
+                {descriptionField}
+                {billableToggle}
+                {/* Said while you're typing, where you're looking — the
+                    hotkey lives in the tooltip, which a keyboard user never
+                    hovers. */}
+                {description.trim() && (
+                  <span
+                    aria-hidden
+                    className="ml-1 hidden shrink-0 items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity duration-fast ease-out-quart group-focus-within/composer:opacity-100 sm:pointer-fine:flex"
+                  >
+                    <Kbd>Enter</Kbd> to start
+                  </span>
+                )}
+                {!description.trim() && <KeepRunningPill />}
+              </div>
+              {pillsRow}
+            </div>
 
-          <div className="col-span-2 row-start-2 flex flex-wrap items-center gap-1.5">
-            {pills}
-            <span className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
+            {ribbon}
+
+            {/* Today's numbers, and the two idle-only ways to start: resume
+                the last thing tracked, or a saved preset. On a phone this is
+                the strip's first row, where the running body has its readout. */}
+            <div className="ml-auto flex min-w-0 items-center gap-3 max-md:order-1 max-md:basis-full">
               <DaySummary />
-              {/* Resume the last thing tracked, and one-click start from a
-                  saved preset. Both are idle-only. */}
-              <span className="flex items-center">
+              <span className="ml-auto flex shrink-0 items-center">
                 <ResumeLastButton
                   onResume={(s) => {
                     rememberFocus();
@@ -591,20 +626,9 @@ export function TimerBar() {
                 />
                 <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
               </span>
-            </span>
-          </div>
+            </div>
 
-          {/* Last in the DOM, first-row-right on screen: Tab runs describe →
-              assign → start, the order the work is done in, instead of
-              putting Start between the field and the chips it depends on. */}
-          <div className="col-start-2 row-start-1">
-            <TimerControl
-              isRunning={false}
-              pending={restoring}
-              onStart={handleStart}
-              onStop={handleStop}
-              discRef={discRef}
-            />
+            {disc("wide")}
           </div>
           {discardDialog}
         </header>
@@ -615,51 +639,19 @@ export function TimerBar() {
   return (
     <>
       {liveRegion}
-      <header
-        ref={measureRef}
-        aria-label="Timer controls"
-        className="tt-glass fixed inset-x-0 bottom-0 z-dock animate-dock-in border-t md:left-20"
-      >
-        <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
-          <TimerControl
-            isRunning
-            onStart={handleStart}
-            onStop={handleStop}
-            discRef={discRef}
-            discClassName="max-md:hidden"
-          />
+      <header ref={measureRef} aria-label="Timer controls" className={dockClass}>
+        <div className={rowClass}>
+          <TimerControl isRunning onStart={handleStart} onStop={handleStop} withDisc={false} />
 
-          {/* Description + pills. Below md the readout and Discard share the
-              first row, the field takes the second, the pills the third — so
-              Stop stays on screen at every width and Discard no longer sits
-              alone on a fourth row under the thumb. */}
-          {/* `basis-0`, not `auto`: the column takes the room that's left and
-              wraps its own pills, instead of a long description or a row of
-              chips pushing Discard onto a line of its own. Capped so it
-              doesn't strand the ribbon across a band of empty glass. */}
-          <div className="flex min-w-0 basis-full flex-col gap-1.5 max-md:order-2 md:max-w-2xl md:basis-0 md:flex-1">
+          <div className={columnClass}>
             <div className="flex min-w-0 items-center gap-1">
               {descriptionField}
               {billableToggle}
             </div>
-            {/* One line on a phone, the project chip truncating, so the Stop
-                disc at its end sits in the corner instead of wrapping. */}
-            <div className="flex flex-wrap items-center gap-1.5 px-1 max-md:flex-nowrap">
-              {pills}
-              {/* Stop again, bottom-right, on a phone: the thumb's corner. The
-                  one beside the readout is hidden there. */}
-              <TransportDisc
-                isRunning
-                onStart={handleStart}
-                onStop={handleStop}
-                discRef={phoneDiscRef}
-                className="ml-auto md:hidden"
-              />
-            </div>
+            {pillsRow}
           </div>
 
-          {/* Today as a trace. Only where there is room for it to be read. */}
-          <DayRibbon className="hidden min-w-48 max-w-md flex-1 lg:block" />
+          {ribbon}
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -679,6 +671,8 @@ export function TimerBar() {
               <Kbd className="ml-1.5">Alt+Shift+X</Kbd>
             </TooltipContent>
           </Tooltip>
+
+          {disc("wide")}
         </div>
         {discardDialog}
       </header>
@@ -687,8 +681,8 @@ export function TimerBar() {
 }
 
 /**
- * Today, in the idle composer: the total, and — when the last timer stopped a
- * while ago — how long nothing has been tracked. The composer used to say
+ * Today, in the idle bar: the total, and — when the last timer stopped a
+ * while ago — how long nothing has been tracked. The idle bar used to say
  * nothing about the day it was logging; this is the gap it now points at.
  */
 function DaySummary() {
@@ -712,7 +706,6 @@ function DaySummaryReady({ trace }: { trace: TodayTrace }) {
 
   return (
     <span className="flex min-w-0 items-center gap-2 text-xs">
-      <DayRibbon variant="compact" trace={trace} className="hidden w-20 lg:block" />
       <span className="min-w-0 whitespace-nowrap">
         {trace.total > 0 ? (
           <>
@@ -769,10 +762,12 @@ function KeepRunningPill() {
           onClick={() => keepRunning()}
           aria-keyshortcuts="Alt+Shift+R"
           aria-label={`Keep running${what ? ` "${what}"` : ""}`}
-          className="shrink-0 animate-in fade-in gap-1.5 duration-base ease-out-quart"
+          // Icon-only on a phone, where the label squeezed the empty field's
+          // placeholder to "What are y…"; the name is in aria-label either way.
+          className="shrink-0 animate-in fade-in gap-1.5 duration-base ease-out-quart max-sm:size-8 max-sm:px-0"
         >
           <RotateCcw aria-hidden className="h-3.5 w-3.5" />
-          Keep running
+          <span className="max-sm:hidden">Keep running</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>

@@ -54,10 +54,8 @@
        containers — `rounded-container` (this token). Cards, dialogs, sheets,
                     popovers, list rows that are cards. 12px: the instrument
                     rack's panels are tight-cornered, not pillowy.
-       capsule    — `rounded-capsule` (2rem). Exactly one surface: the floating
-                    composer that hovers over the content. It is the loudest
-                    shape in the system and it is spent on the one thing the
-                    app exists to do.
+       (The timer is a square strip docked to the bottom edge; the 2rem
+       capsule it used to be retired with the floating composer.)
        data cells — unchanged `rounded-md`/`-lg`. Timesheet cells, calendar
                     blocks, planner cells, table cells, and the 8px rows inside
                     a menu or picker.
@@ -65,7 +63,6 @@
        pill forces the first and last lines of multi-line text into the curve;
        and a Kbd is the 4px step, a keycap, not a control. */
   --radius-container: 0.75rem;
-  --radius-capsule: 2rem;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
@@ -95,12 +92,10 @@
   --z-index-tooltip: 60;
 
   /* Motion — natural deceleration curves (no bounce/elastic).
-     `--ease-out-quart` is the default: everything uses it unless it has a
-     reason not to. Quint is reserved for the one large, slow move (the timer
-     capsule docking into the bar), where the flatter tail keeps a big element
-     from appearing to overshoot. */
+     `--ease-out-quart` is the one curve. (Quint existed for the timer capsule
+     docking into the bar; the timer is now one docked strip that doesn't
+     move between its states, and the curve went with the move.) */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Duration scale (utilities: duration-fast / -base / -slow).
        fast — a state change in place: hover, focus, colour, a chevron.
@@ -114,12 +109,6 @@
   --animate-fade-in: fade-in var(--transition-duration-slow) var(--ease-out-quart) both;
   --animate-fade-up: fade-up var(--transition-duration-base) var(--ease-out-quart) both;
   --animate-scale-in: scale-in var(--transition-duration-base) var(--ease-out-quart) both;
-
-  /* The docked running bar rises from the bottom edge; the composer settles
-     into place from just below its resting point. Both are the same "one
-     pull deploys" motion at two scales. */
-  --animate-dock-in: dock-in var(--transition-duration-slow) var(--ease-out-quint) both;
-  --animate-capsule-in: capsule-in var(--transition-duration-slow) var(--ease-out-quint) both;
 
   /* "A timer is running" has exactly two forms, and they share a 1.6s cadence
      so that when both are on screen — the rail dot and the docked bar — they
@@ -151,14 +140,6 @@
 }
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes dock-in {
-  from { opacity: 0; transform: translateY(100%); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes capsule-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: none; }
 }
 /* Just-stopped row flash — a primary wash blooms then recedes, with a left rail

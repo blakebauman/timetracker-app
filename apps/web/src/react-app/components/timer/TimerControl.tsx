@@ -34,6 +34,11 @@ interface TimerControlProps {
    * where a right thumb reaches it.
    */
   discClassName?: string;
+  /**
+   * Render the disc beside the readout. The docked bar renders its own disc
+   * at the end of the strip instead (TransportDisc), so it passes false.
+   */
+  withDisc?: boolean;
 }
 
 // The readout and its editor share one box, sized in the mono face's own `ch`,
@@ -43,7 +48,7 @@ const READOUT_BOX = "w-[calc(8ch+0.5rem)] font-mono text-2xl font-semibold tabul
 /**
  * The transport control.
  *
- * Idle, it is the composer's send disc: a 40px brand-red circle with a soft
+ * Idle, it is the Start disc: a 40px brand-red circle with a soft
  * red shadow, the only glowing thing on the page. Running, it is the docked
  * bar's Stop disc with the recording ring breathing behind it, followed by
  * the elapsed readout at display size and, under it, when the timer started.
@@ -66,6 +71,7 @@ export function TimerControl({
   discRef,
   pending = false,
   discClassName,
+  withDisc = true,
 }: TimerControlProps) {
   const elapsed = useTimerStore((s) => s.elapsed);
   const localStartTime = useTimerStore((s) => s.localStartTime);
@@ -170,7 +176,7 @@ export function TimerControl({
 
   return (
     <div className="flex items-center gap-3">
-      {disc}
+      {withDisc && disc}
       <div className="flex flex-col items-start">
         {editing === "elapsed" ? (
           editorInput(
@@ -282,7 +288,7 @@ export function TransportDisc({
               // The house ring at 50% vanishes against the red fill, so the
               // disc lifts it off with an offset in the ground colour.
               "focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              // The glow is the composer's: a lit disc on a dark rack. Running,
+              // The glow is the idle disc's: a lit disc on a dark rack. Running,
               // the pulse ring does that job and the shadow comes off.
               isRunning
                 ? "shadow-none"
