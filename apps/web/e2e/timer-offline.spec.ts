@@ -140,3 +140,22 @@ test("an offline stop with no project still warns that the time can't be billed"
   ).toBeVisible();
   await context.setOffline(false);
 });
+
+test("Keep running works on a timer started and stopped offline", async ({ page, context }) => {
+  await signUp(page);
+  await expect(page.getByPlaceholder("What are you working on?")).toBeVisible();
+  await context.setOffline(true);
+  await page.getByPlaceholder("What are you working on?").fill("Offline undo");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await page.waitForTimeout(1500);
+  await page.getByRole("button", { name: "Stop timer" }).click();
+  await page
+    .locator('header[aria-label="Timer controls"]')
+    .getByRole("button", { name: /^Keep running/ })
+    .click();
+  await expect(page.getByRole("button", { name: "Stop timer" })).toBeVisible();
+  await context.setOffline(false);
+  // The replay creates a running entry, not a stopped one.
+  await expect.poll(async () => (await current(page))?.description ?? null, { timeout: 15_000 }).toBe("Offline undo");
+});

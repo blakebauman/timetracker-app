@@ -1,6 +1,7 @@
 import { useTodayTrace, type TodayTrace } from "@/hooks/useTodayTrace";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Today as a trace.
@@ -40,7 +41,7 @@ export function DayRibbon({
   trace?: TodayTrace;
 }) {
   const own = useTodayTrace();
-  const { now, windowStart, windowEnd, segments, total } = provided ?? own;
+  const { now, windowStart, windowEnd, segments, total, status } = provided ?? own;
 
   const span = windowEnd - windowStart;
   const pct = (t: number) => `${((t - windowStart) / span) * 100}%`;
@@ -90,6 +91,16 @@ export function DayRibbon({
     );
   }
 
+  // Unknown is not empty: while today's entries load, hold the shape without
+  // drawing — or announcing — a day with nothing in it.
+  if (status === "pending") {
+    return (
+      <div role="img" aria-label="Loading today" className={cn("relative h-9 min-w-0", className)}>
+        <Skeleton className="absolute inset-x-0 top-1 h-2 rounded-full" />
+      </div>
+    );
+  }
+
   return (
     <div
       role="img"
@@ -103,7 +114,9 @@ export function DayRibbon({
       {trace}
       {/* Hour ticks under the trace, every third one labelled. */}
       {ticks.map((t, i) => {
-        const labelled = i % 3 === 0;
+        // Every third hour of the *clock* (0, 3, 6, 9…), not every third
+        // tick: a window stretched to an early entry used to label 2, 5, 8.
+        const labelled = new Date(t).getHours() % 3 === 0;
         return (
           <span
             key={t}

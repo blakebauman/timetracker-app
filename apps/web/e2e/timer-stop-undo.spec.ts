@@ -67,3 +67,42 @@ test("the server refuses to reopen an entry while another timer runs", async ({ 
   const res = await page.request.put(`/api/time_entries/${done.id}`, { data: { stop: null }, headers: h });
   expect(res.status()).toBe(409);
 });
+
+test("the bar offers Keep running beside the disc, and Alt+Shift+R takes it", async ({ page }) => {
+  await signUp(page);
+  await page.getByPlaceholder("What are you working on?").fill("Pill check");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await expect.poll(async () => (await current(page))?.id ?? null).not.toBeNull();
+  const started = (await current(page))!;
+  await page.getByRole("button", { name: "Stop timer" }).click();
+
+  const bar = page.locator('header[aria-label="Timer controls"]');
+  await expect(bar.getByRole("button", { name: /^Keep running/ })).toBeVisible();
+  await expect.poll(() => current(page)).toBeNull();
+  await page.keyboard.press("Alt+Shift+R");
+  await expect(page.getByRole("button", { name: "Stop timer" })).toBeVisible();
+  await expect.poll(async () => (await current(page))?.id).toBe(started.id);
+});
+
+test("another tab sees a reopened timer", async ({ page, context }) => {
+  await signUp(page);
+  const tabB = await context.newPage();
+  await tabB.goto("/");
+  await expect(tabB.getByRole("button", { name: "Start timer" })).toBeVisible();
+
+  await page.bringToFront();
+  await page.getByPlaceholder("What are you working on?").fill("Two tabs");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await expect(tabB.getByRole("button", { name: "Stop timer" })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Stop timer" }).click();
+  await expect(tabB.getByRole("button", { name: "Start timer" })).toBeVisible({ timeout: 10_000 });
+
+  await page.bringToFront();
+  await page
+    .locator('header[aria-label="Timer controls"]')
+    .getByRole("button", { name: /^Keep running/ })
+    .click();
+  await expect(tabB.getByRole("button", { name: "Stop timer" })).toBeVisible({ timeout: 10_000 });
+});

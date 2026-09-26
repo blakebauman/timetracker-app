@@ -192,7 +192,11 @@ export function TagPicker({
           />
           <CommandList>
             {!suggestions.length && !canCreate && (
-              <CommandEmpty>No tags found</CommandEmpty>
+              <CommandEmpty>
+                {/* Nothing matched vs. nothing left: every existing tag
+                    already on the entry isn't a failed search. */}
+                {!query && allTags.length > 0 ? "Every tag is already on this entry" : "No tags found"}
+              </CommandEmpty>
             )}
             {suggestions.length > 0 && (
               <CommandGroup>

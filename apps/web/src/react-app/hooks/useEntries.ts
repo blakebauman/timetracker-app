@@ -391,6 +391,9 @@ export function useUpdateEntry() {
         vars.data.description !== undefined &&
         useTimerStore.getState().runningEntry?.id !== vars.id;
       invalidateEntryDerived(queryClient, renamedCompleted);
+      // A tag named here for the first time was created server-side with its
+      // colour; until the tag list refetched, its dot drew in the neutral.
+      if (vars.data.tags !== undefined) void queryClient.invalidateQueries({ queryKey: ["tags"] });
     },
   });
 }

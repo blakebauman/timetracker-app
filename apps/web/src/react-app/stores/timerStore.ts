@@ -35,6 +35,14 @@ interface TimerStore {
    */
   deferredStart: DeferredStart | null;
   setDeferredStart: (start: DeferredStart | null) => void;
+  /**
+   * The entry just stopped, and until when "Keep running" can reopen it. One
+   * window for every stop — online, offline, with or without a project — and
+   * the bar reads it too, so the undo sits beside the disc that was pressed
+   * rather than only in a toast across the screen.
+   */
+  lastStopped: { entry: TimeEntry; until: number } | null;
+  setLastStopped: (value: { entry: TimeEntry; until: number } | null) => void;
 
   setRunningEntry: (entry: TimeEntry | null, localStartTime?: number) => void;
   setElapsed: (seconds: number) => void;
@@ -54,6 +62,8 @@ export const useTimerStore = create<TimerStore>((set) => ({
   setRestored: () => set({ restoring: false }),
   deferredStart: null,
   setDeferredStart: (deferredStart) => set({ deferredStart }),
+  lastStopped: null,
+  setLastStopped: (lastStopped) => set({ lastStopped }),
 
   // Computes elapsed synchronously from `localStartTime` instead of always
   // zeroing it — a genuinely fresh start (localStartTime = now) still reads

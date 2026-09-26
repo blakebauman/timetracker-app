@@ -20,6 +20,7 @@ import {
   isOptimisticEntryId,
   amendQueuedStart,
   hasQueuedRunningCreate,
+  reopenQueuedCreate,
 } from "@/lib/pendingStart";
 import { compareLocalDates, todayLocalDate } from "@timetracker/core/task-recurrence";
 import type { TimeEntry, Task } from "@timetracker/core/schemas";
@@ -124,21 +125,36 @@ export async function adoptReplayedTimer(): Promise<void> {
  * doesn't get — and a stop on a train or at a client site is exactly where a
  * project-less hour is most likely. So the check runs on the local entry.
  */
-function announceStoppedOffline(entry: TimeEntry, stopIso: string) {
+function announceStoppedOffline(
+  entry: TimeEntry,
+  stopIso: string,
+  keepRunning: { label: string; onClick: () => void }
+) {
   const at = formatEntryTime(stopIso, useUIStore.getState().timeFormat);
   useUIStore.getState().flashEntry(entry.id);
+  openKeepRunningWindow({ ...entry, stop: stopIso });
   if (!entry.projectId) {
     toast.warning(`Offline — stopped at ${at} with no project`, {
-      description: "Time without a project can't be billed. It will sync with that time when you reconnect.",
+      description: "It can't be billed until it has one. Syncs when you reconnect.",
+      duration: KEEP_RUNNING_MS,
       action: isOptimisticEntryId(entry.id)
-        ? undefined
+        ? keepRunning
         : { label: "Assign project", onClick: () => useUIStore.getState().openEntryEditor(entry.id) },
     });
     return;
   }
   toast.info(`Offline — stopped at ${at}`, {
     description: "The entry will sync with that time when you reconnect.",
+    duration: KEEP_RUNNING_MS,
+    action: keepRunning,
   });
+}
+
+/** How long a stop can be taken back — the toasts and the bar's pill alike. */
+export const KEEP_RUNNING_MS = 10_000;
+
+function openKeepRunningWindow(entry: TimeEntry) {
+  useTimerStore.getState().setLastStopped({ entry, until: Date.now() + KEEP_RUNNING_MS });
 }
 
 export function useTimer() {
@@ -359,6 +375,7 @@ export function useTimer() {
           },
         },
         cancel,
+        duration: cancel ? KEEP_RUNNING_MS : undefined,
       });
       return true;
     },
@@ -376,12 +393,28 @@ export function useTimer() {
         toast.info("Another timer is running", { description: "Stop it first to reopen this one." });
         return;
       }
+      useTimerStore.getState().setLastStopped(null);
+      markActed();
       const reopened: TimeEntry = { ...entry, stop: null, duration: null };
       setRunningEntry(reopened, Date.parse(entry.start));
       queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
         old?.map((e) => (e.id === entry.id ? reopened : e))
       );
       void saveTimerState(timerStateOf(reopened, Date.parse(entry.start)));
+      // Started and stopped without a connection: there is no server entry to
+      // reopen, only a queued create — take its stop back off.
+      if (isOptimisticEntryId(entry.id)) {
+        void reopenQueuedCreate(entry.start).then((ok) => {
+          if (ok) {
+            toast.info("Offline — the timer is running again and will sync when you reconnect");
+            return;
+          }
+          if (useTimerStore.getState().runningEntry?.id === entry.id) clearTimer();
+          void clearTimerState();
+          toast.error("Couldn't reopen the timer", { description: "It has already synced as stopped." });
+        });
+        return;
+      }
       void (api.timeEntries.update(entry.id, { stop: null }) as Promise<TimeEntry>)
         .then((updated) => {
           if (useTimerStore.getState().runningEntry?.id === updated.id) {
@@ -405,29 +438,33 @@ export function useTimer() {
     [queryClient, setRunningEntry, clearTimer]
   );
 
-  // Every stop closes with a receipt: what was saved, and a five-second
-  // "Keep running" to take it back. The row also flashes and floats to the
+  // Every stop closes with a receipt: what was saved, and — on the plain one —
+  // "Keep running" to take it back. The warning and task toasts carry their
+  // own action instead: two buttons squeezed the text into five lines, and
+  // the undo is in the bar beside the disc (and on Alt+Shift+R) for the same
+  // ten seconds after every stop. The row also flashes and floats to the
   // top of its day. An entry that landed with no project is the one worth
   // raising — for a consultant that's an unbillable hour, and nothing else in
   // the UI would ever point it out — so it takes the warning form.
   const announceStopped = useCallback((entry: TimeEntry | undefined) => {
     if (!entry) return;
     useUIStore.getState().flashEntry(entry.id);
+    openKeepRunningWindow(entry);
     const keepRunning = { label: "Keep running", onClick: () => reopenStopped(entry) };
     if (!entry.projectId) {
       toast.warning(`Stopped ${formatDurationShort(entry.duration ?? 0)} with no project`, {
-        description: "Time without a project can't be billed.",
+        description: "It can't be billed until it has one.",
+        duration: KEEP_RUNNING_MS,
         action: {
           label: "Assign project",
           onClick: () => useUIStore.getState().openEntryEditor(entry.id),
         },
-        cancel: keepRunning,
       });
       return;
     }
-    if (offerTaskDone(entry, keepRunning)) return;
+    if (offerTaskDone(entry)) return;
     toast(`Saved ${formatDurationShort(entry.duration ?? 0)}${entry.projectName ? ` to ${entry.projectName}` : ""}`, {
-      duration: 5000,
+      duration: KEEP_RUNNING_MS,
       action: keepRunning,
     });
   }, [offerTaskDone, reopenStopped]);
@@ -448,7 +485,10 @@ export function useTimer() {
     onError: (err, vars) => {
       if (isQueuedOffline(err)) {
         void clearTimerState();
-        announceStoppedOffline(vars.snapshot.entry, vars.stop);
+        announceStoppedOffline(vars.snapshot.entry, vars.stop, {
+          label: "Keep running",
+          onClick: () => reopenStopped({ ...vars.snapshot.entry, stop: vars.stop }),
+        });
         return;
       }
       // The server entry is still running. Put the bar back so the Stop
@@ -544,6 +584,7 @@ export function useTimer() {
       // mutateAsync so a stop or edit that lands before the request settles
       // can wait for the real id (lib/pendingStart); onError handles rejection.
       markActed();
+      useTimerStore.getState().setLastStopped(null);
       const input = { ...partial };
       delete input.fromBar;
       trackPendingStart(startMutation.mutateAsync({ ...input, start }));
@@ -576,7 +617,11 @@ export function useTimer() {
         if (outcome !== "none") {
           void clearTimerState();
           if (outcome === "removed") removeFromCache(entry.id);
-          else announceStoppedOffline(entry, stopIso);
+          else
+            announceStoppedOffline(entry, stopIso, {
+              label: "Keep running",
+              onClick: () => reopenStopped({ ...entry, stop: stopIso }),
+            });
           return;
         }
         const twin = await findServerTwin(localStartTime);
@@ -585,7 +630,7 @@ export function useTimer() {
         // already said so.
       })();
     },
-    [patchStopInCache, clearTimer, stopMutation, removeFromCache]
+    [patchStopInCache, clearTimer, stopMutation, removeFromCache, reopenStopped]
   );
   const commitStopRef = useRef(commitStop);
   useEffect(() => {
@@ -640,8 +685,17 @@ export function useTimer() {
     [runningEntry, editElapsedMutation, setRunningEntry]
   );
 
+  /** Reopen the last stopped entry, if its Keep running window is still open. */
+  const keepRunning = useCallback(() => {
+    const last = useTimerStore.getState().lastStopped;
+    if (!last || Date.now() > last.until) return false;
+    reopenStopped(last.entry);
+    return true;
+  }, [reopenStopped]);
+
   return {
     startTimer,
+    keepRunning,
     stopTimer,
     stopTimerAt,
     discardTimer,
@@ -675,7 +729,7 @@ export function useTimerLifecycle(
     onUseDescriptionRef.current = opts?.onUseDescription;
   });
   const { runningEntry, localStartTime, setElapsed, setRunningEntry } = useTimerStore();
-  const { startTimer, stopTimer } = useTimer();
+  const { startTimer, stopTimer, keepRunning } = useTimer();
 
   // The hotkey fires from outside React's render cycle, so it needs the last
   // *painted* draft — which is also what the user can see on screen when they
@@ -871,6 +925,18 @@ export function useTimerLifecycle(
     },
     { preventDefault: true, enableOnFormTags: ["INPUT", "TEXTAREA"] },
     [runningEntry, stopTimer, startTimer]
+  );
+  // Take back the last Stop while its window is open (the pill beside the
+  // disc and the receipt toast say the same thing).
+  useHotkeys(
+    "alt+shift+r",
+    () => {
+      if (runningEntry) return;
+      onBeforeToggleRef.current?.();
+      keepRunning();
+    },
+    { preventDefault: true, enableOnFormTags: ["INPUT", "TEXTAREA"] },
+    [runningEntry, keepRunning]
   );
   // Routes through the same confirm dialog as the trash-icon button (owned by
   // TimerBar, opened via the shared uiStore flag) rather than discarding
