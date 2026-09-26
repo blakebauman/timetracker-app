@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Tag as TagIcon, Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TimerControl } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { ResumeLastButton } from "./ResumeLastButton";
@@ -16,6 +15,7 @@ import { useTodayTrace, type TodayTrace } from "@/hooks/useTodayTrace";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
+import { TagPicker } from "@/components/entries/TagPicker";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useTimer, useTimerLifecycle, type StartTimerInput } from "@/hooks/useTimer";
@@ -67,9 +67,8 @@ export function TimerBar() {
   const [description, setDescription] = useState(runningEntry?.description ?? "");
   const [projectId, setProjectId] = useState<string | null>(runningEntry?.projectId ?? null);
   const [taskId, setTaskId] = useState<string | null>(runningEntry?.taskId ?? null);
-  // Tags carried over from a picked suggestion (or synced from the running
-  // entry). The bar has no tag *picker* — chips are removable but only ever
-  // added via suggestions/favorites; full editing lives in the entry sheet.
+  // Tags carried over from a picked suggestion, synced from the running
+  // entry, or added with the tag picker chip.
   const [tags, setTags] = useState<string[]>(runningEntry?.tags ?? []);
   // Whether this hour is invoiceable. Seeded from the project on selection,
   // overridable by the user.
@@ -236,7 +235,7 @@ export function TimerBar() {
 
   // Owns the tick loop, mount-restore, and Alt+Shift+S/X hotkeys — must be
   // called exactly once (TimerBar is always mounted).
-  useTimerLifecycle(draft, { onBeforeToggle: rememberFocus });
+  useTimerLifecycle(draft, { onBeforeToggle: rememberFocus, onUseDescription: setDescription });
 
   // Until the restore has heard from the server, "nothing is running" is a
   // guess; the disc says so, and a start pressed now is held (see useTimer).
@@ -327,6 +326,24 @@ export function TimerBar() {
     }
   };
 
+  const handleTagsChange = (next: string[]) => {
+    const previous = tags;
+    setTags(next);
+    if (runningEntry) {
+      updateEntry.mutate(
+        { id: runningEntry.id, data: { tags: next } },
+        {
+          onError: () => {
+            setTags(previous);
+            toast.error("Couldn't update the tags", {
+              description: "They're unchanged on this entry. Try again.",
+            });
+          },
+        }
+      );
+    }
+  };
+
   const handleProjectChange = (id: string | null) => {
     setProjectId(id);
     setTaskId(null);
@@ -390,7 +407,7 @@ export function TimerBar() {
               key={tag}
               variant="outline"
               // Same 32px step as the chips beside it. On a phone the tags
-              // fold into one count chip below, so the pills keep to one row.
+              // fold into the tag picker's count, so the pills keep to one row.
               className="h-8 gap-1 border-border bg-background pr-1 pl-2.5 text-xs font-normal max-sm:hidden"
             >
               <span
@@ -408,44 +425,18 @@ export function TimerBar() {
               </button>
             </Badge>
           ))}
-          {/* On a phone the count opens the tags: a title attribute can't be
-              read on touch, and the tags couldn't be removed from the bar. */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label={`${tags.length} ${tags.length === 1 ? "tag" : "tags"}: ${tags.join(", ")}`}
-                className="tt-touch relative inline-flex h-8 items-center gap-1 rounded-full border border-border bg-background px-2.5 text-xs text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-foreground/6 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:hidden"
-              >
-                <TagIcon aria-hidden className="h-3 w-3" />
-                <span className="font-mono tabular-nums">{tags.length}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-56 p-1">
-              <ul aria-label="Tags" className="flex flex-col">
-                {tags.map((tag) => (
-                  <li key={tag} className="flex items-center gap-2 py-0.5 pl-2.5 text-sm">
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: tagColor(tag) }}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{tag}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Remove tag ${tag}`}
-                      onClick={() => removeTag(tag)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </PopoverContent>
-          </Popover>
+
         </span>
       )}
+      {/* Adds (and, on a phone, lists and removes). Beside the chips it is
+          just an icon; on a phone, where the chips fold away, it carries the
+          count. Tags used to be removable from the bar but never addable. */}
+      <TagPicker
+        value={tags}
+        onChange={handleTagsChange}
+        className={chipClass}
+        labelClassName={tags.length > 0 ? "sm:hidden" : "hidden"}
+      />
       <BillableToggle value={billable} onChange={handleBillableChange} />
     </>
   );
@@ -458,6 +449,7 @@ export function TimerBar() {
       onSelect={handleSuggestion}
       onSubmit={handleSubmit}
       title={description || undefined}
+      ariaLabel="Description"
       className={cn(
         // Bare in both bodies: the capsule or the bar is the field's edge. The
         // inset ring is the only focus signal here, at full opacity, because
@@ -576,20 +568,24 @@ export function TimerBar() {
               first row, the field takes the second, the pills the third — so
               Stop stays on screen at every width and Discard no longer sits
               alone on a fourth row under the thumb. */}
-          <div className="flex min-w-0 basis-full flex-col gap-1.5 max-md:order-2 md:basis-auto md:flex-1">
+          {/* `basis-0`, not `auto`: the column takes the room that's left and
+              wraps its own pills, instead of a long description or a row of
+              chips pushing Discard onto a line of its own. Capped so it
+              doesn't strand the ribbon across a band of empty glass. */}
+          <div className="flex min-w-0 basis-full flex-col gap-1.5 max-md:order-2 md:max-w-2xl md:basis-0 md:flex-1">
             {descriptionField}
             <div className="flex flex-wrap items-center gap-1.5 px-1">{pills}</div>
           </div>
 
           {/* Today as a trace. Only where there is room for it to be read. */}
-          <DayRibbon className="hidden w-64 shrink-0 lg:block xl:w-80" />
+          <DayRibbon className="hidden min-w-56 max-w-md flex-1 xl:block" />
 
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="ml-auto shrink-0 text-muted-foreground hover:text-destructive max-md:order-1 md:ml-0"
+                className="ml-auto shrink-0 text-muted-foreground hover:text-destructive max-md:order-1"
                 onClick={() => setConfirmDiscard(true)}
                 aria-label="Discard timer"
                 aria-keyshortcuts="Alt+Shift+X"

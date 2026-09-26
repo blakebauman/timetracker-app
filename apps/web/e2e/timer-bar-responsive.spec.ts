@@ -89,7 +89,7 @@ test("every timer bar control stays on screen at every width", async ({ page }) 
 
       // A control the user can see but not read is only nominally on screen.
       // The description input is the one that used to collapse to 24px.
-      const description = controls.find((c) => c.name === "What are you working on?");
+      const description = controls.find((c) => c.name === "Description");
       expect(
         description!.width,
         `${state} @ ${width}px: the description input collapsed to ${description!.width}px`

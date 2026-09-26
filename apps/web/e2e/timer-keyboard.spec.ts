@@ -52,3 +52,37 @@ test("Enter in the running description saves it and keeps the timer running", as
   await page.waitForTimeout(1000);
   await expect(desc).toHaveValue("Draft — revised");
 });
+
+test("tags can be added from the bar while a timer runs", async ({ page }) => {
+  await signUp(page);
+  await page.getByPlaceholder("What are you working on?").fill("Tagged");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await expect(page.getByRole("button", { name: "Stop timer" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Add tags" }).click();
+  await page.keyboard.type("onsite");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Remove tag onsite" })).toBeVisible();
+  await expect
+    .poll(async () => ((await (await page.request.get("/api/time_entries/current")).json()) as { tags: string[] })?.tags)
+    .toEqual(["onsite"]);
+});
+
+test("Discard stays on the Stop row at mid and wide widths", async ({ page }) => {
+  await signUp(page);
+  await page.getByPlaceholder("What are you working on?").fill(
+    "A deliberately long description for a workshop that runs across several topics and clients"
+  );
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await expect(page.getByRole("button", { name: "Stop timer" })).toBeVisible();
+  for (const width of [900, 1100, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.waitForTimeout(200);
+    const stop = await page.getByRole("button", { name: "Stop timer" }).boundingBox();
+    const discard = await page.getByRole("button", { name: "Discard timer" }).boundingBox();
+    expect(Math.abs(stop!.y + stop!.height / 2 - (discard!.y + discard!.height / 2)), `@${width}`).toBeLessThan(12);
+  }
+});

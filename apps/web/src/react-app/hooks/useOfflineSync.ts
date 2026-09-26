@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { CLIENT_ID } from "@/lib/api";
 import { adoptReplayedTimer } from "@/hooks/useTimer";
 import {
@@ -28,6 +29,12 @@ export function useOfflineSync() {
         // refreshes the data that drifts while offline.
         if (replayed > 0) {
           queryClient.invalidateQueries();
+          // The offline toasts promised "will sync when you reconnect"; this
+          // is that promise kept, said out loud. Without it the banner just
+          // vanished and nothing confirmed the time had landed.
+          toast.success(
+            `Back online — ${replayed} offline ${replayed === 1 ? "change" : "changes"} synced`
+          );
           // A timer started offline has just been created for real; give the
           // bar its server id so the next edit or Stop goes straight to it.
           void adoptReplayedTimer();
