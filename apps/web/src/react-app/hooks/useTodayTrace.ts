@@ -30,6 +30,12 @@ export interface TodayTrace {
   total: number;
   /** When the last finished entry today stopped, if nothing is running. */
   lastStop: number | null;
+  /**
+   * Whether today's entries have actually loaded. Until they have, an empty
+   * trace means "don't know", not "nothing tracked" — the composer used to
+   * say the latter beside a list showing the day's hours.
+   */
+  status: "pending" | "error" | "ready";
 }
 
 /**
@@ -62,7 +68,11 @@ export function useTodayTrace(): TodayTrace {
   const today = useMemo(() => parseISO(dayKey), [dayKey]);
   const since = useMemo(() => startOfDay(today), [today]);
   const until = useMemo(() => endOfDay(today), [today]);
-  const { data: entries = [] } = useEntriesRange(since.toISOString(), until.toISOString());
+  const {
+    data: entries = [],
+    isPending,
+    isError,
+  } = useEntriesRange(since.toISOString(), until.toISOString());
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const elapsed = useTimerStore((s) => s.elapsed);
   const localStartTime = useTimerStore((s) => s.localStartTime);
@@ -124,7 +134,8 @@ export function useTodayTrace(): TodayTrace {
       segments,
       total,
       lastStop: runningEntry ? null : lastStop,
-    };
-  }, [entries, runningEntry, dayStart, now, elapsed]);
+      status: isPending ? "pending" : isError ? "error" : "ready",
+    } satisfies TodayTrace;
+  }, [entries, runningEntry, dayStart, now, elapsed, isPending, isError]);
 }
 

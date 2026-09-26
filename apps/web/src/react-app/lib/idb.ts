@@ -6,6 +6,46 @@ interface TimerState {
   description: string;
   projectId: string | null;
   projectColor: string | null;
+  // Optional: snapshots written before these were persisted don't have them.
+  taskId?: string | null;
+  tags?: string[];
+  billable?: boolean;
+}
+
+/**
+ * A synchronous copy of the timer snapshot, in localStorage.
+ *
+ * IndexedDB can only be read asynchronously, and the server's `/current` is a
+ * round-trip, so on every page load the bar used to render *idle* — "Nothing
+ * tracked today", a live Start — for the 100ms to seconds before either
+ * answered. Pressing Enter in that window started a new timer, which the
+ * server treats as "stop the running one": opening the app could end the
+ * timer it was about to show. The timer store seeds itself from this mirror
+ * at module load, so a running timer is on screen in the first frame and the
+ * server only reconciles it. Written and cleared alongside the IndexedDB copy.
+ */
+const TIMER_MIRROR_KEY = "tt-running-timer";
+
+export function readTimerMirror(): TimerState | null {
+  try {
+    const raw = localStorage.getItem(TIMER_MIRROR_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TimerState;
+    return typeof parsed?.entryId === "string" && typeof parsed.startedAt === "number"
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTimerMirror(state: TimerState | null): void {
+  try {
+    if (state) localStorage.setItem(TIMER_MIRROR_KEY, JSON.stringify(state));
+    else localStorage.removeItem(TIMER_MIRROR_KEY);
+  } catch {
+    // Storage blocked (private window, quota) — the async restore still runs.
+  }
 }
 
 interface PendingMutation {
@@ -46,6 +86,7 @@ export async function getDB(): Promise<IDBPDatabase<TimeTrackerDB>> {
 }
 
 export async function saveTimerState(state: TimerState): Promise<void> {
+  writeTimerMirror(state);
   const db = await getDB();
   await db.put("timer_state", state, "current");
 }
@@ -56,6 +97,7 @@ export async function loadTimerState(): Promise<TimerState | undefined> {
 }
 
 export async function clearTimerState(): Promise<void> {
+  writeTimerMirror(null);
   const db = await getDB();
   await db.delete("timer_state", "current");
 }

@@ -1,10 +1,40 @@
 import { create } from "zustand";
 import type { TimeEntry } from "@timetracker/core/schemas";
+import { readTimerMirror } from "@/lib/idb";
+import { entryFromTimerState } from "@/lib/timerSnapshot";
+
+/** What a start pressed during the restore asked for — see `deferredStart`. */
+export interface DeferredStart {
+  description?: string;
+  projectId?: string | null;
+  taskId?: string | null;
+  billable?: boolean;
+  tags?: string[];
+  fromBar?: boolean;
+  /** ISO instant of the press. */
+  start: string;
+}
 
 interface TimerStore {
   runningEntry: TimeEntry | null;
   localStartTime: number | null; // Date.now() at the moment timer started
   elapsed: number; // seconds
+  /**
+   * True until the mount restore (useTimerLifecycle) has heard from the
+   * server, or failed to. While it is, an idle bar is a *guess*: Start is held
+   * and transitions aren't announced, because a restore is not the user
+   * starting or stopping anything.
+   */
+  restoring: boolean;
+  setRestored: () => void;
+  /**
+   * A start pressed while `restoring`, with the instant it was pressed. Held
+   * rather than dropped — a dropped Enter is a keystroke that silently did
+   * nothing — and applied by useTimerLifecycle once the restore has answered
+   * *and* found nothing running.
+   */
+  deferredStart: DeferredStart | null;
+  setDeferredStart: (start: DeferredStart | null) => void;
 
   setRunningEntry: (entry: TimeEntry | null, localStartTime?: number) => void;
   setElapsed: (seconds: number) => void;
@@ -12,10 +42,18 @@ interface TimerStore {
   setFromWS: (entry: TimeEntry | null) => void;
 }
 
+// Seed from the synchronous mirror so a running timer is on screen in the
+// first frame of a page load (see readTimerMirror); the server reconciles it.
+const seeded = readTimerMirror();
+
 export const useTimerStore = create<TimerStore>((set) => ({
-  runningEntry: null,
-  localStartTime: null,
-  elapsed: 0,
+  runningEntry: seeded ? entryFromTimerState(seeded) : null,
+  localStartTime: seeded?.startedAt ?? null,
+  elapsed: seeded ? Math.max(0, Math.floor((Date.now() - seeded.startedAt) / 1000)) : 0,
+  restoring: true,
+  setRestored: () => set({ restoring: false }),
+  deferredStart: null,
+  setDeferredStart: (deferredStart) => set({ deferredStart }),
 
   // Computes elapsed synchronously from `localStartTime` instead of always
   // zeroing it — a genuinely fresh start (localStartTime = now) still reads

@@ -12,8 +12,8 @@ import {
   clearTimerState,
   loadTimerState,
   getPendingMutations,
-  type TimerState,
 } from "@/lib/idb";
+import { entryFromTimerState, timerStateOf } from "@/lib/timerSnapshot";
 import {
   trackPendingStart,
   settleEntryId,
@@ -54,6 +54,12 @@ export interface StartTimerInput {
   taskId?: string | null;
   billable?: boolean;
   tags?: string[];
+  /**
+   * Started from the bar's own draft. Only matters for a start held during
+   * the mount restore: applied later, it takes the bar's draft *then*, so
+   * text typed after the press isn't thrown away.
+   */
+  fromBar?: boolean;
 }
 
 /** What the bar showed before an optimistic stop/discard, to put back on failure. */
@@ -96,13 +102,7 @@ export async function adoptReplayedTimer(): Promise<void> {
   const twin = await findServerTwin(localStartTime);
   if (!twin || useTimerStore.getState().runningEntry?.id !== runningEntry.id) return;
   setRunningEntry(twin, localStartTime ?? undefined);
-  await saveTimerState({
-    entryId: twin.id,
-    startedAt: localStartTime ?? Date.parse(twin.start),
-    description: twin.description,
-    projectId: twin.projectId,
-    projectColor: twin.projectColor,
-  });
+  await saveTimerState(timerStateOf(twin, localStartTime ?? Date.parse(twin.start)));
 }
 
 export function useTimer() {
@@ -216,15 +216,12 @@ export function useTimer() {
       // Stop is optimistic too, and can land before this response does. Only
       // adopt the server entry if the placeholder is still what's running —
       // otherwise this would bring a timer the user already stopped back.
-      if (useTimerStore.getState().runningEntry?.id !== context?.optimisticId) return;
+      // The server's copy can also have arrived first, over the socket or a
+      // resync — that is the same timer, not a replacement.
+      const shown = useTimerStore.getState().runningEntry;
+      if (!shown || (shown.id !== context?.optimisticId && shown.id !== entry.id)) return;
       setRunningEntry(entry, new Date(entry.start).getTime());
-      await saveTimerState({
-        entryId: entry.id,
-        startedAt: new Date(entry.start).getTime(),
-        description: entry.description,
-        projectId: entry.projectId,
-        projectColor: entry.projectColor,
-      });
+      await saveTimerState(timerStateOf(entry, new Date(entry.start).getTime()));
     },
     onError: (err, partial, context) => {
       if (isQueuedOffline(err)) {
@@ -232,13 +229,9 @@ export function useTimer() {
         // the timer IS running — say so and keep it, rather than clearing the
         // bar and letting the entry turn up later as a surprise.
         if (context && useTimerStore.getState().runningEntry?.id === context.optimisticId) {
-          void saveTimerState({
-            entryId: context.optimisticId,
-            startedAt: Date.parse(partial.start),
-            description: partial.description ?? "",
-            projectId: partial.projectId ?? null,
-            projectColor: null,
-          });
+          void saveTimerState(
+            timerStateOf(useTimerStore.getState().runningEntry!, Date.parse(partial.start))
+          );
         }
         toast.info("Offline — the timer is running and will sync when you reconnect");
         return;
@@ -436,13 +429,7 @@ export function useTimer() {
       const previousStart = useTimerStore.getState().localStartTime;
       const newStart = Date.now() - seconds * 1000;
       setRunningEntry(runningEntry, newStart);
-      await saveTimerState({
-        entryId: runningEntry.id,
-        startedAt: newStart,
-        description: runningEntry.description,
-        projectId: runningEntry.projectId,
-        projectColor: runningEntry.projectColor,
-      });
+      await saveTimerState(timerStateOf(runningEntry, newStart));
       return { previousStart };
     },
     // Put the anchor back. This used to invalidate `timer-current`, a key no
@@ -453,23 +440,29 @@ export function useTimer() {
       const previousStart = context?.previousStart;
       if (!runningEntry || previousStart == null) return;
       setRunningEntry(runningEntry, previousStart);
-      void saveTimerState({
-        entryId: runningEntry.id,
-        startedAt: previousStart,
-        description: runningEntry.description,
-        projectId: runningEntry.projectId,
-        projectColor: runningEntry.projectColor,
-      });
+      void saveTimerState(timerStateOf(runningEntry, previousStart));
     },
   });
 
   const startTimer = useCallback(
-    (partial: StartTimerInput = {}) => {
+    (partial: StartTimerInput & { start?: string } = {}) => {
+      const start = partial.start ?? new Date().toISOString();
+      // Every surface that starts a timer — the bar, a row's Continue, a
+      // favourite, the palette — would silently stop the running one if it
+      // fired before the page knows one exists. The window is the mount
+      // restore (see TimerStore.restoring); a start inside it is held, with
+      // its instant, and applied by useTimerLifecycle only if nothing turns
+      // out to be running.
+      const { restoring, runningEntry: running, setDeferredStart } = useTimerStore.getState();
+      if (restoring && !running) {
+        setDeferredStart({ ...partial, start });
+        return;
+      }
       // mutateAsync so a stop or edit that lands before the request settles
       // can wait for the real id (lib/pendingStart); onError handles rejection.
-      trackPendingStart(
-        startMutation.mutateAsync({ ...partial, start: new Date().toISOString() })
-      );
+      const input = { ...partial };
+      delete input.fromBar;
+      trackPendingStart(startMutation.mutateAsync({ ...input, start }));
     },
     [startMutation]
   );
@@ -557,13 +550,7 @@ export function useTimer() {
         const newStart = Date.now() - seconds * 1000;
         if ((await amendQueuedStart({ start: new Date(newStart).toISOString() })) === "none") return;
         setRunningEntry(runningEntry, newStart);
-        await saveTimerState({
-          entryId: runningEntry.id,
-          startedAt: newStart,
-          description: runningEntry.description,
-          projectId: runningEntry.projectId,
-          projectColor: runningEntry.projectColor,
-        });
+        await saveTimerState(timerStateOf(runningEntry, newStart));
       });
     },
     [runningEntry, editElapsedMutation, setRunningEntry]
@@ -575,33 +562,6 @@ export function useTimer() {
     stopTimerAt,
     discardTimer,
     editElapsed,
-  };
-}
-
-/** The running entry as far as this browser knows it, from the IndexedDB snapshot. */
-function offlineEntryFromSaved(saved: TimerState): TimeEntry {
-  const iso = new Date(saved.startedAt).toISOString();
-  return {
-    id: saved.entryId,
-    description: saved.description,
-    projectId: saved.projectId,
-    projectColor: saved.projectColor,
-    projectName: null,
-    taskId: null,
-    taskName: null,
-    workspaceId: "",
-    start: iso,
-    stop: null,
-    duration: null,
-    billable: false,
-    tags: [],
-    syncStatus: null,
-    externalId: null,
-    syncedAt: null,
-    syncError: null,
-    calendarEventId: null,
-    createdAt: iso,
-    updatedAt: iso,
   };
 }
 
@@ -680,12 +640,14 @@ export function useTimerLifecycle(
               (m.method === "DELETE" || m.url.endsWith("/stop") || Boolean((m.body as { stop?: unknown } | undefined)?.stop))
           );
         if (closedLocally) {
+          // The store may have been seeded running from the mirror.
+          useTimerStore.getState().clearTimer();
           await clearTimerState();
           return;
         }
         if (!current && saved && isOptimisticEntryId(saved.entryId) && (await hasQueuedRunningCreate())) {
           if (cancelled) return;
-          setRunningEntry(offlineEntryFromSaved(saved), saved.startedAt);
+          setRunningEntry(entryFromTimerState(saved), saved.startedAt);
           return;
         }
         if (current) {
@@ -694,26 +656,65 @@ export function useTimerLifecycle(
             ? new Date(saved.startedAt).getTime()
             : new Date(current.start).getTime();
           setRunningEntry(current, localStartTime);
-          await saveTimerState({
-            entryId: current.id,
-            startedAt: localStartTime,
-            description: current.description,
-            projectId: current.projectId,
-            projectColor: current.projectColor,
-          });
+          await saveTimerState(timerStateOf(current, localStartTime));
         } else {
-          // Nothing running on server — clear any stale IDB state
+          // Nothing running on server — clear any stale state, including a
+          // running bar seeded from the mirror (stopped on another device).
+          useTimerStore.getState().clearTimer();
           await clearTimerState();
         }
       } catch {
         // Offline — fall back to IDB if available
-        if (saved) setRunningEntry(offlineEntryFromSaved(saved), saved.startedAt);
+        if (saved) setRunningEntry(entryFromTimerState(saved), saved.startedAt);
+      } finally {
+        // Answered or failed, the bar now knows as much as it's going to.
+        if (!cancelled) useTimerStore.getState().setRestored();
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [setRunningEntry]);
+
+  // ─── Persist whatever is running ─────────────────────────────────────────
+  // The explicit saves in useTimer cover the timers this tab starts; a timer
+  // adopted from another tab, a resync or an edit elsewhere reached the store
+  // without ever being written down, so a reload came back idle. Clearing
+  // stays explicit (stop/discard success, offline stop), because an
+  // optimistic stop must not forget a timer the server may yet refuse to stop.
+  useEffect(
+    () =>
+      useTimerStore.subscribe((state, prev) => {
+        const entry = state.runningEntry;
+        if (!entry || state.localStartTime === null) return;
+        if (entry === prev.runningEntry && state.localStartTime === prev.localStartTime) return;
+        void saveTimerState(timerStateOf(entry, state.localStartTime));
+      }),
+    []
+  );
+
+  // ─── A start pressed during the restore ──────────────────────────────────
+  // Applied once the restore has answered. If a timer turned out to be
+  // running, the press was made against a bar that didn't know that — say so
+  // rather than start over it (which would have stopped it).
+  const restoring = useTimerStore((s) => s.restoring);
+  const deferredStart = useTimerStore((s) => s.deferredStart);
+  useEffect(() => {
+    if (restoring || !deferredStart) return;
+    const { runningEntry: running, setDeferredStart } = useTimerStore.getState();
+    setDeferredStart(null);
+    if (running) {
+      toast.info("A timer was already running", {
+        description: "It's still going — nothing new was started.",
+      });
+      return;
+    }
+    startTimer(
+      deferredStart.fromBar
+        ? { ...draftRef.current, start: deferredStart.start }
+        : deferredStart
+    );
+  }, [restoring, deferredStart, startTimer]);
 
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────
   // `enableOnFormTags` is not optional here: react-hotkeys-hook skips form
@@ -728,7 +729,7 @@ export function useTimerLifecycle(
     () => {
       onBeforeToggleRef.current?.();
       if (runningEntry) stopTimer();
-      else startTimer(draftRef.current);
+      else startTimer({ ...draftRef.current, fromBar: true });
     },
     { preventDefault: true, enableOnFormTags: ["INPUT", "TEXTAREA"] },
     [runningEntry, stopTimer, startTimer]
