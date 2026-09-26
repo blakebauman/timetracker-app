@@ -1,4 +1,4 @@
-import { useTodayTrace, type TodayTrace } from "@/hooks/useTodayTrace";
+import { useTodayTrace } from "@/hooks/useTodayTrace";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,10 +13,10 @@ import { Skeleton } from "@/components/ui/skeleton";
  * running for four hours — the readout beside it says the number, this says
  * the shape.
  *
- * Two sizes. `full` lives in the docked running bar: hour ticks, every third
- * one labelled. `compact` lives in the idle composer beside today's total: the
- * trace alone, because there the words say the numbers and the strip only has
- * to say "this is your day, and here is the hole in it".
+ * It sits in the same place in both bodies of the docked bar — idle and
+ * running — with hour ticks, every third clock hour labelled. Idle, it shows
+ * the day's shape and the hole since the last stop; the now-line is neutral
+ * there, since the only lit control on an idle bar is the Start disc.
  *
  * The live segment is not just a colour. The first auto-assigned project
  * colour used to be red, so a finished segment could match it exactly — the
@@ -30,32 +30,17 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 const HOUR = 3_600_000;
 
-export function DayRibbon({
-  className,
-  variant = "full",
-  trace: provided,
-}: {
-  className?: string;
-  variant?: "full" | "compact";
-  /** Pass the trace when the caller already computed it (the composer does). */
-  trace?: TodayTrace;
-}) {
-  const own = useTodayTrace();
-  const { now, windowStart, windowEnd, segments, total, status } = provided ?? own;
+export function DayRibbon({ className }: { className?: string }) {
+  const { now, windowStart, windowEnd, segments, total, status } = useTodayTrace();
 
   const span = windowEnd - windowStart;
   const pct = (t: number) => `${((t - windowStart) / span) * 100}%`;
   const hours = Math.round(span / HOUR);
   const ticks = Array.from({ length: hours + 1 }, (_, i) => windowStart + i * HOUR);
-  const compact = variant === "compact";
+  const live = segments.some((s) => s.running);
 
   const trace = (
-    <div
-      className={cn(
-        "absolute inset-x-0 h-2 rounded-full bg-muted",
-        compact ? "top-1/2 -translate-y-1/2" : "top-1"
-      )}
-    >
+    <div className="absolute inset-x-0 top-1 h-2 rounded-full bg-muted">
       {segments.map((s) => (
         <span
           key={s.key}
@@ -72,24 +57,16 @@ export function DayRibbon({
           }}
         />
       ))}
-      {/* Now. Red only where a timer runs: in the idle composer a red line
-          beside the lit Start disc was a second light on a resting surface. */}
+      {/* Now. Red only while a timer runs: on the idle bar a red line beside
+          the lit Start disc was a second light on a resting surface. */}
       <span
         aria-hidden
-        className={cn("absolute -inset-y-1 w-px", compact ? "bg-foreground/40" : "bg-primary")}
+        className={cn("absolute -inset-y-1 w-px", live ? "bg-primary" : "bg-foreground/40")}
         style={{ left: pct(now) }}
       />
     </div>
   );
 
-  if (compact) {
-    // Decorative here: the composer's own text carries the numbers.
-    return (
-      <div aria-hidden className={cn("relative h-4 min-w-0", className)}>
-        {trace}
-      </div>
-    );
-  }
 
   // Unknown is not empty: while today's entries load, hold the shape without
   // drawing — or announcing — a day with nothing in it.
