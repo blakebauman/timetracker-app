@@ -27,6 +27,10 @@ interface DescriptionAutocompleteProps {
   onSubmit?: () => void;
   // The full text, for a field that truncates it.
   title?: string;
+  // The field's name. Without one a screen reader names it by its
+  // placeholder, so a running timer's field was read as "What are you
+  // working on?" rather than as the description it holds.
+  ariaLabel?: string;
   // Render a Textarea instead of an Input — for the entry form sheet, where
   // descriptions are multi-line.
   multiline?: boolean;
@@ -96,6 +100,7 @@ export function DescriptionAutocomplete({
   className,
   inputRef,
   title,
+  ariaLabel,
 }: DescriptionAutocompleteProps) {
   const { data: suggestions = [] } = useEntrySuggestions();
   const tagColor = useTagColors();
@@ -195,6 +200,7 @@ export function DescriptionAutocomplete({
     "aria-expanded": isOpen,
     "aria-autocomplete": "list" as const,
     "aria-controls": LISTBOX_ID,
+    "aria-label": ariaLabel,
     "aria-activedescendant":
       active >= 0 ? `description-suggestion-${active}` : undefined,
     className,

@@ -59,6 +59,10 @@ test("a timer started and stopped offline syncs with the instants that were pres
   await page.waitForTimeout(5000);
   await context.setOffline(false);
 
+  // The promise kept, out loud.
+  await expect(
+    page.locator("[data-sonner-toast]").filter({ hasText: "offline change" })
+  ).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => entryNamed(page, "Offline work"), { timeout: 15_000 }).not.toBeNull();
   const entry = (await entryNamed(page, "Offline work"))!;
   expect(entry.stop).not.toBeNull();
@@ -114,4 +118,25 @@ test("a stop the server rejects puts the running timer back, and Try again stops
   await page.locator("[data-sonner-toast]").getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("button", { name: "Start timer" })).toBeVisible();
   await expect.poll(() => current(page)).toBeNull();
+});
+
+test("an offline stop with no project still warns that the time can't be billed", async ({
+  page,
+  context,
+}) => {
+  await signUp(page);
+  const origin = new URL(page.url()).origin;
+  await page.request.post("/api/projects", { data: { name: "EY Audit" }, headers: { origin } });
+  await page.reload();
+  await page.getByPlaceholder("What are you working on?").fill("Train work");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await expect.poll(async () => (await current(page))?.description).toBe("Train work");
+
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Stop timer" }).click();
+  await expect(
+    page.locator("[data-sonner-toast]").filter({ hasText: "with no project" })
+  ).toBeVisible();
+  await context.setOffline(false);
 });

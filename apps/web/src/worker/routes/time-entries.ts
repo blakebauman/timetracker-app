@@ -333,6 +333,16 @@ export const timeEntriesRouter = new Hono<{
       return c.json({ error: "Stop time must be after start time" }, 400);
     }
 
+    // Reopening a stopped entry makes it the running timer; there is only ever
+    // one, and the create path's "a new start stops the running one" doesn't
+    // run here — so refuse rather than leave two entries running.
+    if (data.stop === null && owned.stop !== null) {
+      const other = await c.env.DB.prepare(
+        `SELECT id FROM time_entries WHERE workspace_id = ? AND stop IS NULL AND id != ? LIMIT 1`
+      ).bind(workspaceId, id).first();
+      if (other) return c.json({ error: "Another timer is running" }, 409);
+    }
+
     const fields: string[] = [];
     const values: unknown[] = [];
 
@@ -342,8 +352,13 @@ export const timeEntriesRouter = new Hono<{
     if (data.start !== undefined)       { fields.push("start = ?");        values.push(data.start); }
     if (data.stop !== undefined)        { fields.push("stop = ?");         values.push(data.stop ?? null); }
     if (data.billable !== undefined)    { fields.push("billable = ?");     values.push(data.billable ? 1 : 0); }
-    // Recalculate duration whenever start or stop changes
-    if (data.start !== undefined || data.stop !== undefined) {
+    // Recalculate duration whenever start or stop changes. `stop: null`
+    // reopens the entry as running ("Keep running" after a Stop), and a
+    // running entry has no duration — the COALESCE below would otherwise keep
+    // the old stop's value (SET reads the pre-update row).
+    if (data.stop === null) {
+      fields.push("duration = NULL");
+    } else if (data.start !== undefined || data.stop !== undefined) {
       fields.push("duration = CAST((julianday(COALESCE(?, stop)) - julianday(COALESCE(?, start))) * 86400 + 0.5 AS INTEGER)");
       values.push(data.stop ?? null, data.start ?? null);
     }

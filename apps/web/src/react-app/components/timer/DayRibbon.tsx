@@ -71,10 +71,11 @@ export function DayRibbon({
           }}
         />
       ))}
-      {/* Now. */}
+      {/* Now. Red only where a timer runs: in the idle composer a red line
+          beside the lit Start disc was a second light on a resting surface. */}
       <span
         aria-hidden
-        className="absolute -inset-y-1 w-px bg-primary"
+        className={cn("absolute -inset-y-1 w-px", compact ? "bg-foreground/40" : "bg-primary")}
         style={{ left: pct(now) }}
       />
     </div>

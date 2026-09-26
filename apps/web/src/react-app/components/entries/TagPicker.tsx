@@ -26,6 +26,12 @@ interface TagPickerProps {
    * ghost chip used in dense toolbars. See ProjectPicker.
    */
   field?: boolean;
+  /**
+   * Classes for the trigger's text ("2 tags" / "Tags"). The timer bar hides it
+   * where the tags already show as chips beside the trigger, leaving an icon
+   * that adds; the accessible name is unaffected.
+   */
+  labelClassName?: string;
 }
 
 export function TagPicker({
@@ -33,6 +39,7 @@ export function TagPicker({
   onChange,
   className,
   field = false,
+  labelClassName,
 }: TagPickerProps) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -92,11 +99,11 @@ export function TagPicker({
         >
           <Tag className="h-3.5 w-3.5" />
           {value.length > 0 ? (
-            <span>
+            <span className={labelClassName}>
               {value.length} tag{value.length > 1 ? "s" : ""}
             </span>
           ) : (
-            <span>Tags</span>
+            <span className={labelClassName}>Tags</span>
           )}
         </Button>
       </PopoverTrigger>
