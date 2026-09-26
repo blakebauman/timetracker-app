@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -27,6 +27,11 @@ interface DescriptionAutocompleteProps {
   onSubmit?: () => void;
   // The full text, for a field that truncates it.
   title?: string;
+  // Escape with the list already closed.
+  onEscape?: () => void;
+  // Whether the suggestion list is showing — the timer bar holds a running
+  // entry's save while the text is a search rather than an edit.
+  onOpenChange?: (open: boolean) => void;
   // The field's name. Without one a screen reader names it by its
   // placeholder, so a running timer's field was read as "What are you
   // working on?" rather than as the description it holds.
@@ -101,6 +106,8 @@ export function DescriptionAutocomplete({
   inputRef,
   title,
   ariaLabel,
+  onEscape,
+  onOpenChange,
 }: DescriptionAutocompleteProps) {
   const { data: suggestions = [] } = useEntrySuggestions();
   const tagColor = useTagColors();
@@ -123,6 +130,13 @@ export function DescriptionAutocomplete({
     [suggestions, value]
   );
   const isOpen = open && matches.length > 0;
+  const onOpenChangeRef = useRef(onOpenChange);
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
+  useEffect(() => {
+    onOpenChangeRef.current?.(isOpen);
+  }, [isOpen]);
 
   const commit = (s: EntrySuggestion) => {
     onSelect(s);
@@ -168,13 +182,20 @@ export function DescriptionAutocomplete({
         }
         return;
       case "Escape":
-        if (!isOpen) return;
+        // Closed as far as the eye can see isn't closed in state: before the
+        // suggestions have loaded, `open` could still be true and the list
+        // popped up on its own once they arrived. Close it either way.
+        setOpen(false);
+        setActive(-1);
+        if (!isOpen) {
+          // Nothing to dismiss: Escape means "put it back" to the owner.
+          onEscape?.();
+          return;
+        }
         // Don't let Escape bubble to global handlers while it's only meant to
         // dismiss this dropdown.
         e.preventDefault();
         e.stopPropagation();
-        setOpen(false);
-        setActive(-1);
         return;
       case "Tab":
         setOpen(false);
@@ -288,7 +309,9 @@ export function DescriptionAutocomplete({
             onMouseLeave={() => setHovered((h) => (h === i ? -1 : h))}
             className={cn(
               "flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left text-sm",
-              (i === active || i === hovered) && "bg-accent"
+              // The keyboard selection — what Enter commits — is the solid
+              // fill; a hovered row only a wash, so the two can't be mistaken.
+              i === active ? "bg-accent" : i === hovered && "bg-foreground/5"
             )}
           >
             <span className="w-full truncate text-foreground">

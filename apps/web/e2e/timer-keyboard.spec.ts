@@ -145,6 +145,41 @@ test("a suggestion that moves a running timer to another project can be undone",
   await moved.getByRole("button", { name: "Undo" }).click();
   await expect(desc).toHaveValue("Draft");
   await expect
+    .poll(async () => ((await (await page.request.get("/api/time_entries/current")).json()) as { description: string }).description)
+    .toBe("Draft");
+  await expect
     .poll(async () => ((await (await page.request.get("/api/time_entries/current")).json()) as { projectId: string | null }).projectId)
     .toBeNull();
+});
+
+test("searching in a running timer's field doesn't save the search text; Escape puts it back", async ({
+  page,
+}) => {
+  await signUp(page);
+  const origin = new URL(page.url()).origin;
+  const h = { origin };
+  const now = Date.now();
+  await page.request.post("/api/time_entries", {
+    data: { description: "Sprint planning", start: new Date(now - 7200e3).toISOString(), stop: new Date(now - 3600e3).toISOString() },
+    headers: h,
+  });
+  await page.reload();
+  const desc = page.getByPlaceholder("What are you working on?");
+  await desc.fill("Client workshop");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await expect
+    .poll(async () => ((await (await page.request.get("/api/time_entries/current")).json()) as { description: string } | null)?.description)
+    .toBe("Client workshop");
+
+  await desc.fill("Spr");
+  await expect(page.getByRole("option", { name: /Sprint planning/ })).toBeVisible();
+  // Longer than the save debounce: the search must not have been stored.
+  await page.waitForTimeout(1500);
+  expect(((await (await page.request.get("/api/time_entries/current")).json()) as { description: string }).description).toBe(
+    "Client workshop"
+  );
+  await desc.press("Escape"); // closes the list
+  await desc.press("Escape"); // puts the saved text back
+  await expect(desc).toHaveValue("Client workshop");
 });

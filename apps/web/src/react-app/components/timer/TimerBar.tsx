@@ -158,11 +158,22 @@ export function TimerBar() {
           }),
       }
     );
+  // While the suggestion list is showing, the text is a *search*, not an
+  // edit: typing "Spr" to find "Sprint planning" and pausing used to save
+  // "Spr" as the entry's description (invoice text), and a later Undo put the
+  // fragment back. The save waits for the list to close — a blur, Enter, or
+  // no matches left — and Escape with the list closed puts the saved text back.
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   useEffect(() => {
-    if (!runningEntry || description === runningEntry.description) return;
+    if (!runningEntry || suggestionsOpen || description === runningEntry.description) return;
     saveTimeout.current = setTimeout(() => saveDescription(runningEntry.id, description), 800);
     return () => clearTimeout(saveTimeout.current);
-  }, [description, runningEntry?.id]);
+  }, [description, runningEntry?.id, suggestionsOpen]);
+  const revertDescription = () => {
+    if (!runningEntry) return;
+    clearTimeout(saveTimeout.current);
+    setDescription(runningEntry.description);
+  };
 
   // The single definition of "what the bar would start", handed to both the
   // disc below and the Alt+Shift+S hotkey inside `useTimerLifecycle`.
@@ -445,9 +456,10 @@ export function TimerBar() {
             <Badge
               key={tag}
               variant="outline"
-              // Same 32px step as the chips beside it. On a phone the tags
-              // fold into the tag picker's count, so the pills keep to one row.
-              className="h-8 gap-1 border-border bg-background pr-1 pl-2.5 text-xs font-normal max-sm:hidden"
+              // Same 32px step as the chips beside it. Below xl the tags fold
+              // into the tag picker's count — at laptop widths, beside the
+              // ribbon, the chips used to wrap the picker onto a row of its own.
+              className="h-8 gap-1 border-border bg-background pr-1 pl-2.5 text-xs font-normal max-xl:hidden"
             >
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -474,7 +486,7 @@ export function TimerBar() {
         value={tags}
         onChange={handleTagsChange}
         className={chipClass}
-        labelClassName={tags.length > 0 ? "sm:hidden" : "hidden"}
+        labelClassName={tags.length > 0 ? "xl:hidden" : "hidden"}
       />
     </>
   );
@@ -493,6 +505,8 @@ export function TimerBar() {
       onSubmit={handleSubmit}
       title={description || undefined}
       ariaLabel="Description"
+      onOpenChange={setSuggestionsOpen}
+      onEscape={revertDescription}
       className={cn(
         // Bare in both bodies: the capsule or the bar is the field's edge. The
         // inset ring is the only focus signal here, at full opacity, because
@@ -645,7 +659,7 @@ export function TimerBar() {
           </div>
 
           {/* Today as a trace. Only where there is room for it to be read. */}
-          <DayRibbon className="hidden min-w-56 max-w-md flex-1 xl:block" />
+          <DayRibbon className="hidden min-w-48 max-w-md flex-1 lg:block" />
 
           <Tooltip>
             <TooltipTrigger asChild>

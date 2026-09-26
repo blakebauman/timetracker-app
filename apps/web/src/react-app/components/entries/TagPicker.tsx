@@ -107,7 +107,19 @@ export function TagPicker({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
+      <PopoverContent
+        className="w-64 p-0"
+        align="start"
+        // Focus the search field, not the first focusable in the content: that
+        // is a tag's recolour swatch, and focusing it popped its "Change
+        // colour" tooltip over the list the moment the picker opened.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement | null)
+            ?.querySelector<HTMLInputElement>("[cmdk-input]")
+            ?.focus();
+        }}
+      >
         {value.length > 0 && (
           <div className="flex flex-wrap gap-1 border-b p-2">
             {value.map((tag) => (
