@@ -36,11 +36,17 @@ const LogTaskTimeSheet = lazyWithReload(() =>
 
 /**
  * How much of the bottom edge the timer surfaces cover, so every pane pads
- * its last row clear of them. The composer floats 24px up and is ~104px
- * tall; the docked running bar is 88px flush to the edge. Both are exposed
- * as `--dock-h` on the shell, in case a page needs it for its own geometry.
+ * its last row clear of them. TimerBar publishes its rendered height as
+ * `--timer-h` (it varies with width, wrapping and the safe-area inset); the
+ * composer floats above the edge, so idle adds its lift plus a gutter. The
+ * fallbacks are the old fixed values, for the frame before the first measure.
+ * Exposed as `--dock-h` on the shell, in case a page needs it for its own
+ * geometry.
  */
-const DOCK_CLEARANCE = { idle: "8.5rem", running: "6.5rem" } as const;
+const DOCK_CLEARANCE = {
+  idle: "calc(var(--timer-h, 6.5rem) + 2rem + env(safe-area-inset-bottom))",
+  running: "var(--timer-h, 6.5rem)",
+} as const;
 // Desktop toasts stack up from the bottom-right, where the composer (idle) or
 // the docked bar (running) already is. The offset follows the same clearance
 // plus one gutter, so an Undo toast never lands under the timer surface at the

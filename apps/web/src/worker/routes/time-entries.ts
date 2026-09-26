@@ -5,6 +5,7 @@ import {
   UpdateTimeEntrySchema,
   BulkUpdateTimeEntriesSchema,
   BulkDeleteTimeEntriesSchema,
+  StopTimeEntrySchema,
   ENTRY_LIST_LIMIT,
 } from "@timetracker/core/schemas";
 
@@ -377,13 +378,28 @@ export const timeEntriesRouter = new Hono<{
   .patch("/:id/stop", async (c) => {
     const workspaceId = c.get("workspaceId");
     const id = c.req.param("id");
-    const stop = new Date().toISOString();
+    const now = new Date().toISOString();
+
+    // Optional body (see StopTimeEntrySchema): an empty or absent body is the
+    // legacy "stop it now". A client-supplied instant is clamped to the
+    // server's now — a fast client clock must not bill time that hasn't
+    // happened — and, in SQL, to the entry's own start so a skewed clock can't
+    // produce a negative duration.
+    const raw: unknown = await c.req.json().catch(() => ({}));
+    const parsed = StopTimeEntrySchema.safeParse(raw ?? {});
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.issues[0]?.message ?? "Invalid stop time" }, 400);
+    }
+    const requested = parsed.data.stop ? new Date(parsed.data.stop).toISOString() : now;
+    const stop = requested < now ? requested : now;
 
     const result = await c.env.DB.prepare(
       `UPDATE time_entries
-       SET stop = ?, duration = CAST((julianday(?) - julianday(start)) * 86400 + 0.5 AS INTEGER), updated_at = ?
-       WHERE id = ? AND workspace_id = ? AND stop IS NULL`
-    ).bind(stop, stop, stop, id, workspaceId).run();
+       SET stop = CASE WHEN julianday(?1) < julianday(start) THEN start ELSE ?1 END,
+           duration = MAX(0, CAST((julianday(?1) - julianday(start)) * 86400 + 0.5 AS INTEGER)),
+           updated_at = ?2
+       WHERE id = ?3 AND workspace_id = ?4 AND stop IS NULL`
+    ).bind(stop, now, id, workspaceId).run();
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
     // Only broadcast if the entry was actually running — prevents false timer:stop

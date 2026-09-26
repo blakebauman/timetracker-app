@@ -44,11 +44,12 @@ export const PROJECT_COLOR_NAMES: Record<string, string> = {
 // Same palette as PROJECT_COLORS, reordered so stepping through it yields
 // perceptually distinct, alternating warm/cool hues (mirrors the worker's
 // DISTINCT_COLORS). Used for auto-assignment so successive projects don't come
-// out as near-identical warm tones.
+// out as near-identical warm tones. Red and rose come late: they sit next to the
+// brand red, which means "running" — see worker/lib/colors.ts.
 export const DISTINCT_COLORS = [
-  "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#14b8a6",
-  "#ec4899", "#84cc16", "#6366f1", "#f97316", "#06b6d4", "#a855f7",
-  "#f43f5e", "#0ea5e9", "#10b981", "#eab308", "#64748b", "#78716c",
+  "#3b82f6", "#f59e0b", "#22c55e", "#8b5cf6", "#ec4899", "#14b8a6",
+  "#f97316", "#6366f1", "#84cc16", "#06b6d4", "#a855f7", "#eab308",
+  "#0ea5e9", "#ef4444", "#10b981", "#f43f5e", "#64748b", "#78716c",
 ];
 
 // Pick a distinct color for a new project: the first distinct-palette entry not

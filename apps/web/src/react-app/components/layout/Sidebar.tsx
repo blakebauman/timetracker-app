@@ -394,7 +394,7 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            className="tt-touch shrink-0 text-muted-foreground hover:text-destructive"
+            className="shrink-0 text-muted-foreground hover:text-destructive"
             onClick={handleSignOut}
             aria-label="Sign out"
           >
@@ -428,7 +428,7 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="icon-lg"
-            className="tt-touch relative text-muted-foreground"
+            className="relative text-muted-foreground"
             onClick={toggleAssistant}
             aria-pressed={assistantOpen}
             aria-label={assistantLabel(nudges.length)}
@@ -438,7 +438,7 @@ export function Sidebar() {
           </Button>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon-lg" className="tt-touch" aria-label="Open navigation menu">
+              <Button variant="ghost" size="icon-lg" aria-label="Open navigation menu">
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>

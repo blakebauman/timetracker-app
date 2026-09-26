@@ -21,10 +21,12 @@ interface DescriptionAutocompleteProps {
   value: string;
   onChange: (v: string) => void;
   onSelect: (s: EntrySuggestion) => void;
-  // Enter with no suggestion highlighted falls through to the timer's
-  // start/stop, preserving the bar's existing behaviour. Unused (and Enter
-  // inserts a newline instead) in multiline mode.
+  // Enter with no suggestion highlighted falls through to the owner — the
+  // timer bar starts an idle timer, or commits the description of a running
+  // one. Unused (and Enter inserts a newline instead) in multiline mode.
   onSubmit?: () => void;
+  // The full text, for a field that truncates it.
+  title?: string;
   // Render a Textarea instead of an Input — for the entry form sheet, where
   // descriptions are multi-line.
   multiline?: boolean;
@@ -93,6 +95,7 @@ export function DescriptionAutocomplete({
   autoFocus,
   className,
   inputRef,
+  title,
 }: DescriptionAutocompleteProps) {
   const { data: suggestions = [] } = useEntrySuggestions();
   const tagColor = useTagColors();
@@ -143,7 +146,11 @@ export function DescriptionAutocomplete({
           return;
         }
         // Multiline: let Enter insert a newline as the Textarea normally would.
-        if (!multiline) onSubmit?.();
+        if (!multiline) {
+          setOpen(false);
+          setActive(-1);
+          onSubmit?.();
+        }
         return;
       case "Escape":
         if (!isOpen) return;
@@ -182,6 +189,7 @@ export function DescriptionAutocomplete({
       setActive(-1);
     },
     onKeyDown: handleKeyDown,
+    title,
     placeholder: multiline ? "What did you work on?" : "What are you working on?",
     role: "combobox",
     "aria-expanded": isOpen,

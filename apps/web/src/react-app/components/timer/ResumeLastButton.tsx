@@ -42,7 +42,7 @@ export function ResumeLastButton({ onResume }: ResumeLastButtonProps) {
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="tt-touch shrink-0 text-muted-foreground hover:text-foreground"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
           onClick={() => onResume(last)}
           // The tooltip is decoration for a mouse; this is what a screen reader
           // and a keyboard user get, so it names the actual entry rather than

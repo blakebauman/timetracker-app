@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Tag as TagIcon, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -11,6 +11,7 @@ import { FavoritesMenu } from "./FavoritesMenu";
 import { ResumeLastButton } from "./ResumeLastButton";
 import { DescriptionAutocomplete } from "./DescriptionAutocomplete";
 import { DayRibbon } from "./DayRibbon";
+import { useTodayTrace } from "@/hooks/useTodayTrace";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
 import { useTimerStore } from "@/stores/timerStore";
@@ -21,6 +22,8 @@ import { useUpdateEntry } from "@/hooks/useEntries";
 import { useTagColors } from "@/hooks/useProjects";
 import { BillableToggle } from "./BillableToggle";
 import { getDefaultBillable } from "@/lib/billable";
+import { isOptimisticEntryId } from "@/lib/pendingStart";
+import { formatDurationShort, formatEntryTime } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import type { EntrySuggestion } from "@timetracker/core/schemas";
 
@@ -39,6 +42,12 @@ import type { EntrySuggestion } from "@timetracker/core/schemas";
  * single source of truth for "what the bar would start": the draft, the sync
  * from the running entry, the debounced description save, and the lifecycle
  * hook that owns the tick loop and the Alt+Shift hotkeys.
+ *
+ * The two bodies are two React trees, so every Start and Stop unmounts the
+ * control that was just pressed. Three things paper over the seam: focus is
+ * carried across by intent (the disc goes to the disc, the field to the
+ * field), a polite live region says what happened, and the rendered height is
+ * published as `--timer-h` so panes clear whichever body is on screen.
  */
 export function TimerBar() {
   const { runningEntry } = useTimerStore();
@@ -63,6 +72,9 @@ export function TimerBar() {
   const tagColor = useTagColors();
   const { data: projects = [] } = useProjects();
   const descRef = useRef<HTMLInputElement>(null);
+  const discRef = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const elapsed = useTimerStore((s) => s.elapsed);
 
   const isRunning = Boolean(runningEntry);
 
@@ -83,7 +95,18 @@ export function TimerBar() {
   const [syncedBillable, setSyncedBillable] = useState(
     runningEntry?.billable ?? false
   );
-  if (syncedEntryId !== (runningEntry?.id ?? null)) {
+  // The optimistic placeholder becoming the server's entry is the same timer,
+  // not a new one: re-syncing there overwrote whatever had been typed into the
+  // bar in the create's round-trip — the save still went out, so the server
+  // held the new text while the field showed the old.
+  const adoptingServerId =
+    syncedEntryId !== null &&
+    isOptimisticEntryId(syncedEntryId) &&
+    runningEntry !== null &&
+    !isOptimisticEntryId(runningEntry.id);
+  if (adoptingServerId) {
+    setSyncedEntryId(runningEntry.id);
+  } else if (syncedEntryId !== (runningEntry?.id ?? null)) {
     setSyncedEntryId(runningEntry?.id ?? null);
     setSyncedProjectId(runningEntry?.projectId ?? null);
     setSyncedTaskId(runningEntry?.taskId ?? null);
@@ -119,36 +142,134 @@ export function TimerBar() {
 
   // Debounced description update while running. A rejected save is not
   // silent: the bar would otherwise keep showing text the server never stored.
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const saveDescription = (id: string, text: string) =>
+    updateEntry.mutate(
+      { id, data: { description: text } },
+      {
+        onError: () =>
+          toast.error("Couldn't save the description", {
+            description: "It hasn't been stored on this entry yet.",
+          }),
+      }
+    );
   useEffect(() => {
     if (!runningEntry || description === runningEntry.description) return;
-    const t = setTimeout(() => {
-      updateEntry.mutate(
-        { id: runningEntry.id, data: { description } },
-        {
-          onError: () =>
-            toast.error("Couldn't save the description", {
-              description: "It hasn't been stored on this entry yet.",
-            }),
-        }
-      );
-    }, 800);
-    return () => clearTimeout(t);
+    saveTimeout.current = setTimeout(() => saveDescription(runningEntry.id, description), 800);
+    return () => clearTimeout(saveTimeout.current);
   }, [description, runningEntry?.id]);
 
   // The single definition of "what the bar would start", handed to both the
   // disc below and the Alt+Shift+S hotkey inside `useTimerLifecycle`.
   const draft: StartTimerInput = { description, projectId, taskId, tags, billable };
 
+  // ─── Focus across the swap ─────────────────────────────────────────────
+  // Recorded just before a Start or Stop, consumed once the other body has
+  // mounted. Only focus that was already inside the bar is carried; a hotkey
+  // pressed from elsewhere in the app must not pull focus down here.
+  const focusIntent = useRef<"disc" | "description" | null>(null);
+  const rememberFocus = useCallback(() => {
+    const active = document.activeElement;
+    // The field is carried however it was focused — you were typing. The disc
+    // only for keyboard focus: after a click or a tap, focusing the new disc
+    // would just pop its tooltip over the bar.
+    focusIntent.current =
+      active === descRef.current
+        ? "description"
+        : active && headerRef.current?.contains(active) && active.matches(":focus-visible")
+          ? "disc"
+          : null;
+  }, []);
+  useLayoutEffect(() => {
+    const intent = focusIntent.current;
+    focusIntent.current = null;
+    if (intent === "description") descRef.current?.focus();
+    else if (intent === "disc") discRef.current?.focus();
+  }, [isRunning]);
+
+  // ─── What just happened, for a screen reader ────────────────────────────
+  // The readout's elapsed is in its accessible name, but nothing announced
+  // the transitions themselves: a keyboard user pressed Start and heard
+  // nothing at all. Subscribed to the store rather than derived from props,
+  // because the transition can come from anywhere — a hotkey, an entry row,
+  // the idle dialog, another tab — and the stop message needs the elapsed from
+  // the moment *before* the store cleared it.
+  const [announcement, setAnnouncement] = useState("");
+  const discarding = useRef(false);
+  const projectsRef = useRef(projects);
+  useEffect(() => {
+    projectsRef.current = projects;
+  });
+  useEffect(
+    () =>
+      useTimerStore.subscribe((state, prev) => {
+        const wasRunning = Boolean(prev.runningEntry);
+        const nowRunning = Boolean(state.runningEntry);
+        if (wasRunning === nowRunning) return;
+        if (state.runningEntry) {
+          const entry = state.runningEntry;
+          const project = projectsRef.current.find((p) => p.id === entry.projectId)?.name;
+          const what = entry.description.trim();
+          setAnnouncement(
+            `Timer started${what ? `: ${what}` : ""}${project ? `, on ${project}` : ""}`
+          );
+        } else {
+          setAnnouncement(
+            discarding.current
+              ? "Timer discarded"
+              : `Timer stopped after ${formatDurationShort(prev.elapsed)}`
+          );
+          discarding.current = false;
+        }
+      }),
+    []
+  );
+
   // Owns the tick loop, mount-restore, and Alt+Shift+S/X hotkeys — must be
   // called exactly once (TimerBar is always mounted).
-  useTimerLifecycle(draft);
+  useTimerLifecycle(draft, { onBeforeToggle: rememberFocus });
 
-  const handleStart = () => startTimer(draft);
-  const handleStop = () => stopTimer();
-  const handleSubmit = () => {
-    if (isRunning) handleStop();
-    else handleStart();
+  const handleStart = () => {
+    rememberFocus();
+    startTimer(draft);
   };
+  const handleStop = () => {
+    rememberFocus();
+    stopTimer();
+  };
+  // Enter in the field. Idle, it starts — the field is where you are when
+  // you're about to. Running, it commits the description and nothing else:
+  // Enter is "save my edit" everywhere else in the app, and a consultant
+  // fixing a typo mid-task used to end the entry doing it. Stop is the disc
+  // and Alt+Shift+S.
+  const handleSubmit = () => {
+    if (!isRunning) {
+      handleStart();
+      return;
+    }
+    clearTimeout(saveTimeout.current);
+    if (runningEntry && description !== runningEntry.description) {
+      saveDescription(runningEntry.id, description);
+      setAnnouncement("Description saved");
+    }
+  };
+
+  // Publish the rendered height so every pane pads its last row clear of the
+  // timer — the bar's height varies with width, wrapping and safe-area insets,
+  // which a fixed clearance got wrong on a phone by a third of the screen.
+  const measureRef = useCallback((node: HTMLElement | null) => {
+    headerRef.current = node;
+  }, []);
+  useEffect(() => {
+    const node = headerRef.current;
+    if (!node) return;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty("--timer-h", `${node.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isRunning]);
 
   // Picking a suggestion restores the whole combo it was usually logged
   // against, not just the text — including whether last time was invoiceable.
@@ -227,7 +348,11 @@ export function TimerBar() {
   // The pills under the field. Shared by both bodies so the composer and the
   // bar can't drift — same controls, same order, same accessible names.
   const chipClass =
-    "tt-touch h-8 max-w-48 shrink rounded-full border border-border bg-background px-2.5 hover:bg-foreground/6";
+    "tt-touch relative h-8 max-w-48 shrink rounded-full max-sm:max-w-40 border border-border bg-background px-2.5 hover:bg-foreground/6";
+  // An unassigned project is an unbillable hour. Said on the chip before the
+  // timer starts — and while it runs — rather than only in a toast after Stop.
+  const needsProject =
+    !projectId && projects.length > 0 && (isRunning || description.trim().length > 0);
   const pills = (
     <>
       <ProjectPicker
@@ -235,6 +360,7 @@ export function TimerBar() {
         onChange={handleProjectChange}
         compact
         className={chipClass}
+        attention={needsProject ? "No project yet — time without a project can't be billed" : undefined}
       />
       <TaskPicker
         projectId={projectId}
@@ -249,7 +375,9 @@ export function TimerBar() {
             <Badge
               key={tag}
               variant="outline"
-              className="h-7 gap-1 border-border bg-background pr-1 pl-2 text-xs font-normal"
+              // Same 32px step as the chips beside it. On a phone the tags
+              // fold into one count chip below, so the pills keep to one row.
+              className="h-8 gap-1 border-border bg-background pr-1 pl-2.5 text-xs font-normal max-sm:hidden"
             >
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -260,12 +388,21 @@ export function TimerBar() {
                 type="button"
                 aria-label={`Remove tag ${tag}`}
                 onClick={() => removeTag(tag)}
-                className="rounded-full p-0.5 text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className="tt-touch relative grid size-6 place-items-center rounded-full text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-foreground/6 hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 <X className="h-3 w-3" />
               </button>
             </Badge>
           ))}
+          <Badge
+            variant="outline"
+            title={tags.join(", ")}
+            aria-label={`${tags.length} ${tags.length === 1 ? "tag" : "tags"}: ${tags.join(", ")}`}
+            className="h-8 gap-1 border-border bg-background px-2.5 text-xs font-normal text-muted-foreground sm:hidden"
+          >
+            <TagIcon aria-hidden className="h-3 w-3" />
+            <span className="font-mono tabular-nums">{tags.length}</span>
+          </Badge>
         </span>
       )}
       <BillableToggle value={billable} onChange={handleBillableChange} />
@@ -279,99 +416,188 @@ export function TimerBar() {
       onChange={setDescription}
       onSelect={handleSuggestion}
       onSubmit={handleSubmit}
+      title={description || undefined}
       className={cn(
         // Bare in both bodies: the capsule or the bar is the field's edge. The
         // inset ring is the only focus signal here, at full opacity, because
-        // with `border-0` there is no border to shift colour.
-        "tt-touch h-9 min-w-0 flex-1 border-0 bg-transparent px-2 text-base shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset md:text-base dark:bg-transparent",
-        isRunning && "font-medium"
+        // with `border-0` there is no border to shift colour. `truncate` ends
+        // a long description on an ellipsis rather than mid-word.
+        "tt-touch h-9 min-w-0 flex-1 truncate border-0 bg-transparent px-2 text-base shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset md:text-base dark:bg-transparent",
+        // Running, the field sits bare in the bar and read as a label; a hover
+        // wash says it's editable.
+        isRunning &&
+          "font-medium transition-colors duration-fast ease-out-quart hover:bg-foreground/4 focus-visible:bg-transparent"
       )}
     />
+  );
+
+  const liveRegion = (
+    <p role="status" aria-live="polite" className="sr-only">
+      {announcement}
+    </p>
   );
 
   const discardDialog = (
     <ConfirmDialog
       open={confirmDiscard}
       onOpenChange={setConfirmDiscard}
-      title="Discard running timer?"
-      description="The time tracked so far will be permanently deleted. This cannot be undone."
+      title={`Discard ${formatDurationShort(elapsed)} of tracked time?`}
+      description={`${
+        runningEntry?.description?.trim() ? `"${runningEntry.description.trim()}"` : "This entry"
+      } will be deleted instead of saved. This can't be undone — to keep the time, stop the timer instead.`}
       confirmLabel="Discard"
-      onConfirm={discardTimer}
+      onConfirm={() => {
+        discarding.current = true;
+        discardTimer();
+      }}
     />
   );
 
   if (!isRunning) {
     return (
-      <header
-        aria-label="Timer controls"
-        className="tt-glass fixed inset-x-4 bottom-4 z-dock animate-capsule-in rounded-capsule border border-primary/20 p-3 shadow-2xl transition-[border-color] duration-fast ease-out-quart focus-within:border-primary/40 md:bottom-6 md:left-[calc(5rem+1.5rem)] md:right-auto md:w-[min(46rem,calc(100vw-5rem-3rem))]"
-      >
-        <div className="flex items-center gap-2">
-          {descriptionField}
-          <TimerControl isRunning={false} onStart={handleStart} onStop={handleStop} />
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {pills}
-          {/* Resume the last thing tracked, and one-click start from a saved
-              preset. Both are idle-only. */}
-          <span className="ml-auto flex shrink-0 items-center">
-            <ResumeLastButton
-              onResume={(s) =>
-                startTimer({
-                  description: s.description,
-                  projectId: s.projectId,
-                  taskId: s.taskId,
-                  tags: s.tags,
-                  billable: s.billable,
-                })
-              }
+      <>
+        {liveRegion}
+        <header
+          ref={measureRef}
+          aria-label="Timer controls"
+          // One focus signal: the field's cool ring. The capsule's red edge no
+          // longer brightens on focus-within as a second, weaker one.
+          className="group/composer tt-glass fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-dock animate-capsule-in rounded-capsule border border-primary/20 p-3 shadow-2xl md:bottom-6 md:left-[calc(5rem+1.5rem)] md:right-auto md:w-[min(46rem,calc(100vw-5rem-3rem))]"
+        >
+          <div className="flex items-center gap-2">
+            {descriptionField}
+            {/* Said while you're typing, where you're looking — the hotkey
+                lives in the tooltip, which a keyboard user never hovers. */}
+            {description.trim() && (
+              <span
+                aria-hidden
+                className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity duration-fast ease-out-quart group-focus-within/composer:opacity-100 sm:pointer-fine:flex"
+              >
+                <Kbd>Enter</Kbd> to start
+              </span>
+            )}
+            <TimerControl
+              isRunning={false}
+              onStart={handleStart}
+              onStop={handleStop}
+              discRef={discRef}
             />
-            <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
-          </span>
-        </div>
-        {discardDialog}
-      </header>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {pills}
+            <span className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
+              <DaySummary />
+              {/* Resume the last thing tracked, and one-click start from a
+                  saved preset. Both are idle-only. */}
+              <span className="flex items-center">
+                <ResumeLastButton
+                  onResume={(s) => {
+                    rememberFocus();
+                    startTimer({
+                      description: s.description,
+                      projectId: s.projectId,
+                      taskId: s.taskId,
+                      tags: s.tags,
+                      billable: s.billable,
+                    });
+                  }}
+                />
+                <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
+              </span>
+            </span>
+          </div>
+          {discardDialog}
+        </header>
+      </>
     );
   }
 
   return (
-    <header
-      aria-label="Timer controls"
-      className="tt-glass fixed inset-x-0 bottom-0 z-dock animate-dock-in border-t md:left-20"
-    >
-      <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 md:px-6">
-        <TimerControl isRunning onStart={handleStart} onStop={handleStop} />
+    <>
+      {liveRegion}
+      <header
+        ref={measureRef}
+        aria-label="Timer controls"
+        className="tt-glass fixed inset-x-0 bottom-0 z-dock animate-dock-in border-t md:left-20"
+      >
+        <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
+          <TimerControl isRunning onStart={handleStart} onStop={handleStop} discRef={discRef} />
 
-        {/* Description + pills. `basis-full` below md: the disc and readout
-            take the first row, the field the second, the pills the third —
-            and Stop stays on screen at every width. */}
-        <div className="flex min-w-0 basis-full flex-col gap-1.5 md:basis-auto md:flex-1">
-          {descriptionField}
-          <div className="flex flex-wrap items-center gap-1.5 px-1">{pills}</div>
+          {/* Description + pills. Below md the readout and Discard share the
+              first row, the field takes the second, the pills the third — so
+              Stop stays on screen at every width and Discard no longer sits
+              alone on a fourth row under the thumb. */}
+          <div className="flex min-w-0 basis-full flex-col gap-1.5 max-md:order-2 md:basis-auto md:flex-1">
+            {descriptionField}
+            <div className="flex flex-wrap items-center gap-1.5 px-1">{pills}</div>
+          </div>
+
+          {/* Today as a trace. Only where there is room for it to be read. */}
+          <DayRibbon className="hidden w-64 shrink-0 lg:block xl:w-80" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="ml-auto shrink-0 text-muted-foreground hover:text-destructive max-md:order-1 md:ml-0"
+                onClick={() => setConfirmDiscard(true)}
+                aria-label="Discard timer"
+                aria-keyshortcuts="Alt+Shift+X"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Discard timer
+              <Kbd className="ml-1.5">Alt+Shift+X</Kbd>
+            </TooltipContent>
+          </Tooltip>
         </div>
+        {discardDialog}
+      </header>
+    </>
+  );
+}
 
-        {/* Today as a trace. Only where there is room for it to be read. */}
-        <DayRibbon className="hidden w-64 shrink-0 lg:block xl:w-80" />
+/**
+ * Today, in the idle composer: the total, and — when the last timer stopped a
+ * while ago — how long nothing has been tracked. The composer used to say
+ * nothing about the day it was logging; this is the gap it now points at.
+ */
+function DaySummary() {
+  const trace = useTodayTrace();
+  const timeFormat = useUIStore((s) => s.timeFormat);
+  const gapSeconds =
+    trace.lastStop !== null ? Math.floor((trace.now - trace.lastStop) / 1000) : 0;
+  const showGap = gapSeconds >= 5 * 60;
+  const lastStopLabel =
+    trace.lastStop !== null ? formatEntryTime(new Date(trace.lastStop).toISOString(), timeFormat) : "";
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="tt-touch ml-auto shrink-0 text-muted-foreground hover:text-destructive md:ml-0"
-              onClick={() => setConfirmDiscard(true)}
-              aria-label="Discard timer"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Discard timer
-            <Kbd className="ml-1.5">Alt+Shift+X</Kbd>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      {discardDialog}
-    </header>
+  return (
+    <span className="flex min-w-0 items-center gap-2 text-xs">
+      <DayRibbon variant="compact" trace={trace} className="hidden w-20 lg:block" />
+      <span className="min-w-0 whitespace-nowrap">
+        {trace.total > 0 ? (
+          <>
+            <span className="font-mono font-medium tabular-nums text-foreground">
+              {formatDurationShort(trace.total)}
+            </span>{" "}
+            <span className="text-muted-foreground">today</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">Nothing tracked today</span>
+        )}
+        {showGap && (
+          <span
+            className="hidden text-muted-foreground sm:inline"
+            title={`Nothing tracked since ${lastStopLabel}`}
+          >
+            {" · "}
+            <span className="font-mono tabular-nums">{formatDurationShort(gapSeconds)}</span> untracked
+          </span>
+        )}
+      </span>
+    </span>
   );
 }

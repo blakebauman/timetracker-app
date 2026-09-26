@@ -173,10 +173,12 @@
 }
 /* Flat recording pulse behind the round Stop button — a solid ring scales
    outward and fades while the disc itself stays put, no shadow/gradient. */
+/* The ring's starting opacity is per theme: at 0.45 on the light glass the
+   red ring read as a pink halo; dark keeps it (see --pulse-peak). */
 @keyframes recording-pulse {
   0% {
     transform: scale(1);
-    opacity: 0.45;
+    opacity: var(--pulse-peak, 0.45);
   }
   100% {
     transform: scale(1.7);
@@ -257,6 +259,7 @@
   /* L 0.485, not 0.5: on the accent surface plus its own /10 tint the old
      value measured 4.43:1 (e2e/contrast.spec.ts). Hue and chroma unchanged. */
   --primary-ink: oklch(0.485 0.19 27.33);
+  --pulse-peak: 0.28;
   /* The de-emphasised half of the billable/non-billable chart stack. Must stay
      distinguishable from --success on luminance alone. */
   --chart-ink-soft: oklch(0.84 0 0);
@@ -306,6 +309,7 @@
   --ring: oklch(0.7 0.14 265);
   --swatch-ink-mix: 55%;
   --primary-ink: oklch(0.76 0.19 27.33);
+  --pulse-peak: 0.45;
   --chart-ink-soft: oklch(0.40 0 0);
   --glass: oklch(0.191 0 0 / 70%);
 }
@@ -406,11 +410,25 @@
 }
 
 /* ─── Touch targets ─────────────────────────────────────────────────────────
-   Gated on input capability, not viewport width. Only the hit area grows. */
+   Gated on input capability, not viewport width. Only the hit area grows: a
+   centred pseudo-element at least 44px square, so a 32px chip stays a 32px
+   chip on a phone instead of swelling into a 44px box and reflowing the bar.
+   The element must be positioned (`relative`). Icon-size `Button`s carry their
+   own pseudo hit area and don't need this. Form fields can't host a
+   pseudo-element, so they alone keep the min-height. */
 @media (pointer: coarse) {
-  .tt-touch {
+  .tt-touch::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  input.tt-touch,
+  textarea.tt-touch {
     min-height: 44px;
-    min-width: 44px;
   }
 }
 
