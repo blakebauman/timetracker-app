@@ -599,7 +599,6 @@ export function TimerBar() {
                     <Kbd>Enter</Kbd> to start
                   </span>
                 )}
-                {!description.trim() && <KeepRunningPill />}
               </div>
               {pillsRow}
             </div>
@@ -611,7 +610,10 @@ export function TimerBar() {
                 the strip's first row, where the running body has its readout. */}
             <div className="ml-auto flex min-w-0 items-center gap-3 max-md:order-1 max-md:basis-full">
               <DaySummary />
-              <span className="ml-auto flex shrink-0 items-center">
+              {/* The undo sits beside the disc it undoes, not in the field's
+                  row, where it squeezed the placeholder at laptop widths. */}
+              <span className="ml-auto flex shrink-0 items-center gap-1">
+                {!description.trim() && <KeepRunningPill />}
                 <ResumeLastButton
                   onResume={(s) => {
                     rememberFocus();
