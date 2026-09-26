@@ -28,6 +28,12 @@ interface TimerControlProps {
   discRef?: Ref<HTMLButtonElement>;
   /** Idle only: the page is still finding out whether a timer is running. */
   pending?: boolean;
+  /**
+   * Classes for the disc's wrapper. The running bar hides it here below md
+   * and renders a second `TransportDisc` at the bottom-right of the bar,
+   * where a right thumb reaches it.
+   */
+  discClassName?: string;
 }
 
 // The readout and its editor share one box, sized in the mono face's own `ch`,
@@ -53,7 +59,14 @@ const READOUT_BOX = "w-[calc(8ch+0.5rem)] font-mono text-2xl font-semibold tabul
  * create/stop request round-trips; a failed request puts the timer back and
  * says so (see useTimer).
  */
-export function TimerControl({ isRunning, onStart, onStop, discRef, pending = false }: TimerControlProps) {
+export function TimerControl({
+  isRunning,
+  onStart,
+  onStop,
+  discRef,
+  pending = false,
+  discClassName,
+}: TimerControlProps) {
   const elapsed = useTimerStore((s) => s.elapsed);
   const localStartTime = useTimerStore((s) => s.localStartTime);
   const timeFormat = useUIStore((s) => s.timeFormat);
@@ -131,52 +144,14 @@ export function TimerControl({ isRunning, onStart, onStop, discRef, pending = fa
   };
 
   const disc = (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="relative shrink-0">
-          {isRunning && (
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 animate-recording-pulse rounded-full bg-primary"
-            />
-          )}
-          <Button
-            ref={discRef}
-            variant="default"
-            size="icon-lg"
-            onClick={isRunning ? onStop : onStart}
-            // Busy, not disabled: a press now is held and applied once the
-            // page knows nothing is running (useTimer's deferred start).
-            aria-busy={!isRunning && pending ? true : undefined}
-            aria-keyshortcuts="Alt+Shift+S"
-            className={cn(
-              "relative rounded-full",
-              // The house ring at 50% vanishes against the red fill, so the
-              // disc lifts it off with an offset in the ground colour.
-              "focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              // The glow is the composer's: a lit disc on a dark rack. Running,
-              // the pulse ring does that job and the shadow comes off.
-              isRunning
-                ? "shadow-none"
-                : cn(LIT_DISC, "hover:scale-105 hover:shadow-primary/50")
-            )}
-            aria-label={isRunning ? "Stop timer" : "Start timer"}
-          >
-            {isRunning ? (
-              <Square key="stop" className="h-3.5 w-3.5 animate-scale-in fill-current" />
-            ) : pending ? (
-              <Spinner key="pending" />
-            ) : (
-              <Play key="play" className="h-4 w-4 translate-x-px animate-scale-in fill-current" />
-            )}
-          </Button>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>
-        {isRunning ? "Stop timer" : "Start timer"}
-        <Kbd className="ml-1.5">Alt+Shift+S</Kbd>
-      </TooltipContent>
-    </Tooltip>
+    <TransportDisc
+      isRunning={isRunning}
+      pending={pending}
+      onStart={onStart}
+      onStop={onStop}
+      discRef={discRef}
+      className={discClassName}
+    />
   );
 
   if (!isRunning) return disc;
@@ -260,5 +235,75 @@ export function TimerControl({ isRunning, onStart, onStop, discRef, pending = fa
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The Start / Stop disc on its own — what TimerControl renders beside the
+ * readout, and what the running bar places a second time at the bottom-right
+ * on a phone.
+ */
+export function TransportDisc({
+  isRunning,
+  pending = false,
+  onStart,
+  onStop,
+  discRef,
+  className,
+}: {
+  isRunning: boolean;
+  pending?: boolean;
+  onStart: () => void;
+  onStop: () => void;
+  discRef?: Ref<HTMLButtonElement>;
+  className?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={cn("relative shrink-0", className)}>
+          {isRunning && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 animate-recording-pulse rounded-full bg-primary"
+            />
+          )}
+          <Button
+            ref={discRef}
+            variant="default"
+            size="icon-lg"
+            onClick={isRunning ? onStop : onStart}
+            // Busy, not disabled: a press now is held and applied once the
+            // page knows nothing is running (useTimer's deferred start).
+            aria-busy={!isRunning && pending ? true : undefined}
+            aria-keyshortcuts="Alt+Shift+S"
+            className={cn(
+              "relative rounded-full",
+              // The house ring at 50% vanishes against the red fill, so the
+              // disc lifts it off with an offset in the ground colour.
+              "focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              // The glow is the composer's: a lit disc on a dark rack. Running,
+              // the pulse ring does that job and the shadow comes off.
+              isRunning
+                ? "shadow-none"
+                : cn(LIT_DISC, "hover:scale-105 hover:shadow-primary/50")
+            )}
+            aria-label={isRunning ? "Stop timer" : "Start timer"}
+          >
+            {isRunning ? (
+              <Square key="stop" className="h-3.5 w-3.5 animate-scale-in fill-current" />
+            ) : pending ? (
+              <Spinner key="pending" />
+            ) : (
+              <Play key="play" className="h-4 w-4 translate-x-px animate-scale-in fill-current" />
+            )}
+          </Button>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        {isRunning ? "Stop timer" : "Start timer"}
+        <Kbd className="ml-1.5">Alt+Shift+S</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 }

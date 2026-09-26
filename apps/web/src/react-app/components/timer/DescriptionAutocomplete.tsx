@@ -105,8 +105,18 @@ export function DescriptionAutocomplete({
   const { data: suggestions = [] } = useEntrySuggestions();
   const tagColor = useTagColors();
   const [open, setOpen] = useState(false);
+  // `active` is the *keyboard* selection — the row Enter commits and the one
+  // aria-activedescendant names. `hovered` is only a highlight. They used to
+  // be one state, so a mouse pointer resting over the list armed a row, and
+  // the next Enter — "save my edit" in a running timer's field — silently
+  // re-labelled the entry with another description, project, task and tags.
   const [active, setActive] = useState(-1);
+  const [hovered, setHovered] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
+  // Focus opens the list only when a pointer put it there. Focus moved by the
+  // bar itself (carried across Start/Stop) or by Tab leaves it closed; typing
+  // or ArrowDown opens it, which is the combobox pattern screen readers expect.
+  const pointerFocus = useRef(false);
 
   const matches = useMemo(
     () => rankSuggestions(suggestions, value),
@@ -185,7 +195,17 @@ export function DescriptionAutocomplete({
       setOpen(true);
       setActive(-1);
     },
-    onFocus: () => setOpen(true),
+    onPointerDown: () => {
+      pointerFocus.current = true;
+    },
+    onFocus: () => {
+      if (pointerFocus.current) setOpen(true);
+    },
+    // A click on a field that already has focus fires no focus event.
+    onClick: () => {
+      pointerFocus.current = false;
+      setOpen(true);
+    },
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       // Ignore blur caused by clicking a row — the row's mousedown handler
       // commits it; closing here first would cancel the click.
@@ -264,10 +284,11 @@ export function DescriptionAutocomplete({
               e.preventDefault();
               commit(s);
             }}
-            onMouseEnter={() => setActive(i)}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered((h) => (h === i ? -1 : h))}
             className={cn(
               "flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left text-sm",
-              i === active && "bg-accent"
+              (i === active || i === hovered) && "bg-accent"
             )}
           >
             <span className="w-full truncate text-foreground">

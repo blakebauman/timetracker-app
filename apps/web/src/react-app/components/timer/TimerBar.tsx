@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { RotateCcw, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
-import { TimerControl } from "./TimerControl";
+import { TimerControl, TransportDisc } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { ResumeLastButton } from "./ResumeLastButton";
 import { DescriptionAutocomplete } from "./DescriptionAutocomplete";
@@ -77,6 +77,7 @@ export function TimerBar() {
   const { data: projects = [] } = useProjects();
   const descRef = useRef<HTMLInputElement>(null);
   const discRef = useRef<HTMLButtonElement>(null);
+  const phoneDiscRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement | null>(null);
   const elapsed = useTimerStore((s) => s.elapsed);
 
@@ -188,7 +189,12 @@ export function TimerBar() {
     const intent = focusIntent.current;
     focusIntent.current = null;
     if (intent === "description") descRef.current?.focus();
-    else if (intent === "disc") discRef.current?.focus();
+    else if (intent === "disc") {
+      // Whichever disc is actually on screen at this width.
+      [discRef.current, phoneDiscRef.current]
+        .find((el) => el && el.offsetParent !== null)
+        ?.focus();
+    }
   }, [isRunning]);
 
   // ─── What just happened, for a screen reader ────────────────────────────
@@ -222,10 +228,14 @@ export function TimerBar() {
             `Timer started${what ? `: ${what}` : ""}${project ? `, on ${project}` : ""}`
           );
         } else {
+          const took =
+            prev.elapsed < 60
+              ? `${prev.elapsed} ${prev.elapsed === 1 ? "second" : "seconds"}`
+              : formatDurationShort(prev.elapsed);
           setAnnouncement(
             discarding.current
               ? "Timer discarded"
-              : `Timer stopped after ${formatDurationShort(prev.elapsed)}`
+              : `Timer stopped after ${took}. Keep running is available for 10 seconds, Alt+Shift+R.`
           );
           discarding.current = false;
         }
@@ -286,22 +296,51 @@ export function TimerBar() {
 
   // Picking a suggestion restores the whole combo it was usually logged
   // against, not just the text — including whether last time was invoiceable.
-  const handleSuggestion = (s: EntrySuggestion) => {
-    setDescription(s.description);
-    setProjectId(s.projectId);
-    setTaskId(s.taskId);
-    setTags(s.tags);
-    setBillable(s.billable);
+  const applyCombo = (c: {
+    description: string;
+    projectId: string | null;
+    taskId: string | null;
+    tags: string[];
+    billable: boolean;
+  }) => {
+    setDescription(c.description);
+    setProjectId(c.projectId);
+    setTaskId(c.taskId);
+    setTags(c.tags);
+    setBillable(c.billable);
     if (runningEntry) {
-      updateEntry.mutate({
-        id: runningEntry.id,
-        data: {
-          description: s.description,
-          projectId: s.projectId,
-          taskId: s.taskId,
-          tags: s.tags,
-          billable: s.billable,
-        },
+      clearTimeout(saveTimeout.current);
+      updateEntry.mutate({ id: runningEntry.id, data: c });
+    }
+  };
+  const handleSuggestion = (s: EntrySuggestion) => {
+    // What the entry *is*, not what's being typed: the text in the field is
+    // the query that found this suggestion, and "Undo" restoring it would put
+    // a search term on the entry.
+    const before = runningEntry
+      ? {
+          description: runningEntry.description,
+          projectId: runningEntry.projectId,
+          taskId: runningEntry.taskId,
+          tags: runningEntry.tags,
+          billable: runningEntry.billable,
+        }
+      : { description, projectId, taskId, tags, billable };
+    applyCombo({
+      description: s.description,
+      projectId: s.projectId,
+      taskId: s.taskId,
+      tags: s.tags,
+      billable: s.billable,
+    });
+    // On a running timer a suggestion moves time that's already been tracked.
+    // When it moves it to a different client, say so — with the way back.
+    if (runningEntry && s.projectId !== before.projectId) {
+      const to = s.projectId ? (s.projectName ?? "another project") : "no project";
+      toast(`Moved this timer to ${to}`, {
+        description: `"${s.description}"`,
+        duration: 8000,
+        action: { label: "Undo", onClick: () => applyCombo(before) },
       });
     }
     descRef.current?.focus();
@@ -379,7 +418,7 @@ export function TimerBar() {
   // The pills under the field. Shared by both bodies so the composer and the
   // bar can't drift — same controls, same order, same accessible names.
   const chipClass =
-    "tt-touch relative h-8 max-w-48 shrink rounded-full max-sm:max-w-40 border border-border bg-background px-2.5 hover:bg-foreground/6";
+    "tt-touch relative h-8 min-w-0 max-w-48 shrink rounded-full max-sm:max-w-40 border border-border bg-background px-2.5 hover:bg-foreground/6";
   // An unassigned project is an unbillable hour. Said on the chip before the
   // timer starts — and while it runs — rather than only in a toast after Stop.
   const needsProject =
@@ -437,9 +476,13 @@ export function TimerBar() {
         className={chipClass}
         labelClassName={tags.length > 0 ? "sm:hidden" : "hidden"}
       />
-      <BillableToggle value={billable} onChange={handleBillableChange} />
     </>
   );
+
+  // Beside the description, not at the end of the chips: whether this hour is
+  // invoiceable is a property of the work being described, and at the end of
+  // a wrapping chip row the lone "$" kept falling onto a line of its own.
+  const billableToggle = <BillableToggle value={billable} onChange={handleBillableChange} />;
 
   const descriptionField = (
     <DescriptionAutocomplete
@@ -499,6 +542,7 @@ export function TimerBar() {
         >
           <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
             {descriptionField}
+            {billableToggle}
             {/* Said while you're typing, where you're looking — the hotkey
                 lives in the tooltip, which a keyboard user never hovers. */}
             {description.trim() && (
@@ -509,6 +553,7 @@ export function TimerBar() {
                 <Kbd>Enter</Kbd> to start
               </span>
             )}
+            {!description.trim() && <KeepRunningPill />}
           </div>
 
           <div className="col-span-2 row-start-2 flex flex-wrap items-center gap-1.5">
@@ -562,7 +607,13 @@ export function TimerBar() {
         className="tt-glass fixed inset-x-0 bottom-0 z-dock animate-dock-in border-t md:left-20"
       >
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
-          <TimerControl isRunning onStart={handleStart} onStop={handleStop} discRef={discRef} />
+          <TimerControl
+            isRunning
+            onStart={handleStart}
+            onStop={handleStop}
+            discRef={discRef}
+            discClassName="max-md:hidden"
+          />
 
           {/* Description + pills. Below md the readout and Discard share the
               first row, the field takes the second, the pills the third — so
@@ -573,8 +624,24 @@ export function TimerBar() {
               chips pushing Discard onto a line of its own. Capped so it
               doesn't strand the ribbon across a band of empty glass. */}
           <div className="flex min-w-0 basis-full flex-col gap-1.5 max-md:order-2 md:max-w-2xl md:basis-0 md:flex-1">
-            {descriptionField}
-            <div className="flex flex-wrap items-center gap-1.5 px-1">{pills}</div>
+            <div className="flex min-w-0 items-center gap-1">
+              {descriptionField}
+              {billableToggle}
+            </div>
+            {/* One line on a phone, the project chip truncating, so the Stop
+                disc at its end sits in the corner instead of wrapping. */}
+            <div className="flex flex-wrap items-center gap-1.5 px-1 max-md:flex-nowrap">
+              {pills}
+              {/* Stop again, bottom-right, on a phone: the thumb's corner. The
+                  one beside the readout is hidden there. */}
+              <TransportDisc
+                isRunning
+                onStart={handleStart}
+                onStop={handleStop}
+                discRef={phoneDiscRef}
+                className="ml-auto md:hidden"
+              />
+            </div>
           </div>
 
           {/* Today as a trace. Only where there is room for it to be read. */}
@@ -654,5 +721,56 @@ function DaySummaryReady({ trace }: { trace: TodayTrace }) {
         )}
       </span>
     </span>
+  );
+}
+
+/**
+ * The undo for a Stop, beside the disc that was pressed. For ten seconds
+ * after any stop — online or off, with or without a project — and only while
+ * the field is empty, so it never competes with starting something new.
+ */
+function KeepRunningPill() {
+  const lastStopped = useTimerStore((s) => s.lastStopped);
+  const { keepRunning } = useTimer();
+  // Which window has closed. Compared by identity, so a new stop reopens it
+  // without a reset step; the timer is the only place the clock is read.
+  const [expired, setExpired] = useState<typeof lastStopped>(null);
+  useEffect(() => {
+    if (!lastStopped) return;
+    const t = setTimeout(
+      () => setExpired(lastStopped),
+      Math.max(0, lastStopped.until - Date.now())
+    );
+    return () => clearTimeout(t);
+  }, [lastStopped]);
+  if (!lastStopped || expired === lastStopped) return null;
+  const what = lastStopped.entry.description.trim();
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => keepRunning()}
+          aria-keyshortcuts="Alt+Shift+R"
+          aria-label={`Keep running${what ? ` "${what}"` : ""}`}
+          className="shrink-0 animate-in fade-in gap-1.5 duration-base ease-out-quart"
+        >
+          <RotateCcw aria-hidden className="h-3.5 w-3.5" />
+          Keep running
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        Undo the stop and carry on from{" "}
+        {formatDurationShort(
+          lastStopped.entry.duration ??
+            (lastStopped.entry.stop
+              ? Math.round((Date.parse(lastStopped.entry.stop) - Date.parse(lastStopped.entry.start)) / 1000)
+              : 0)
+        )}
+        <Kbd className="ml-1.5">Alt+Shift+R</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 }

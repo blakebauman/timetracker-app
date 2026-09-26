@@ -117,3 +117,34 @@ export async function amendQueuedStart(
   await putPendingMutation({ ...queued, body: { ...body, ...patch } });
   return "amended";
 }
+
+/**
+ * "Keep running" on a timer that was started *and* stopped offline: its
+ * queued create carries the stop; take it off again so the replay creates a
+ * running entry. Matched by start, since the entry never had a server id.
+ */
+export async function reopenQueuedCreate(startIso: string): Promise<boolean> {
+  let all: PendingMutation[];
+  try {
+    all = await getPendingMutations();
+  } catch {
+    return false;
+  }
+  for (let i = all.length - 1; i >= 0; i--) {
+    const m = all[i];
+    const body = m.body as Record<string, unknown> | undefined;
+    if (
+      m.id !== undefined &&
+      m.method === "POST" &&
+      m.url.endsWith("/time_entries") &&
+      body?.start === startIso &&
+      body.stop
+    ) {
+      const { stop: _stop, ...rest } = body;
+      void _stop;
+      await putPendingMutation({ ...m, body: rest });
+      return true;
+    }
+  }
+  return false;
+}

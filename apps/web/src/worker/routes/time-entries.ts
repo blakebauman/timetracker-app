@@ -333,15 +333,12 @@ export const timeEntriesRouter = new Hono<{
       return c.json({ error: "Stop time must be after start time" }, 400);
     }
 
-    // Reopening a stopped entry makes it the running timer; there is only ever
+    // Reopening a stopped entry makes it the running timer. There is only ever
     // one, and the create path's "a new start stops the running one" doesn't
-    // run here — so refuse rather than leave two entries running.
-    if (data.stop === null && owned.stop !== null) {
-      const other = await c.env.DB.prepare(
-        `SELECT id FROM time_entries WHERE workspace_id = ? AND stop IS NULL AND id != ? LIMIT 1`
-      ).bind(workspaceId, id).first();
-      if (other) return c.json({ error: "Another timer is running" }, 409);
-    }
+    // run here — so the UPDATE itself refuses when another entry is running
+    // (a NOT EXISTS in its WHERE, one statement, so two reopens racing can't
+    // both land), and a refusal is a 409.
+    const reopening = data.stop === null && owned.stop !== null;
 
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -366,9 +363,15 @@ export const timeEntriesRouter = new Hono<{
     values.push(now);
 
     if (fields.length > 1) {
-      await c.env.DB.prepare(
-        `UPDATE time_entries SET ${fields.join(", ")} WHERE id = ? AND workspace_id = ?`
-      ).bind(...values, id, workspaceId).run();
+      const guard = reopening
+        ? ` AND NOT EXISTS (SELECT 1 FROM time_entries o WHERE o.workspace_id = ? AND o.stop IS NULL AND o.id != ?)`
+        : "";
+      const result = await c.env.DB.prepare(
+        `UPDATE time_entries SET ${fields.join(", ")} WHERE id = ? AND workspace_id = ?${guard}`
+      ).bind(...values, id, workspaceId, ...(reopening ? [workspaceId, id] : [])).run();
+      if (reopening && result.meta.changes === 0) {
+        return c.json({ error: "Another timer is running" }, 409);
+      }
     }
 
     if (data.tags !== undefined) {
@@ -377,7 +380,12 @@ export const timeEntriesRouter = new Hono<{
     }
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
-    c.executionCtx.waitUntil(broadcast(c.env, workspaceId, "entries:changed", entry, clientId(c)));
+    // A reopen is a timer starting, as far as every other tab and the
+    // extension badge are concerned: `entries:changed` is only folded into a
+    // tab that is already running that entry, so an idle tab never saw it.
+    c.executionCtx.waitUntil(
+      broadcast(c.env, workspaceId, reopening ? "timer:start" : "entries:changed", entry, clientId(c))
+    );
     return c.json(entry);
   })
   // ─── Delete ───────────────────────────────────────────────────────────────
