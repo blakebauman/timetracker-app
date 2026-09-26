@@ -41,6 +41,8 @@ test("Keep running reopens the stopped entry from its original start", async ({ 
 
   await receipt.getByRole("button", { name: "Keep running" }).click();
   await expect(page.getByRole("button", { name: "Stop timer" })).toBeVisible();
+  // The receipt goes with the stop it described.
+  await expect(receipt).toHaveCount(0);
   await expect.poll(async () => (await current(page))?.id).toBe(started.id);
   const reopened = (await current(page))!;
   expect(reopened.start).toBe(started.start);

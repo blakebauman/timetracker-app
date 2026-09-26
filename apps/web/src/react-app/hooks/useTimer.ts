@@ -133,17 +133,23 @@ function announceStoppedOffline(
   const at = formatEntryTime(stopIso, useUIStore.getState().timeFormat);
   useUIStore.getState().flashEntry(entry.id);
   openKeepRunningWindow({ ...entry, stop: stopIso });
+  toast.dismiss(OFFLINE_START_TOAST);
   if (!entry.projectId) {
+    // Same shape as the online warning: its one action assigns a project (the
+    // undo is the bar's pill). A timer that never reached the server has no
+    // entry to open yet, so it gets no action rather than a different one.
     toast.warning(`Offline — stopped at ${at} with no project`, {
+      id: STOP_RECEIPT_TOAST,
       description: "It can't be billed until it has one. Syncs when you reconnect.",
       duration: KEEP_RUNNING_MS,
       action: isOptimisticEntryId(entry.id)
-        ? keepRunning
+        ? undefined
         : { label: "Assign project", onClick: () => useUIStore.getState().openEntryEditor(entry.id) },
     });
     return;
   }
   toast.info(`Offline — stopped at ${at}`, {
+    id: STOP_RECEIPT_TOAST,
     description: "The entry will sync with that time when you reconnect.",
     duration: KEEP_RUNNING_MS,
     action: keepRunning,
@@ -152,6 +158,16 @@ function announceStoppedOffline(
 
 /** How long a stop can be taken back — the toasts and the bar's pill alike. */
 export const KEEP_RUNNING_MS = 10_000;
+
+/**
+ * Every stop receipt shares one toast id: a new stop replaces the last
+ * receipt instead of stacking, and Keep running closes it — the receipt used
+ * to stay up saying "Saved…" (or "Offline — stopped at…") over a bar that was
+ * running again.
+ */
+const STOP_RECEIPT_TOAST = "timer-stop-receipt";
+/** The offline "timer is running" notice, closed once that timer stops. */
+const OFFLINE_START_TOAST = "timer-offline-start";
 
 function openKeepRunningWindow(entry: TimeEntry) {
   useTimerStore.getState().setLastStopped({ entry, until: Date.now() + KEEP_RUNNING_MS });
@@ -285,7 +301,9 @@ export function useTimer() {
             timerStateOf(useTimerStore.getState().runningEntry!, Date.parse(partial.start))
           );
         }
-        toast.info("Offline — the timer is running and will sync when you reconnect");
+        toast.info("Offline — the timer is running and will sync when you reconnect", {
+          id: OFFLINE_START_TOAST,
+        });
         return;
       }
       if (context) removeFromCache(context.optimisticId);
@@ -375,7 +393,8 @@ export function useTimer() {
           },
         },
         cancel,
-        duration: cancel ? KEEP_RUNNING_MS : undefined,
+        id: STOP_RECEIPT_TOAST,
+        duration: KEEP_RUNNING_MS,
       });
       return true;
     },
@@ -394,6 +413,7 @@ export function useTimer() {
         return;
       }
       useTimerStore.getState().setLastStopped(null);
+      toast.dismiss(STOP_RECEIPT_TOAST);
       markActed();
       const reopened: TimeEntry = { ...entry, stop: null, duration: null };
       setRunningEntry(reopened, Date.parse(entry.start));
@@ -453,6 +473,7 @@ export function useTimer() {
     const keepRunning = { label: "Keep running", onClick: () => reopenStopped(entry) };
     if (!entry.projectId) {
       toast.warning(`Stopped ${formatDurationShort(entry.duration ?? 0)} with no project`, {
+        id: STOP_RECEIPT_TOAST,
         description: "It can't be billed until it has one.",
         duration: KEEP_RUNNING_MS,
         action: {
@@ -464,6 +485,7 @@ export function useTimer() {
     }
     if (offerTaskDone(entry)) return;
     toast(`Saved ${formatDurationShort(entry.duration ?? 0)}${entry.projectName ? ` to ${entry.projectName}` : ""}`, {
+      id: STOP_RECEIPT_TOAST,
       duration: KEEP_RUNNING_MS,
       action: keepRunning,
     });

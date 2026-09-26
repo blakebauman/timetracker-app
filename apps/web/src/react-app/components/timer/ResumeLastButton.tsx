@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorDot } from "@/components/ColorDot";
@@ -26,9 +26,12 @@ interface ResumeLastButtonProps {
  *
  * Deliberately not auto-filling the bar with it: a pre-filled description the
  * user doesn't notice gets time logged against the wrong thing, which is worse
- * than a blank bar. The glyph is `RotateCcw`, not the `Play` the entry row uses,
+ * than a blank bar. The glyph is `History`, not the `Play` the entry row uses,
  * because a second play triangle beside the Start disc reads as a second start
  * button — but the verb stays "Continue" so the two surfaces say the same word.
+ * Nor is it the counter-clockwise arrow: that one belongs to Keep running,
+ * which sits beside it for ten seconds after a stop and means something else
+ * (reopen the stopped entry, not start a new one).
  */
 export function ResumeLastButton({ onResume }: ResumeLastButtonProps) {
   const { data: suggestions = [] } = useEntrySuggestions();
@@ -51,7 +54,7 @@ export function ResumeLastButton({ onResume }: ResumeLastButtonProps) {
             last.projectName ? ` on ${last.projectName}` : ""
           }`}
         >
-          <RotateCcw className="h-4 w-4" />
+          <History className="h-4 w-4" />
         </Button>
       </TooltipTrigger>
       <TooltipContent className="flex max-w-64 items-center gap-1.5">
