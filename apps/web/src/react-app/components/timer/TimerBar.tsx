@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TimerControl } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { ResumeLastButton } from "./ResumeLastButton";
 import { DescriptionAutocomplete } from "./DescriptionAutocomplete";
 import { DayRibbon } from "./DayRibbon";
-import { useTodayTrace } from "@/hooks/useTodayTrace";
+import { useTodayTrace, type TodayTrace } from "@/hooks/useTodayTrace";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TaskPicker } from "@/components/entries/TaskPicker";
 import { useTimerStore } from "@/stores/timerStore";
@@ -59,16 +61,19 @@ export function TimerBar() {
   const confirmDiscard = useUIStore((s) => s.discardConfirmOpen);
   const setConfirmDiscard = useUIStore((s) => s.setDiscardConfirmOpen);
 
-  const [description, setDescription] = useState("");
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [taskId, setTaskId] = useState<string | null>(null);
+  // Seeded from the running entry, not blank: on a reload the store already
+  // holds the timer in the first frame (the local mirror), and the sync below
+  // only fires on a *change* of entry.
+  const [description, setDescription] = useState(runningEntry?.description ?? "");
+  const [projectId, setProjectId] = useState<string | null>(runningEntry?.projectId ?? null);
+  const [taskId, setTaskId] = useState<string | null>(runningEntry?.taskId ?? null);
   // Tags carried over from a picked suggestion (or synced from the running
   // entry). The bar has no tag *picker* — chips are removable but only ever
   // added via suggestions/favorites; full editing lives in the entry sheet.
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(runningEntry?.tags ?? []);
   // Whether this hour is invoiceable. Seeded from the project on selection,
   // overridable by the user.
-  const [billable, setBillable] = useState(getDefaultBillable);
+  const [billable, setBillable] = useState(() => runningEntry?.billable ?? getDefaultBillable());
   const tagColor = useTagColors();
   const { data: projects = [] } = useProjects();
   const descRef = useRef<HTMLInputElement>(null);
@@ -206,6 +211,10 @@ export function TimerBar() {
         const wasRunning = Boolean(prev.runningEntry);
         const nowRunning = Boolean(state.runningEntry);
         if (wasRunning === nowRunning) return;
+        // A restore isn't the user starting or stopping anything: on every
+        // load with a timer running, a screen reader used to hear "Timer
+        // started" for a timer that had been running for an hour.
+        if (prev.restoring || state.restoring) return;
         if (state.runningEntry) {
           const entry = state.runningEntry;
           const project = projectsRef.current.find((p) => p.id === entry.projectId)?.name;
@@ -229,9 +238,14 @@ export function TimerBar() {
   // called exactly once (TimerBar is always mounted).
   useTimerLifecycle(draft, { onBeforeToggle: rememberFocus });
 
+  // Until the restore has heard from the server, "nothing is running" is a
+  // guess; the disc says so, and a start pressed now is held (see useTimer).
+  const restoring = useTimerStore((s) => s.restoring);
   const handleStart = () => {
     rememberFocus();
-    startTimer(draft);
+    // `fromBar`: if this is held for the restore, apply whatever the bar
+    // says when it runs, not the draft as it was at the press.
+    startTimer({ ...draft, fromBar: true });
   };
   const handleStop = () => {
     rememberFocus();
@@ -394,15 +408,42 @@ export function TimerBar() {
               </button>
             </Badge>
           ))}
-          <Badge
-            variant="outline"
-            title={tags.join(", ")}
-            aria-label={`${tags.length} ${tags.length === 1 ? "tag" : "tags"}: ${tags.join(", ")}`}
-            className="h-8 gap-1 border-border bg-background px-2.5 text-xs font-normal text-muted-foreground sm:hidden"
-          >
-            <TagIcon aria-hidden className="h-3 w-3" />
-            <span className="font-mono tabular-nums">{tags.length}</span>
-          </Badge>
+          {/* On a phone the count opens the tags: a title attribute can't be
+              read on touch, and the tags couldn't be removed from the bar. */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={`${tags.length} ${tags.length === 1 ? "tag" : "tags"}: ${tags.join(", ")}`}
+                className="tt-touch relative inline-flex h-8 items-center gap-1 rounded-full border border-border bg-background px-2.5 text-xs text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-foreground/6 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:hidden"
+              >
+                <TagIcon aria-hidden className="h-3 w-3" />
+                <span className="font-mono tabular-nums">{tags.length}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-56 p-1">
+              <ul aria-label="Tags" className="flex flex-col">
+                {tags.map((tag) => (
+                  <li key={tag} className="flex items-center gap-2 py-0.5 pl-2.5 text-sm">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: tagColor(tag) }}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{tag}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Remove tag ${tag}`}
+                      onClick={() => removeTag(tag)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </PopoverContent>
+          </Popover>
         </span>
       )}
       <BillableToggle value={billable} onChange={handleBillableChange} />
@@ -462,9 +503,9 @@ export function TimerBar() {
           aria-label="Timer controls"
           // One focus signal: the field's cool ring. The capsule's red edge no
           // longer brightens on focus-within as a second, weaker one.
-          className="group/composer tt-glass fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-dock animate-capsule-in rounded-capsule border border-primary/20 p-3 shadow-2xl md:bottom-6 md:left-[calc(5rem+1.5rem)] md:right-auto md:w-[min(46rem,calc(100vw-5rem-3rem))]"
+          className="group/composer tt-glass grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-dock animate-capsule-in rounded-capsule border border-primary/20 p-3 shadow-2xl md:bottom-6 md:left-[calc(5rem+1.5rem)] md:right-auto md:w-[min(46rem,calc(100vw-5rem-3rem))]"
         >
-          <div className="flex items-center gap-2">
+          <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
             {descriptionField}
             {/* Said while you're typing, where you're looking — the hotkey
                 lives in the tooltip, which a keyboard user never hovers. */}
@@ -476,14 +517,9 @@ export function TimerBar() {
                 <Kbd>Enter</Kbd> to start
               </span>
             )}
-            <TimerControl
-              isRunning={false}
-              onStart={handleStart}
-              onStop={handleStop}
-              discRef={discRef}
-            />
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+
+          <div className="col-span-2 row-start-2 flex flex-wrap items-center gap-1.5">
             {pills}
             <span className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
               <DaySummary />
@@ -505,6 +541,19 @@ export function TimerBar() {
                 <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
               </span>
             </span>
+          </div>
+
+          {/* Last in the DOM, first-row-right on screen: Tab runs describe →
+              assign → start, the order the work is done in, instead of
+              putting Start between the field and the chips it depends on. */}
+          <div className="col-start-2 row-start-1">
+            <TimerControl
+              isRunning={false}
+              pending={restoring}
+              onStart={handleStart}
+              onStop={handleStop}
+              discRef={discRef}
+            />
           </div>
           {discardDialog}
         </header>
@@ -567,6 +616,16 @@ export function TimerBar() {
  */
 function DaySummary() {
   const trace = useTodayTrace();
+  // Unknown is not zero: hold the space while loading, and say nothing at all
+  // if the day couldn't be read rather than claim an empty one.
+  if (trace.status === "pending") {
+    return <Skeleton aria-hidden className="h-3 w-24 rounded-full" />;
+  }
+  if (trace.status === "error") return null;
+  return <DaySummaryReady trace={trace} />;
+}
+
+function DaySummaryReady({ trace }: { trace: TodayTrace }) {
   const timeFormat = useUIStore((s) => s.timeFormat);
   const gapSeconds =
     trace.lastStop !== null ? Math.floor((trace.now - trace.lastStop) / 1000) : 0;

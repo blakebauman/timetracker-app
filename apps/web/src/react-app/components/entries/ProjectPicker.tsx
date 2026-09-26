@@ -130,7 +130,9 @@ export function ProjectPicker({
           ) : (
             <>
               <FolderOpen className="h-3.5 w-3.5" />
-              {!compact && <span>No project</span>}
+              {/* The warning says itself in words, not only in a dashed edge
+                  and a tooltip a touch screen never shows. */}
+              {attention ? <span>Add project</span> : !compact && <span>No project</span>}
             </>
           )}
           <ChevronDown className="h-3 w-3 opacity-50" />

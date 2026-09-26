@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { CloudOff, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LIT_DISC } from "@/components/ui/lit-disc";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
@@ -25,6 +26,8 @@ interface TimerControlProps {
   onStop: () => void;
   /** The disc, so the bar can put focus back on it after it swaps bodies. */
   discRef?: Ref<HTMLButtonElement>;
+  /** Idle only: the page is still finding out whether a timer is running. */
+  pending?: boolean;
 }
 
 // The readout and its editor share one box, sized in the mono face's own `ch`,
@@ -50,7 +53,7 @@ const READOUT_BOX = "w-[calc(8ch+0.5rem)] font-mono text-2xl font-semibold tabul
  * create/stop request round-trips; a failed request puts the timer back and
  * says so (see useTimer).
  */
-export function TimerControl({ isRunning, onStart, onStop, discRef }: TimerControlProps) {
+export function TimerControl({ isRunning, onStart, onStop, discRef, pending = false }: TimerControlProps) {
   const elapsed = useTimerStore((s) => s.elapsed);
   const localStartTime = useTimerStore((s) => s.localStartTime);
   const timeFormat = useUIStore((s) => s.timeFormat);
@@ -142,6 +145,9 @@ export function TimerControl({ isRunning, onStart, onStop, discRef }: TimerContr
             variant="default"
             size="icon-lg"
             onClick={isRunning ? onStop : onStart}
+            // Busy, not disabled: a press now is held and applied once the
+            // page knows nothing is running (useTimer's deferred start).
+            aria-busy={!isRunning && pending ? true : undefined}
             aria-keyshortcuts="Alt+Shift+S"
             className={cn(
               "relative rounded-full",
@@ -158,6 +164,8 @@ export function TimerControl({ isRunning, onStart, onStop, discRef }: TimerContr
           >
             {isRunning ? (
               <Square key="stop" className="h-3.5 w-3.5 animate-scale-in fill-current" />
+            ) : pending ? (
+              <Spinner key="pending" />
             ) : (
               <Play key="play" className="h-4 w-4 translate-x-px animate-scale-in fill-current" />
             )}
