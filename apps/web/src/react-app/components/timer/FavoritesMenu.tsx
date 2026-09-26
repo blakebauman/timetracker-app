@@ -78,7 +78,7 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
               // needs no colour of its own here; both states stay muted so the
               // Start disc keeps the bar's only strong mark. The count is in
               // the accessible name rather than carried by hue.
-              className="tt-touch text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
               aria-label={
                 favorites.length > 0
                   ? `Favorites — ${favorites.length} saved`

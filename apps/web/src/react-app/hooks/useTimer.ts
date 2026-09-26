@@ -5,10 +5,22 @@ import { toast } from "sonner";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { invalidateEntryDerived } from "@/hooks/useEntries";
-import { api } from "@/lib/api";
-import { formatSeconds, formatDurationShort } from "@/lib/dateUtils";
-import { saveTimerState, clearTimerState, loadTimerState } from "@/lib/idb";
-import { trackPendingStart, settleEntryId } from "@/lib/pendingStart";
+import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
+import { formatSeconds, formatDurationShort, formatEntryTime } from "@/lib/dateUtils";
+import {
+  saveTimerState,
+  clearTimerState,
+  loadTimerState,
+  getPendingMutations,
+  type TimerState,
+} from "@/lib/idb";
+import {
+  trackPendingStart,
+  settleEntryId,
+  isOptimisticEntryId,
+  amendQueuedStart,
+  hasQueuedRunningCreate,
+} from "@/lib/pendingStart";
 import { compareLocalDates, todayLocalDate } from "@timetracker/core/task-recurrence";
 import type { TimeEntry, Task } from "@timetracker/core/schemas";
 
@@ -42,6 +54,55 @@ export interface StartTimerInput {
   taskId?: string | null;
   billable?: boolean;
   tags?: string[];
+}
+
+/** What the bar showed before an optimistic stop/discard, to put back on failure. */
+interface RunningSnapshot {
+  entry: TimeEntry;
+  localStartTime: number | null;
+}
+
+interface StopVars {
+  id: string;
+  stop: string;
+  snapshot: RunningSnapshot;
+}
+
+/**
+ * The server's copy of a timer this tab started offline, once the queue has
+ * replayed it: the running entry whose start matches the local clock's anchor.
+ * The replayed create's response went to the replay loop, not to the tab, so
+ * the tab never learned the real id any other way.
+ */
+async function findServerTwin(localStartTime: number | null): Promise<TimeEntry | null> {
+  if (localStartTime === null) return null;
+  try {
+    const current = (await api.timeEntries.current()) as TimeEntry | null;
+    if (current && Math.abs(Date.parse(current.start) - localStartTime) < 5_000) return current;
+  } catch {
+    // Still offline — nothing to find.
+  }
+  return null;
+}
+
+/**
+ * After the offline queue drains, swap an offline-started timer's placeholder
+ * for the entry the replay created, so edits and Stop reach it directly.
+ * Called by useOfflineSync.
+ */
+export async function adoptReplayedTimer(): Promise<void> {
+  const { runningEntry, localStartTime, setRunningEntry } = useTimerStore.getState();
+  if (!runningEntry || !isOptimisticEntryId(runningEntry.id)) return;
+  const twin = await findServerTwin(localStartTime);
+  if (!twin || useTimerStore.getState().runningEntry?.id !== runningEntry.id) return;
+  setRunningEntry(twin, localStartTime ?? undefined);
+  await saveTimerState({
+    entryId: twin.id,
+    startedAt: localStartTime ?? Date.parse(twin.start),
+    description: twin.description,
+    projectId: twin.projectId,
+    projectColor: twin.projectColor,
+  });
 }
 
 export function useTimer() {
@@ -87,13 +148,17 @@ export function useTimer() {
   );
 
   // ─── Start timer ─────────────────────────────────────────────────────────
+  // `start` is stamped once, in startTimer, and shared by the optimistic
+  // placeholder and the request body: a start that sits in the offline queue
+  // replays with the instant it was pressed, and the placeholder's clock
+  // agrees with it to the millisecond.
   const startMutation = useMutation({
-    mutationFn: async (partial: StartTimerInput) => {
+    mutationFn: async (partial: StartTimerInput & { start: string }) => {
       return api.timeEntries.create({
         description: partial.description ?? "",
         projectId: partial.projectId ?? null,
         taskId: partial.taskId ?? null,
-        start: new Date().toISOString(),
+        start: partial.start,
         // Passed through undefined rather than coerced to false: the server
         // reads "unspecified" as "inherit this project's billable flag"
         // (resolveBillable in routes/time-entries.ts). Coercing here is how
@@ -106,7 +171,15 @@ export function useTimer() {
       // Release the just-stopped pin: once a new timer runs, ordering should be
       // running-group-first + reverse-chronological, not last-stopped-first.
       useUIStore.getState().clearPinnedEntry();
-      const now = Date.now();
+      // Starting over a timer that was itself started offline: the server's
+      // "a new start stops the running one" can't reach an entry it has never
+      // seen, so close the queued create here, before this start is queued
+      // behind it.
+      const previous = useTimerStore.getState().runningEntry;
+      if (previous && isOptimisticEntryId(previous.id)) {
+        await amendQueuedStart({ stop: partial.start });
+      }
+      const now = Date.parse(partial.start);
       const optimistic: TimeEntry = {
         id: `optimistic-${now}`,
         workspaceId: "default",
@@ -116,7 +189,7 @@ export function useTimer() {
         projectColor: null,
         taskId: partial.taskId ?? null,
         taskName: null,
-        start: new Date(now).toISOString(),
+        start: partial.start,
         stop: null,
         duration: null,
         billable: partial.billable ?? false,
@@ -126,21 +199,25 @@ export function useTimer() {
         syncedAt: null,
         syncError: null,
         calendarEventId: null,
-        createdAt: new Date(now).toISOString(),
-        updatedAt: new Date(now).toISOString(),
+        createdAt: partial.start,
+        updatedAt: partial.start,
       };
       setRunningEntry(optimistic, now);
       patchStartInCache(optimistic);
       return { optimisticId: optimistic.id };
     },
     onSuccess: async (entry, _partial, context) => {
-      setRunningEntry(entry, new Date(entry.start).getTime());
       if (context) replaceInCache(context.optimisticId, entry);
       // A list refetch that was already in flight when the POST went out (a
       // focus refetch, a day rollover re-keying its range) resolves without
       // the new entry and overwrites the optimistic row. Reconcile once the
       // server has it; the row is already in the cache, so nothing flashes.
       void queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+      // Stop is optimistic too, and can land before this response does. Only
+      // adopt the server entry if the placeholder is still what's running —
+      // otherwise this would bring a timer the user already stopped back.
+      if (useTimerStore.getState().runningEntry?.id !== context?.optimisticId) return;
+      setRunningEntry(entry, new Date(entry.start).getTime());
       await saveTimerState({
         entryId: entry.id,
         startedAt: new Date(entry.start).getTime(),
@@ -149,10 +226,28 @@ export function useTimer() {
         projectColor: entry.projectColor,
       });
     },
-    onError: (_err, _partial, context) => {
+    onError: (err, partial, context) => {
+      if (isQueuedOffline(err)) {
+        // The create is in the offline queue with the right start time, so
+        // the timer IS running — say so and keep it, rather than clearing the
+        // bar and letting the entry turn up later as a surprise.
+        if (context && useTimerStore.getState().runningEntry?.id === context.optimisticId) {
+          void saveTimerState({
+            entryId: context.optimisticId,
+            startedAt: Date.parse(partial.start),
+            description: partial.description ?? "",
+            projectId: partial.projectId ?? null,
+            projectColor: null,
+          });
+        }
+        toast.info("Offline — the timer is running and will sync when you reconnect");
+        return;
+      }
       if (context) removeFromCache(context.optimisticId);
-      clearTimer();
-      toast.error("Failed to start timer");
+      if (useTimerStore.getState().runningEntry?.id === context?.optimisticId) clearTimer();
+      toast.error(mutationErrorMessage(err, "Couldn't start the timer"), {
+        description: "Nothing was tracked. Try again.",
+      });
     },
   });
 
@@ -260,54 +355,69 @@ export function useTimer() {
   }, [offerTaskDone]);
 
   // ─── Stop timer ──────────────────────────────────────────────────────────
+  // One mutation for every stop — the disc, the hotkey, and "stop at" from the
+  // idle dialog — and it always carries the instant: the server records the
+  // time the user stopped, not the time the request (or its offline replay)
+  // arrived. The optimistic half runs in `commitStop`, before the id settles.
   const stopMutation = useMutation({
-    mutationFn: (id: string) =>
-      api.timeEntries.stop(id) as Promise<TimeEntry>,
-    onMutate: () => {
-      patchStopInCache(new Date().toISOString());
-      clearTimer();
-    },
+    mutationFn: ({ id, stop }: StopVars) =>
+      api.timeEntries.stop(id, stop) as Promise<TimeEntry>,
     onSuccess: (entry) => {
-      clearTimerState();
+      void clearTimerState();
       invalidateEntryDerived(queryClient);
       announceStopped(entry);
     },
-    onError: () => {
-      toast.error("Failed to stop timer — please try again");
-    },
-  });
-
-  // ─── Stop at a specific time (used to trim idle time) ─────────────────────
-  const stopAtMutation = useMutation({
-    mutationFn: ({ id, iso }: { id: string; iso: string }) =>
-      api.timeEntries.update(id, { stop: iso }) as Promise<TimeEntry>,
-    onMutate: ({ iso }) => {
-      patchStopInCache(iso);
-      clearTimer();
-    },
-    onSuccess: (entry) => {
-      clearTimerState();
-      invalidateEntryDerived(queryClient);
-      announceStopped(entry);
-    },
-    onError: () => {
-      toast.error("Failed to stop timer — please try again");
+    onError: (err, vars) => {
+      if (isQueuedOffline(err)) {
+        void clearTimerState();
+        toast.info(`Offline — stopped at ${formatEntryTime(vars.stop, useUIStore.getState().timeFormat)}`, {
+          description: "The entry will sync with that time when you reconnect.",
+        });
+        return;
+      }
+      // The server entry is still running. Put the bar back so the Stop
+      // control is on screen again — the old toast said "try again" over an
+      // idle bar that had nothing to try with.
+      restoreRunning(vars.snapshot);
+      toast.error("Couldn't stop the timer — it's still running", {
+        description: mutationErrorMessage(err, "The request didn't reach the server."),
+        action: { label: "Try again", onClick: () => commitStopRef.current(vars.stop) },
+      });
     },
   });
 
   // ─── Discard timer ───────────────────────────────────────────────────────
   const discardMutation = useMutation({
-    mutationFn: (id: string) => api.timeEntries.delete(id),
-    onMutate: () => clearTimer(),
+    mutationFn: ({ id }: { id: string; snapshot: RunningSnapshot }) =>
+      api.timeEntries.delete(id),
     onSuccess: () => {
-      clearTimerState();
+      void clearTimerState();
       // The discarded entry is gone from the day's list and from every total
       // derived from it; nothing was invalidated here before, so the row it
       // left behind lingered until the next focus refetch.
       invalidateEntryDerived(queryClient);
     },
-    onError: () => toast.error("Failed to discard timer"),
+    onError: (err, vars) => {
+      if (isQueuedOffline(err)) {
+        void clearTimerState();
+        toast.info("Offline — the timer will be discarded when you reconnect");
+        return;
+      }
+      restoreRunning(vars.snapshot);
+      toast.error("Couldn't discard the timer — it's still running");
+    },
   });
+
+  // Put a timer the server still has running back on screen: the store, and a
+  // refetch to undo the optimistic "completed" patch in the entries cache.
+  const restoreRunning = useCallback(
+    (snapshot: RunningSnapshot) => {
+      if (useTimerStore.getState().runningEntry) return;
+      setRunningEntry(snapshot.entry, snapshot.localStartTime ?? undefined);
+      void queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+    },
+    [queryClient, setRunningEntry]
+  );
 
   // ─── Edit elapsed ────────────────────────────────────────────────────────
   // Set the running timer's elapsed time to `seconds` by shifting its start
@@ -357,45 +467,106 @@ export function useTimer() {
     (partial: StartTimerInput = {}) => {
       // mutateAsync so a stop or edit that lands before the request settles
       // can wait for the real id (lib/pendingStart); onError handles rejection.
-      trackPendingStart(startMutation.mutateAsync(partial));
+      trackPendingStart(
+        startMutation.mutateAsync({ ...partial, start: new Date().toISOString() })
+      );
     },
     [startMutation]
   );
 
-  const stopTimer = useCallback(() => {
-    if (!runningEntry) return;
-    void settleEntryId(runningEntry.id).then((id) => {
-      if (id) stopMutation.mutate(id);
-    });
-  }, [runningEntry, stopMutation]);
+  /**
+   * Stop the running timer at `stopIso`. The bar goes idle and the day's
+   * totals close *now*; the id is resolved afterwards. A timer started offline
+   * has no server id to stop, so its queued create is closed instead — and if
+   * the queue drained in the meantime, the entry it created is looked up.
+   */
+  const commitStop = useCallback(
+    (stopIso: string) => {
+      const { runningEntry: entry, localStartTime } = useTimerStore.getState();
+      if (!entry) return;
+      const snapshot: RunningSnapshot = { entry, localStartTime };
+      patchStopInCache(stopIso);
+      clearTimer();
+      void (async () => {
+        const id = await settleEntryId(entry.id);
+        if (id) {
+          stopMutation.mutate({ id, stop: stopIso, snapshot });
+          return;
+        }
+        if (!isOptimisticEntryId(entry.id)) return;
+        const outcome = await amendQueuedStart({ stop: stopIso });
+        if (outcome !== "none") {
+          void clearTimerState();
+          if (outcome === "removed") removeFromCache(entry.id);
+          toast.info(`Offline — stopped at ${formatEntryTime(stopIso, useUIStore.getState().timeFormat)}`, {
+            description: "The entry will sync with that time when you reconnect.",
+          });
+          return;
+        }
+        const twin = await findServerTwin(localStartTime);
+        if (twin) stopMutation.mutate({ id: twin.id, stop: stopIso, snapshot });
+        // Otherwise the start never reached anywhere, and its own onError has
+        // already said so.
+      })();
+    },
+    [patchStopInCache, clearTimer, stopMutation, removeFromCache]
+  );
+  const commitStopRef = useRef(commitStop);
+  useEffect(() => {
+    commitStopRef.current = commitStop;
+  });
 
-  const discardTimer = useCallback(() => {
-    if (!runningEntry) return;
-    void settleEntryId(runningEntry.id).then((id) => {
-      if (id) discardMutation.mutate(id);
-    });
-  }, [runningEntry, discardMutation]);
+  const stopTimer = useCallback(() => commitStop(new Date().toISOString()), [commitStop]);
 
   // Stop the running timer at an explicit ISO time (e.g. trim idle time back to
   // when the user went away).
-  const stopTimerAt = useCallback(
-    (iso: string) => {
-      if (!runningEntry) return;
-      void settleEntryId(runningEntry.id).then((id) => {
-        if (id) stopAtMutation.mutate({ id, iso });
-      });
-    },
-    [runningEntry, stopAtMutation]
-  );
+  const stopTimerAt = useCallback((iso: string) => commitStop(iso), [commitStop]);
+
+  const discardTimer = useCallback(() => {
+    const { runningEntry: entry, localStartTime } = useTimerStore.getState();
+    if (!entry) return;
+    const snapshot: RunningSnapshot = { entry, localStartTime };
+    clearTimer();
+    removeFromCache(entry.id);
+    void (async () => {
+      const id = await settleEntryId(entry.id);
+      if (id) {
+        discardMutation.mutate({ id, snapshot });
+        return;
+      }
+      if (!isOptimisticEntryId(entry.id)) return;
+      if ((await amendQueuedStart(null)) !== "none") {
+        void clearTimerState();
+        return;
+      }
+      const twin = await findServerTwin(localStartTime);
+      if (twin) discardMutation.mutate({ id: twin.id, snapshot });
+    })();
+  }, [clearTimer, removeFromCache, discardMutation]);
 
   const editElapsed = useCallback(
     (seconds: number) => {
       if (!runningEntry || seconds < 0) return;
-      void settleEntryId(runningEntry.id).then((id) => {
-        if (id) editElapsedMutation.mutate({ id, seconds });
+      void settleEntryId(runningEntry.id).then(async (id) => {
+        if (id) {
+          editElapsedMutation.mutate({ id, seconds });
+          return;
+        }
+        // Started offline: move the queued create's start, and the clock.
+        if (!isOptimisticEntryId(runningEntry.id)) return;
+        const newStart = Date.now() - seconds * 1000;
+        if ((await amendQueuedStart({ start: new Date(newStart).toISOString() })) === "none") return;
+        setRunningEntry(runningEntry, newStart);
+        await saveTimerState({
+          entryId: runningEntry.id,
+          startedAt: newStart,
+          description: runningEntry.description,
+          projectId: runningEntry.projectId,
+          projectColor: runningEntry.projectColor,
+        });
       });
     },
-    [runningEntry, editElapsedMutation]
+    [runningEntry, editElapsedMutation, setRunningEntry]
   );
 
   return {
@@ -404,6 +575,33 @@ export function useTimer() {
     stopTimerAt,
     discardTimer,
     editElapsed,
+  };
+}
+
+/** The running entry as far as this browser knows it, from the IndexedDB snapshot. */
+function offlineEntryFromSaved(saved: TimerState): TimeEntry {
+  const iso = new Date(saved.startedAt).toISOString();
+  return {
+    id: saved.entryId,
+    description: saved.description,
+    projectId: saved.projectId,
+    projectColor: saved.projectColor,
+    projectName: null,
+    taskId: null,
+    taskName: null,
+    workspaceId: "",
+    start: iso,
+    stop: null,
+    duration: null,
+    billable: false,
+    tags: [],
+    syncStatus: null,
+    externalId: null,
+    syncedAt: null,
+    syncError: null,
+    calendarEventId: null,
+    createdAt: iso,
+    updatedAt: iso,
   };
 }
 
@@ -417,7 +615,17 @@ export function useTimer() {
 // entry's elapsed time, which is exactly what produced the visible
 // 00:00:00-flickers-a-few-times bug on a hard refresh. Call this hook
 // exactly once, from TimerBar (always mounted).
-export function useTimerLifecycle(draft?: StartTimerInput) {
+export function useTimerLifecycle(
+  draft?: StartTimerInput,
+  opts?: {
+    /** Runs just before the hotkey starts or stops, so the bar can note where focus was. */
+    onBeforeToggle?: () => void;
+  }
+) {
+  const onBeforeToggleRef = useRef(opts?.onBeforeToggle);
+  useEffect(() => {
+    onBeforeToggleRef.current = opts?.onBeforeToggle;
+  });
   const { runningEntry, localStartTime, setElapsed, setRunningEntry } = useTimerStore();
   const { startTimer, stopTimer } = useTimer();
 
@@ -458,6 +666,28 @@ export function useTimerLifecycle(draft?: StartTimerInput) {
       try {
         const current = (await api.timeEntries.current()) as TimeEntry | null;
         if (cancelled) return;
+        // The server can be behind this tab's own queue on a reload that
+        // lands before the offline queue drains: an entry stopped or discarded
+        // offline still reads as running there, and a timer started offline
+        // isn't there at all. The queue is the more recent truth.
+        const pending = await getPendingMutations().catch(() => []);
+        if (cancelled) return;
+        const closedLocally =
+          current !== null &&
+          pending.some(
+            (m) =>
+              m.url.includes(`/time_entries/${current.id}`) &&
+              (m.method === "DELETE" || m.url.endsWith("/stop") || Boolean((m.body as { stop?: unknown } | undefined)?.stop))
+          );
+        if (closedLocally) {
+          await clearTimerState();
+          return;
+        }
+        if (!current && saved && isOptimisticEntryId(saved.entryId) && (await hasQueuedRunningCreate())) {
+          if (cancelled) return;
+          setRunningEntry(offlineEntryFromSaved(saved), saved.startedAt);
+          return;
+        }
         if (current) {
           // Running entry on server — restore regardless of IDB state
           const localStartTime = saved?.entryId === current.id
@@ -477,33 +707,7 @@ export function useTimerLifecycle(draft?: StartTimerInput) {
         }
       } catch {
         // Offline — fall back to IDB if available
-        if (saved) {
-          setRunningEntry(
-            {
-              id: saved.entryId,
-              description: saved.description,
-              projectId: saved.projectId,
-              projectColor: saved.projectColor,
-              projectName: null,
-              taskId: null,
-              taskName: null,
-              workspaceId: "",
-              start: new Date(saved.startedAt).toISOString(),
-              stop: null,
-              duration: null,
-              billable: false,
-              tags: [],
-              syncStatus: null,
-              externalId: null,
-              syncedAt: null,
-              syncError: null,
-              calendarEventId: null,
-              createdAt: new Date(saved.startedAt).toISOString(),
-              updatedAt: new Date(saved.startedAt).toISOString(),
-            },
-            saved.startedAt
-          );
-        }
+        if (saved) setRunningEntry(offlineEntryFromSaved(saved), saved.startedAt);
       }
     })();
     return () => {
@@ -521,7 +725,11 @@ export function useTimerLifecycle(draft?: StartTimerInput) {
   // The advertised shortcut destroyed the work it was meant to commit.
   useHotkeys(
     "alt+shift+s",
-    () => (runningEntry ? stopTimer() : startTimer(draftRef.current)),
+    () => {
+      onBeforeToggleRef.current?.();
+      if (runningEntry) stopTimer();
+      else startTimer(draftRef.current);
+    },
     { preventDefault: true, enableOnFormTags: ["INPUT", "TEXTAREA"] },
     [runningEntry, stopTimer, startTimer]
   );

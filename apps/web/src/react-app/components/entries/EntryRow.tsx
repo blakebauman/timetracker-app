@@ -28,6 +28,7 @@ import {
 } from "@/lib/dateUtils";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { useUIStore } from "@/stores/uiStore";
+import { useTimerStore } from "@/stores/timerStore";
 import { useSavedFlash } from "@/hooks/useSavedFlash";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SavedTick } from "./SavedTick";
@@ -319,7 +320,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = f
                 <span>{formatEntryTime(entry.start, timeFormat)}</span>
                 <span>–</span>
                 <span>
-                  {entry.stop ? formatEntryTime(entry.stop, timeFormat) : "…"}
+                  {entry.stop ? formatEntryTime(entry.stop, timeFormat) : "now"}
                 </span>
               </TimeRangePopover>
             </span>
@@ -436,13 +437,17 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = f
             <span>{formatEntryTime(entry.start, timeFormat)}</span>
             <span>–</span>
             <span>
-              {entry.stop ? formatEntryTime(entry.stop, timeFormat) : "…"}
+              {entry.stop ? formatEntryTime(entry.stop, timeFormat) : "now"}
             </span>
           </TimeRangePopover>
         </span>
 
-        {/* Duration — click to edit */}
-        {editingDuration ? (
+        {/* Duration — click to edit. A running entry has no duration to edit
+            yet; it shows the live one instead of a dash, which read as "this
+            entry is empty" on the one row that is actually growing. */}
+        {entry.stop === null ? (
+          <LiveDuration />
+        ) : editingDuration ? (
           <input
             autoFocus
             value={durationInput}
@@ -542,5 +547,16 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = f
         </div>
       </div>
     </>
+  );
+}
+
+/** The running entry's duration, ticking. Its own component so only this re-renders each second. */
+function LiveDuration() {
+  const elapsed = useTimerStore((s) => s.elapsed);
+  return (
+    <span className="min-w-14 text-right font-mono text-sm tabular-nums sm:min-w-20">
+      <span className="sr-only">Running, </span>
+      {formatDurationShort(elapsed)}
+    </span>
   );
 }

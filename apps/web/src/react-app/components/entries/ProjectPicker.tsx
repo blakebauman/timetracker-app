@@ -33,6 +33,12 @@ interface ProjectPickerProps {
    * control and broke the column's left edge.
    */
   field?: boolean;
+  /**
+   * Why an empty value matters right now — e.g. "time without a project can't
+   * be billed". Set only when it does; the unselected chip then draws a dashed
+   * warning edge and carries the reason as its accessible description.
+   */
+  attention?: string;
   /** Custom trigger element (single child, receives the popover ref). */
   children?: React.ReactNode;
 }
@@ -44,6 +50,7 @@ export function ProjectPicker({
   className,
   children,
   field = false,
+  attention,
 }: ProjectPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -98,6 +105,8 @@ export function ProjectPicker({
           // accessible name at all. Label it unconditionally: even when the name
           // is visible, "ERP Migration" alone doesn't say it's a project picker.
           aria-label={selected ? `Project: ${selected.name}` : "Select project"}
+          aria-description={!selected && attention ? attention : undefined}
+          title={!selected && attention ? attention : undefined}
           className={cn(
             "gap-1.5 text-sm",
             !selected && "text-muted-foreground",
@@ -107,7 +116,10 @@ export function ProjectPicker({
             // Only the horizontal padding tightens for density.
             compact && "px-2",
             field && "w-full justify-start font-normal",
-            className
+            className,
+            // After the caller's classes: the warning edge must win over a
+            // chip's own hairline.
+            !selected && attention && "border-dashed border-warning text-warning-ink"
           )}
         >
           {selected ? (

@@ -6,7 +6,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
+import { api, ApiError, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDayHeader, localDayKey } from "@/lib/dateUtils";
@@ -18,7 +18,7 @@ import type {
 } from "@timetracker/core/schemas";
 import { startOfDay, subDays, endOfDay, parseISO } from "date-fns";
 import { useDayRollover } from "@/hooks/useDayRollover";
-import { settleEntryId } from "@/lib/pendingStart";
+import { settleEntryId, isOptimisticEntryId, amendQueuedStart } from "@/lib/pendingStart";
 
 // A rolling window anchored to today — so, like every other "now"-relative
 // range in the app, it has to move when the calendar day does (useDayRollover).
@@ -121,10 +121,13 @@ export function groupEntriesByDay(
     .map((dateKey) => {
       const dayEntries = grouped[dateKey];
 
-      // Sub-group by description + projectId
+      // Sub-group by description + projectId. The running entry always stands
+      // alone: folded into a collapsed "2×" group it showed the group's past
+      // total and a Continue button, which reads as "not running" on exactly
+      // the row that is. It joins its group once it stops.
       const descMap = new Map<string, TimeEntry[]>();
       for (const e of dayEntries) {
-        const k = `${e.description}__${e.projectId ?? ""}`;
+        const k = e.stop === null ? `running__${e.id}` : `${e.description}__${e.projectId ?? ""}`;
         const existing = descMap.get(k);
         if (existing) existing.push(e);
         else descMap.set(k, [e]);
@@ -328,7 +331,14 @@ export function useUpdateEntry() {
       // returns; a tag chip or the debounced description edited in that window
       // must wait for the real id rather than 404 against the placeholder.
       const entryId = await settleEntryId(id);
-      if (!entryId) throw new Error("The timer did not start, so there is nothing to update");
+      if (!entryId) {
+        // A timer started offline has no server id yet: fold the edit into
+        // its queued create, and report it the way any queued write is.
+        if (isOptimisticEntryId(id) && (await amendQueuedStart({ ...data })) !== "none") {
+          throw new ApiError("Offline — saved locally, will sync when you reconnect", 0, true);
+        }
+        throw new Error("The timer did not start, so there is nothing to update");
+      }
       return api.timeEntries.update(entryId, data as Record<string, unknown>) as Promise<TimeEntry>;
     },
     // Optimistically patch the cached entry so inline edits (duration, description,

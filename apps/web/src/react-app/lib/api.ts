@@ -232,8 +232,14 @@ export const api = {
       request<unknown>("/time_entries", { method: "POST", body: JSON.stringify(body) }),
     update: (id: string, body: Record<string, unknown>) =>
       request<unknown>(`/time_entries/${id}`, { method: "PUT", body: JSON.stringify(body) }),
-    stop: (id: string) =>
-      request<unknown>(`/time_entries/${id}/stop`, { method: "PATCH" }),
+    // `stop` is the instant Stop was pressed. Always send it: a stop that goes
+    // through the offline queue otherwise lands at replay time (see
+    // StopTimeEntrySchema).
+    stop: (id: string, stop?: string) =>
+      request<unknown>(`/time_entries/${id}/stop`, {
+        method: "PATCH",
+        body: stop ? JSON.stringify({ stop }) : undefined,
+      }),
     delete: (id: string) =>
       request<unknown>(`/time_entries/${id}`, { method: "DELETE" }),
     // The server takes at most BULK_ENTRY_IDS_MAX ids per call (D1's bound-

@@ -89,6 +89,13 @@ export async function addPendingMutation(
   notifyPendingMutationsChange();
 }
 
+/** Rewrite a queued write in place (same id, same position in the replay order). */
+export async function putPendingMutation(mutation: PendingMutation): Promise<void> {
+  const db = await getDB();
+  await db.put("pending_mutations", mutation);
+  notifyPendingMutationsChange();
+}
+
 export async function countPendingMutations(): Promise<number> {
   const db = await getDB();
   return db.count("pending_mutations");

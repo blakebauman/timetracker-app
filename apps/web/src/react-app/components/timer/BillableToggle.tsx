@@ -18,9 +18,12 @@ interface BillableToggleProps {
  * started here landed non-billable and reported zero revenue.
  *
  * The glyph is the same bare `$` the entry row uses for its billable indicator
- * (not a lucide icon) so the two surfaces read as one vocabulary, and it carries
- * `--primary-ink` for the same reason: this is the brand red as *text*, which is
- * the one calibration of it that clears AA at small sizes.
+ * (not a lucide icon) so the two surfaces read as one vocabulary. The *toggle*
+ * does not wear the red, though: it sits in the docked bar beside the Stop disc
+ * and the elapsed readout, and a third red mark there spends the one lit
+ * control on a setting. "On" is a recessed pill in full ink, bold; "off" is
+ * muted and regular — fill, weight and ink all carry the state, none of them
+ * hue.
  *
  * Icon-only with an accessible name, per the dense-toolbar convention — but
  * `aria-pressed` rather than a bare button, because the state is the point.
@@ -42,9 +45,9 @@ export function BillableToggle({ value, onChange, className }: BillableTogglePro
           aria-label="Billable"
           onClick={() => onChange(!value)}
           className={cn(
-            "tt-touch shrink-0 font-semibold transition-colors duration-fast ease-out-quart",
+            "shrink-0 font-semibold transition-colors duration-fast ease-out-quart",
             value
-              ? "text-primary-ink hover:text-primary-ink"
+              ? "bg-foreground/8 text-foreground hover:bg-foreground/12"
               : "text-muted-foreground hover:text-foreground",
             className
           )}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CLIENT_ID } from "@/lib/api";
+import { adoptReplayedTimer } from "@/hooks/useTimer";
 import {
   countPendingMutations,
   deletePendingMutation,
@@ -25,7 +26,12 @@ export function useOfflineSync() {
         // is suspect. An empty drain (every mount, every flap with nothing
         // queued) keeps the narrow invalidate: `useOnlineStatus` already
         // refreshes the data that drifts while offline.
-        if (replayed > 0) queryClient.invalidateQueries();
+        if (replayed > 0) {
+          queryClient.invalidateQueries();
+          // A timer started offline has just been created for real; give the
+          // bar its server id so the next edit or Stop goes straight to it.
+          void adoptReplayedTimer();
+        }
         else queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       })
       .finally(() => {

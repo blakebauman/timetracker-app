@@ -400,6 +400,18 @@ export const CreateTimeEntrySchema = z
     path: ["stop"],
   });
 
+// `PATCH /time_entries/:id/stop`. The body is optional: without it the server
+// stops the entry at its own "now", which is what the extension and older
+// clients send. The web app always sends the instant Stop was pressed, so a
+// stop that sat in the offline queue replays at the time it happened rather
+// than at the time the connection came back — a difference that is billed.
+export const StopTimeEntrySchema = z.object({
+  stop: z
+    .string()
+    .refine((s) => !Number.isNaN(Date.parse(s)), { message: "Stop must be an ISO date-time" })
+    .optional(),
+});
+
 export const UpdateTimeEntrySchema = z
   .object({
     description: z.string().max(2000).optional(),
