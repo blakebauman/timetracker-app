@@ -59,11 +59,15 @@ export function useWebSocket() {
      * eventually repairs the queries, but nothing repaired the running timer,
      * so a tab could sit indefinitely showing a timer that had stopped elsewhere.
      */
-    async function resync() {
-      invalidateEntryDerived(queryClient);
+    async function resync({ refetchEntries = true } = {}) {
+      if (refetchEntries) invalidateEntryDerived(queryClient);
+      // What's running may change while this is in flight — the user presses
+      // Start, or the socket delivers a stop. Then the answer is older than
+      // the screen, and applying it would undo that change.
+      const asked = useTimerStore.getState().version;
       try {
         const current = (await api.timeEntries.current()) as TimeEntry | null;
-        if (destroyed) return;
+        if (destroyed || useTimerStore.getState().version !== asked) return;
         reconcileRunning(current);
       } catch {
         // Offline or the request raced a teardown — the next focus refetch or
@@ -85,9 +89,13 @@ export function useWebSocket() {
         pingTimer = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send("ping");
         }, PING_INTERVAL_MS);
-        // Only on a *re*connect: the first open is already covered by the
-        // mount-time restore in `useTimerLifecycle`.
-        if (hasConnected) void resync();
+        // Every open, the first included. The mount restore's `/current` was
+        // requested before the socket existed, so a start or stop in another
+        // tab between the two was never heard: the tab kept showing a timer
+        // that had stopped, with nothing to correct it. The first open only
+        // re-reads what's running — the lists were just fetched; a reconnect
+        // after a gap refetches those too.
+        void resync({ refetchEntries: hasConnected });
         hasConnected = true;
       };
 

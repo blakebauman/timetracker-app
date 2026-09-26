@@ -43,6 +43,23 @@ interface TimerStore {
    */
   lastStopped: { entry: TimeEntry; until: number } | null;
   setLastStopped: (value: { entry: TimeEntry; until: number } | null) => void;
+  /**
+   * Something newer than the mount restore has happened — this tab started,
+   * stopped or discarded, or a change arrived over the socket. The restore's
+   * `/current` (and the entries list it may adopt from) were requested before
+   * it, so their answer is stale: a tab opened while another tab started and
+   * stopped a timer applied that stale "running" after the socket's stop, and
+   * showed a timer running that the server had already closed.
+   */
+  restoreSuperseded: boolean;
+  supersedeRestore: () => void;
+  /**
+   * Bumped on every change to what's running. A read of the server that
+   * started before a bump (the socket's resync) is older than what the tab
+   * now shows and must not be applied — a resync answered "nothing running"
+   * after the user had pressed Start, and cleared the timer they'd just begun.
+   */
+  version: number;
 
   setRunningEntry: (entry: TimeEntry | null, localStartTime?: number) => void;
   setElapsed: (seconds: number) => void;
@@ -64,6 +81,9 @@ export const useTimerStore = create<TimerStore>((set) => ({
   setDeferredStart: (deferredStart) => set({ deferredStart }),
   lastStopped: null,
   setLastStopped: (lastStopped) => set({ lastStopped }),
+  restoreSuperseded: false,
+  supersedeRestore: () => set({ restoreSuperseded: true }),
+  version: 0,
 
   // Computes elapsed synchronously from `localStartTime` instead of always
   // zeroing it — a genuinely fresh start (localStartTime = now) still reads
@@ -73,50 +93,57 @@ export const useTimerStore = create<TimerStore>((set) => ({
   setRunningEntry: (entry, localStartTime) => {
     const start = localStartTime ?? (entry ? Date.now() : null);
     const elapsed = entry && start ? Math.max(0, Math.floor((Date.now() - start) / 1000)) : 0;
-    set({ runningEntry: entry, localStartTime: start, elapsed });
+    set((state) => ({ runningEntry: entry, localStartTime: start, elapsed, version: state.version + 1 }));
   },
 
   setElapsed: (seconds) => set({ elapsed: seconds }),
 
   clearTimer: () =>
-    set({ runningEntry: null, localStartTime: null, elapsed: 0 }),
+    set((state) => ({ runningEntry: null, localStartTime: null, elapsed: 0, version: state.version + 1 })),
 
+  // Every socket update is news the mount restore's request predates.
   setFromWS: (entry) =>
-    set((state) => {
-      // A stopped entry is a clear, not a running one. Not every stop arrives
-      // as `timer:stop` — trimming idle time and the edit sheet both close the
-      // entry through the ordinary update route, which broadcasts
-      // `entries:changed` carrying the now-stopped row. Without this check the
-      // receiving tab stored that row as `runningEntry` and kept counting an
-      // entry the server had already closed.
-      if (entry === null || entry.stop) {
-        return { runningEntry: null, localStartTime: null, elapsed: 0 };
-      }
-      if (state.runningEntry?.id === entry.id) {
-        // Same entry — keep the local anchor so the readout doesn't jitter on
-        // clock skew, UNLESS the start itself moved. Correcting a running
-        // entry's start (inline, or in the edit sheet) has to move the elapsed
-        // count with it; without this the timer kept counting from the old
-        // anchor and the bar disagreed with the row it was editing.
-        if (state.runningEntry.start !== entry.start) {
-          const localStartTime = new Date(entry.start).getTime();
-          return {
-            runningEntry: entry,
-            localStartTime,
-            elapsed: Math.max(0, Math.floor((Date.now() - localStartTime) / 1000)),
-          };
-        }
-        return { runningEntry: entry };
-      }
-      // New entry from another tab — calculate elapsed from entry's start time
-      const localStartTime =
-        Date.now() - (Date.now() - new Date(entry.start).getTime());
+    set((state) => ({
+      ...fromWS(state, entry),
+      restoreSuperseded: true,
+      version: state.version + 1,
+    })),
+}));
+
+function fromWS(state: TimerStore, entry: TimeEntry | null): Partial<TimerStore> {
+  // A stopped entry is a clear, not a running one. Not every stop arrives
+  // as `timer:stop` — trimming idle time and the edit sheet both close the
+  // entry through the ordinary update route, which broadcasts
+  // `entries:changed` carrying the now-stopped row. Without this check the
+  // receiving tab stored that row as `runningEntry` and kept counting an
+  // entry the server had already closed.
+  if (entry === null || entry.stop) {
+    return { runningEntry: null, localStartTime: null, elapsed: 0 };
+  }
+  if (state.runningEntry?.id === entry.id) {
+    // Same entry — keep the local anchor so the readout doesn't jitter on
+    // clock skew, UNLESS the start itself moved. Correcting a running
+    // entry's start (inline, or in the edit sheet) has to move the elapsed
+    // count with it; without this the timer kept counting from the old
+    // anchor and the bar disagreed with the row it was editing.
+    if (state.runningEntry.start !== entry.start) {
+      const localStartTime = new Date(entry.start).getTime();
       return {
         runningEntry: entry,
         localStartTime,
-        elapsed: Math.floor(
-          (Date.now() - new Date(entry.start).getTime()) / 1000
-        ),
+        elapsed: Math.max(0, Math.floor((Date.now() - localStartTime) / 1000)),
       };
-    }),
-}));
+    }
+    return { runningEntry: entry };
+  }
+  // New entry from another tab — calculate elapsed from entry's start time
+  const localStartTime =
+    Date.now() - (Date.now() - new Date(entry.start).getTime());
+  return {
+    runningEntry: entry,
+    localStartTime,
+    elapsed: Math.floor(
+      (Date.now() - new Date(entry.start).getTime()) / 1000
+    ),
+  };
+}
