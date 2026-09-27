@@ -118,3 +118,84 @@ test.describe("cross-tab timer sync", () => {
     await expect(page.getByRole("button", { name: "Start timer", exact: true })).toBeVisible();
   });
 });
+
+// The flake this suite used to show, made deterministic: a tab whose socket
+// connects late misses the stop broadcast. The first open used to skip the
+// resync (the mount restore was assumed to cover it), so the tab kept the
+// "running" its restore had read and nothing ever corrected it.
+test("a tab whose socket connects late still hears about a stop it missed", async ({
+  page,
+  context,
+}) => {
+  await signUp(page);
+  await page.getByPlaceholder("What are you working on?").fill("Missed by tab B");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Stop timer", exact: true })).toBeVisible();
+  await expect
+    .poll(async () => ((await (await page.request.get("/api/time_entries/current")).json()) as { id: string } | null)?.id ?? null)
+    .not.toBeNull();
+
+  const tabB = await context.newPage();
+  // Tab B's socket only reaches the server after tab A has stopped.
+  let release!: () => void;
+  const released = new Promise<void>((r) => (release = r));
+  await tabB.routeWebSocket(/\/api\/ws$/, async (ws) => {
+    await released;
+    ws.connectToServer();
+  });
+  await tabB.goto("/");
+  await expect(tabB.getByRole("button", { name: "Stop timer", exact: true })).toBeVisible();
+
+  await page.bringToFront();
+  await page.getByRole("button", { name: "Stop timer", exact: true }).click();
+  await expect
+    .poll(async () => (await (await page.request.get("/api/time_entries/current")).json()) ?? null)
+    .toBeNull();
+  release();
+
+  await expect(tabB.getByRole("button", { name: "Start timer", exact: true })).toBeVisible({ timeout: 10_000 });
+});
+
+// The other half: the restore's own answer, read while the timer ran, landing
+// *after* the socket already said it stopped. It used to be applied.
+test("a tab's slow restore doesn't undo a stop it already heard over the socket", async ({
+  page,
+  context,
+}) => {
+  await signUp(page);
+  await page.getByPlaceholder("What are you working on?").fill("Stale restore");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer", exact: true }).click();
+  await expect
+    .poll(async () => ((await (await page.request.get("/api/time_entries/current")).json()) as { id: string } | null)?.id ?? null)
+    .not.toBeNull();
+
+  const tabB = await context.newPage();
+  // Only tab B's first /current — the mount restore's — is slow, and it is
+  // answered as of *now* (running), then held.
+  let first = true;
+  await tabB.route(
+    (url) => url.pathname === "/api/time_entries/current",
+    async (route) => {
+      if (!first) return route.continue();
+      first = false;
+      const response = await route.fetch();
+      await new Promise((r) => setTimeout(r, 4000));
+      await route.fulfill({ response });
+    }
+  );
+  await tabB.goto("/");
+  await expect(tabB.getByPlaceholder("What are you working on?")).toBeVisible();
+
+  await page.bringToFront();
+  await page.getByRole("button", { name: "Stop timer", exact: true }).click();
+  await expect
+    .poll(async () => (await (await page.request.get("/api/time_entries/current")).json()) ?? null)
+    .toBeNull();
+
+  // Past the moment the stale restore answer lands, tab B stays idle.
+  await tabB.waitForTimeout(5000);
+  await expect(tabB.getByRole("button", { name: "Start timer", exact: true })).toBeVisible();
+  await expect(tabB.getByRole("button", { name: "Stop timer", exact: true })).toHaveCount(0);
+});

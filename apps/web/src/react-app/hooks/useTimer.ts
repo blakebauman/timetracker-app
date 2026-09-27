@@ -64,16 +64,12 @@ export interface StartTimerInput {
 }
 
 /**
- * Whether the user has started, stopped or discarded anything since this page
- * loaded. The mount restore's `/current` and the entries list it may adopt
- * from were both requested *before* any such action, so once one happens
- * their answer is stale: applying it brought back a timer the user had just
- * stopped (the bar already shows the timer from the local mirror, so Stop is
- * pressable during the restore).
+ * This tab started, stopped or discarded something: the mount restore's
+ * answer (requested before it) must no longer be applied. Socket updates set
+ * the same flag from `timerStore.setFromWS`. See `restoreSuperseded`.
  */
-let actedSinceMount = false;
 function markActed() {
-  actedSinceMount = true;
+  useTimerStore.getState().supersedeRestore();
 }
 
 /** What the bar showed before an optimistic stop/discard, to put back on failure. */
@@ -792,7 +788,7 @@ export function useTimerLifecycle(
         // The user acted while this was in flight; its answer predates that.
         // What's on screen is theirs, and the socket and the next refetch
         // reconcile anything the server knows beyond it.
-        if (actedSinceMount) return;
+        if (useTimerStore.getState().restoreSuperseded) return;
         // The server can be behind this tab's own queue on a reload that
         // lands before the offline queue drains: an entry stopped or discarded
         // offline still reads as running there, and a timer started offline
@@ -870,7 +866,7 @@ export function useTimerLifecycle(
   useEffect(() => {
     const adopt = () => {
       const state = useTimerStore.getState();
-      if (!state.restoring || state.runningEntry || actedSinceMount) return;
+      if (!state.restoring || state.runningEntry || state.restoreSuperseded) return;
       for (const [, data] of queryClient.getQueriesData<TimeEntry[]>({
         queryKey: ["time-entries"],
       })) {
