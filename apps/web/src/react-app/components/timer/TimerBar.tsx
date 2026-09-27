@@ -567,15 +567,51 @@ export function TimerBar() {
       onStart={handleStart}
       onStop={handleStop}
       discRef={where === "phone" ? phoneDiscRef : discRef}
-      className={where === "phone" ? "ml-auto md:hidden" : "max-md:hidden"}
+      className={where === "phone" ? undefined : "max-md:hidden"}
     />
   );
-  const pillsRow = (
-    // One line at every width, the chips truncating, ending in the phone disc.
+  // One line at every width, the chips truncating. Idle, it ends in the
+  // phone's Start disc; running, the phone's Stop disc gets a row of its own
+  // with the readout (see below), since the readout beside the chips crushed
+  // them to slivers.
+  const pillsRow = (phoneDisc: boolean) => (
     <div className="flex flex-nowrap items-center gap-1.5 px-1">
       {pills}
-      {disc("phone")}
+      {phoneDisc && <span className="ml-auto shrink-0 md:hidden">{disc("phone")}</span>}
     </div>
+  );
+
+  const readout = (where: "phone" | "wide") => (
+    <TimerControl
+      isRunning
+      onStart={handleStart}
+      onStop={handleStop}
+      withDisc={false}
+      className={where === "phone" ? undefined : "max-md:hidden"}
+    />
+  );
+  const discardButton = (where: "phone" | "wide") => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className={cn(
+            "shrink-0 text-muted-foreground hover:text-destructive",
+            where === "phone" ? "ml-1 md:hidden" : "ml-auto max-md:hidden"
+          )}
+          onClick={() => setConfirmDiscard(true)}
+          aria-label="Discard timer"
+          aria-keyshortcuts="Alt+Shift+X"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        Discard timer
+        <Kbd className="ml-1.5">Alt+Shift+X</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 
   if (!isRunning) {
@@ -600,7 +636,7 @@ export function TimerBar() {
                   </span>
                 )}
               </div>
-              {pillsRow}
+              {pillsRow(true)}
             </div>
 
             {ribbon}
@@ -643,37 +679,28 @@ export function TimerBar() {
       {liveRegion}
       <header ref={measureRef} aria-label="Timer controls" className={dockClass}>
         <div className={rowClass}>
-          <TimerControl isRunning onStart={handleStart} onStop={handleStop} withDisc={false} />
-
+          {/* The elapsed readout sits against the Stop disc at the strip's
+              right-hand end — the number beside the control that ends it. On
+              a phone both take the bottom row, right-aligned under the chips,
+              and Discard moves up to the description row. */}
           <div className={columnClass}>
             <div className="flex min-w-0 items-center gap-1">
               {descriptionField}
               {billableToggle}
+              {discardButton("phone")}
             </div>
-            {pillsRow}
+            {pillsRow(false)}
+            {/* Phone: the readout against the Stop disc, bottom-right. */}
+            <div className="flex items-center justify-end gap-3 md:hidden">
+              {readout("phone")}
+              {disc("phone")}
+            </div>
           </div>
 
           {ribbon}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="ml-auto shrink-0 text-muted-foreground hover:text-destructive max-md:order-1"
-                onClick={() => setConfirmDiscard(true)}
-                aria-label="Discard timer"
-                aria-keyshortcuts="Alt+Shift+X"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Discard timer
-              <Kbd className="ml-1.5">Alt+Shift+X</Kbd>
-            </TooltipContent>
-          </Tooltip>
-
+          {discardButton("wide")}
+          {readout("wide")}
           {disc("wide")}
         </div>
         {discardDialog}
