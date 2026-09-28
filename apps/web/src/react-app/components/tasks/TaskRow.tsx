@@ -50,7 +50,7 @@ import {
   formatMinute,
   localDateToDate,
 } from "@/lib/taskUtils";
-import { describeRecurRule } from "@timetracker/core/task-recurrence";
+import { daysBetweenLocal, describeRecurRule, todayLocalDate } from "@timetracker/core/task-recurrence";
 import { cn } from "@/lib/utils";
 import type { Task } from "@timetracker/core/schemas";
 
@@ -281,7 +281,11 @@ export function TaskRow({
   const showDue = Boolean(task.dueDate) || !nested;
   const showProjectBadge = showProject && !nested && Boolean(task.projectName);
   const showSubtaskCount = hasChildren && !nested;
-  const hasMeta = showDue || showProjectBadge || showSubtaskCount || Boolean(repeats);
+  // A deadline is a commitment, so it stays visible on done rows too — until
+  // the task is done, then there's nothing left to warn about.
+  const deadlineDays = task.deadlineDate && task.active ? daysBetweenLocal(todayLocalDate(), task.deadlineDate) : null;
+  const showDeadline = deadlineDays !== null && !nested;
+  const hasMeta = showDue || showProjectBadge || showSubtaskCount || Boolean(repeats) || showDeadline;
 
   // Laid out by its own width, not the viewport's: the same row sits full-width
   // in a list and in a ~370px board column on a wide screen, and a viewport
@@ -452,6 +456,23 @@ export function TaskRow({
           layout is byte-for-byte what it was. */}
       {hasMeta && (
         <div className="order-last flex min-w-0 basis-full items-center gap-2 pl-6 @xl:contents">
+          {showDeadline && (
+            <span
+              className={cn(
+                "flex shrink-0 items-center gap-1 text-micro",
+                deadlineDays! < 0
+                  ? "text-destructive"
+                  : deadlineDays! <= 2
+                    ? "text-warning-ink"
+                    : "text-muted-foreground"
+              )}
+              title={deadlineDays! < 0 ? "Deadline passed" : "Deadline"}
+              aria-label={`Deadline ${formatDueDate(task.deadlineDate!)}`}
+            >
+              <Flag className="h-3 w-3" aria-hidden />
+              by {formatDueDate(task.deadlineDate!)}
+            </span>
+          )}
           {showSubtaskCount && (
             <span
               className="shrink-0 text-micro tabular-nums text-muted-foreground"

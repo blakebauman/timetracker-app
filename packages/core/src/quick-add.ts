@@ -25,6 +25,53 @@ export interface ParsedQuickAdd {
   recurRule: string | null;
   /** `3pm`, `3:30pm`, `15:00` (optionally after `at`) → minutes after local midnight. */
   scheduledMinute: number | null;
+  /** `by fri`, `by next week`, `by 2026-10-15` — when it must be done. */
+  deadlineDate: string | null;
+}
+
+/**
+ * A date expression starting at `raws[i]`: `today`, `tomorrow`, `fri`,
+ * `next week`, `next month`, `in 3 days`, `3d`, or `YYYY-MM-DD`. Returns the
+ * date and how many tokens it used, or null. One grammar for due dates and
+ * `by …` deadlines, so the two can never disagree about what "fri" means.
+ */
+function parseDateAt(
+  raws: string[],
+  i: number,
+  today: string
+): { date: string; consumed: number } | null {
+  const token = raws[i]?.toLowerCase();
+  const next = raws[i + 1]?.toLowerCase();
+  if (!token) return null;
+  if (token === "today") return { date: today, consumed: 1 };
+  if (token === "tomorrow" || token === "tmr") return { date: addLocalDays(today, 1), consumed: 1 };
+  // "next week" is the start of next week (Monday), which is how the phrase
+  // is used when planning; "next month" is the 1st.
+  if (token === "next" && next === "week") return { date: nextWeekday(today, 1), consumed: 2 };
+  if (token === "next" && next === "month") {
+    const [y, m] = today.split("-").map(Number);
+    const ny = m === 12 ? y + 1 : y;
+    const nm = m === 12 ? 1 : m + 1;
+    return { date: `${ny}-${String(nm).padStart(2, "0")}-01`, consumed: 2 };
+  }
+  if (token === "in" && next && /^\d{1,3}$/.test(next)) {
+    const unit = raws[i + 2]?.toLowerCase();
+    if (unit && unit in UNIT_DAYS) {
+      return { date: addLocalDays(today, Number(next) * UNIT_DAYS[unit]), consumed: 3 };
+    }
+  }
+  if (token in WEEKDAY_TOKENS) {
+    // The *next* such weekday, never today — "fri" typed on a Friday means
+    // the coming Friday, which is the only reading that isn't ambiguous.
+    return { date: nextWeekday(today, WEEKDAY_TOKENS[token]), consumed: 1 };
+  }
+  const rel = /^(\d{1,3})([dwm])$/.exec(token);
+  if (rel) {
+    const n = Number(rel[1]);
+    return { date: addLocalDays(today, rel[2] === "d" ? n : rel[2] === "w" ? n * 7 : n * 30), consumed: 1 };
+  }
+  if (isLocalDate(token)) return { date: token, consumed: 1 };
+  return null;
 }
 
 /**
@@ -103,7 +150,7 @@ function parseEvery(
 /**
  * Parse date, time, priority, estimate and repeat tokens out of a quick-add
  * line — `tomorrow`, `fri`, `next week`, `in 3 days`, `3d`, `3pm`, `at 15:00`,
- * `p1`, `~45m`, `every mon`, `#project`.
+ * `by fri` (a deadline), `p1`, `~45m`, `every mon`, `#project`.
  *
  * **Deliberately deterministic, with no AI round-trip.** Capture has to be
  * instant and repeatable: the same words must always produce the same task, and
@@ -119,6 +166,7 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
   let estimatedSeconds: number | null = null;
   let every: ReturnType<typeof parseEvery> = null;
   let scheduledMinute: number | null = null;
+  let deadlineDate: string | null = null;
 
   const raws = input.split(/\s+/).filter(Boolean);
   const kept: string[] = [];
@@ -147,45 +195,14 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
       const parsed = parseEvery(next);
       if (parsed) { every = parsed; i++; continue; }
     }
+    // "by fri" is a deadline — when it must be done — not the day it's planned.
+    if (deadlineDate === null && token === "by") {
+      const d = parseDateAt(raws, i + 1, today);
+      if (d) { deadlineDate = d.date; i += d.consumed; continue; }
+    }
     if (dueDate === null) {
-      if (token === "today") { dueDate = today; continue; }
-      if (token === "tomorrow" || token === "tmr") { dueDate = addLocalDays(today, 1); continue; }
-      // "next week" is the start of next week (Monday), which is how the phrase
-      // is used when planning; "next month" is the 1st.
-      if (token === "next" && next === "week") {
-        dueDate = nextWeekday(today, 1);
-        i++;
-        continue;
-      }
-      if (token === "next" && next === "month") {
-        const [y, m] = today.split("-").map(Number);
-        const ny = m === 12 ? y + 1 : y;
-        const nm = m === 12 ? 1 : m + 1;
-        dueDate = `${ny}-${String(nm).padStart(2, "0")}-01`;
-        i++;
-        continue;
-      }
-      if (token === "in" && next && /^\d{1,3}$/.test(next)) {
-        const unit = raws[i + 2]?.toLowerCase();
-        if (unit && unit in UNIT_DAYS) {
-          dueDate = addLocalDays(today, Number(next) * UNIT_DAYS[unit]);
-          i += 2;
-          continue;
-        }
-      }
-      if (token in WEEKDAY_TOKENS) {
-        // The *next* such weekday, never today — "fri" typed on a Friday means
-        // the coming Friday, which is the only reading that isn't ambiguous.
-        dueDate = nextWeekday(today, WEEKDAY_TOKENS[token]);
-        continue;
-      }
-      const rel = /^(\d{1,3})([dwm])$/.exec(token);
-      if (rel) {
-        const n = Number(rel[1]);
-        dueDate = addLocalDays(today, rel[2] === "d" ? n : rel[2] === "w" ? n * 7 : n * 30);
-        continue;
-      }
-      if (isLocalDate(token)) { dueDate = token; continue; }
+      const d = parseDateAt(raws, i, today);
+      if (d) { dueDate = d.date; i += d.consumed - 1; continue; }
     }
     if (projectHint === null && token.startsWith("#") && token.length > 1) {
       projectHint = token.slice(1);
@@ -238,6 +255,7 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
     estimatedSeconds,
     recurRule,
     scheduledMinute,
+    deadlineDate,
   };
 }
 

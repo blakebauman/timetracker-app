@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sparkles,
   CalendarClock,
@@ -8,6 +8,8 @@ import {
   Hourglass,
   Coffee,
   TrendingUp,
+  Flag,
+  ListChecks,
   X,
   CheckCircle2,
   Eraser,
@@ -50,6 +52,8 @@ const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
   long_timer: Hourglass,
   nothing_tracked: Coffee,
   budget_risk: TrendingUp,
+  deadline_risk: Flag,
+  tasks_overdue: ListChecks,
 };
 
 /**
@@ -93,6 +97,8 @@ function useContextualSuggestions(): string[] {
 
 function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   const dismissNudge = useAssistantStore((s) => s.dismissNudge);
+  const setAssistantOpen = useAssistantStore((s) => s.setOpen);
+  const navigate = useNavigate();
   const trackNudgeEvent = useTrackNudgeEvent();
   const { startTimer, stopTimer } = useTimer();
   const Icon = NUDGE_ICONS[nudge.kind];
@@ -130,6 +136,22 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{nudge.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">{nudge.body}</p>
+        {/* Task nudges point at the list that fixes them; the panel closes
+            so the list isn't hidden behind it. */}
+        {(nudge.kind === "deadline_risk" || nudge.kind === "tasks_overdue") && (
+          <div className="mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                navigate("/tasks");
+                setAssistantOpen(false);
+              }}
+            >
+              Open tasks
+            </Button>
+          </div>
+        )}
         {(nudge.kind === "untracked_meeting" ||
           nudge.kind === "meeting_now" ||
           nudge.kind === "long_timer") && (

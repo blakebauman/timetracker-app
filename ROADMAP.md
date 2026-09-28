@@ -157,8 +157,8 @@ Phase 2's scheduled blocks. Still open: `@label` (needs Phase 3's tags) and
 ### Phase 2: plan meets time
 *Scheduled blocks and reminders shipped in the scheduled-blocks PR, with the
 Phase 1 time-of-day token. The rail drop decides schedule-vs-log by the slot's
-side of "now", so it never asks. Still open: deadlines, and tasks in the
-digest and nudges.*
+side of "now", so it never asks. Deadlines and tasks in the digest and
+nudges shipped in the following PR, so Phase 2 is complete.*
 
 The part a pure task list can't do, because it has no actual to compare against.
 - ~~**Scheduled blocks**~~ — give a task a local time of day, use its estimate as
@@ -166,11 +166,11 @@ The part a pure task list can't do, because it has no actual to compare against.
   beside entries, ghosts and gaps. Dropping a task from the rail then asks
   *schedule* or *log*; today it always logs a finished entry. Starting a
   scheduled block starts the timer on that task.
-- **Deadline vs due** — due is when you plan to work on it, deadline is when it
+- ~~**Deadline vs due**~~ — due is when you plan to work on it, deadline is when it
   must be done. A `deadline_date` local day (a day, never an instant, like
   `due_date`). An approaching deadline with estimate still remaining becomes a
   risk signal, computed deterministically like pacing.
-- **Tasks in the digest and nudges** — `lib/digest.ts` and `lib/assistant.ts`
+- ~~**Tasks in the digest and nudges**~~ — `lib/digest.ts` and `lib/assistant.ts`
   don't reference tasks at all. The morning digest should list overdue and
   due-today tasks with their total estimate against calendar-free time; add an
   overdue-tasks nudge.

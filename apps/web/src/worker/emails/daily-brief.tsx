@@ -15,6 +15,27 @@ export interface BriefBudgetLine {
   over: boolean;
 }
 
+export interface BriefPlanTask {
+  name: string;
+  /** "14:00", "Wed Sep 30 14:00", or "" for an untimed task due today. */
+  when: string;
+  projectName: string | null;
+  estimateLabel: string | null;
+}
+
+export interface BriefPlan {
+  /** "Today" or "This week". */
+  heading: string;
+  overdue: number;
+  due: BriefPlanTask[];
+  moreDue: number;
+  /** Remaining estimate across the due tasks, formatted. */
+  estimateLabel: string | null;
+  /** Today's meeting hours from the calendar, formatted (daily brief only). */
+  meetingsLabel: string | null;
+  deadlines: { name: string; verdict: string; missed: boolean }[];
+}
+
 export interface DailyBriefEmailProps {
   /** Built by the sender, where the recipient's timezone is known. */
   greeting: string;
@@ -28,6 +49,8 @@ export interface DailyBriefEmailProps {
   draftsWaiting: number;
   /** One AI-written paragraph. Absent when the model was unavailable. */
   narrative: string | null;
+  /** What's planned next; null hides the section. */
+  plan?: BriefPlan | null;
   appUrl: string;
 }
 
@@ -58,6 +81,7 @@ export function DailyBriefEmail({
   budgets,
   draftsWaiting,
   narrative,
+  plan = null,
   appUrl,
 }: DailyBriefEmailProps) {
   const total = projects.reduce((sum, p) => sum + p.seconds, 0);
@@ -144,6 +168,61 @@ export function DailyBriefEmail({
         </>
       )}
 
+      {plan && (
+        <Section style={{ marginBottom: "20px" }}>
+          <Hr style={{ borderTop: `1px solid ${colors.border}`, margin: "0 0 20px" }} />
+          <Text style={{ color: colors.ink, fontSize: "13px", fontWeight: 600, margin: "0 0 4px" }}>
+            {plan.heading}
+          </Text>
+          {/* The day's arithmetic before it starts: estimates beside meetings. */}
+          {(plan.estimateLabel || plan.meetingsLabel) && (
+            <Text style={{ color: colors.mutedInk, fontSize: "13px", margin: "0 0 8px" }}>
+              {[
+                plan.estimateLabel ? `${plan.estimateLabel} of estimates` : null,
+                plan.meetingsLabel ? `${plan.meetingsLabel} of meetings` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </Text>
+          )}
+          {plan.due.map((t, i) => (
+            <Text
+              key={`${t.name}-${i}`}
+              style={{ color: colors.ink, fontSize: "13px", lineHeight: "1.5", margin: "0 0 2px" }}
+            >
+              {t.when ? <span style={{ color: colors.mutedInk }}>{t.when} </span> : null}
+              {t.name}
+              <span style={{ color: colors.mutedInk }}>
+                {[t.projectName, t.estimateLabel].filter(Boolean).map((x) => ` · ${x}`).join("")}
+              </span>
+            </Text>
+          ))}
+          {plan.moreDue > 0 && (
+            <Text style={{ color: colors.mutedInk, fontSize: "13px", margin: "0 0 2px" }}>
+              and {plan.moreDue} more
+            </Text>
+          )}
+          {plan.deadlines.map((d) => (
+            <Text
+              key={d.name}
+              style={{
+                color: d.missed ? colors.primaryInk : colors.mutedInk,
+                fontSize: "13px",
+                lineHeight: "1.5",
+                margin: "6px 0 0",
+              }}
+            >
+              {d.name} — {d.verdict}
+            </Text>
+          ))}
+          {plan.overdue > 0 && (
+            <Text style={{ color: colors.mutedInk, fontSize: "13px", margin: "6px 0 0" }}>
+              {plan.overdue === 1 ? "1 task is past its due date." : `${plan.overdue} tasks are past their due dates.`}
+            </Text>
+          )}
+        </Section>
+      )}
+
       {budgets.length > 0 && (
         <Section style={{ marginBottom: "20px" }}>
           <Text
@@ -202,6 +281,19 @@ DailyBriefEmail.PreviewProps = {
     { name: "API Development", verdict: "at 88% of its 40h budget", over: false },
   ],
   draftsWaiting: 3,
+  plan: {
+    heading: "Today",
+    overdue: 2,
+    due: [
+      { name: "Stakeholder sign-off", when: "10:00", projectName: "Website Redesign", estimateLabel: "1h" },
+      { name: "Draft cutover runbook", when: "14:00", projectName: "API Development", estimateLabel: "2h" },
+      { name: "Chase SOW", when: "", projectName: "Internal Admin", estimateLabel: null },
+    ],
+    moreDue: 0,
+    estimateLabel: "3h",
+    meetingsLabel: "2h 30m",
+    deadlines: [{ name: "Quarterly report", verdict: "due by tomorrow", missed: false }],
+  },
   narrative:
     "Most of the day went to the homepage rebuild, with a scope call in the afternoon and a short pass over the client's feedback before close.",
   appUrl: "https://timetracker.run",

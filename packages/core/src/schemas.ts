@@ -221,6 +221,8 @@ export const TaskSchema = z.object({
   startedAt: z.string().nullable(),
   /** Minutes after local midnight on `dueDate` — a block on the calendar. */
   scheduledMinute: z.number().int().nullable(),
+  /** When it must be done (a local day), as opposed to `dueDate`, when it's planned. */
+  deadlineDate: LocalDateSchema.nullable(),
   recurRule: z.string().nullable(),
   subtaskTotal: z.number(),
   subtaskDone: z.number(),
@@ -237,6 +239,7 @@ export const CreateTaskSchema = z.object({
   parentId: z.string().nullable().optional(),
   recurRule: RecurRuleSchema.nullable().optional(),
   scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
+  deadlineDate: LocalDateSchema.nullable().optional(),
 });
 
 export const UpdateTaskSchema = z.object({
@@ -254,6 +257,7 @@ export const UpdateTaskSchema = z.object({
   inProgress: z.boolean().optional(),
   /** Needs a due date to mean anything; clearing `dueDate` clears it too. */
   scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
+  deadlineDate: LocalDateSchema.nullable().optional(),
   /**
    * The completing client's own local date. Present only on the request that
    * ticks a recurring task done, and it is what the next occurrence is measured
@@ -819,6 +823,8 @@ export const AssistantNudgeSchema = z.object({
     "long_timer", // the running timer has been going suspiciously long
     "nothing_tracked", // late morning on a weekday with an empty timesheet
     "budget_risk", // a budgeted project is over, or on pace to overrun
+    "tasks_overdue", // open tasks whose due day has passed (one nudge, counted)
+    "deadline_risk", // a task's deadline has passed or is close, with it still open
   ]),
   title: z.string(),
   body: z.string(),

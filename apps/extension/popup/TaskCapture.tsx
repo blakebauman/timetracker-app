@@ -85,6 +85,7 @@ export function TaskCapture() {
           ...(parsed.priority ? { priority: parsed.priority } : {}),
           ...(parsed.estimatedSeconds ? { estimatedSeconds: parsed.estimatedSeconds } : {}),
           ...(parsed.scheduledMinute !== null ? { scheduledMinute: parsed.scheduledMinute } : {}),
+          ...(parsed.deadlineDate ? { deadlineDate: parsed.deadlineDate } : {}),
           ...(parsed.recurRule ? { recurRule: parsed.recurRule } : {}),
         },
       },
@@ -109,6 +110,7 @@ export function TaskCapture() {
           parsed.scheduledMinute !== null ? ` at ${describeMinute(parsed.scheduledMinute)}` : ""
         }`
       : null,
+    parsed.deadlineDate ? `deadline ${describeDue(parsed.deadlineDate)}` : null,
     parsed.priority ? `priority ${PRIORITY_LABEL[parsed.priority]}` : null,
     parsed.estimatedSeconds ? `estimate ${describeEstimate(parsed.estimatedSeconds)}` : null,
     parsed.recurRule ? describeRecurRule(parsed.recurRule)?.toLowerCase() : null,
