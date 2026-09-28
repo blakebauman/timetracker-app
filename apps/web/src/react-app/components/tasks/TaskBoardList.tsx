@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
-import { Plus, ListChecks, CalendarCheck, SearchX, AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { Plus, ListChecks, CalendarCheck, Search, SearchX, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,6 +20,7 @@ import { QuickAddTask } from "./QuickAddTask";
 import { TaskDialog } from "./TaskDialog";
 import { TaskViewTabs, type TaskView } from "./TaskViewTabs";
 import { useAllTasks, useCompleteTask, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
+import { useTaskListKeys } from "@/hooks/useTaskListKeys";
 import { BELOW_SM, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort } from "@/lib/dateUtils";
@@ -115,6 +118,8 @@ export function TaskBoardList() {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("project");
   const [sortBy, setSortBy] = useState<SortBy>("plan");
+  /** All: free-text filter over names and notes. */
+  const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -127,6 +132,23 @@ export function TaskBoardList() {
   /** Board: the column a drag is over, which changes stage on drop. */
   const [dragOverStage, setDragOverStage] = useState<Stage | null>(null);
   const phone = useMediaQuery(BELOW_SM);
+
+  // Q on this page, Alt+Shift+T from anywhere (which navigates here with a
+  // `capture` stamp): straight into the capture line. With no tasks yet there
+  // is no line — the empty state's dialog is the capture surface then.
+  const focusCapture = useCallback(() => {
+    const field = document.querySelector<HTMLInputElement>('input[aria-label="Add a task"]');
+    if (field) field.focus();
+    else setAddOpen(true);
+  }, []);
+  useTaskListKeys({ tasks, onEdit: setEditTarget, onCapture: focusCapture });
+  const captureStamp = (useLocation().state as { capture?: number } | null)?.capture;
+  useEffect(() => {
+    if (!captureStamp || isLoading) return;
+    // A frame later: straight after navigating here the line hasn't mounted.
+    const frame = requestAnimationFrame(focusCapture);
+    return () => cancelAnimationFrame(frame);
+  }, [captureStamp, isLoading, focusCapture]);
 
   const today = todayLocalDate();
   const hasAnyTask = tasks.length > 0;
@@ -238,8 +260,24 @@ export function TaskBoardList() {
     }
 
     // ─── All ────────────────────────────────────────────────────────────────
-    const filtered = tasks.filter((t) =>
-      status === "all" ? true : status === "active" ? t.active : !t.active
+    // A match keeps its context: a matching subtask brings its parent (a
+    // subtask on its own renders nowhere), and a matching parent keeps its
+    // whole checklist.
+    const q = query.trim().toLowerCase();
+    const matches = (t: Task) =>
+      t.name.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false);
+    const matchedParents = new Set(tasks.filter((t) => !t.parentId && matches(t)).map((t) => t.id));
+    const parentsOfMatches = new Set(
+      tasks.filter((t) => t.parentId && matches(t)).map((t) => t.parentId as string)
+    );
+    const inQuery = (t: Task) =>
+      !q ||
+      matches(t) ||
+      (t.parentId ? matchedParents.has(t.parentId) : parentsOfMatches.has(t.id));
+
+    const filtered = tasks.filter(
+      (t) =>
+        inQuery(t) && (status === "all" ? true : status === "active" ? t.active : !t.active)
     );
 
     if (groupBy === "none") {
@@ -251,7 +289,9 @@ export function TaskBoardList() {
               label: "All tasks",
               trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
               nodes,
-              reorderable: sortBy === "plan",
+              // A drag writes the midpoint of its *visible* neighbours; with a
+              // search hiding rows between them that lands somewhere unseen.
+              reorderable: sortBy === "plan" && !q,
             },
           ]
         : [];
@@ -293,7 +333,7 @@ export function TaskBoardList() {
         trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
         // Ordering is only the user's own inside a project; in any other
         // grouping a drag would be rewriting a sequence the group doesn't own.
-        reorderable: groupBy === "project" && sortBy === "plan",
+        reorderable: groupBy === "project" && sortBy === "plan" && !q,
       };
     });
 
@@ -301,7 +341,7 @@ export function TaskBoardList() {
     return groupBy === "due"
       ? entries.sort((a, b) => (a.key === "none" ? 1 : b.key === "none" ? -1 : a.key.localeCompare(b.key)))
       : entries.sort((a, b) => a.label.localeCompare(b.label));
-  }, [tasks, view, status, groupBy, sortBy, today]);
+  }, [tasks, view, status, groupBy, sortBy, today, query]);
 
   // A board with empty columns is still a board; only a workspace with no tasks
   // at all gets the first-run state there.
@@ -467,7 +507,30 @@ export function TaskBoardList() {
         />
       );
     } else {
-      empty = (
+      empty = query.trim() ? (
+        <EmptyState
+          icon={SearchX}
+          title={`Nothing matches “${query.trim()}”`}
+          description={
+            status === "all"
+              ? "No task name or note contains that text."
+              : `Searching ${status === "done" ? "done" : "active"} tasks only.`
+          }
+          className="py-24"
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setQuery("");
+                setStatus("all");
+              }}
+            >
+              Clear search
+            </Button>
+          }
+        />
+      ) : (
         <EmptyState
           icon={SearchX}
           title="No tasks match this filter"
@@ -612,6 +675,21 @@ export function TaskBoardList() {
         {view === "all" && (
           <>
               <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+                  placeholder="Search tasks"
+                  aria-label="Search tasks"
+                  className="h-8 w-40 pl-8 text-sm"
+                />
+              </div>
               <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
                 <SelectTrigger size="sm" className="w-28" aria-label="Filter by status">
                   <SelectValue />
