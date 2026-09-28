@@ -142,7 +142,7 @@ The key is shown **once** and can't be recovered; if you lose it, revoke it and 
 
 ## Planning with tasks
 
-The Tasks page opens on **Today**: overdue work first, then what's due today, then what you've already finished today. **Upcoming** shows the next seven days a day at a time, and **All** is the full list with the grouping, sorting and status filters.
+The Tasks page opens on **Today**: overdue work first, then what's due today, then what you've already finished today. **Upcoming** shows the next seven days a day at a time — empty days included, so the week reads as a week — and **All** is the full list with the grouping, sorting and status filters.
 
 Each tab carries a count, so you can see whether a view is worth opening without opening it. Today's count turns red when part of it is overdue.
 
@@ -163,15 +163,17 @@ The line under the field shows what it understood before you commit it.
 - **Start a timer** — the ▷ on every row starts the clock with the task's name, project and task already set. While it runs the row shows a stop control instead.
 - **Drag it onto the calendar** — open the task rail beside the Timer's calendar view and drag a task onto a time slot. That logs a finished entry there, as long as its estimate (or half an hour if it has none), with an **Undo** in the toast.
 - **Log time already spent** — the clock icon opens the entry form prefilled from the task. Nothing is written until you submit. If the task was due before today, the form opens on the day it was due rather than on today.
-- **Tick it off** — and if nothing is tracked against it, the confirmation offers to log the time then and there. In the other direction, stopping a timer on a task that's due today or has used up its estimate offers to mark it done.
+- **Tick it off** — and if nothing is tracked against it, the toast offers to log the time then and there. In the other direction, stopping a timer on a task that's due today or has used up its estimate offers to mark it done.
 
 **Notes.** A task can carry free-text notes — context, links, acceptance criteria, anything that isn't the name. They show as a single clamped line under the task on the list, in full in the task dialog. Notes belong to the *task* and are never copied onto a time entry, so internal detail can't end up on an invoice line.
 
-**Editing.** Click a task's name to rename it in place, or its due-date chip to re-date it. **⋯ → Edit task…** opens the full form — name, notes, project, estimate, due date, priority and repeat — which is the same form used to create one.
+**Editing.** Click a task's name to rename it in place, or its due-date chip to re-date it. In **Upcoming** you can also drag a task onto another day to move it there. **⋯ → Edit task…** opens the full form — name, notes, project, estimate, due date, priority and repeat — which is the same form used to create one.
+
+**Undo.** Ticking a task off and deleting one both show a toast with **Undo**. Deleting doesn't ask first; the task is only really removed when the toast closes, so Undo brings it back exactly as it was, with its time still linked. Undoing a repeating task's completion also removes the next occurrence it had just created.
 
 **Subtasks.** A task can hold a checklist one level deep. Time is tracked against whichever one you actually worked on, and a parent's tracked total includes its subtasks'. Ticking a parent ticks its children with it.
 
-**Repeats.** A task can repeat daily, on weekdays, weekly on chosen days, or monthly on a date. The next occurrence is created **when you tick the current one off** — so a repeating task you never complete simply goes overdue rather than piling up copies. If it has subtasks, the fresh occurrence gets a fresh checklist.
+**Repeats.** A task can repeat daily, on weekdays, weekly on one or more chosen days (pick them under **Weekly on…** in the task dialog), or monthly on a date. The next occurrence is created **when you tick the current one off** — so a repeating task you never complete simply goes overdue rather than piling up copies. If it has subtasks, the fresh occurrence gets a fresh checklist.
 
 **The task rail.** In the Timer's calendar and split views (on wider screens) a rail on the right shows what's due today, so you can start or drag straight onto the grid you're tracking into. Collapse it with the control in its header.
 

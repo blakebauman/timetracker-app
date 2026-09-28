@@ -22,6 +22,9 @@ import {
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
 import { parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
+import { dayLabel } from "@/lib/recurrence";
+import { cn } from "@/lib/utils";
+import { parseRecurRule } from "@timetracker/core/task-recurrence";
 import {
   PRIORITIES,
   PRIORITY_LABEL,
@@ -45,14 +48,23 @@ const REPEAT_OPTIONS = [
   { value: "none", label: "Doesn't repeat" },
   { value: "daily", label: "Every day" },
   { value: "weekdays", label: "Every weekday" },
-  { value: "weekly", label: "Weekly on the due day" },
+  { value: "weekly", label: "Weekly on…" },
   { value: "monthly", label: "Monthly on the due date" },
 ];
+
+/** Monday-first, matching the recurring-entry picker. */
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 /** Stored rule → the option that represents it in the picker. */
 function repeatValue(rule: string | null): string {
   if (!rule) return "none";
   return rule.split(":")[0];
+}
+
+/** A weekly rule's days, so editing `weekly:1,3` doesn't collapse it to one day. */
+function ruleDays(rule: string | null): number[] {
+  const parsed = parseRecurRule(rule);
+  return parsed?.kind === "weekly" ? parsed.daysOfWeek : [];
 }
 
 /**
@@ -81,6 +93,7 @@ export function TaskDialog({
   const [dueDate, setDueDate] = useState<string | null>(task?.dueDate ?? defaultDueDate);
   const [priority, setPriority] = useState(task?.priority ?? 4);
   const [repeat, setRepeat] = useState(repeatValue(task?.recurRule ?? null));
+  const [weekDays, setWeekDays] = useState<number[]>(ruleDays(task?.recurRule ?? null));
 
   // The dialog stays mounted between openings; reseed every time it *opens*.
   // Keying the reseed on the task id alone froze the create form's defaults at
@@ -98,6 +111,7 @@ export function TaskDialog({
     setDueDate(task?.dueDate ?? defaultDueDate);
     setPriority(task?.priority ?? 4);
     setRepeat(repeatValue(task?.recurRule ?? null));
+    setWeekDays(ruleDays(task?.recurRule ?? null));
   }
 
   const reset = () => {
@@ -108,18 +122,40 @@ export function TaskDialog({
     setDueDate(defaultDueDate);
     setPriority(4);
     setRepeat("none");
+    setWeekDays([]);
   };
 
+  /** The day a weekly/monthly repeat hangs off: the due date, else today. */
+  const anchorDate = () => (dueDate ? localDateToDate(dueDate) : new Date());
+
+  const handleRepeatChange = (value: string) => {
+    setRepeat(value);
+    // Seed the weekday row with the due day, so switching to weekly shows the
+    // schedule it will actually save rather than an empty row.
+    if (value === "weekly" && weekDays.length === 0) setWeekDays([anchorDate().getDay()]);
+  };
+
+  // Never empty: turning off the last day would save a weekly rule with no
+  // days, which the server rejects as unparseable.
+  const toggleWeekDay = (d: number) =>
+    setWeekDays((cur) =>
+      cur.includes(d) ? (cur.length > 1 ? cur.filter((x) => x !== d) : cur) : [...cur, d]
+    );
+
   /**
-   * "Weekly"/"Monthly" are anchored to the due date, falling back to today.
-   * A weekly repeat with no anchor has nothing to repeat *on*, and picking one
-   * silently (say, Monday) is a schedule the user never agreed to.
+   * "Weekly" saves the days picked in the row (seeded from the due date);
+   * "Monthly" is anchored to the due date, falling back to today. A repeat with
+   * no anchor has nothing to repeat *on*, and picking one silently (say,
+   * Monday) is a schedule the user never agreed to.
    */
   const resolveRepeat = (): string | null => {
     if (repeat === "none") return null;
     if (repeat === "daily" || repeat === "weekdays") return repeat;
-    const anchor = dueDate ? localDateToDate(dueDate) : new Date();
-    return repeat === "weekly" ? `weekly:${anchor.getDay()}` : `monthly:${anchor.getDate()}`;
+    if (repeat === "weekly") {
+      const days = weekDays.length ? weekDays : [anchorDate().getDay()];
+      return `weekly:${[...days].sort((a, b) => a - b).join(",")}`;
+    }
+    return `monthly:${anchorDate().getDate()}`;
   };
 
   const handleClose = () => {
@@ -262,7 +298,7 @@ export function TaskDialog({
           {!isSubtask && (
             <div className="space-y-1.5">
               <Label>Repeat</Label>
-              <Select value={repeat} onValueChange={setRepeat}>
+              <Select value={repeat} onValueChange={handleRepeatChange}>
                 <SelectTrigger className="w-full" aria-label="Repeat">
                   <SelectValue />
                 </SelectTrigger>
@@ -274,6 +310,27 @@ export function TaskDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {repeat === "weekly" && (
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Repeat on">
+                  {DAY_ORDER.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={weekDays.includes(d)}
+                      aria-label={dayLabel(d, true)}
+                      onClick={() => toggleWeekDay(d)}
+                      className={cn(
+                        "h-8 w-11 rounded-full border text-xs font-medium transition-colors duration-fast ease-out-quart",
+                        weekDays.includes(d)
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {dayLabel(d)}
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Completing an occurrence is what creates the next one — say so,
                   or a repeat that hasn't visibly done anything reads as broken. */}
               {repeat !== "none" && (

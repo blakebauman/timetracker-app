@@ -235,6 +235,12 @@ export function useWebSocket() {
           invalidateEntries();
           break;
         }
+        case "tasks:changed": {
+          // Every task view — the page, the rail, a project's list — reads the
+          // one ["tasks"] query family, so a refetch covers them all.
+          if (!isOwnEcho) void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          break;
+        }
       }
     }
 

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "../lib/validate";
 import { CreateTaskSchema, UpdateTaskSchema } from "@timetracker/core/schemas";
 import { nextOccurrence, normalizeRecurRule } from "@timetracker/core/task-recurrence";
+import { broadcast, clientId } from "../db/queries";
 
 type Row = Record<string, unknown>;
 
@@ -51,6 +52,21 @@ const TASK_SELECT = `
   FROM tasks tk
   LEFT JOIN projects p ON p.id = tk.project_id AND p.workspace_id = tk.workspace_id
 `;
+
+/**
+ * Tell the workspace's other tabs to refetch their task lists. Without it a task
+ * edited in one tab sat stale in every other until some unrelated entry change
+ * happened to invalidate the list. No payload: every task view derives from the
+ * one list query, so a refetch is simpler than merging a row.
+ */
+function announceTasksChanged(
+  env: Env,
+  ctx: { waitUntil(promise: Promise<unknown>): void },
+  workspaceId: string,
+  origin: string | null
+) {
+  ctx.waitUntil(broadcast(env, workspaceId, "tasks:changed", null, origin));
+}
 
 async function readTask(db: D1Database, id: string, workspaceId: string) {
   const { results } = await db
@@ -158,6 +174,7 @@ export const tasksRouter = new Hono<{
     ).run();
 
     const row = await readTask(c.env.DB, id, workspaceId);
+    announceTasksChanged(c.env, c.executionCtx, workspaceId, clientId(c));
     return c.json(formatTask(row!), 201);
   })
   // ─── Update ───────────────────────────────────────────────────────────────
@@ -191,8 +208,14 @@ export const tasksRouter = new Hono<{
         set("parent_id", null);
       } else {
         const parent = await resolveParent(c.env.DB, data.parentId, workspaceId);
-        // Its own child can't become its parent, and neither can it.
-        if (!parent || parent.id === id || (existing.subtask_total as number) > 0) {
+        // Its own child can't become its parent, and neither can it. A task
+        // with subtasks can't become one either — its children would sit two
+        // levels deep. Counted here because `existing` is a bare row with no
+        // `subtask_total`; reading that column off it always passed.
+        const child = await c.env.DB.prepare(
+          `SELECT 1 FROM tasks WHERE parent_id = ? AND workspace_id = ? LIMIT 1`
+        ).bind(id, workspaceId).first();
+        if (!parent || parent.id === id || child) {
           return c.json({ error: "Parent task not found, or is itself a subtask" }, 400);
         }
         set("parent_id", parent.id);
@@ -236,10 +259,12 @@ export const tasksRouter = new Hono<{
       ? (data.recurRule === null ? null : normalizeRecurRule(data.recurRule))
       : (existing.recur_rule as string | null);
 
+    let spawnedTaskId: string | null = null;
     if (completing && !isSubtask && rule && data.completedOn) {
       const due = nextOccurrence(rule, data.completedOn);
       if (due) {
         const spawnId = crypto.randomUUID();
+        spawnedTaskId = spawnId;
         const now = new Date().toISOString();
         await c.env.DB.prepare(
           `INSERT INTO tasks
@@ -302,7 +327,11 @@ export const tasksRouter = new Hono<{
 
     const row = await readTask(c.env.DB, id, workspaceId);
     if (!row) return c.json({ error: "Not found" }, 404);
-    return c.json(formatTask(row));
+    announceTasksChanged(c.env, c.executionCtx, workspaceId, clientId(c));
+    // `spawnedTaskId` is what makes undoing a repeating task's completion
+    // possible: the client deletes that occurrence and reopens this one with
+    // the rule, instead of leaving a duplicate next occurrence behind.
+    return c.json({ ...formatTask(row), spawnedTaskId });
   })
   // ─── Delete ───────────────────────────────────────────────────────────────
   .delete("/:id", async (c) => {
@@ -315,5 +344,6 @@ export const tasksRouter = new Hono<{
       c.env.DB.prepare(`DELETE FROM tasks WHERE parent_id = ? AND workspace_id = ?`).bind(id, workspaceId),
       c.env.DB.prepare(`DELETE FROM tasks WHERE id = ? AND workspace_id = ?`).bind(id, workspaceId),
     ]);
+    announceTasksChanged(c.env, c.executionCtx, workspaceId, clientId(c));
     return c.json({ ok: true });
   });

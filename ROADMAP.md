@@ -107,18 +107,27 @@ the two or make it easier to see. Nothing here should turn the app into a
 general-purpose to-do list.
 
 ### Phase 0: gaps in what shipped
-- **Live sync** — `routes/tasks.ts` never calls `broadcast()`, so a task edited
+*All four shipped in one PR, along with a fix it turned up: the re-parenting
+guard read `subtask_total` off a bare `tasks` row, where that column doesn't
+exist, so a task that had subtasks could be made a subtask itself. Kept below as
+the record of what each item needed.*
+
+- ~~**Live sync**~~ — `routes/tasks.ts` never calls `broadcast()`, so a task edited
   in one tab stays stale in the others until some entry change happens to
-  invalidate the list. Add a `tasks_changed` event and invalidate the tasks
-  query on receipt.
-- **Undo for complete and delete** — delete is a hard cascade with no undo
+  invalidate the list. Every write now broadcasts `tasks:changed` and the
+  other tabs invalidate the tasks query.
+- ~~**Undo for complete and delete**~~ — delete is a hard cascade with no undo
   toast, and complete has none either. Trap: undoing a *recurring* complete has
   to delete the occurrence it spawned and move `recur_rule` back, so the `PUT`
-  has to return the spawned task's id.
-- **Multi-weekday repeat in `TaskDialog`** — the vocabulary already supports
+  returns `spawnedTaskId`. Delete waits out the toast rather than re-creating
+  on undo, because a re-created task gets a new id and its entries lose their
+  link.
+- ~~**Multi-weekday repeat in `TaskDialog`**~~ — the vocabulary already supports
   `weekly:1,3`, but the picker only offers "weekly on the due day". UI-only.
-- **Drag to reschedule in Upcoming** — the day groups already exist; dropping a
-  row on another day is a one-field `PUT` of `due_date`.
+- ~~**Drag to reschedule in Upcoming**~~ — the day groups already exist; dropping a
+  row on another day is a one-field `PUT` of `due_date`. Empty days now render
+  at rest as a "Nothing due" heading: making them appear on dragstart reflowed
+  the list under the pointer.
 
 ### Phase 1: capture and find
 - **Quick-add vocabulary** — `next week`, `in 3 days`, a time of day (`3pm`),

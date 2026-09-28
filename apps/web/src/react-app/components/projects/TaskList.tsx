@@ -6,7 +6,6 @@ import { Progress } from "@/components/ui/progress";
 import { SpentFigure } from "@/components/ui/spent-figure";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
 import { useUIStore } from "@/stores/uiStore";
@@ -28,7 +27,6 @@ export function TaskList({ projectId }: TaskListProps) {
   const [editName, setEditName] = useState("");
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editEstimated, setEditEstimated] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   // The log-time sheet is mounted once app-wide (AppShell) so the toast that
   // offers it can fire from anywhere; this list just asks for it by id.
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
@@ -233,7 +231,7 @@ export function TaskList({ projectId }: TaskListProps) {
                 size="icon-xs"
                 className="hover:text-destructive"
                 aria-label="Delete task"
-                onClick={() => setDeleteTarget(task)}
+                onClick={() => deleteTask(task)}
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -266,16 +264,6 @@ export function TaskList({ projectId }: TaskListProps) {
         </Button>
       </div>
 
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete task?"
-        description={`"${deleteTarget?.name}" will be permanently deleted. This cannot be undone.`}
-        onConfirm={() => {
-          if (deleteTarget) deleteTask.mutate(deleteTarget.id);
-          setDeleteTarget(null);
-        }}
-      />
     </div>
   );
 }
