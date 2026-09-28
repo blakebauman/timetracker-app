@@ -41,6 +41,28 @@ export async function broadcast(
 export const clientId = (c: { req: { header: (n: string) => string | undefined } }) =>
   c.req.header("X-Client-Id") ?? null;
 
+/**
+ * Time logged against a task means work on it has begun: move it (and, for a
+ * subtask, its parent) into the board's In progress. Only ever fills an empty
+ * `started_at` — an explicit move back to "To do" is cleared by the user, and
+ * the next entry re-marking it is the right outcome.
+ */
+export async function markTaskStarted(
+  db: D1Database,
+  workspaceId: string,
+  taskId: string,
+  at: string
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE tasks SET started_at = ?
+       WHERE workspace_id = ? AND active = 1 AND started_at IS NULL
+         AND (id = ? OR id = (SELECT parent_id FROM tasks WHERE id = ? AND workspace_id = ?))`
+    )
+    .bind(at, workspaceId, taskId, taskId, workspaceId)
+    .run();
+}
+
 // SQL fragment for fetching a full time entry with joins.
 // Every joined table is constrained to the entry's own workspace so a foreign
 // project_id/task_id/tag_id (however it got stored) resolves to NULL instead of

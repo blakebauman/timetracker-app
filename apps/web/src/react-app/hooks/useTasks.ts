@@ -131,6 +131,9 @@ export function useUpdateTask() {
               ...(data.estimatedSeconds !== undefined
                 ? { estimatedSeconds: data.estimatedSeconds }
                 : {}),
+              ...(data.inProgress !== undefined
+                ? { startedAt: data.inProgress ? (t.startedAt ?? new Date().toISOString()) : null }
+                : {}),
             };
           }
           // Ticking a parent ticks its children server-side; mirror that here or

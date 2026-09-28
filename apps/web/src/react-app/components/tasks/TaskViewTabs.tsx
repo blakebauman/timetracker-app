@@ -7,7 +7,7 @@ import {
   SEGMENT_TRACK,
 } from "@/components/ui/segmented-control";
 
-export type TaskView = "today" | "upcoming" | "all";
+export type TaskView = "today" | "upcoming" | "all" | "board";
 
 export interface TaskViewCounts {
   today: number;
@@ -15,12 +15,15 @@ export interface TaskViewCounts {
   overdue: number;
   upcoming: number;
   all: number;
+  /** What's in progress — the one number a board is opened to check. */
+  board: number;
 }
 
 const VIEWS: { value: TaskView; label: string }[] = [
   { value: "today", label: "Today" },
   { value: "upcoming", label: "Upcoming" },
   { value: "all", label: "All" },
+  { value: "board", label: "Board" },
 ];
 
 interface TaskViewTabsProps {
@@ -84,9 +87,11 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
             tabIndex={active ? 0 : -1}
             aria-label={
               count > 0
-                ? `${label}, ${count} task${count === 1 ? "" : "s"}${
-                    late ? `, ${counts.overdue} overdue` : ""
-                  }`
+                ? value === "board"
+                  ? `${label}, ${count} in progress`
+                  : `${label}, ${count} task${count === 1 ? "" : "s"}${
+                      late ? `, ${counts.overdue} overdue` : ""
+                    }`
                 : label
             }
             onClick={() => onChange(value)}

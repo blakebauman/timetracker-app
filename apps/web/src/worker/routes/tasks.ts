@@ -23,6 +23,7 @@ function formatTask(row: Row) {
     sortOrder: (row.sort_order as number | null) ?? 0,
     parentId: (row.parent_id as string | null) ?? null,
     completedAt: (row.completed_at as string | null) ?? null,
+    startedAt: (row.started_at as string | null) ?? null,
     recurRule: (row.recur_rule as string | null) ?? null,
     subtaskTotal: (row.subtask_total as number) ?? 0,
     subtaskDone: (row.subtask_done as number) ?? 0,
@@ -199,6 +200,16 @@ export const tasksRouter = new Hono<{
     if (data.dueDate !== undefined)          set("due_date", data.dueDate ?? null);
     if (data.priority !== undefined)         set("priority", data.priority);
     if (data.sortOrder !== undefined)        set("sort_order", data.sortOrder);
+    if (data.inProgress !== undefined) {
+      // Keep the original start when it's already set: re-marking a task in
+      // progress shouldn't rewrite when work on it began.
+      if (data.inProgress) {
+        fields.push("started_at = COALESCE(started_at, ?)");
+        values.push(new Date().toISOString());
+      } else {
+        set("started_at", null);
+      }
+    }
     if (data.recurRule !== undefined && !isSubtask) {
       set("recur_rule", data.recurRule === null ? null : normalizeRecurRule(data.recurRule));
     }

@@ -144,7 +144,9 @@ The key is shown **once** and can't be recovered; if you lose it, revoke it and 
 
 The Tasks page opens on **Today**: overdue work first, then what's due today, then what you've already finished today. **Upcoming** shows the next seven days a day at a time — empty days included, so the week reads as a week — and **All** is the full list with the grouping, sorting and status filters.
 
-Each tab carries a count, so you can see whether a view is worth opening without opening it. Today's count turns red when part of it is overdue.
+**Board** lays the same tasks out as three columns: **To do**, **In progress** and **Done**. A task moves to In progress on its own the first time you track or log time against it (or one of its subtasks). Drag a card between columns to move it yourself. Dragging to Done ticks it off, with the same Undo and next-occurrence behaviour as the checkbox, and dragging a done task back reopens it. On a phone, or from the keyboard, use **⋯ → Mark in progress** / **Move back to To do**. Done shows the last seven days; everything older is under All → Done.
+
+Each tab carries a count, so you can see whether a view is worth opening without opening it. Today's count turns red when part of it is overdue, and Board's count is what's in progress.
 
 **Capturing.** The field at the top of the list adds a task and stays open for the next one, so several go in as several lines of typing. It reads a few tokens out of what you type and strips them from the name:
 
