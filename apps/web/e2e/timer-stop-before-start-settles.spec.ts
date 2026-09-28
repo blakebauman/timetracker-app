@@ -31,7 +31,8 @@ test("a stop that lands before the start request settles still stops the real en
   // The close-out toast is the witness that the stop reached the real entry;
   // the error toast is what the placeholder id used to produce.
   await expect(
-    page.locator("[data-sonner-toast]").filter({ hasText: "no project" })
+    // A sub-minute stop's receipt ("Stopped after 2s — Started by mistake?").
+    page.locator("[data-sonner-toast]").filter({ hasText: /Stopped after|no project/ })
   ).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Start timer" })).toBeVisible();

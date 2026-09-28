@@ -121,19 +121,15 @@ export async function adoptReplayedTimer(): Promise<void> {
  * doesn't get — and a stop on a train or at a client site is exactly where a
  * project-less hour is most likely. So the check runs on the local entry.
  */
-function announceStoppedOffline(
-  entry: TimeEntry,
-  stopIso: string,
-  keepRunning: { label: string; onClick: () => void }
-) {
+function announceStoppedOffline(entry: TimeEntry, stopIso: string) {
   const at = formatEntryTime(stopIso, useUIStore.getState().timeFormat);
   useUIStore.getState().flashEntry(entry.id);
   openKeepRunningWindow({ ...entry, stop: stopIso });
   toast.dismiss(OFFLINE_START_TOAST);
   if (!entry.projectId) {
-    // Same shape as the online warning: its one action assigns a project (the
-    // undo is the bar's pill). A timer that never reached the server has no
-    // entry to open yet, so it gets no action rather than a different one.
+    // Same shape as the online warning: its one action assigns a project.
+    // A timer that never reached the server has no entry to open yet, so it
+    // gets no action. The undo is always the bar's Keep running pill.
     toast.warning(`Offline — stopped at ${at} with no project`, {
       id: STOP_RECEIPT_TOAST,
       description: "It can't be billed until it has one. Syncs when you reconnect.",
@@ -148,7 +144,6 @@ function announceStoppedOffline(
     id: STOP_RECEIPT_TOAST,
     description: "The entry will sync with that time when you reconnect.",
     duration: KEEP_RUNNING_MS,
-    action: keepRunning,
   });
 }
 
@@ -407,11 +402,13 @@ export function useTimer() {
         toast.info("Another timer is running", { description: "Stop it first to reopen this one." });
         return;
       }
-      useTimerStore.getState().setLastStopped(null);
       toast.dismiss(STOP_RECEIPT_TOAST);
       markActed();
       const reopened: TimeEntry = { ...entry, stop: null, duration: null };
       setRunningEntry(reopened, Date.parse(entry.start));
+      // After the entry is running again, so a listener can tell a reopen from
+      // a new start by the window it closed (the bar announces "running again").
+      useTimerStore.getState().setLastStopped(null);
       queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
         old?.map((e) => (e.id === entry.id ? reopened : e))
       );
@@ -453,11 +450,25 @@ export function useTimer() {
     [queryClient, setRunningEntry, clearTimer]
   );
 
-  // Every stop closes with a receipt: what was saved, and — on the plain one —
-  // "Keep running" to take it back. The warning and task toasts carry their
-  // own action instead: two buttons squeezed the text into five lines, and
-  // the undo is in the bar beside the disc (and on Alt+Shift+R) for the same
-  // ten seconds after every stop. The row also flashes and floats to the
+  // Throw away an entry that was just saved by a stop (the short-stop receipt).
+  const discardSaved = useCallback(
+    (entry: TimeEntry) => {
+      useTimerStore.getState().setLastStopped(null);
+      removeFromCache(entry.id);
+      void (api.timeEntries.delete(entry.id) as Promise<unknown>)
+        .then(() => invalidateEntryDerived(queryClient))
+        .catch((err: unknown) => {
+          if (isQueuedOffline(err)) return;
+          invalidateEntryDerived(queryClient);
+          toast.error("Couldn't discard the entry");
+        });
+    },
+    [queryClient, removeFromCache]
+  );
+
+  // Every stop closes with a receipt of what was saved. The undo is not on it:
+  // it's the bar's Keep running pill (and Alt+Shift+R) for ten seconds after
+  // every stop — on the receipt too, it was the same button twice. The row also flashes and floats to the
   // top of its day. An entry that landed with no project is the one worth
   // raising — for a consultant that's an unbillable hour, and nothing else in
   // the UI would ever point it out — so it takes the warning form.
@@ -465,7 +476,21 @@ export function useTimer() {
     if (!entry) return;
     useUIStore.getState().flashEntry(entry.id);
     openKeepRunningWindow(entry);
-    const keepRunning = { label: "Keep running", onClick: () => reopenStopped(entry) };
+    // Under a minute is usually a start by mistake. It's still saved — a real
+    // 40-second call is real time — but the receipt's action is Discard, not
+    // "Assign project" on an entry nobody meant to make. A task that is due or
+    // has met its estimate still gets "Mark done": that offer rests on
+    // evidence, the mistake is only a guess.
+    if ((entry.duration ?? 0) < 60) {
+      if (offerTaskDone(entry)) return;
+      toast(`Stopped after ${formatDurationShort(entry.duration ?? 0)}`, {
+        id: STOP_RECEIPT_TOAST,
+        description: "Started by mistake?",
+        duration: KEEP_RUNNING_MS,
+        action: { label: "Discard", onClick: () => discardSaved(entry) },
+      });
+      return;
+    }
     if (!entry.projectId) {
       toast.warning(`Stopped ${formatDurationShort(entry.duration ?? 0)} with no project`, {
         id: STOP_RECEIPT_TOAST,
@@ -479,12 +504,13 @@ export function useTimer() {
       return;
     }
     if (offerTaskDone(entry)) return;
+    // The undo lives in the bar (the Keep running pill, Alt+Shift+R); showing
+    // it here too put the same button twice on screen.
     toast(`Saved ${formatDurationShort(entry.duration ?? 0)}${entry.projectName ? ` to ${entry.projectName}` : ""}`, {
       id: STOP_RECEIPT_TOAST,
       duration: KEEP_RUNNING_MS,
-      action: keepRunning,
     });
-  }, [offerTaskDone, reopenStopped]);
+  }, [offerTaskDone, discardSaved]);
 
   // ─── Stop timer ──────────────────────────────────────────────────────────
   // One mutation for every stop — the disc, the hotkey, and "stop at" from the
@@ -502,10 +528,7 @@ export function useTimer() {
     onError: (err, vars) => {
       if (isQueuedOffline(err)) {
         void clearTimerState();
-        announceStoppedOffline(vars.snapshot.entry, vars.stop, {
-          label: "Keep running",
-          onClick: () => reopenStopped({ ...vars.snapshot.entry, stop: vars.stop }),
-        });
+        announceStoppedOffline(vars.snapshot.entry, vars.stop);
         return;
       }
       // The server entry is still running. Put the bar back so the Stop
@@ -634,11 +657,7 @@ export function useTimer() {
         if (outcome !== "none") {
           void clearTimerState();
           if (outcome === "removed") removeFromCache(entry.id);
-          else
-            announceStoppedOffline(entry, stopIso, {
-              label: "Keep running",
-              onClick: () => reopenStopped({ ...entry, stop: stopIso }),
-            });
+          else announceStoppedOffline(entry, stopIso);
           return;
         }
         const twin = await findServerTwin(localStartTime);
@@ -647,7 +666,7 @@ export function useTimer() {
         // already said so.
       })();
     },
-    [patchStopInCache, clearTimer, stopMutation, removeFromCache, reopenStopped]
+    [patchStopInCache, clearTimer, stopMutation, removeFromCache]
   );
   const commitStopRef = useRef(commitStop);
   useEffect(() => {

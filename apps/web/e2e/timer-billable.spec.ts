@@ -31,7 +31,7 @@ test.describe("billable time survives the timer bar", () => {
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
 
     // Picking a billable project answers the question for the user.
-    await page.getByRole("button", { name: "Select project" }).click();
+    await page.getByRole("button", { name: /^(Select|Add) project$/ }).click();
     await page.getByRole("option", { name: /Retainer/ }).click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
 
@@ -147,7 +147,7 @@ test("the Default billable preference actually applies", async ({ page }) => {
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
 
   // A project that says non-billable still wins over the preference…
-  await page.getByRole("button", { name: "Select project" }).click();
+  await page.getByRole("button", { name: /^(Select|Add) project$/ }).click();
   await page.getByRole("option", { name: /Internal/ }).click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
 
