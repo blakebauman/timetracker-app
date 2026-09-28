@@ -93,6 +93,110 @@ through the app.
 
 ---
 
+## Task management
+
+*Audited against the tree at `de34477` (2026-09-27).*
+
+**Status:** tasks shipped in migrations 0031/0032 as the *plan* side of the
+timer: Today / Upcoming / All views, deterministic quick-add tokens (dates,
+`p1`–`p4`, `#project`), four recurrence forms (`daily`, `weekdays`,
+`weekly:<days>`, `monthly:<n>`), one level of subtasks with a tracked-time
+rollup, and the `TaskRail` beside the Timer calendar. Tasks are the plan and
+time entries the actual; every item below should either shrink the gap between
+the two or make it easier to see. Nothing here should turn the app into a
+general-purpose to-do list.
+
+### Phase 0: gaps in what shipped
+- **Live sync** — `routes/tasks.ts` never calls `broadcast()`, so a task edited
+  in one tab stays stale in the others until some entry change happens to
+  invalidate the list. Add a `tasks_changed` event and invalidate the tasks
+  query on receipt.
+- **Undo for complete and delete** — delete is a hard cascade with no undo
+  toast, and complete has none either. Trap: undoing a *recurring* complete has
+  to delete the occurrence it spawned and move `recur_rule` back, so the `PUT`
+  has to return the spawned task's id.
+- **Multi-weekday repeat in `TaskDialog`** — the vocabulary already supports
+  `weekly:1,3`, but the picker only offers "weekly on the due day". UI-only.
+- **Drag to reschedule in Upcoming** — the day groups already exist; dropping a
+  row on another day is a one-field `PUT` of `due_date`.
+
+### Phase 1: capture and find
+- **Quick-add vocabulary** — `next week`, `in 3 days`, a time of day (`3pm`),
+  an estimate (`~45m`), `every mon` / `every 2 weeks`, and `@label` once labels
+  exist. Still deterministic in `parseQuickAdd`, no AI, for the same reason as
+  pacing: capture must be instant and repeatable.
+- **Search** — tasks in the command palette (today it only links to `/tasks`),
+  plus a text filter in All.
+- **List keyboard** — move, complete, edit, priority 1–4, and a global
+  quick-add key. Check it against `⌘I` and the timer hotkey before picking keys.
+- **Inbox (tasks without a project)** — needs `tasks.project_id` nullable,
+  which is a SQLite table rebuild. Starting a timer on an inbox task has to ask
+  for a project, because entries bill to projects. Decide whether capture speed
+  is worth that prompt before building it.
+- **Extension quick-add** — the popup already holds a bearer session; adding a
+  task is one call to `POST /api/tasks`.
+
+### Phase 2: plan meets time
+The part a pure task list can't do, because it has no actual to compare against.
+- **Scheduled blocks** — give a task a local time of day, use its estimate as
+  the duration, and render it as a fourth event kind in `lib/calendarMapping.ts`
+  beside entries, ghosts and gaps. Dropping a task from the rail then asks
+  *schedule* or *log*; today it always logs a finished entry. Starting a
+  scheduled block starts the timer on that task.
+- **Deadline vs due** — due is when you plan to work on it, deadline is when it
+  must be done. A `deadline_date` local day (a day, never an instant, like
+  `due_date`). An approaching deadline with estimate still remaining becomes a
+  risk signal, computed deterministically like pacing.
+- **Tasks in the digest and nudges** — `lib/digest.ts` and `lib/assistant.ts`
+  don't reference tasks at all. The morning digest should list overdue and
+  due-today tasks with their total estimate against calendar-free time; add an
+  overdue-tasks nudge.
+- **Reminders** — a browser notification when a scheduled block starts, via
+  the existing `AssistantNudgeNotifier` path. Email only through the digest; no
+  new cron job.
+
+### Phase 3: organise and review
+- **Labels are tags** — a `task_tags` join onto the existing `tags` table, so
+  there is one vocabulary rather than two. Starting a timer from a task carries
+  its tags onto the entry.
+- **Saved task views** — priority / label / project / due filters, stored the
+  way `saved_reports` stores report configurations.
+- **Completed history** — a per-week list of finished tasks with estimate vs
+  tracked time. Today completed tasks only show as "Completed today" or under
+  All → Done.
+- **Sections / board view** — only if projects outgrow a flat ordered list.
+  Low value for one person; recorded so it isn't re-proposed without that
+  trigger.
+
+### Phase 4: agents
+- **MCP task tools** — `list_tasks` for read keys; `create_task` and
+  `complete_task` only for `read_write` keys. The create / complete /
+  next-occurrence logic lives inline in `routes/tasks.ts` and has to move into a
+  `lib/tasks.ts` helper first, keeping the MCP rule that every tool wraps the
+  same helper REST uses.
+- **Assistant tools** — create and complete a task (approval-gated like the
+  other writes), and "plan my day": fit today's estimates into calendar-free
+  time and propose scheduled blocks.
+
+### Reuses (already in the codebase)
+`broadcast()` in `db/queries.ts`; `nextOccurrence` in
+`@timetracker/core/task-recurrence`; `parseQuickAdd` in
+`react-app/lib/taskUtils.ts`; the `tags` table and `upsertTags()`; the
+`saved_reports` table pattern; the event kinds in `lib/calendarMapping.ts` and
+the rail drop handler in `CalendarBody`; `AssistantNudgeNotifier`; the digest
+renderer; and the read vs `read_write` tool registration in
+`worker/mcp/server.ts`.
+
+### Explicitly rejected
+Assignees, shared projects, comments, attachments and per-project roles — the
+workspace is one person, the same reasoning as the enterprise-identity
+rejection above. Also location reminders, points or streaks (wrong register for
+PRODUCT.md), voice capture, an integration catalog, nesting deeper than one
+level, and a template gallery (a recurring task already copies its subtasks
+forward).
+
+---
+
 ## Backend hardening
 
 - ~~**Cross-isolate auth rate limiting**~~ — shipped September 2026: the app's
