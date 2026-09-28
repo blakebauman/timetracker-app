@@ -14,8 +14,8 @@ apps/extension/
 │   └── service-worker.ts  # timer polling, badge, message handlers, authedFetch
 ├── content/
 │   └── content-script.ts  # timer sync relay (app origins only) + context detection
-├── popup/                 # React popup: sign-in, start/stop, settings
-│   ├── index.html · main.tsx · Popup.tsx
+├── popup/                 # React popup: sign-in, start/stop, task capture, settings
+│   ├── index.html · main.tsx · Popup.tsx · TaskCapture.tsx
 ├── lib/
 │   ├── auth-client.ts     # standard better-auth client (bearer + chrome.storage)
 │   └── apiUrl.ts          # API base-URL allow-list
@@ -39,6 +39,11 @@ apps/extension/
   allow-list (`lib/apiUrl.ts`: `timetracker.run`,
   `localhost`/`127.0.0.1`) so the bearer token is never sent to an arbitrary
   origin.
+- **Task capture:** the popup's "Add a task" line is read by the web app's own
+  parser (`@timetracker/core/quick-add`, the one internal package the extension
+  imports), so `draft report fri p1 ~2h` files the same task in both places. The
+  worker relays it with the bearer token (`GET_PROJECTS`, `CREATE_TASK`); the
+  last project used is remembered in `chrome.storage.local`.
 - **Content script:** the `timetracker:sync` and `timetracker:assistant`
   (assistant nudge-dismissal) relays only run on the app's own origins; on
   GitHub/Jira/Linear it only reads the issue/PR title to pre-fill the

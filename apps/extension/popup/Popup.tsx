@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { normalizeApiUrl, DEFAULT_API_URL } from "../lib/apiUrl";
 import { makeAuthClient, type ExtAuthClient } from "../lib/auth-client";
+import { TaskCapture } from "./TaskCapture";
 
 interface TimerState {
   running: boolean;
@@ -424,6 +425,10 @@ export function Popup() {
           </div>
         )}
       </div>
+
+      {/* Task capture — alongside the timer, not instead of it: a thought
+          worth planning arrives whether or not a timer is running. */}
+      <TaskCapture />
 
       {/* Open app link */}
       <div style={{ padding: "8px 14px", borderTop: `1px solid ${c.border}`, textAlign: "center" }}>
