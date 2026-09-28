@@ -16,6 +16,7 @@ const SUGGESTION_LOOKBACK_DAYS = 90;
 const SUGGESTION_LIMIT = 200;
 import {
   broadcast,
+  clientId,
   formatEntry,
   getEntryById,
   upsertTags,
@@ -23,13 +24,6 @@ import {
   ENTRY_SELECT,
 } from "../db/queries";
 
-/**
- * The tab that made this request, so its own broadcast can be filtered out
- * client-side (see `broadcast`'s `origin`). Absent for the extension and any
- * non-browser caller, which simply means they get the normal fan-out.
- */
-const clientId = (c: { req: { header: (n: string) => string | undefined } }) =>
-  c.req.header("X-Client-Id") ?? null;
 
 /**
  * Decide an entry's billable flag when the caller didn't state one.

@@ -74,7 +74,10 @@ export function formatDueHeading(dueDate: string, today = todayLocalDate()): str
   const [, m, d] = dueDate.split("-").map(Number);
   const rel = formatDueDate(dueDate, today);
   const abs = `${WEEKDAY_LONG[localWeekday(dueDate)].slice(0, 3)} ${d} ${MONTHS[m - 1]}`;
-  return rel === abs ? abs : `${rel} · ${abs}`;
+  // Past the week `formatDueDate` falls back to a bare "4 Oct" (or "4 Jan
+  // 2027"), which isn't a relative word — prefixing it gave "4 Oct · Sun 4 Oct".
+  if (rel === abs || rel.startsWith(`${d} ${MONTHS[m - 1]}`)) return abs;
+  return `${rel} · ${abs}`;
 }
 
 /** Convert a local date string into a Date at local midnight (for the picker). */

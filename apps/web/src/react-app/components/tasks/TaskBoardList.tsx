@@ -12,7 +12,6 @@ import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ColorDot } from "@/components/ColorDot";
 import { TaskRow } from "./TaskRow";
 import { QuickAddTask } from "./QuickAddTask";
@@ -51,6 +50,13 @@ interface Section {
   nodes: TaskNode[];
   /** Drag-to-reorder is only meaningful where the order is the user's own. */
   reorderable?: boolean;
+  /**
+   * Upcoming's day groups: dropping a task here re-dates it to this day. Empty
+   * days are kept (as a one-line "Nothing due" heading) so the week reads as a
+   * week, and so there is somewhere to drop onto. They render at rest, not only
+   * mid-drag: appearing on dragstart reflowed the list under the pointer.
+   */
+  dropDate?: string;
 }
 
 /**
@@ -102,12 +108,13 @@ export function TaskBoardList() {
   const [sortBy, setSortBy] = useState<SortBy>("plan");
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [subtaskParent, setSubtaskParent] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   /** The row a drag is currently over; the insertion line is drawn above it. */
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  /** Upcoming: the day group a drag is over, which re-dates on drop. */
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const phone = useMediaQuery(BELOW_SM);
 
   const today = todayLocalDate();
@@ -160,13 +167,13 @@ export function TaskBoardList() {
       for (let i = 0; i <= 7; i++) {
         const day = addLocalDays(today, i);
         const forDay = tasks.filter((t) => t.active && t.dueDate === day);
-        if (!forDay.length) continue;
         const nodes = nest(withSubtasks(forDay, tasks), compare);
         out.push({
           key: day,
           label: formatDueHeading(day, today),
           nodes,
           trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
+          dropDate: day,
         });
       }
       const later = tasks.filter(
@@ -250,7 +257,7 @@ export function TaskBoardList() {
       : entries.sort((a, b) => a.label.localeCompare(b.label));
   }, [tasks, view, status, groupBy, sortBy, today]);
 
-  const isEmpty = sections.length === 0;
+  const isEmpty = sections.every((s) => s.nodes.length === 0);
   const upcomingCount = tasks.filter(
     (t) => t.active && t.dueDate && compareLocalDates(t.dueDate, today) > 0
   ).length;
@@ -284,6 +291,17 @@ export function TaskBoardList() {
       id: dragId,
       data: { sortOrder: midpointOrder(before?.sortOrder ?? null, after?.sortOrder ?? null) },
     });
+  };
+
+  /** Commit an Upcoming drag: the task takes the day it was dropped on. */
+  const handleDayDrop = (day: string) => {
+    setDragOverDay(null);
+    const id = dragId;
+    setDragId(null);
+    if (!id) return;
+    const task = tasks.find((t) => t.id === id);
+    if (!task || task.dueDate === day) return;
+    updateTask.mutate({ id, data: { dueDate: day } });
   };
 
   const toggleCollapsed = (id: string) =>
@@ -399,7 +417,22 @@ export function TaskBoardList() {
     // the pointer — and not above the row being dragged, where it would promise
     // a move to the place it already is.
     const dropTarget = !!dragId && !dragging && dragOverId === node.task.id;
-    const dragHandlers = section.reorderable
+    // Upcoming rows are draggable between days; the drop is caught by the day
+    // group (see `handleDayDrop`), not the row, so a drop anywhere in a day's
+    // group lands — there is no in-day order to insert into.
+    const dragHandlers = view === "upcoming"
+      ? {
+          draggable: true,
+          onDragStart: (e: React.DragEvent) => {
+            e.dataTransfer.effectAllowed = "move";
+            setDragId(node.task.id);
+          },
+          onDragEnd: () => {
+            setDragId(null);
+            setDragOverDay(null);
+          },
+        }
+      : section.reorderable
       ? {
           draggable: true,
           onDragStart: () => setDragId(node.task.id),
@@ -443,7 +476,7 @@ export function TaskBoardList() {
             showProject={groupBy !== "project" || view !== "all"}
             expanded={open}
             onToggleExpanded={() => toggleCollapsed(node.task.id)}
-            onRequestDelete={setDeleteTarget}
+            onRequestDelete={deleteTask}
             onEdit={setEditTarget}
             onLogTime={(t) => openTaskLogTime(t.id)}
             onAddSubtask={(t) => {
@@ -464,7 +497,7 @@ export function TaskBoardList() {
                   key={child.id}
                   task={child}
                   nested
-                  onRequestDelete={setDeleteTarget}
+                  onRequestDelete={deleteTask}
                   onEdit={setEditTarget}
                   onLogTime={(t) => openTaskLogTime(t.id)}
                 />
@@ -584,8 +617,38 @@ export function TaskBoardList() {
               <div className="space-y-6">
                 {sections.map((section) => {
                   const ordered = section.nodes.map((n) => n.task);
+                  const day = section.dropDate;
+                  const dropProps = day && dragId
+                    ? {
+                        onDragOver: (e: React.DragEvent) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          if (dragOverDay !== day) setDragOverDay(day);
+                        },
+                        onDragLeave: (e: React.DragEvent) => {
+                          // Leaving for a child row isn't leaving the group.
+                          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                            setDragOverDay((cur) => (cur === day ? null : cur));
+                          }
+                        },
+                        onDrop: (e: React.DragEvent) => {
+                          e.preventDefault();
+                          handleDayDrop(day);
+                        },
+                      }
+                    : {};
                   return (
-                    <div key={section.key}>
+                    <div
+                      key={section.key}
+                      {...dropProps}
+                      className={cn(
+                        // The wash spills 8px past the group as an outline, which
+                        // takes no layout space, so nothing moves under the pointer
+                        // as a day lights up.
+                        day && "rounded-container transition-colors duration-fast ease-out-quart",
+                        dragOverDay === day && day && "bg-muted outline-8 outline-solid outline-muted"
+                      )}
+                    >
                       <div className="mb-1 flex items-center gap-2 px-2">
                         {groupBy === "project" && view === "all" && <ColorDot color={section.color} />}
                         {/* Sentence case at Label weight. Uppercase + tracking on every group
@@ -603,7 +666,7 @@ export function TaskBoardList() {
                             on the ground, and the tabs' counts beside it don't
                             fade. The heading's weight is what ranks them. */}
                         <span className="text-xs tabular-nums text-muted-foreground">
-                          {section.nodes.length}
+                          {section.nodes.length || "Nothing due"}
                         </span>
                         {section.trackedSeconds > 0 && (
                           <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
@@ -635,22 +698,6 @@ export function TaskBoardList() {
         onClose={() => setEditTarget(null)}
       />
 
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete task?"
-        description={
-          deleteTarget?.subtaskTotal
-            ? `"${deleteTarget.name}" and its ${deleteTarget.subtaskTotal} subtask${
-                deleteTarget.subtaskTotal === 1 ? "" : "s"
-              } will be permanently deleted. Time already tracked against them is kept.`
-            : `"${deleteTarget?.name}" will be permanently deleted. This cannot be undone.`
-        }
-        onConfirm={() => {
-          if (deleteTarget) deleteTask.mutate(deleteTarget.id);
-          setDeleteTarget(null);
-        }}
-      />
     </Pane>
   );
 }

@@ -306,8 +306,9 @@ export const api = {
       request<unknown>("/tasks", { method: "POST", body: JSON.stringify(body) }),
     update: (id: string, body: Record<string, unknown>) =>
       request<unknown>(`/tasks/${id}`, { method: "PUT", body: JSON.stringify(body) }),
-    delete: (id: string) =>
-      request<unknown>(`/tasks/${id}`, { method: "DELETE" }),
+    /** `keepalive` lets a delete still in its undo window land as the page unloads. */
+    delete: (id: string, opts?: { keepalive?: boolean }) =>
+      request<unknown>(`/tasks/${id}`, { method: "DELETE", keepalive: opts?.keepalive }),
   },
 
   // ─── Clients ──────────────────────────────────────────────────────────────

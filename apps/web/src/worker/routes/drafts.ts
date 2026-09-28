@@ -12,10 +12,7 @@ import {
   getDraft,
   scaleDurations,
 } from "../lib/drafts";
-import { broadcast } from "../db/queries";
-
-const clientId = (c: { req: { header: (n: string) => string | undefined } }) =>
-  c.req.header("X-Client-Id") ?? null;
+import { broadcast, clientId } from "../db/queries";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -33,6 +33,14 @@ export async function broadcast(
   }
 }
 
+/**
+ * The tab that made this request, so its own broadcast can be filtered out
+ * client-side (see `broadcast`'s `origin`). Absent for the extension and any
+ * non-browser caller, which simply means they get the normal fan-out.
+ */
+export const clientId = (c: { req: { header: (n: string) => string | undefined } }) =>
+  c.req.header("X-Client-Id") ?? null;
+
 // SQL fragment for fetching a full time entry with joins.
 // Every joined table is constrained to the entry's own workspace so a foreign
 // project_id/task_id/tag_id (however it got stored) resolves to NULL instead of
