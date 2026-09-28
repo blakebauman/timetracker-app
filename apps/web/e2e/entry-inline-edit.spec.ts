@@ -53,9 +53,15 @@ test.describe("entry list inline editing", () => {
     // store, and the store key was only cleared by a callback on the row — which
     // the save itself unmounted. The store stayed set, so the row that remounted
     // immediately reopened the sheet the user had just dismissed by saving.
-    await page.getByPlaceholder("What are you working on?").fill("Toast edit");
-    await page.getByRole("button", { name: "Start" }).click();
-    await page.getByRole("button", { name: "Stop" }).click();
+    // A timer over a minute old: shorter stops get the "Started by mistake?"
+    // receipt (Discard) instead of the no-project one this test drives.
+    const origin = new URL(page.url()).origin;
+    await page.request.post("/api/time_entries", {
+      data: { description: "Toast edit", start: new Date(Date.now() - 120_000).toISOString() },
+      headers: { origin },
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "Stop timer" }).click();
 
     // Scoped to the toast: the row's own AssignProjectChip carries the same
     // accessible name and would open the project picker instead.

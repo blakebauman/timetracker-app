@@ -1,11 +1,18 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { RotateCcw, Trash2, X } from "lucide-react";
+import { ChevronDown, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CalendarCreateDialog } from "@/components/calendar/CalendarCreateDialog";
 import { TimerControl, TransportDisc } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { ResumeLastButton } from "./ResumeLastButton";
@@ -235,8 +242,10 @@ export function TimerBar() {
           const entry = state.runningEntry;
           const project = projectsRef.current.find((p) => p.id === entry.projectId)?.name;
           const what = entry.description.trim();
+          // Keep running reopens the entry it closed; that isn't a new start.
+          const reopened = prev.lastStopped?.entry.id === entry.id;
           setAnnouncement(
-            `Timer started${what ? `: ${what}` : ""}${project ? `, on ${project}` : ""}`
+            `${reopened ? "Timer running again" : "Timer started"}${what ? `: ${what}` : ""}${project ? `, on ${project}` : ""}`
           );
         } else {
           const took =
@@ -428,19 +437,28 @@ export function TimerBar() {
 
   // The pills under the field. Shared by both bodies so idle and running
   // can't drift — same controls, same order, same accessible names.
+  // Colour-only transitions: the Button base's `transition-all` animated the
+  // chips' max-width across a breakpoint, so for 150ms after a resize the
+  // project chip stayed desktop-wide and pushed the phone's Start disc off
+  // the screen.
   const chipClass =
-    "tt-touch relative h-8 min-w-0 max-w-48 shrink rounded-full max-sm:max-w-40 border border-border bg-background px-2.5 hover:bg-foreground/6";
+    "tt-touch relative h-8 min-w-0 max-w-48 shrink rounded-full max-sm:max-w-40 border border-border bg-background px-2.5 transition-[color,background-color,border-color,box-shadow] hover:bg-foreground/6";
   // An unassigned project is an unbillable hour. Said on the chip before the
   // timer starts — and while it runs — rather than only in a toast after Stop.
   const needsProject =
     !projectId && projects.length > 0 && (isRunning || description.trim().length > 0);
+  const tagsFolded = tags.length > 2;
   const pills = (
     <>
+      {/* The billing-critical chip: from md it never shrinks, and its name
+          gets more room than the other chips — it used to truncate to
+          "Northwind Au…" while three tags beside it showed in full. */}
       <ProjectPicker
         value={projectId}
         onChange={handleProjectChange}
         compact
-        className={chipClass}
+        className={cn(chipClass, "max-w-64 md:shrink-0")}
+        nameClassName="max-w-44"
         attention={needsProject ? "No project yet — time without a project can't be billed" : undefined}
       />
       <TaskPicker
@@ -456,10 +474,13 @@ export function TimerBar() {
             <Badge
               key={tag}
               variant="outline"
-              // Same 32px step as the chips beside it. Below xl the tags fold
-              // into the tag picker's count — at laptop widths, beside the
-              // ribbon, the chips used to wrap the picker onto a row of its own.
-              className="h-8 gap-1 border-border bg-background pr-1 pl-2.5 text-xs font-normal max-xl:hidden"
+              // Same 32px step as the chips beside it. Tags give way before the
+              // project does: below xl, or when there are more than two, they
+              // fold into the tag picker's count.
+              className={cn(
+                "h-8 gap-1 border-border bg-background pr-1 pl-2.5 text-xs font-normal max-xl:hidden",
+                tagsFolded && "hidden"
+              )}
             >
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -486,7 +507,7 @@ export function TimerBar() {
         value={tags}
         onChange={handleTagsChange}
         className={chipClass}
-        labelClassName={tags.length > 0 ? "xl:hidden" : "hidden"}
+        labelClassName={tags.length === 0 ? "hidden" : tagsFolded ? undefined : "xl:hidden"}
       />
     </>
   );
@@ -513,10 +534,14 @@ export function TimerBar() {
         // with `border-0` there is no border to shift colour. `truncate` ends
         // a long description on an ellipsis rather than mid-word.
         "tt-touch h-9 min-w-0 flex-1 truncate border-0 bg-transparent px-2 text-base shadow-none placeholder:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-inset md:text-base dark:bg-transparent",
-        // The field sits bare on the strip in both bodies and could read as a
-        // label; a hover wash says it's editable.
-        "transition-colors duration-fast ease-out-quart hover:bg-foreground/4 focus-visible:bg-transparent",
-        isRunning && "font-medium"
+        "transition-colors duration-fast ease-out-quart",
+        // Idle, the field is where the day's most frequent action starts, and
+        // bare on a full-width strip it read as a status line: it takes the
+        // house input look — a recessed well with a hairline. Running, its text
+        // is the entry's content and stays bare, with a hover wash.
+        isRunning
+          ? "font-medium hover:bg-foreground/4 focus-visible:bg-transparent"
+          : "border border-input bg-background px-4 dark:bg-background"
       )}
     />
   );
@@ -579,6 +604,25 @@ export function TimerBar() {
       {pills}
       {phoneDisc && <span className="ml-auto shrink-0 md:hidden">{disc("phone")}</span>}
     </div>
+  );
+
+  // ─── Fill the gap ────────────────────────────────────────────────────────
+  // The day summary's "42m untracked" is an action, not a statistic: start
+  // the timer from the last stop (the "I forgot to press Start" case — the
+  // bar's draft, backdated), or log that stretch as an entry of its own.
+  const startFromGap = (fromIso: string) => {
+    rememberFocus();
+    startTimer({ ...draft, start: fromIso, fromBar: true });
+  };
+  const [gapRange, setGapRange] = useState<{ start: string; stop: string } | null>(null);
+  const gapDialog = (
+    <CalendarCreateDialog
+      open={gapRange !== null}
+      startIso={gapRange?.start ?? ""}
+      stopIso={gapRange?.stop ?? ""}
+      description={description.trim() || undefined}
+      onClose={() => setGapRange(null)}
+    />
   );
 
   const readout = (where: "phone" | "wide") => (
@@ -645,7 +689,7 @@ export function TimerBar() {
                 the last thing tracked, or a saved preset. On a phone this is
                 the strip's first row, where the running body has its readout. */}
             <div className="ml-auto flex min-w-0 items-center gap-3 max-md:order-1 max-md:basis-full">
-              <DaySummary />
+              <DaySummary onStartFrom={startFromGap} onLogGap={setGapRange} />
               {/* The undo sits beside the disc it undoes, not in the field's
                   row, where it squeezed the placeholder at laptop widths. */}
               <span className="ml-auto flex shrink-0 items-center gap-1">
@@ -669,6 +713,7 @@ export function TimerBar() {
             {disc("wide")}
           </div>
           {discardDialog}
+          {gapDialog}
         </header>
       </>
     );
@@ -714,7 +759,14 @@ export function TimerBar() {
  * while ago — how long nothing has been tracked. The idle bar used to say
  * nothing about the day it was logging; this is the gap it now points at.
  */
-function DaySummary() {
+interface GapActions {
+  /** Start the bar's draft backdated to this instant (the last stop). */
+  onStartFrom: (iso: string) => void;
+  /** Open a new entry covering this range. */
+  onLogGap: (range: { start: string; stop: string }) => void;
+}
+
+function DaySummary(props: GapActions) {
   const trace = useTodayTrace();
   // Unknown is not zero: hold the space while loading, and say nothing at all
   // if the day couldn't be read rather than claim an empty one.
@@ -722,19 +774,19 @@ function DaySummary() {
     return <Skeleton aria-hidden className="h-3 w-24 rounded-full" />;
   }
   if (trace.status === "error") return null;
-  return <DaySummaryReady trace={trace} />;
+  return <DaySummaryReady trace={trace} {...props} />;
 }
 
-function DaySummaryReady({ trace }: { trace: TodayTrace }) {
+function DaySummaryReady({ trace, onStartFrom, onLogGap }: { trace: TodayTrace } & GapActions) {
   const timeFormat = useUIStore((s) => s.timeFormat);
   const gapSeconds =
     trace.lastStop !== null ? Math.floor((trace.now - trace.lastStop) / 1000) : 0;
-  const showGap = gapSeconds >= 5 * 60;
-  const lastStopLabel =
-    trace.lastStop !== null ? formatEntryTime(new Date(trace.lastStop).toISOString(), timeFormat) : "";
+  const showGap = trace.lastStop !== null && gapSeconds >= 5 * 60;
+  const lastStopIso = trace.lastStop !== null ? new Date(trace.lastStop).toISOString() : "";
+  const lastStopLabel = lastStopIso ? formatEntryTime(lastStopIso, timeFormat) : "";
 
   return (
-    <span className="flex min-w-0 items-center gap-2 text-xs">
+    <span className="flex min-w-0 items-center gap-1 text-xs">
       <span className="min-w-0 whitespace-nowrap">
         {trace.total > 0 ? (
           <>
@@ -746,16 +798,37 @@ function DaySummaryReady({ trace }: { trace: TodayTrace }) {
         ) : (
           <span className="text-muted-foreground">Nothing tracked today</span>
         )}
-        {showGap && (
-          <span
-            className="hidden text-muted-foreground sm:inline"
-            title={`Nothing tracked since ${lastStopLabel}`}
-          >
-            {" · "}
-            <span className="font-mono tabular-nums">{formatDurationShort(gapSeconds)}</span> untracked
-          </span>
-        )}
       </span>
+      {showGap && (
+        <>
+          <span aria-hidden className="text-muted-foreground">·</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`${formatDurationShort(gapSeconds)} untracked since ${lastStopLabel} — fill the gap`}
+                className="tt-touch relative flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-foreground/6 hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=open]:bg-foreground/6 data-[state=open]:text-foreground"
+              >
+                <span className="font-mono tabular-nums">{formatDurationShort(gapSeconds)}</span>
+                untracked
+                <ChevronDown aria-hidden className="h-3 w-3 opacity-60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="min-w-56">
+              <DropdownMenuItem onSelect={() => onStartFrom(lastStopIso)}>
+                <Play className="h-3.5 w-3.5" />
+                Start timer from {lastStopLabel}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onLogGap({ start: lastStopIso, stop: new Date().toISOString() })}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Log {lastStopLabel} – now…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      )}
     </span>
   );
 }
@@ -791,12 +864,13 @@ function KeepRunningPill() {
           onClick={() => keepRunning()}
           aria-keyshortcuts="Alt+Shift+R"
           aria-label={`Keep running${what ? ` "${what}"` : ""}`}
-          // Icon-only on a phone, where the label squeezed the empty field's
-          // placeholder to "What are y…"; the name is in aria-label either way.
-          className="shrink-0 animate-in fade-in gap-1.5 duration-base ease-out-quart max-sm:size-8 max-sm:px-0"
+          // Labelled at every width: icon-only on a phone it was a second
+          // circular arrow beside Continue's. It sits in the summary row there,
+          // not the field's, so the placeholder keeps its room.
+          className="shrink-0 animate-in fade-in gap-1.5 duration-base ease-out-quart"
         >
           <RotateCcw aria-hidden className="h-3.5 w-3.5" />
-          <span className="max-sm:hidden">Keep running</span>
+          Keep running
         </Button>
       </TooltipTrigger>
       <TooltipContent>

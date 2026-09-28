@@ -4,7 +4,8 @@ import { signUp } from "./auth";
 /**
  * Discard has always had a confirm; a mis-stop had nothing, and recovering
  * cost a Continue plus a start-time edit. Every Stop now ends on a receipt
- * with a five-second "Keep running" that reopens the same entry.
+ * and the bar offers "Keep running" for ten seconds, which reopens the same
+ * entry. A stop under a minute offers Discard instead of project actions.
  */
 
 async function current(page: Page) {
@@ -27,7 +28,7 @@ test("Keep running reopens the stopped entry from its original start", async ({ 
   const desc = page.getByPlaceholder("What are you working on?");
   await desc.fill("Fieldwork");
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Select project" }).click();
+  await page.getByRole("button", { name: /^(Select|Add) project$/ }).click();
   await page.getByRole("option", { name: /EY Audit/ }).click();
   await page.getByRole("button", { name: "Start timer" }).click();
   await expect.poll(async () => (await current(page))?.id ?? null).not.toBeNull();
@@ -35,11 +36,14 @@ test("Keep running reopens the stopped entry from its original start", async ({ 
 
   await page.waitForTimeout(1500);
   await page.getByRole("button", { name: "Stop timer" }).click();
-  const receipt = page.locator("[data-sonner-toast]").filter({ hasText: "Saved" });
-  await expect(receipt).toContainText("EY Audit");
+  const receipt = page.locator("[data-sonner-toast]").filter({ hasText: "Stopped after" });
+  await expect(receipt).toBeVisible();
   await expect.poll(() => current(page)).toBeNull();
 
-  await receipt.getByRole("button", { name: "Keep running" }).click();
+  await page
+    .locator('header[aria-label="Timer controls"]')
+    .getByRole("button", { name: /^Keep running/ })
+    .click();
   await expect(page.getByRole("button", { name: "Stop timer" })).toBeVisible();
   // The receipt goes with the stop it described.
   await expect(receipt).toHaveCount(0);
@@ -107,4 +111,24 @@ test("another tab sees a reopened timer", async ({ page, context }) => {
     .getByRole("button", { name: /^Keep running/ })
     .click();
   await expect(tabB.getByRole("button", { name: "Stop timer" })).toBeVisible({ timeout: 10_000 });
+});
+
+test("a stop under a minute offers Discard, which removes the entry", async ({ page }) => {
+  await signUp(page);
+  const since = new Date(Date.now() - 86_400_000).toISOString();
+  const until = new Date(Date.now() + 86_400_000).toISOString();
+  await page.getByPlaceholder("What are you working on?").fill("Oops start");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Start timer" }).click();
+  await expect.poll(async () => (await current(page))?.id ?? null).not.toBeNull();
+  await page.getByRole("button", { name: "Stop timer" }).click();
+
+  const receipt = page.locator("[data-sonner-toast]").filter({ hasText: "Started by mistake?" });
+  await receipt.getByRole("button", { name: "Discard" }).click();
+  await expect
+    .poll(async () => {
+      const list = (await (await page.request.get(`/api/time_entries?since=${since}&until=${until}`)).json()) as { description: string }[];
+      return list.some((e) => e.description === "Oops start");
+    })
+    .toBe(false);
 });

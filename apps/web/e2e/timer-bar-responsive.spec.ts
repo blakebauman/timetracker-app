@@ -56,7 +56,7 @@ test("every timer bar control stays on screen at every width", async ({ page }) 
   await page.waitForSelector('header[aria-label="Timer controls"]');
   await page.getByPlaceholder("What are you working on?").fill("Discovery workshop prep");
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Select project" }).click();
+  await page.getByRole("button", { name: /^(Select|Add) project$/ }).click();
   await page.getByRole("option", { name: /Kearney/ }).click();
   await expect(page.getByRole("button", { name: /^Project:/ })).toBeVisible();
   await page.getByRole("button", { name: "Select task" }).click();

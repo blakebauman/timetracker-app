@@ -25,7 +25,7 @@ test("Alt+Shift+S starts the staged draft, from inside the description field", a
   const input = page.getByPlaceholder("What are you working on?");
   await input.fill("Client call — Q3 scoping");
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Select project" }).click();
+  await page.getByRole("button", { name: /^(Select|Add) project$/ }).click();
   await page.getByRole("option", { name: /Retainer/ }).click();
   await expect(page.getByRole("button", { name: /^Project:/ })).toBeVisible();
 

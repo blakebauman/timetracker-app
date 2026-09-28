@@ -39,6 +39,8 @@ interface ProjectPickerProps {
    * warning edge and carries the reason as its accessible description.
    */
   attention?: string;
+  /** Classes for the selected project's name (its truncation width). */
+  nameClassName?: string;
   /** Custom trigger element (single child, receives the popover ref). */
   children?: React.ReactNode;
 }
@@ -51,6 +53,7 @@ export function ProjectPicker({
   children,
   field = false,
   attention,
+  nameClassName,
 }: ProjectPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -104,7 +107,12 @@ export function ProjectPicker({
           // Compact + unselected renders icons only, so the button would have no
           // accessible name at all. Label it unconditionally: even when the name
           // is visible, "ERP Migration" alone doesn't say it's a project picker.
-          aria-label={selected ? `Project: ${selected.name}` : "Select project"}
+          // With the warning showing, the visible "Add project" leads the name
+          // (WCAG 2.5.3, label in name): a voice-control "click Add project"
+          // missed a chip that was named only "Select project".
+          aria-label={
+            selected ? `Project: ${selected.name}` : attention ? "Add project" : "Select project"
+          }
           aria-description={!selected && attention ? attention : undefined}
           title={!selected && attention ? attention : undefined}
           className={cn(
@@ -125,7 +133,7 @@ export function ProjectPicker({
           {selected ? (
             <>
               <ColorDot color={selected.color} />
-              <span className="min-w-0 max-w-30 truncate">{selected.name}</span>
+              <span className={cn("min-w-0 max-w-30 truncate", nameClassName)}>{selected.name}</span>
             </>
           ) : (
             <>
