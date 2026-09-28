@@ -91,7 +91,7 @@ catalog:
   hono: 4.13.8
   "@hono/zod-validator": ^0.8.0
   zod: ^4.4.3
-  better-auth: ^1.7.5
+  better-auth: ^1.7.6
   "@better-auth/passkey": ^1.7.5
   "@modelcontextprotocol/sdk": 1.29.0
   mimetext: ^3.0.28
