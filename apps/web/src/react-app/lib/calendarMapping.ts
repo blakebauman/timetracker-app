@@ -1,5 +1,6 @@
 import type { EventInput } from "@fullcalendar/core";
-import type { TimeEntry, DraftEntry } from "@timetracker/core/schemas";
+import type { TimeEntry, DraftEntry, Task } from "@timetracker/core/schemas";
+import { scheduledBlock } from "@/lib/taskUtils";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { hexToRgba } from "@/lib/colorUtils";
 
@@ -26,6 +27,8 @@ export interface CalendarEventExtendedProps {
   // A proposed entry awaiting review. Carries its own draft so the click
   // handler can open review on the right day without a lookup.
   draft?: DraftEntry;
+  // A task scheduled at a time of day: the plan, beside the tracked actual.
+  task?: Task;
 }
 
 const GHOST_COLOR = "#94a3b8"; // slate-400 — muted, project-agnostic
@@ -101,6 +104,32 @@ export function draftToEvent(draft: DraftEntry): EventInput {
     backgroundColor: hexToRgba(color, 0.08),
     borderColor: hexToRgba(color, 0.65),
     extendedProps: { running: false, draft } satisfies CalendarEventExtendedProps,
+  };
+}
+
+/**
+ * Map a scheduled task to a planned block: its local due day at its local
+ * minute, for its estimate.
+ *
+ * Dotted and nearly hollow, in its project's colour — the plan, not the
+ * record. It never counts toward a total, and it sits beside whatever was
+ * actually tracked in that slot rather than hiding it: plan and actual side by
+ * side is the point. Draggable (reschedules) and resizable (re-estimates),
+ * because moving a plan is the whole job of a plan.
+ */
+export function taskToEvent(task: Task): EventInput | null {
+  const block = scheduledBlock(task);
+  if (!block) return null;
+  const color = task.projectColor ?? DEFAULT_PROJECT_COLOR;
+  return {
+    id: `task:${task.id}`,
+    start: block.start,
+    end: block.end,
+    editable: true,
+    display: "block",
+    backgroundColor: hexToRgba(color, 0.05),
+    borderColor: hexToRgba(color, 0.7),
+    extendedProps: { running: false, task } satisfies CalendarEventExtendedProps,
   };
 }
 

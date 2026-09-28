@@ -47,6 +47,7 @@ import {
   dateToLocalDate,
   dueTone,
   formatDueDate,
+  formatMinute,
   localDateToDate,
 } from "@/lib/taskUtils";
 import { describeRecurRule } from "@timetracker/core/task-recurrence";
@@ -168,6 +169,13 @@ export function TaskRow({
     : null;
 
   const tone = dueTone(task.dueDate);
+  const timeFormat = useUIStore((s) => s.timeFormat);
+  // "Friday" or "Friday 14:00" — a scheduled time rides on the day chip.
+  const dueLabel = task.dueDate
+    ? `${formatDueDate(task.dueDate)}${
+        task.scheduledMinute !== null ? ` ${formatMinute(task.scheduledMinute, timeFormat)}` : ""
+      }`
+    : null;
   const repeats = describeRecurRule(task.recurRule);
   const hasChildren = task.subtaskTotal > 0;
 
@@ -253,6 +261,11 @@ export function TaskRow({
         <span className={cn("min-w-0 flex-1 truncate text-sm", !task.active && "text-muted-foreground line-through")}>
           {task.name}
         </span>
+        {task.scheduledMinute !== null && tone !== "overdue" && (
+          <span className="shrink-0 font-mono text-micro tabular-nums text-muted-foreground">
+            {formatMinute(task.scheduledMinute, timeFormat)}
+          </span>
+        )}
         {task.dueDate && tone === "overdue" && (
           <span className="shrink-0 text-micro text-destructive">Overdue</span>
         )}
@@ -462,7 +475,7 @@ export function TaskRow({
             <Popover open={dueOpen} onOpenChange={setDueOpen}>
               <PopoverTrigger asChild>
                 <button
-                  aria-label={task.dueDate ? `Due ${formatDueDate(task.dueDate)} — change` : "Set due date"}
+                  aria-label={dueLabel ? `Due ${dueLabel} — change` : "Set due date"}
                   className={cn(
                     "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
                     FOCUS_RING,
@@ -471,7 +484,7 @@ export function TaskRow({
                       : "tt-reveal text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {task.dueDate ? formatDueDate(task.dueDate) : <CalendarDays className="h-3.5 w-3.5" />}
+                  {dueLabel ?? <CalendarDays className="h-3.5 w-3.5" />}
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">

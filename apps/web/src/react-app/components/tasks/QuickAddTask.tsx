@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { useCreateTask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
-import { parseQuickAdd, formatDueDate, PRIORITY_LABEL } from "@/lib/taskUtils";
+import { parseQuickAdd, formatDueDate, formatMinute, PRIORITY_LABEL } from "@/lib/taskUtils";
+import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { describeRecurRule } from "@timetracker/core/task-recurrence";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function QuickAddTask({
   const { data: projects = [] } = useProjects();
   const [value, setValue] = useState("");
   const [projectId, setProjectId] = useState<string | null>(defaultProjectId);
+  const timeFormat = useUIStore((s) => s.timeFormat);
 
   // With exactly one project there is no choice to make, and asking for it turns
   // every capture into two interactions. `null` still means "not chosen" for
@@ -82,6 +84,7 @@ export function QuickAddTask({
         ...(dueDate ? { dueDate } : {}),
         ...(parsed.priority ? { priority: parsed.priority } : {}),
         ...(parsed.estimatedSeconds ? { estimatedSeconds: parsed.estimatedSeconds } : {}),
+        ...(parsed.scheduledMinute !== null && dueDate ? { scheduledMinute: parsed.scheduledMinute } : {}),
         ...(recurRule ? { recurRule } : {}),
         ...(parentId ? { parentId } : {}),
       },
@@ -138,7 +141,11 @@ export function QuickAddTask({
         <p className="px-3 text-micro text-muted-foreground">
           {[
             `“${parsed.name}”`,
-            parsed.dueDate ? `due ${formatDueDate(parsed.dueDate).toLowerCase()}` : null,
+            parsed.dueDate
+              ? `due ${formatDueDate(parsed.dueDate).toLowerCase()}${
+                  parsed.scheduledMinute !== null ? ` at ${formatMinute(parsed.scheduledMinute, timeFormat)}` : ""
+                }`
+              : null,
             parsed.priority ? `priority ${PRIORITY_LABEL[parsed.priority].toLowerCase()}` : null,
             parsed.estimatedSeconds ? `estimate ${formatDurationShort(parsed.estimatedSeconds)}` : null,
             recurRule ? describeRecurRule(recurRule)?.toLowerCase() : null,

@@ -195,6 +195,9 @@ export const RecurRuleSchema = z
   .max(64)
   .refine((v) => parseRecurRule(v) !== null, "Unrecognised repeat rule");
 
+/** Minutes after local midnight: 0 (00:00) to 1439 (23:59). */
+export const ScheduledMinuteSchema = z.number().int().min(0).max(1439);
+
 export const TaskSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
@@ -216,6 +219,8 @@ export const TaskSchema = z.object({
   completedAt: z.string().nullable(),
   /** When work began — non-null puts an open task in the board's In progress. */
   startedAt: z.string().nullable(),
+  /** Minutes after local midnight on `dueDate` — a block on the calendar. */
+  scheduledMinute: z.number().int().nullable(),
   recurRule: z.string().nullable(),
   subtaskTotal: z.number(),
   subtaskDone: z.number(),
@@ -231,6 +236,7 @@ export const CreateTaskSchema = z.object({
   priority: TaskPrioritySchema.optional(),
   parentId: z.string().nullable().optional(),
   recurRule: RecurRuleSchema.nullable().optional(),
+  scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
 });
 
 export const UpdateTaskSchema = z.object({
@@ -246,6 +252,8 @@ export const UpdateTaskSchema = z.object({
   recurRule: RecurRuleSchema.nullable().optional(),
   /** Move the task in or out of In progress (sets or clears `startedAt`). */
   inProgress: z.boolean().optional(),
+  /** Needs a due date to mean anything; clearing `dueDate` clears it too. */
+  scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
   /**
    * The completing client's own local date. Present only on the request that
    * ticks a recurring task done, and it is what the next occurrence is measured

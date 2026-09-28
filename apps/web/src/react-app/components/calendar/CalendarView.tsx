@@ -124,6 +124,7 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
             if (props.gap) return ["tt-event-gap"];
             if (props.ghost) return ["tt-event-ghost"];
             if (props.draft) return ["tt-event-draft"];
+            if (props.task) return ["tt-event-planned"];
             return props.running ? ["tt-event-running"] : [];
           }}
           select={(arg: DateSelectArg) =>

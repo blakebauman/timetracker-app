@@ -24,6 +24,7 @@ function formatTask(row: Row) {
     parentId: (row.parent_id as string | null) ?? null,
     completedAt: (row.completed_at as string | null) ?? null,
     startedAt: (row.started_at as string | null) ?? null,
+    scheduledMinute: (row.scheduled_minute as number | null) ?? null,
     recurRule: (row.recur_rule as string | null) ?? null,
     subtaskTotal: (row.subtask_total as number) ?? 0,
     subtaskDone: (row.subtask_done as number) ?? 0,
@@ -157,8 +158,8 @@ export const tasksRouter = new Hono<{
     await c.env.DB.prepare(
       `INSERT INTO tasks
          (id, workspace_id, project_id, name, description, active, estimated_seconds,
-          due_date, priority, sort_order, parent_id, recur_rule, created_at)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
+          due_date, priority, sort_order, parent_id, recur_rule, scheduled_minute, created_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       id,
       workspaceId,
@@ -171,6 +172,8 @@ export const tasksRouter = new Hono<{
       await nextSortOrder(c.env.DB, workspaceId, projectId),
       parentId,
       recurRule,
+      // A time needs a day to sit on.
+      data.dueDate ? (data.scheduledMinute ?? null) : null,
       now
     ).run();
 
@@ -198,6 +201,9 @@ export const tasksRouter = new Hono<{
     if (data.description !== undefined)      set("description", data.description ?? null);
     if (data.estimatedSeconds !== undefined) set("estimated_seconds", data.estimatedSeconds ?? null);
     if (data.dueDate !== undefined)          set("due_date", data.dueDate ?? null);
+    // Clearing the day clears the time with it: a 2pm with no date is nowhere.
+    if (data.dueDate === null)               set("scheduled_minute", null);
+    else if (data.scheduledMinute !== undefined) set("scheduled_minute", data.scheduledMinute ?? null);
     if (data.priority !== undefined)         set("priority", data.priority);
     if (data.sortOrder !== undefined)        set("sort_order", data.sortOrder);
     if (data.inProgress !== undefined) {
@@ -280,8 +286,8 @@ export const tasksRouter = new Hono<{
         await c.env.DB.prepare(
           `INSERT INTO tasks
              (id, workspace_id, project_id, name, description, active, estimated_seconds,
-              due_date, priority, sort_order, parent_id, recur_rule, created_at)
-           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, NULL, ?, ?)`
+              due_date, priority, sort_order, parent_id, recur_rule, scheduled_minute, created_at)
+           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, NULL, ?, ?, ?)`
         ).bind(
           spawnId,
           workspaceId,
@@ -294,6 +300,8 @@ export const tasksRouter = new Hono<{
           existing.priority ?? 4,
           (existing.sort_order as number) ?? 0,
           rule,
+          // A 9am stand-up is at 9am every time it comes round.
+          data.scheduledMinute !== undefined ? data.scheduledMinute : (existing.scheduled_minute ?? null),
           now
         ).run();
 

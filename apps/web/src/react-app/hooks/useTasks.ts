@@ -126,6 +126,12 @@ export function useUpdateTask() {
               ...(data.name !== undefined ? { name: data.name } : {}),
               ...(data.active !== undefined ? { active: data.active } : {}),
               ...(data.dueDate !== undefined ? { dueDate: data.dueDate } : {}),
+              // Mirrors the server: clearing the day clears the time.
+              ...(data.dueDate === null
+                ? { scheduledMinute: null }
+                : data.scheduledMinute !== undefined
+                  ? { scheduledMinute: data.scheduledMinute }
+                  : {}),
               ...(data.priority !== undefined ? { priority: data.priority } : {}),
               ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
               ...(data.estimatedSeconds !== undefined

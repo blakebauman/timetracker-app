@@ -158,6 +158,7 @@ Each tab carries a count, so you can see whether a view is worth opening without
 | `chase SOW in 3 days` | due in 3 days (`in 2 weeks`, `in 1 month` too) |
 | `plan Q4 next week` | due next Monday (`next month` is the 1st) |
 | `draft runbook ~2h` | a 2-hour estimate (`~45m`, `~1h30m`, `~1.5h`) |
+| `call the bank 3pm` | scheduled at 3pm (today, unless the line names a day; `3:30pm`, `15:00`, `at 9:30` too) |
 | `timesheet every fri` | repeats every Friday, first due the coming Friday (`every day`, `every weekday`, `every week`, `every month`, `every mon,thu`) |
 | `chase SOW p1` | priority Urgent (`p1`–`p4`) |
 | `review deck #meridian` | filed under a project whose name starts that way |
@@ -171,7 +172,7 @@ The line under the field shows what it understood before you commit it. Anything
 **Turning a task into time.** Four ways, all of them one gesture:
 
 - **Start a timer** — the ▷ on every row starts the clock with the task's name, project and task already set. While it runs the row shows a stop control instead.
-- **Drag it onto the calendar** — open the task rail beside the Timer's calendar view and drag a task onto a time slot. That logs a finished entry there, as long as its estimate (or half an hour if it has none), with an **Undo** in the toast.
+- **Drag it onto the calendar** — open the task rail beside the Timer's calendar view and drag a task onto a time slot. Onto a slot that has already passed, that logs a finished entry there, as long as its estimate (or half an hour if it has none). Onto a slot still ahead of you, it *schedules* the task there instead (see below). Either way there's an **Undo** in the toast.
 - **Log time already spent** — the clock icon opens the entry form prefilled from the task. Nothing is written until you submit. If the task was due before today, the form opens on the day it was due rather than on today.
 - **Tick it off** — and if nothing is tracked against it, the toast offers to log the time then and there. In the other direction, stopping a timer on a task that's due today or has used up its estimate offers to mark it done.
 
@@ -184,6 +185,8 @@ The line under the field shows what it understood before you commit it. Anything
 **Subtasks.** A task can hold a checklist one level deep. Time is tracked against whichever one you actually worked on, and a parent's tracked total includes its subtasks'. Ticking a parent ticks its children with it.
 
 **Repeats.** A task can repeat daily, on weekdays, weekly on one or more chosen days (pick them under **Weekly on…** in the task dialog), or monthly on a date. The next occurrence is created **when you tick the current one off** — so a repeating task you never complete simply goes overdue rather than piling up copies. If it has subtasks, the fresh occurrence gets a fresh checklist.
+
+**Scheduling a time.** Give a task a time of day, with a time token when you capture it, the **Time** field in the task dialog, or by dropping it on a future calendar slot, and it appears on the Timer's calendar as a *planned* block. The block is dotted and nearly hollow, in the project's colour, and as long as the task's estimate (half an hour without one). It's the plan, so it never counts toward any total, and it sits beside whatever you actually tracked in that slot. Drag the block to move the task, stretch it to change the estimate, click it to open the task, or click its ▷ to start the timer. When a block's time arrives you get a toast with **Start timer** (and a browser notification if the tab is in the background). That's controlled by **Nudges and reminders** under Settings → Productivity. A repeating task keeps its time on every occurrence, and clearing a task's due date clears its time too.
 
 **The task rail.** In the Timer's calendar and split views (on wider screens) a rail on the right shows what's due today, so you can start or drag straight onto the grid you're tracking into. Collapse it with the control in its header.
 
