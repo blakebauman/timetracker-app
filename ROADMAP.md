@@ -130,15 +130,23 @@ the record of what each item needed.*
   the list under the pointer.
 
 ### Phase 1: capture and find
+*Shipped in the capture/search/keyboard PR: quick-add phrases, estimates and
+`every …` repeats, search, and list keys. The Inbox was decided against for
+now (2026-09-28). Every task keeps a project, and quick-add already defaults
+to the sole or last-used one. Revisit only if capture feels slow. Still open:
+extension quick-add (its own PR, next), a time-of-day token (it needs Phase
+2's scheduled time to have somewhere to go), `@label` (needs Phase 3's tags),
+and `every 2 weeks` (needs an interval in the recurrence vocabulary).*
+
 - **Quick-add vocabulary** — `next week`, `in 3 days`, a time of day (`3pm`),
   an estimate (`~45m`), `every mon` / `every 2 weeks`, and `@label` once labels
   exist. Still deterministic in `parseQuickAdd`, no AI, for the same reason as
   pacing: capture must be instant and repeatable.
-- **Search** — tasks in the command palette (today it only links to `/tasks`),
+- ~~**Search**~~ — tasks in the command palette (today it only links to `/tasks`),
   plus a text filter in All.
-- **List keyboard** — move, complete, edit, priority 1–4, and a global
+- ~~**List keyboard**~~ — move, complete, edit, priority 1–4, and a global
   quick-add key. Check it against `⌘I` and the timer hotkey before picking keys.
-- **Inbox (tasks without a project)** — needs `tasks.project_id` nullable,
+- ~~**Inbox (tasks without a project)**~~ *(decided against for now)* — needs `tasks.project_id` nullable,
   which is a SQLite table rebuild. Starting a timer on an inbox task has to ask
   for a project, because entries bill to projects. Decide whether capture speed
   is worth that prompt before building it.

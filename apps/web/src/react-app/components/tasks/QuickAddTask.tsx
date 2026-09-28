@@ -5,6 +5,8 @@ import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { useCreateTask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
 import { parseQuickAdd, formatDueDate, PRIORITY_LABEL } from "@/lib/taskUtils";
+import { formatDurationShort } from "@/lib/dateUtils";
+import { describeRecurRule } from "@timetracker/core/task-recurrence";
 import { cn } from "@/lib/utils";
 import type { Project } from "@timetracker/core/schemas";
 
@@ -40,7 +42,7 @@ export function QuickAddTask({
   defaultDueDate = null,
   parentId = null,
   autoFocus = false,
-  placeholder = "Add a task — try “draft report tomorrow p1”",
+  placeholder = "Add a task — try “draft report fri p1 ~2h”",
   onDone,
   stacked = false,
   className,
@@ -64,6 +66,9 @@ export function QuickAddTask({
     : undefined;
   const effectiveProjectId = hinted?.id ?? projectId ?? soleProject;
   const dueDate = parsed.dueDate ?? defaultDueDate;
+  // A subtask can't repeat on its own (the server drops the rule), so the line
+  // doesn't claim it will.
+  const recurRule = parentId ? null : parsed.recurRule;
 
   const canSubmit = parsed.name.length > 0 && !!effectiveProjectId;
 
@@ -76,6 +81,8 @@ export function QuickAddTask({
         projectId: effectiveProjectId,
         ...(dueDate ? { dueDate } : {}),
         ...(parsed.priority ? { priority: parsed.priority } : {}),
+        ...(parsed.estimatedSeconds ? { estimatedSeconds: parsed.estimatedSeconds } : {}),
+        ...(recurRule ? { recurRule } : {}),
         ...(parentId ? { parentId } : {}),
       },
       {
@@ -127,12 +134,14 @@ export function QuickAddTask({
           A parser that silently eats "fri" is worse than no parser — and since
           the tokens are stripped from the name, the name it will actually save
           is echoed too. */}
-      {(parsed.dueDate || parsed.priority || hinted) && (
+      {(parsed.dueDate || parsed.priority || parsed.estimatedSeconds || recurRule || hinted) && (
         <p className="px-3 text-micro text-muted-foreground">
           {[
             `“${parsed.name}”`,
             parsed.dueDate ? `due ${formatDueDate(parsed.dueDate).toLowerCase()}` : null,
             parsed.priority ? `priority ${PRIORITY_LABEL[parsed.priority].toLowerCase()}` : null,
+            parsed.estimatedSeconds ? `estimate ${formatDurationShort(parsed.estimatedSeconds)}` : null,
+            recurRule ? describeRecurRule(recurRule)?.toLowerCase() : null,
             hinted ? hinted.name : null,
           ]
             .filter(Boolean)

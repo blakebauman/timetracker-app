@@ -155,10 +155,18 @@ Each tab carries a count, so you can see whether a view is worth opening without
 | `draft report tomorrow` | due tomorrow |
 | `send invoice fri` | due the coming Friday |
 | `renew certs 10d` | due in 10 days (`w` and `m` work too) |
+| `chase SOW in 3 days` | due in 3 days (`in 2 weeks`, `in 1 month` too) |
+| `plan Q4 next week` | due next Monday (`next month` is the 1st) |
+| `draft runbook ~2h` | a 2-hour estimate (`~45m`, `~1h30m`, `~1.5h`) |
+| `timesheet every fri` | repeats every Friday, first due the coming Friday (`every day`, `every weekday`, `every week`, `every month`, `every mon,thu`) |
 | `chase SOW p1` | priority Urgent (`p1`–`p4`) |
 | `review deck #meridian` | filed under a project whose name starts that way |
 
-The line under the field shows what it understood before you commit it.
+The line under the field shows what it understood before you commit it. Anything it doesn't recognise stays in the name — "every 2 weeks" isn't a repeat the app can store yet, so it's left as text rather than quietly approximated.
+
+**Finding a task.** Type part of a task's name or notes into the command palette (⌘K / Ctrl+K) and it appears under **Tasks**; choosing it starts a timer on it. On the **All** tab, the search field filters the list by name and notes; a matching subtask brings its parent with it.
+
+**From the keyboard.** On the Tasks page, **J** / **K** move between tasks (then **↓** / **↑** work too). On the highlighted task: **X** completes or reopens it, **E** edits it, **1**–**4** set priority, **S** starts or stops a timer on it, and **Delete** removes it (with Undo). **Q** jumps to the add-task line, and **Alt+Shift+T** gets you there from any page. **?** lists every shortcut.
 
 **Turning a task into time.** Four ways, all of them one gesture:
 

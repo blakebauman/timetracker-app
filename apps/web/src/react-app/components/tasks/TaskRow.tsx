@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ProjectBadge } from "@/components/ProjectBadge";
 import { useUpdateTask, useCompleteTask } from "@/hooks/useTasks";
+import { TASK_ROW_ATTR } from "@/hooks/useTaskListKeys";
 import { useTimer } from "@/hooks/useTimer";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -275,6 +276,10 @@ export function TaskRow({
   return (
     <div className="@container">
     <div
+      // The list's keyboard cursor (useTaskListKeys): focusable by script, not
+      // by Tab — Tab still walks the controls inside, as it always did.
+      {...{ [TASK_ROW_ATTR]: task.id }}
+      tabIndex={-1}
       className={cn(
         // `flex-wrap`: below `@xl` (36rem of row — roughly where the old
         // viewport `sm` put a phone's list row) the metadata drops to its own
@@ -282,6 +287,8 @@ export function TaskRow({
         // claimed the row first and the name — the one thing a row exists to
         // say — was left with two or three characters.
         "group flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
+        // Inset: the card clips its rows to its corners, so an outer ring is cut off.
+        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
         nested && "pl-9",
         running && "bg-primary/5",
         dragging && "opacity-50",

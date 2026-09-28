@@ -1,4 +1,5 @@
 import { useHotkeys } from "react-hotkeys-hook";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,20 @@ const GROUPS: ShortcutGroup[] = [
       { keys: ["Alt", "Shift", "X"], label: "Discard the running timer" },
     ],
   },
+  {
+    title: "Tasks",
+    items: [
+      { keys: ["Alt", "Shift", "T"], label: "Add a task (from anywhere)" },
+      { keys: ["J"], label: "Next task (then ↓ works too)" },
+      { keys: ["K"], label: "Previous task (then ↑ works too)" },
+      { keys: ["X"], label: "Complete or reopen the task" },
+      { keys: ["E"], label: "Edit the task" },
+      { keys: ["1"], label: "Priority 1–4 (keys 1 to 4)" },
+      { keys: ["S"], label: "Start or stop a timer on the task" },
+      { keys: ["Del"], label: "Delete the task (with undo)" },
+      { keys: ["Q"], label: "Jump to the add-task line" },
+    ],
+  },
 ];
 
 function Keys({ keys }: { keys: string[] }) {
@@ -56,10 +71,23 @@ function Keys({ keys }: { keys: string[] }) {
 export function KeyboardShortcuts() {
   const open = useUIStore((s) => s.shortcutsOpen);
   const setOpen = useUIStore((s) => s.setShortcutsOpen);
+  const navigate = useNavigate();
 
-  // "?" (Shift+/) toggles the reference from anywhere in the app.
+  // Capture from anywhere: the Tasks page reads the stamp and focuses its
+  // capture line. A stamp, not a flag, so pressing it again while already
+  // there still re-focuses.
   useHotkeys(
-    "shift+/",
+    "alt+shift+t",
+    () => navigate("/tasks", { state: { capture: Date.now() } }),
+    { preventDefault: true, enableOnFormTags: ["INPUT", "TEXTAREA"] },
+    [navigate]
+  );
+
+  // "?" (Shift+/) toggles the reference from anywhere in the app. Spelled
+  // `slash`: react-hotkeys-hook v5 matches the physical key code ("Slash"),
+  // so "shift+/" never matched and "?" had been dead since the v5 upgrade.
+  useHotkeys(
+    "shift+slash",
     () => {
       const s = useUIStore.getState();
       s.setShortcutsOpen(!s.shortcutsOpen);

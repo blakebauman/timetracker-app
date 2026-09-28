@@ -15,6 +15,7 @@ import { modKey } from "@/lib/platform";
 import { Kbd } from "@/components/ui/kbd";
 import { useTimer } from "@/hooks/useTimer";
 import { useGroupedEntries } from "@/hooks/useEntries";
+import { useAllTasks } from "@/hooks/useTasks";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAssistantStore } from "@/stores/assistantStore";
@@ -30,7 +31,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ColorDot } from "@/components/ColorDot";
-import type { TimeEntry } from "@timetracker/core/schemas";
+import type { Task, TimeEntry } from "@timetracker/core/schemas";
 
 export function CommandPalette() {
   const open = useUIStore((s) => s.commandOpen);
@@ -41,6 +42,7 @@ export function CommandPalette() {
   const { runningEntry } = useTimerStore();
   const openAssistant = useAssistantStore((s) => s.setOpen);
   const { entries } = useGroupedEntries(30);
+  const { data: tasks = [] } = useAllTasks();
 
   useHotkeys(
     "meta+k,ctrl+k",
@@ -67,6 +69,11 @@ export function CommandPalette() {
     close();
   };
 
+  const handleStartTask = (task: Task) => {
+    startTimer({ description: task.name, projectId: task.projectId, taskId: task.id });
+    close();
+  };
+
   const handleNavigate = (path: string) => {
     navigate(path);
     close();
@@ -86,6 +93,20 @@ export function CommandPalette() {
         e.description.toLowerCase().includes(search.toLowerCase())
       )
     : recentUnique;
+
+  // Open tasks matching the query by name or notes. Only while typing: an
+  // unfiltered palette is for actions, and a list of every task would bury them.
+  const query = search.trim().toLowerCase();
+  const matchingTasks = query
+    ? tasks
+        .filter(
+          (t) =>
+            t.active &&
+            (t.name.toLowerCase().includes(query) ||
+              (t.description?.toLowerCase().includes(query) ?? false))
+        )
+        .slice(0, 6)
+    : [];
 
   const navItems = [
     { to: "/", label: "Timer", icon: Timer },
@@ -172,6 +193,33 @@ export function CommandPalette() {
                     <span className="ml-2 flex items-center gap-1 text-xs text-muted-foreground">
                       <ColorDot color={entry.projectColor} className="h-2 w-2" />
                       {entry.projectName}
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {/* Tasks — selecting one starts a timer on it, the same primary action
+            as the ▷ on its row. `value` carries the notes too, so cmdk's own
+            filter keeps a notes-only match instead of hiding it. */}
+        {matchingTasks.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Tasks">
+              {matchingTasks.map((task) => (
+                <CommandItem
+                  key={task.id}
+                  value={`task ${task.name} ${task.description ?? ""} ${task.id}`}
+                  onSelect={() => handleStartTask(task)}
+                >
+                  <ListChecks className="h-4 w-4 shrink-0" />
+                  <span className="flex-1 truncate">{task.name}</span>
+                  {task.projectName && (
+                    <span className="ml-2 flex items-center gap-1 text-xs text-muted-foreground">
+                      <ColorDot color={task.projectColor} className="h-2 w-2" />
+                      {task.projectName}
                     </span>
                   )}
                 </CommandItem>
