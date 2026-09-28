@@ -74,7 +74,7 @@ catalog:
   date-fns: ^4.4.0
   "@fontsource-variable/geist": ^5.2.9
   "@fontsource-variable/geist-mono": ^5.2.8
-  "@fullcalendar/core": ^6.1.21
+  "@fullcalendar/core": ^7.1.0
   "@fullcalendar/daygrid": ^6.1.21
   "@fullcalendar/interaction": ^6.1.21
   "@fullcalendar/react": ^6.1.21
