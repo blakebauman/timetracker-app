@@ -39,6 +39,8 @@ interface TimerControlProps {
    * at the end of the strip instead (TransportDisc), so it passes false.
    */
   withDisc?: boolean;
+  /** Classes for the control's wrapper (the bar shows one per breakpoint). */
+  className?: string;
 }
 
 // The readout and its editor share one box, sized in the mono face's own `ch`,
@@ -72,6 +74,7 @@ export function TimerControl({
   pending = false,
   discClassName,
   withDisc = true,
+  className,
 }: TimerControlProps) {
   const elapsed = useTimerStore((s) => s.elapsed);
   const localStartTime = useTimerStore((s) => s.localStartTime);
@@ -175,9 +178,11 @@ export function TimerControl({
   );
 
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn("flex items-center gap-3", className)}>
       {withDisc && disc}
-      <div className="flex flex-col items-start">
+      {/* Right-aligned: in the bar the readout sits against the Stop disc at
+          the strip's right-hand end, and "since" lines up under its edge. */}
+      <div className="flex flex-col items-end">
         {editing === "elapsed" ? (
           editorInput(
             "Edit elapsed time",
