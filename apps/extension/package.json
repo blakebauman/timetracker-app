@@ -12,6 +12,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@timetracker/core": "workspace:*",
 		"better-auth": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:"

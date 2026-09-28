@@ -133,8 +133,9 @@ the record of what each item needed.*
 *Shipped in the capture/search/keyboard PR: quick-add phrases, estimates and
 `every …` repeats, search, and list keys. The Inbox was decided against for
 now (2026-09-28). Every task keeps a project, and quick-add already defaults
-to the sole or last-used one. Revisit only if capture feels slow. Still open:
-extension quick-add (its own PR, next), a time-of-day token (it needs Phase
+to the sole or last-used one. Revisit only if capture feels slow. Extension
+quick-add shipped in the following PR, sharing the parser via
+`@timetracker/core/quick-add`. Still open: a time-of-day token (it needs Phase
 2's scheduled time to have somewhere to go), `@label` (needs Phase 3's tags),
 and `every 2 weeks` (needs an interval in the recurrence vocabulary).*
 
@@ -150,7 +151,7 @@ and `every 2 weeks` (needs an interval in the recurrence vocabulary).*
   which is a SQLite table rebuild. Starting a timer on an inbox task has to ask
   for a project, because entries bill to projects. Decide whether capture speed
   is worth that prompt before building it.
-- **Extension quick-add** — the popup already holds a bearer session; adding a
+- ~~**Extension quick-add**~~ — the popup already holds a bearer session; adding a
   task is one call to `POST /api/tasks`.
 
 ### Phase 2: plan meets time
