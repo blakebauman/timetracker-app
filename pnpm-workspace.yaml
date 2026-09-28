@@ -99,5 +99,5 @@ catalog:
   "@react-email/ui": ^6.9.0
 
   # ai — @cloudflare/ai-chat peers ai ^6, NOT v7
-  ai: ^6.0.230
-  "@ai-sdk/react": ^3.0.232
+  ai: ^6.0.291
+  "@ai-sdk/react": ^3.0.294
