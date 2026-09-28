@@ -23,6 +23,11 @@ extension accesses, why, and how it is handled.
   keep you signed in. It is removed on sign-out or when it expires.
 - **Timer data.** The description, project, and start/stop times of the timer you
   start or view, exchanged with the Time Tracker API.
+- **Tasks you add.** The text you type into "Add a task" (with the date,
+  priority, estimate and repeat read out of it) and the project you pick, sent to
+  the Time Tracker API to create the task. The last project you picked is
+  remembered locally (`chrome.storage.local`) and your project names are fetched
+  to fill the picker.
 - **Page context (titles only).** On `github.com`, `*.atlassian.net`, and
   `linear.app`, the extension reads the current issue/PR/ticket **title** to
   pre-fill the timer description. It does not read page content otherwise and
@@ -31,7 +36,7 @@ extension accesses, why, and how it is handled.
 ## How it is used
 
 Solely to operate the timer on your behalf: authenticate you, show and control
-your running timer, and pre-fill descriptions. We do **not** sell your data, use
+your running timer, add the tasks you type, and pre-fill descriptions. We do **not** sell your data, use
 it for advertising, or share it with third parties beyond the Time Tracker
 backend that provides the service.
 

@@ -472,6 +472,63 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         break;
       }
 
+      case "GET_PROJECTS": {
+        // For the popup's task capture: tasks always belong to a project.
+        const { apiUrl, authToken } = (await chrome.storage.local.get([
+          "apiUrl",
+          "authToken",
+        ])) as { apiUrl?: string; authToken?: string };
+        if (!authToken) {
+          sendResponse({ ok: false, error: "Not signed in" });
+          break;
+        }
+        try {
+          const res = await authedFetch(resolveBase(apiUrl), "/api/projects", authToken);
+          if (!res || !res.ok) {
+            sendResponse({ ok: false, error: res ? "Failed to load projects" : "Session expired" });
+            break;
+          }
+          const projects = (await res.json()) as Array<{ id: string; name: string; color: string | null }>;
+          sendResponse({
+            ok: true,
+            projects: projects.map((p) => ({ id: p.id, name: p.name, color: p.color })),
+          });
+        } catch (err) {
+          sendResponse({ ok: false, error: String(err) });
+        }
+        break;
+      }
+
+      case "CREATE_TASK": {
+        // The popup parses the line (same `parseQuickAdd` as the web app) and
+        // sends the fields; this only relays them with the bearer token. The
+        // server validates everything, as it does for the web app.
+        const { apiUrl, authToken } = (await chrome.storage.local.get([
+          "apiUrl",
+          "authToken",
+        ])) as { apiUrl?: string; authToken?: string };
+        if (!authToken) {
+          sendResponse({ ok: false, error: "Not signed in" });
+          break;
+        }
+        try {
+          const res = await authedFetch(resolveBase(apiUrl), "/api/tasks", authToken, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(msg.task ?? {}),
+          });
+          if (!res || !res.ok) {
+            sendResponse({ ok: false, error: res ? "Couldn't add the task" : "Session expired" });
+            break;
+          }
+          const task = (await res.json()) as { id: string; name: string };
+          sendResponse({ ok: true, task });
+        } catch (err) {
+          sendResponse({ ok: false, error: String(err) });
+        }
+        break;
+      }
+
       case "PAGE_CONTEXT": {
         // Store the latest page context so popup can pre-fill it
         await chrome.storage.session.set({ pageContext: msg.context });
