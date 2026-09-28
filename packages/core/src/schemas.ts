@@ -214,6 +214,8 @@ export const TaskSchema = z.object({
   /** Non-null on a subtask. One level only: a subtask can never be a parent. */
   parentId: z.string().nullable(),
   completedAt: z.string().nullable(),
+  /** When work began — non-null puts an open task in the board's In progress. */
+  startedAt: z.string().nullable(),
   recurRule: z.string().nullable(),
   subtaskTotal: z.number(),
   subtaskDone: z.number(),
@@ -242,6 +244,8 @@ export const UpdateTaskSchema = z.object({
   sortOrder: z.number().optional(),
   parentId: z.string().nullable().optional(),
   recurRule: RecurRuleSchema.nullable().optional(),
+  /** Move the task in or out of In progress (sets or clears `startedAt`). */
+  inProgress: z.boolean().optional(),
   /**
    * The completing client's own local date. Present only on the request that
    * ticks a recurring task done, and it is what the next occurrence is measured

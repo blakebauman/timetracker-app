@@ -173,9 +173,13 @@ The part a pure task list can't do, because it has no actual to compare against.
 - **Completed history** — a per-week list of finished tasks with estimate vs
   tracked time. Today completed tasks only show as "Completed today" or under
   All → Done.
-- **Sections / board view** — only if projects outgrow a flat ordered list.
-  Low value for one person; recorded so it isn't re-proposed without that
-  trigger.
+- ~~**Board view**~~ — shipped as a fourth Tasks tab with fixed workflow
+  columns (To do / In progress / Done) rather than per-project sections.
+  Stage is `active` plus a new `tasks.started_at` (migration 0035), set by the
+  first entry logged against the task and by moving the card; stored rather
+  than derived so a drag back to To do can win over past tracked time.
+  **Still open:** freeform per-project lists (named, reorderable columns),
+  only if the fixed stages prove too coarse.
 
 ### Phase 4: agents
 - **MCP task tools** — `list_tasks` for read keys; `create_task` and

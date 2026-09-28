@@ -17,13 +17,14 @@ import { TaskRow } from "./TaskRow";
 import { QuickAddTask } from "./QuickAddTask";
 import { TaskDialog } from "./TaskDialog";
 import { TaskViewTabs, type TaskView } from "./TaskViewTabs";
-import { useAllTasks, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
+import { useAllTasks, useCompleteTask, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
 import { BELOW_SM, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort } from "@/lib/dateUtils";
 import {
   comparePlanned,
   formatDueHeading,
+  localDateToDate,
   midpointOrder,
   nest,
   withSubtasks,
@@ -40,6 +41,11 @@ import type { Task } from "@timetracker/core/schemas";
 type StatusFilter = "all" | "active" | "done";
 type GroupBy = "project" | "status" | "due" | "none";
 type SortBy = "name" | "estimate" | "tracked" | "recent" | "plan";
+/** The board's columns. Derived from `active` + `startedAt`, never stored as one field. */
+type Stage = "todo" | "doing" | "done";
+
+/** How long a finished task stays on the board before it's only in All → Done. */
+const BOARD_DONE_DAYS = 7;
 
 interface Section {
   key: string;
@@ -57,6 +63,8 @@ interface Section {
    * mid-drag: appearing on dragstart reflowed the list under the pointer.
    */
   dropDate?: string;
+  /** Board columns: dropping a card here moves it to this stage. */
+  stage?: Stage;
 }
 
 /**
@@ -100,6 +108,7 @@ export function TaskBoardList() {
   const { data: tasks = [], isLoading, isError, refetch } = useAllTasks();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
+  const completeTask = useCompleteTask();
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
 
   const [view, setView] = useState<TaskView>("today");
@@ -115,6 +124,8 @@ export function TaskBoardList() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   /** Upcoming: the day group a drag is over, which re-dates on drop. */
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  /** Board: the column a drag is over, which changes stage on drop. */
+  const [dragOverStage, setDragOverStage] = useState<Stage | null>(null);
   const phone = useMediaQuery(BELOW_SM);
 
   const today = todayLocalDate();
@@ -191,6 +202,41 @@ export function TaskBoardList() {
       return out;
     }
 
+    // ─── Board ──────────────────────────────────────────────────────────────
+    //
+    // Top-level tasks only, like every other view: a subtask rides its parent's
+    // card. Done keeps a week of finished work — long enough to review, short
+    // enough that the column doesn't become the archive (All → Done is that).
+    if (view === "board") {
+      // Local midnight N days back, from `today` rather than the clock so the
+      // memo stays pure and rolls over with the day like the other views.
+      const doneSince = localDateToDate(addLocalDays(today, -BOARD_DONE_DAYS)).toISOString();
+      const top = tasks.filter((t) => !t.parentId);
+      const byStage: Record<Stage, Task[]> = {
+        todo: top.filter((t) => t.active && !t.startedAt),
+        doing: top.filter((t) => t.active && t.startedAt),
+        // A card ticked a moment ago has no `completedAt` until the refetch
+        // lands; it counts as just now rather than blinking out and back.
+        done: top.filter((t) => !t.active && (!t.completedAt || t.completedAt >= doneSince)),
+      };
+      const recentFirst = (a: Task, b: Task) =>
+        (b.completedAt ?? "\uffff").localeCompare(a.completedAt ?? "\uffff");
+      const column = (stage: Stage, label: string): Section => {
+        const nodes = nest(
+          withSubtasks(byStage[stage], tasks),
+          stage === "done" ? recentFirst : comparePlanned
+        );
+        return {
+          key: stage,
+          label,
+          stage,
+          nodes,
+          trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
+        };
+      };
+      return [column("todo", "To do"), column("doing", "In progress"), column("done", "Done")];
+    }
+
     // ─── All ────────────────────────────────────────────────────────────────
     const filtered = tasks.filter((t) =>
       status === "all" ? true : status === "active" ? t.active : !t.active
@@ -257,7 +303,9 @@ export function TaskBoardList() {
       : entries.sort((a, b) => a.label.localeCompare(b.label));
   }, [tasks, view, status, groupBy, sortBy, today]);
 
-  const isEmpty = sections.every((s) => s.nodes.length === 0);
+  // A board with empty columns is still a board; only a workspace with no tasks
+  // at all gets the first-run state there.
+  const isEmpty = view === "board" ? !hasAnyTask : sections.every((s) => s.nodes.length === 0);
   const upcomingCount = tasks.filter(
     (t) => t.active && t.dueDate && compareLocalDates(t.dueDate, today) > 0
   ).length;
@@ -274,6 +322,7 @@ export function TaskBoardList() {
       today: overdue + top.filter((t) => t.dueDate === today).length,
       upcoming: top.filter((t) => t.dueDate && compareLocalDates(t.dueDate, today) > 0).length,
       all: top.length,
+      board: top.filter((t) => t.startedAt).length,
     };
   }, [tasks, today]);
 
@@ -302,6 +351,30 @@ export function TaskBoardList() {
     const task = tasks.find((t) => t.id === id);
     if (!task || task.dueDate === day) return;
     updateTask.mutate({ id, data: { dueDate: day } });
+  };
+
+  /**
+   * Commit a board drag. Stage is two fields, so each move sets what it needs:
+   * reopening a done task, and setting or clearing `startedAt`. Done goes
+   * through `completeTask` so a card dragged there gets the same recurrence
+   * spawn and Undo toast as a ticked checkbox.
+   */
+  const handleStageDrop = (stage: Stage) => {
+    setDragOverStage(null);
+    const id = dragId;
+    setDragId(null);
+    const task = id ? tasks.find((t) => t.id === id) : undefined;
+    if (!task) return;
+    if (stage === "done") {
+      if (task.active) completeTask(task, true);
+      return;
+    }
+    const inProgress = stage === "doing";
+    if (!task.active) {
+      updateTask.mutate({ id: task.id, data: { active: true, inProgress } });
+    } else if (Boolean(task.startedAt) !== inProgress) {
+      updateTask.mutate({ id: task.id, data: { inProgress } });
+    }
   };
 
   const toggleCollapsed = (id: string) =>
@@ -420,7 +493,7 @@ export function TaskBoardList() {
     // Upcoming rows are draggable between days; the drop is caught by the day
     // group (see `handleDayDrop`), not the row, so a drop anywhere in a day's
     // group lands — there is no in-day order to insert into.
-    const dragHandlers = view === "upcoming"
+    const dragHandlers = view === "upcoming" || view === "board"
       ? {
           draggable: true,
           onDragStart: (e: React.DragEvent) => {
@@ -430,6 +503,7 @@ export function TaskBoardList() {
           onDragEnd: () => {
             setDragId(null);
             setDragOverDay(null);
+            setDragOverStage(null);
           },
         }
       : section.reorderable
@@ -613,7 +687,67 @@ export function TaskBoardList() {
               />
             )}
 
-            {empty ?? (
+            {empty ?? (view === "board" ? (
+              // Columns side by side from md up; stacked on a phone, where
+              // cards move through the ⋯ menu (HTML drag doesn't exist on touch).
+              <div className="grid items-start gap-4 md:grid-cols-3">
+                {sections.map((section) => {
+                  const stage = section.stage!;
+                  const ordered = section.nodes.map((n) => n.task);
+                  return (
+                    <section
+                      key={section.key}
+                      aria-label={section.label}
+                      onDragOver={(e) => {
+                        if (!dragId) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (dragOverStage !== stage) setDragOverStage(stage);
+                      }}
+                      onDragLeave={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                          setDragOverStage((cur) => (cur === stage ? null : cur));
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        handleStageDrop(stage);
+                      }}
+                      className={cn(
+                        // Same wash-as-outline as Upcoming's days: lighting a
+                        // column up must not move anything under the pointer.
+                        "min-w-0 rounded-container transition-colors duration-fast ease-out-quart",
+                        dragOverStage === stage && "bg-muted outline-8 outline-solid outline-muted"
+                      )}
+                    >
+                      <div className="mb-1 flex items-center gap-2 px-2">
+                        <h2 className="text-xs font-medium text-muted-foreground">{section.label}</h2>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {section.nodes.length}
+                        </span>
+                        {section.trackedSeconds > 0 && (
+                          <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
+                            {formatDurationShort(section.trackedSeconds)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {section.nodes.map((node, i) => renderNode(node, ordered, i, section))}
+                        {section.nodes.length === 0 && (
+                          <p className="rounded-container border border-dashed px-3 py-4 text-xs text-muted-foreground">
+                            {stage === "todo"
+                              ? "Nothing waiting. New tasks land here."
+                              : stage === "doing"
+                                ? "Start a timer on a task, or drag one here."
+                                : `Tasks you finish stay here for ${BOARD_DONE_DAYS} days.`}
+                          </p>
+                        )}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            ) : (
               <div className="space-y-6">
                 {sections.map((section) => {
                   const ordered = section.nodes.map((n) => n.task);
@@ -681,7 +815,7 @@ export function TaskBoardList() {
                   );
                 })}
               </div>
-            )}
+            ))}
           </>
         )}
       </PaneScroll>

@@ -18,6 +18,7 @@ import {
   broadcast,
   clientId,
   formatEntry,
+  markTaskStarted,
   getEntryById,
   upsertTags,
   tagLinkStatements,
@@ -213,6 +214,7 @@ export const timeEntriesRouter = new Hono<{
     if (data.tags?.length) {
       await upsertTags(c.env.DB, workspaceId, id, data.tags);
     }
+    if (data.taskId) await markTaskStarted(c.env.DB, workspaceId, data.taskId, data.start);
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
     c.executionCtx.waitUntil(broadcast(c.env, workspaceId, data.stop ? "entries:changed" : "timer:start", entry, clientId(c)));
@@ -372,6 +374,7 @@ export const timeEntriesRouter = new Hono<{
       await c.env.DB.prepare(`DELETE FROM time_entry_tags WHERE time_entry_id = ?`).bind(id).run();
       if (data.tags.length) await upsertTags(c.env.DB, workspaceId, id, data.tags);
     }
+    if (data.taskId) await markTaskStarted(c.env.DB, workspaceId, data.taskId, now);
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
     // A reopen is a timer starting, as far as every other tab and the

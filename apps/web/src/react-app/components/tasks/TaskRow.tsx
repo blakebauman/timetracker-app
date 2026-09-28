@@ -12,6 +12,8 @@ import {
   CalendarDays,
   Flag,
   Plus,
+  Circle,
+  CircleDot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -267,13 +269,18 @@ export function TaskRow({
   const showSubtaskCount = hasChildren && !nested;
   const hasMeta = showDue || showProjectBadge || showSubtaskCount || Boolean(repeats);
 
+  // Laid out by its own width, not the viewport's: the same row sits full-width
+  // in a list and in a ~370px board column on a wide screen, and a viewport
+  // breakpoint gave the column the one-line layout — names cut to "D…".
   return (
+    <div className="@container">
     <div
       className={cn(
-        // `flex-wrap`: below `sm` the metadata drops to its own line under the
-        // name. On a phone the due chip, project pill and actions were claiming
-        // the row first and the name — the one thing a row exists to say — was
-        // left with two or three characters.
+        // `flex-wrap`: below `@xl` (36rem of row — roughly where the old
+        // viewport `sm` put a phone's list row) the metadata drops to its own
+        // line under the name. Otherwise the due chip, project pill and actions
+        // claimed the row first and the name — the one thing a row exists to
+        // say — was left with two or three characters.
         "group flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
         nested && "pl-9",
         running && "bg-primary/5",
@@ -420,11 +427,11 @@ export function TaskRow({
 
       {/* ─── Metadata ──────────────────────────────────────────────────────── */}
 
-      {/* One group below `sm` (its own full-width line, indented under the
-          name), dissolved into the row above it with `contents` so the desktop
+      {/* One group below `@xl` (its own full-width line, indented under the
+          name), dissolved into the row above it with `contents` so the wide
           layout is byte-for-byte what it was. */}
       {hasMeta && (
-        <div className="order-last flex min-w-0 basis-full items-center gap-2 pl-6 sm:contents">
+        <div className="order-last flex min-w-0 basis-full items-center gap-2 pl-6 @xl:contents">
           {showSubtaskCount && (
             <span
               className="shrink-0 text-micro tabular-nums text-muted-foreground"
@@ -509,7 +516,7 @@ export function TaskRow({
             aria-label={`Log time to ${task.name}`}
             title="Log time already spent on this task"
             onClick={() => onLogTime(task)}
-            className="hidden sm:inline-flex"
+            className="hidden @xl:inline-flex"
           >
             <Clock className="h-3 w-3" />
           </Button>
@@ -596,6 +603,23 @@ export function TaskRow({
                 Log time
               </DropdownMenuItem>
 
+              {/* The board's drag, for keyboards and touch screens — HTML drag
+                  and drop is neither. A subtask has no card of its own. */}
+              {!nested && task.active && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    updateTask.mutate({ id: task.id, data: { inProgress: !task.startedAt } })
+                  }
+                >
+                  {task.startedAt ? (
+                    <Circle className="h-3.5 w-3.5" />
+                  ) : (
+                    <CircleDot className="h-3.5 w-3.5" />
+                  )}
+                  {task.startedAt ? "Move back to To do" : "Mark in progress"}
+                </DropdownMenuItem>
+              )}
+
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={() => onRequestDelete(task)}>
                 <Trash2 className="h-3.5 w-3.5" />
@@ -607,6 +631,7 @@ export function TaskRow({
 
         {startControl}
       </div>
+    </div>
     </div>
   );
 }
