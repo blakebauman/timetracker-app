@@ -85,6 +85,7 @@ export function QuickAddTask({
         ...(parsed.priority ? { priority: parsed.priority } : {}),
         ...(parsed.estimatedSeconds ? { estimatedSeconds: parsed.estimatedSeconds } : {}),
         ...(parsed.scheduledMinute !== null && dueDate ? { scheduledMinute: parsed.scheduledMinute } : {}),
+        ...(parsed.deadlineDate ? { deadlineDate: parsed.deadlineDate } : {}),
         ...(recurRule ? { recurRule } : {}),
         ...(parentId ? { parentId } : {}),
       },
@@ -137,7 +138,7 @@ export function QuickAddTask({
           A parser that silently eats "fri" is worse than no parser — and since
           the tokens are stripped from the name, the name it will actually save
           is echoed too. */}
-      {(parsed.dueDate || parsed.priority || parsed.estimatedSeconds || recurRule || hinted) && (
+      {(parsed.dueDate || parsed.deadlineDate || parsed.priority || parsed.estimatedSeconds || recurRule || hinted) && (
         <p className="px-3 text-micro text-muted-foreground">
           {[
             `“${parsed.name}”`,
@@ -146,6 +147,7 @@ export function QuickAddTask({
                   parsed.scheduledMinute !== null ? ` at ${formatMinute(parsed.scheduledMinute, timeFormat)}` : ""
                 }`
               : null,
+            parsed.deadlineDate ? `deadline ${formatDueDate(parsed.deadlineDate).toLowerCase()}` : null,
             parsed.priority ? `priority ${PRIORITY_LABEL[parsed.priority].toLowerCase()}` : null,
             parsed.estimatedSeconds ? `estimate ${formatDurationShort(parsed.estimatedSeconds)}` : null,
             recurRule ? describeRecurRule(recurRule)?.toLowerCase() : null,

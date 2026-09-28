@@ -8,6 +8,7 @@ import type { AssistantNudge } from "@timetracker/core/schemas";
 import { fetchWorkspaceEvents } from "./calendar-connections";
 import type { ExternalEvent } from "./calendar-providers";
 import { atRiskProjects, loadProjectPacing, type ProjectPacing } from "./pacing";
+import { describeDay, loadTaskPlan, type TaskPlan } from "./task-plan";
 import { promptSafe } from "./untrusted-text";
 
 // How far ahead a meeting can be and still get a "starts soon" nudge.
@@ -21,6 +22,8 @@ const ALL_DAY_MS = 8 * 60 * 60 * 1000;
 // At most this many budget warnings at once — past two or three they stop being
 // a prompt and become a wall the user learns to dismiss without reading.
 const MAX_BUDGET_NUDGES = 2;
+// Same reasoning for deadlines: the two nearest, not a list.
+const MAX_DEADLINE_NUDGES = 2;
 
 interface RunningEntry {
   id: string;
@@ -141,7 +144,8 @@ export function buildNudges(
   offsetMinutes: number,
   facts: TodayFacts,
   events: ExternalEvent[],
-  pacing: ProjectPacing[] = []
+  pacing: ProjectPacing[] = [],
+  plan: Pick<TaskPlan, "overdue" | "deadlines"> = { overdue: 0, deadlines: [] }
 ): AssistantNudge[] {
   const nudges: AssistantNudge[] = [];
   const { localHour, localWeekday, localDate } = localDayBounds(nowMs, offsetMinutes);
@@ -258,14 +262,52 @@ export function buildNudges(
     }
   }
 
+  // Deadlines: a commitment, so each nearby one is worth its own line. Keyed by
+  // task *and* deadline, so moving the deadline re-arms the alert.
+  for (const risk of plan.deadlines.slice(0, MAX_DEADLINE_NUDGES)) {
+    const when = describeDay(risk.task.deadlineDate!, risk.daysLeft);
+    const left =
+      risk.remainingSeconds && risk.remainingSeconds > 0
+        ? ` About ${formatDuration(risk.remainingSeconds * 1000)} of its estimate is left.`
+        : "";
+    nudges.push({
+      id: `deadline_risk:${risk.task.id}:${risk.task.deadlineDate}`,
+      kind: "deadline_risk",
+      title: risk.daysLeft < 0 ? "Deadline passed" : risk.daysLeft === 0 ? "Due by today" : "Deadline coming up",
+      body:
+        risk.daysLeft < 0
+          ? `“${risk.task.name}” was due by ${when} and is still open.${left}`
+          : `“${risk.task.name}” is due by ${when}.${left}`,
+      event: null,
+    });
+  }
+
+  // Overdue plans: one counted line a day, not one per task — a backlog of
+  // slipped due dates is a single fact ("you're behind"), and ten toasts about
+  // it would be noise.
+  if (plan.overdue > 0) {
+    nudges.push({
+      id: `tasks_overdue:${localDate}`,
+      kind: "tasks_overdue",
+      title: plan.overdue === 1 ? "A task is overdue" : `${plan.overdue} tasks are overdue`,
+      body:
+        plan.overdue === 1
+          ? "One open task is past its due date. Re-date it or tick it off."
+          : `${plan.overdue} open tasks are past their due dates. Re-date them or tick them off.`,
+      event: null,
+    });
+  }
+
   // Ended-meeting nudges are the most actionable — surface them first.
   const order: Record<AssistantNudge["kind"], number> = {
     meeting_now: 0,
     untracked_meeting: 1,
     meeting_soon: 2,
     long_timer: 3,
-    nothing_tracked: 4,
-    budget_risk: 5,
+    deadline_risk: 4,
+    nothing_tracked: 5,
+    tasks_overdue: 6,
+    budget_risk: 7,
   };
   return nudges.sort((a, b) => order[a.kind] - order[b.kind]).slice(0, 12);
 }
@@ -277,13 +319,14 @@ export async function computeNudges(
   offsetMinutes: number
 ): Promise<AssistantNudge[]> {
   const nowMs = Date.now();
-  const { dayStartIso, dayEndIso } = localDayBounds(nowMs, offsetMinutes);
-  const [facts, events, pacing] = await Promise.all([
+  const { dayStartIso, dayEndIso, localDate } = localDayBounds(nowMs, offsetMinutes);
+  const [facts, events, pacing, plan] = await Promise.all([
     loadTodayFacts(env.DB, workspaceId, dayStartIso, dayEndIso),
     loadTodayEvents(env, workspaceId, dayStartIso, dayEndIso),
     loadProjectPacing(env.DB, workspaceId, nowMs),
+    loadTaskPlan(env.DB, workspaceId, localDate, localDate),
   ]);
-  return buildNudges(nowMs, offsetMinutes, facts, events, pacing);
+  return buildNudges(nowMs, offsetMinutes, facts, events, pacing, plan);
 }
 
 /**
