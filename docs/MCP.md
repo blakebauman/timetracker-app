@@ -20,8 +20,8 @@ Durable Object — so a client can reconnect at any time without losing anything
 
 | Scope | What the assistant can do |
 |---|---|
-| **Read only** | Projects, clients, entries, summaries, budgets, the running timer, drafts |
-| **Read + write** | All of the above, plus start/stop timers, log entries, and draft a day |
+| **Read only** | Projects, clients, entries, summaries, budgets, the running timer, drafts, tasks |
+| **Read + write** | All of the above, plus start/stop timers, log entries, draft a day, and create/complete tasks |
 
 The key is shown **once** and cannot be recovered — only its SHA-256 is stored.
 If you lose it, revoke it and make another. Revocation takes effect on the very
@@ -121,7 +121,10 @@ reach — 7 on a read key, 11 on read+write.
 | `get_project_pacing` | read | Budget spent, burn rate, projected overrun |
 | `get_running_timer` | read | What's running now, and for how long |
 | `list_drafts` | read | Proposals awaiting review, with why each was proposed |
-| `start_timer` | read+write | Stops any running timer first, as the app does |
+| `list_tasks` | read | Open, done or all tasks: due date, scheduled time, deadline, priority, estimate vs tracked, tags; `dueBy` for "what's due" |
+| `start_timer` | read+write | Stops any running timer first, as the app does. Optional `taskId`: tracks against the task, moves it to In progress, inherits its tags |
+| `create_task` | read+write | Same rules as the app (one level of subtasks, tags joined by name); a `scheduledTime` puts it on the calendar |
+| `complete_task` | read+write | Ticks subtasks too; a repeating task gets its next occurrence from the user's local day (pass `timezoneOffsetMinutes`). Idempotent |
 | `stop_timer` | read+write | Idempotent — a second call is a no-op |
 | `log_time` | read+write | A completed entry; **not** idempotent by design |
 | `draft_day` | read+write | Proposes a day's missing entries; idempotent |
@@ -151,6 +154,10 @@ context. They cover the things a tool schema can't say:
 - Drafted entries are **proposals, not tracked time**. They appear in no report
   and no total until a person confirms them in the app; `draft_day` creates them,
   it does not log time.
+- **Tasks are the plan; entries are what happened.** Look task ids up with
+  `list_tasks`, pass `timezoneOffsetMinutes` to `complete_task` (a repeat's next
+  occurrence is dated from the user's day), and pass `taskId` to `start_timer`
+  to track against one.
 
 ## Troubleshooting
 
@@ -201,7 +208,8 @@ tools are only registered for read+write.
 | Key management API (session-only) | `apps/web/src/worker/routes/api-keys.ts` |
 | `/mcp` request gate | `handleMcpRequest` in `apps/web/src/worker/index.ts` |
 | Settings card | `apps/web/src/react-app/components/settings/McpConnectorCard.tsx` |
-| Tests | `e2e/mcp.spec.ts` |
+| Task reads/writes (shared with REST and the Assistant) | `apps/web/src/worker/lib/tasks.ts` |
+| Tests | `e2e/mcp.spec.ts`, `e2e/mcp-tasks.spec.ts` |
 
 Transport is `agents/mcp`'s `createLegacyMcpHandler` — Streamable HTTP, stateless. ("Legacy" is the Agents SDK's name for its MCP SDK v1 path; `createMcpHandler` now expects an SDK v2 server factory, and this server is built on `@modelcontextprotocol/sdk` 1.x. Moving to v2 is a separate change.) A
 fresh `McpServer` is built per request, bound to the workspace the key resolved

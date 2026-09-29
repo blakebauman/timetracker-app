@@ -10,6 +10,9 @@ import { z } from "zod";
 import { broadcast, getEntryById } from "../db/queries";
 import { loadGroundingProjects, resolveGrounding, inferEventProjects } from "./ai";
 import { rememberFact, searchMemories } from "./assistant-memory";
+import { createTask, getTask, listTasks, updateTask } from "./tasks";
+import { buildDayPlan } from "./day-plan";
+import { promptSafe } from "./untrusted-text";
 
 export interface AssistantToolContext {
   env: Env;
@@ -38,9 +41,14 @@ async function resolveProject(
   return { projectId: matched.id, projectName: matched.name, billable: matched.billable };
 }
 
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
 export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
   const { env, workspaceId } = ctx;
   const db = env.DB;
+  /** The user's local calendar date now — what "today" means for their tasks. */
+  const localToday = () => new Date(Date.now() - ctx.offsetMinutes * 60_000).toISOString().slice(0, 10);
+  const tasksChanged = () => broadcast(env, workspaceId, "tasks:changed", null);
 
   return {
     startTimer: tool({
@@ -304,6 +312,134 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
       execute: async ({ key, content }) => {
         const { key: saved } = await rememberFact(db, workspaceId, key, content);
         return { ok: true, key: saved };
+      },
+    }),
+
+    listTasks: tool({
+      description:
+        "List the user's open tasks (their plan). scope 'today' = due today or overdue; 'all' = every open task. Returns ids to use with completeTask / scheduleTasks.",
+      inputSchema: z.object({ scope: z.enum(["today", "all"]).default("today") }),
+      execute: async ({ scope }) => {
+        const tasks = await listTasks(db, workspaceId, scope === "today" ? { dueOnOrBefore: localToday() } : {});
+        return {
+          tasks: tasks
+            .filter((t) => !t.parentId)
+            .slice(0, 40)
+            .map((t) => ({
+              id: t.id,
+              // Task text is user-authored but may arrive from the extension or
+              // MCP; it's data, never instructions.
+              name: promptSafe(t.name, 120),
+              project: t.projectName ? promptSafe(t.projectName, 80) : null,
+              due: t.dueDate,
+              time: t.scheduledMinute !== null ? hhmm(t.scheduledMinute) : null,
+              deadline: t.deadlineDate,
+              priority: t.priority,
+              estimateMinutes: t.estimatedSeconds ? Math.round(t.estimatedSeconds / 60) : null,
+              trackedMinutes: Math.round(t.trackedSeconds / 60),
+            })),
+        };
+      },
+    }),
+
+    createTask: tool({
+      description:
+        "Add a task to the user's plan. Use when they say 'remind me to…', 'add a task…', 'I need to … by Friday'. dueDate is when they plan to do it; deadline is when it must be done. time (HH:MM) schedules it on today's or dueDate's calendar.",
+      inputSchema: z.object({
+        name: z.string().min(1).max(255),
+        projectName: z.string().describe("Exact name of a known project — every task needs one"),
+        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish().describe("Local date YYYY-MM-DD"),
+        time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullish().describe("Local time HH:MM on dueDate"),
+        deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+        estimateMinutes: z.number().int().min(1).max(100_000).nullish(),
+        priority: z.number().int().min(1).max(4).nullish().describe("1 urgent … 4 none"),
+      }),
+      // A write to the user's plan: shown and confirmed, like every other write.
+      needsApproval: true,
+      execute: async ({ name, projectName, dueDate, time, deadline, estimateMinutes, priority }) => {
+        const proj = await resolveProject(env, workspaceId, projectName);
+        if (!proj.projectId) {
+          return { ok: false, error: proj.warning ?? `No project matches "${projectName}". Ask which project it belongs to.` };
+        }
+        const [h, m] = time?.split(":").map(Number) ?? [];
+        const due = dueDate ?? (time ? localToday() : null);
+        const result = await createTask(db, workspaceId, {
+          name,
+          projectId: proj.projectId,
+          dueDate: due,
+          scheduledMinute: time && due ? h * 60 + m : null,
+          deadlineDate: deadline ?? null,
+          estimatedSeconds: estimateMinutes ? estimateMinutes * 60 : null,
+          priority: priority ?? undefined,
+        });
+        if (!result.ok) return { ok: false, error: result.error };
+        await tasksChanged();
+        return { ok: true, id: result.value.id, name: result.value.name, project: proj.projectName, due: result.value.dueDate };
+      },
+    }),
+
+    completeTask: tool({
+      description:
+        "Tick one of the user's tasks off (an id from listTasks). Subtasks tick with it; a repeating task gets its next occurrence.",
+      inputSchema: z.object({ taskId: z.string() }),
+      needsApproval: true,
+      execute: async ({ taskId }) => {
+        const task = await getTask(db, workspaceId, taskId);
+        if (!task) return { ok: false, error: "No such task." };
+        if (!task.active) return { ok: true, alreadyDone: true, name: task.name };
+        const result = await updateTask(db, workspaceId, taskId, { active: false, completedOn: localToday() });
+        if (!result.ok) return { ok: false, error: result.error };
+        await tasksChanged();
+        const next = result.value.spawnedTaskId ? await getTask(db, workspaceId, result.value.spawnedTaskId) : null;
+        return { ok: true, name: task.name, nextDue: next?.dueDate ?? null, trackedMinutes: Math.round(task.trackedSeconds / 60) };
+      },
+    }),
+
+    planDay: tool({
+      description:
+        "Propose a plan for the rest of today: fits the user's unscheduled tasks due today or overdue into their free time (working hours 09:00–17:30, around calendar events and blocks already planned), most urgent first. Only PROPOSES — present the plan and, if the user agrees, call scheduleTasks with it.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const plan = await buildDayPlan(env, workspaceId, ctx.offsetMinutes);
+        return {
+          date: plan.localDate,
+          freeMinutes: plan.freeMinutes,
+          plan: plan.placed.map((p) => ({
+            taskId: p.taskId,
+            name: promptSafe(p.name, 120),
+            start: hhmm(p.startMinute),
+            end: hhmm(p.startMinute + p.minutes),
+          })),
+          doesNotFit: plan.unplaced.map((u) => ({ taskId: u.taskId, name: promptSafe(u.name, 120), minutes: u.minutes })),
+        };
+      },
+    }),
+
+    scheduleTasks: tool({
+      description:
+        "Put tasks on today's calendar at the given local times (usually the plan from planDay, after the user agrees). Each becomes a planned block for its estimate.",
+      inputSchema: z.object({
+        slots: z
+          .array(
+            z.object({
+              taskId: z.string(),
+              start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).describe("Local HH:MM"),
+            })
+          )
+          .min(1)
+          .max(20),
+      }),
+      needsApproval: true,
+      execute: async ({ slots }) => {
+        const today = localToday();
+        const scheduled: string[] = [];
+        for (const slot of slots) {
+          const [h, m] = slot.start.split(":").map(Number);
+          const result = await updateTask(db, workspaceId, slot.taskId, { dueDate: today, scheduledMinute: h * 60 + m });
+          if (result.ok) scheduled.push(`${slot.start} ${result.value.name}`);
+        }
+        if (scheduled.length) await tasksChanged();
+        return { ok: scheduled.length > 0, scheduled };
       },
     }),
 

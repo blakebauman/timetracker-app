@@ -341,7 +341,7 @@ export async function buildAssistantContext(
   const nowMs = Date.now();
   const { dayStartIso, dayEndIso, localDate } = localDayBounds(nowMs, offsetMinutes);
 
-  const [facts, events, entries, projects] = await Promise.all([
+  const [facts, events, entries, projects, plan] = await Promise.all([
     loadTodayFacts(env.DB, workspaceId, dayStartIso, dayEndIso),
     loadTodayEvents(env, workspaceId, dayStartIso, dayEndIso),
     env.DB.prepare(
@@ -358,9 +358,20 @@ export async function buildAssistantContext(
     )
       .bind(workspaceId)
       .all<{ name: string }>(),
+    loadTaskPlan(env.DB, workspaceId, localDate, localDate),
   ]);
 
   const t = (iso: string) => formatLocalTime(iso, offsetMinutes);
+  const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const taskLines = plan.due.length
+    ? plan.due
+        .slice(0, 15)
+        .map(
+          (task) =>
+            `- ${task.scheduledMinute !== null ? hm(task.scheduledMinute) : "no time"} | ${promptSafe(task.name, 120)} | ${promptSafe(task.projectName ?? "No project", 80)} | ${task.estimatedSeconds ? `${Math.round(task.estimatedSeconds / 60)}m estimate` : "no estimate"}`
+        )
+        .join("\n")
+    : "(nothing due today)";
   const nowLocal = formatLocalTime(new Date(nowMs).toISOString(), offsetMinutes);
 
   const entryLines = entries.results.length
@@ -404,6 +415,10 @@ Total tracked today: ${(facts.totalSeconds / 3600).toFixed(2)}h across ${facts.e
 
 Today's calendar events (start–stop | title | status):
 ${eventLines}
+
+Tasks due today (time | task | project | estimate):
+${taskLines}
+Overdue tasks: ${plan.overdue}.${plan.deadlines.length ? ` Deadlines within 2 days: ${plan.deadlines.map((d) => `${promptSafe(d.task.name, 80)} (${d.task.deadlineDate})`).join(", ")}.` : ""}
 
 Active projects: ${projects.results.map((p) => promptSafe(p.name, 80)).join(", ") || "(none)"}`;
 }

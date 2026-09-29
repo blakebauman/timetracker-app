@@ -15,7 +15,16 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { buildReportWhere, durationExpr, formatEntry, ENTRY_SELECT, broadcast } from "../db/queries";
+import {
+  buildReportWhere,
+  durationExpr,
+  formatEntry,
+  ENTRY_SELECT,
+  broadcast,
+  inheritTaskTags,
+  markTaskStarted,
+} from "../db/queries";
+import { createTask, getTask, listTasks, updateTask, type TaskRecord } from "../lib/tasks";
 import { loadProjectPacing } from "../lib/pacing";
 import { generateDrafts, listDrafts } from "../lib/drafts";
 import type { ApiKeyScope } from "../lib/api-keys";
@@ -42,7 +51,7 @@ const MUTATES = {
 // The wire identifier — stable, lowercase, and NOT for display. Clients key
 // their config off it, so it must not change with the display name.
 const SERVER_NAME = "timetracker";
-const SERVER_VERSION = "1.1.0";
+const SERVER_VERSION = "1.2.0";
 const SITE_URL = "https://timetracker.run";
 
 /**
@@ -86,7 +95,35 @@ Working with it:
 - Call \`list_projects\` before anything that takes a project id; ids are opaque and must never be guessed.
 - Use \`get_time_summary\` for "how much" and \`list_time_entries\` for "what was worked on".
 - Money comes from each project's own hourly rate. A project with no rate contributes 0 to any amount — report that as "no rate set", never as "earned nothing".
-- Drafted entries are PROPOSALS, not tracked time. They appear in no report and no total until a person reviews and confirms them in the app; \`draft_day\` creates them, it does not log time.`;
+- Drafted entries are PROPOSALS, not tracked time. They appear in no report and no total until a person reviews and confirms them in the app; \`draft_day\` creates them, it does not log time.
+- Tasks are the PLAN; time entries are what actually happened. \`list_tasks\` shows what's due, \`create_task\` adds to the plan, \`complete_task\` ticks one off (pass \`timezoneOffsetMinutes\`: a repeating task's next occurrence is dated from the user's local day). Pass a \`taskId\` to \`start_timer\` to track against a task. Look task ids up with \`list_tasks\`; never guess them.`;
+
+/** A task as a model should see it: plain units, no internal ordering keys. */
+function taskOut(t: TaskRecord) {
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return {
+    id: t.id,
+    name: t.name,
+    project: t.projectName,
+    projectId: t.projectId,
+    done: !t.active,
+    dueDate: t.dueDate,
+    scheduledTime: t.scheduledMinute !== null ? hhmm(t.scheduledMinute) : null,
+    deadline: t.deadlineDate,
+    priority: t.priority,
+    estimateHours: t.estimatedSeconds ? hours(t.estimatedSeconds) : null,
+    trackedHours: hours(t.trackedSeconds),
+    tags: t.tags,
+    repeats: t.recurRule,
+    parentId: t.parentId,
+    notes: t.description,
+  };
+}
+
+/** The caller's local calendar date for "now", from a getTimezoneOffset-style offset. */
+function localToday(offsetMinutes: number): string {
+  return new Date(Date.now() - offsetMinutes * 60_000).toISOString().slice(0, 10);
+}
 
 /** MCP tool results are text; JSON is the most reliably parsed shape for one. */
 function json(value: unknown) {
@@ -462,6 +499,30 @@ export function buildMcpServer(ctx: McpContext): McpServer {
     }
   );
 
+  server.registerTool(
+    "list_tasks",
+    {
+      title: "List tasks",
+      description:
+        "The workspace's tasks — the plan side of tracked time — with due date, scheduled time, deadline, priority (1 = urgent … 4 = none), estimate vs tracked hours, tags and repeat rule. Defaults to open tasks. Use dueBy for \"what's due today\" (pass today's local date).",
+      inputSchema: {
+        status: z.enum(["open", "done", "all"]).default("open").describe("Which tasks to include"),
+        projectId: z.string().optional().describe("Only this project's tasks (an id from list_projects)"),
+        dueBy: DateArg.optional().describe("Only open tasks due on or before this local date, YYYY-MM-DD"),
+      },
+      annotations: READ_ONLY,
+    },
+    async ({ status, projectId, dueBy }) => {
+      const tasks = await listTasks(db, workspaceId, {
+        projectId,
+        includeInactive: status !== "open",
+        dueOnOrBefore: dueBy,
+      });
+      const picked = tasks.filter((t) => (status === "done" ? !t.active : status === "open" ? t.active : true));
+      return json(picked.slice(0, ROW_LIMIT).map(taskOut));
+    }
+  );
+
   // ─── Write ────────────────────────────────────────────────────────────────
   //
   // Registered only for a read_write key. A read-only key isn't shown these at
@@ -481,12 +542,23 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .string()
           .optional()
           .describe("A project id from list_projects; omit if the work has no project"),
+        taskId: z
+          .string()
+          .optional()
+          .describe("A task id from list_tasks to track against; its project is used if projectId is omitted"),
       },
       annotations: MUTATES,
     },
-    async ({ description, projectId }) => {
+    async ({ description, projectId: requestedProjectId, taskId }) => {
       const now = new Date().toISOString();
       const id = crypto.randomUUID();
+
+      let projectId = requestedProjectId;
+      if (taskId) {
+        const task = await getTask(db, workspaceId, taskId);
+        if (!task) return text(`No task with id ${taskId} in this workspace.`);
+        projectId ??= task.projectId;
+      }
 
       // Billable follows the project's default, matching resolveBillable on the
       // REST path — a timer started from a chat window must not land
@@ -515,10 +587,16 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         .prepare(
           `INSERT INTO time_entries
              (id, workspace_id, project_id, task_id, description, start, stop, duration, billable, created_at, updated_at)
-           VALUES (?, ?, ?, NULL, ?, ?, NULL, NULL, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)`
         )
-        .bind(id, workspaceId, projectId ?? null, description, now, billable ? 1 : 0, now, now)
+        .bind(id, workspaceId, projectId ?? null, taskId ?? null, description, now, billable ? 1 : 0, now, now)
         .run();
+      // Same side effects as the REST path: the task moves to In progress and
+      // the entry picks up its tags.
+      if (taskId) {
+        await markTaskStarted(db, workspaceId, taskId, now);
+        await inheritTaskTags(db, workspaceId, id, taskId);
+      }
 
       await broadcast(env, workspaceId, "timer:start", { id });
       return text(`Started "${description}" at ${now}.`);
@@ -559,6 +637,92 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       const elapsed = Date.now() - new Date(running.start).getTime();
       return text(
         `Stopped "${running.description}" after ${Math.round(elapsed / 60_000)} minutes.`
+      );
+    }
+  );
+
+  server.registerTool(
+    "create_task",
+    {
+      title: "Create a task",
+      description:
+        "Add a task to the plan. Dates are the user's local days. A time of day (scheduledTime) puts it on their calendar as a planned block for its estimate. A deadline is when it must be done, as opposed to dueDate, when it's planned. Tags join the workspace's existing tags by name.",
+      inputSchema: {
+        name: z.string().min(1).max(255),
+        projectId: z.string().describe("A project id from list_projects"),
+        dueDate: DateArg.optional().describe("When it's planned, YYYY-MM-DD"),
+        scheduledTime: z
+          .string()
+          .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24-hour)")
+          .optional()
+          .describe("Local time of day on dueDate, HH:MM 24-hour; needs dueDate"),
+        deadline: DateArg.optional().describe("When it must be done, YYYY-MM-DD"),
+        priority: z.number().int().min(1).max(4).optional().describe("1 = urgent … 4 = none (default)"),
+        estimateMinutes: z.number().int().min(1).max(100_000).optional(),
+        notes: z.string().max(5000).optional().describe("The task's own notes; never copied onto a time entry"),
+        tags: z.array(z.string().min(1).max(100)).max(20).optional(),
+        parentId: z.string().optional().describe("A top-level task id to make this a subtask of"),
+      },
+      annotations: MUTATES,
+    },
+    async (args) => {
+      const [h, m] = args.scheduledTime?.split(":").map(Number) ?? [];
+      const result = await createTask(db, workspaceId, {
+        name: args.name,
+        projectId: args.projectId,
+        dueDate: args.dueDate ?? null,
+        scheduledMinute: args.scheduledTime && args.dueDate ? h * 60 + m : null,
+        deadlineDate: args.deadline ?? null,
+        priority: args.priority,
+        estimatedSeconds: args.estimateMinutes ? args.estimateMinutes * 60 : null,
+        description: args.notes ?? null,
+        tags: args.tags,
+        parentId: args.parentId ?? null,
+      });
+      if (!result.ok) return text(`Couldn't create the task: ${result.error}.`);
+      await broadcast(env, workspaceId, "tasks:changed", null);
+      return json(taskOut(result.value));
+    }
+  );
+
+  server.registerTool(
+    "complete_task",
+    {
+      title: "Complete a task",
+      description:
+        "Tick a task off. Its subtasks are ticked with it. A repeating task gets its next occurrence, dated from the user's local day — pass timezoneOffsetMinutes. Completing a task that's already done changes nothing.",
+      inputSchema: {
+        taskId: z.string().describe("A task id from list_tasks"),
+        timezoneOffsetMinutes: TimezoneArg,
+      },
+      annotations: { ...MUTATES, idempotentHint: true },
+    },
+    async ({ taskId, timezoneOffsetMinutes }) => {
+      const task = await getTask(db, workspaceId, taskId);
+      if (!task) return text(`No task with id ${taskId} in this workspace.`);
+      if (!task.active) return text(`"${task.name}" is already done.`);
+      const result = await updateTask(db, workspaceId, taskId, {
+        active: false,
+        completedOn: localToday(timezoneOffsetMinutes),
+      });
+      if (!result.ok) return text(`Couldn't complete the task: ${result.error}.`);
+      await broadcast(env, workspaceId, "tasks:changed", null);
+      const next = result.value.spawnedTaskId ? await getTask(db, workspaceId, result.value.spawnedTaskId) : null;
+      // Tracked time counts stopped entries only, so a task with its timer
+      // still going reads as zero — say which of the two it actually is.
+      const running = await db
+        .prepare(`SELECT 1 FROM time_entries WHERE workspace_id = ? AND task_id = ? AND stop IS NULL LIMIT 1`)
+        .bind(workspaceId, taskId)
+        .first();
+      const note = running
+        ? " A timer is still running on it."
+        : task.trackedSeconds === 0
+          ? " No time is tracked against it."
+          : "";
+      return text(
+        next
+          ? `Completed "${task.name}". It repeats; the next one is due ${next.dueDate}.${note}`
+          : `Completed "${task.name}".${note}`
       );
     }
   );
