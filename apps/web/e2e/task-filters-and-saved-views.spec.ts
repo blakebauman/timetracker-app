@@ -70,7 +70,6 @@ test("a saved view comes back after a reload and can be deleted", async ({ page 
   await page.getByRole("button", { name: "Save view" }).click();
   await expect(page.getByRole("button", { name: "Filters, view: Urgent planning" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.screenshot({ path: "/private/tmp/claude-501/-Users-blake-Projects-timetracker-app/ed74931f-ab73-414f-bf30-33250cc1991d/scratchpad/views-saved.png" });
 
   await page.reload();
   await page.getByRole("tab", { name: /All/ }).click();

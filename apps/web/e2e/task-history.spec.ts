@@ -40,7 +40,6 @@ test("finished tasks group by week with tracked time against estimates", async (
   await page.goto("/tasks");
   const tab = page.getByRole("tab", { name: "History, 2 done this week" });
   await expect(tab).toBeVisible();
-  await page.screenshot({ path: "/private/tmp/claude-501/-Users-blake-Projects-timetracker-app/ed74931f-ab73-414f-bf30-33250cc1991d/scratchpad/history-tabs-today.png" });
   await tab.click();
 
   await expect(page.getByRole("heading", { name: "This week" })).toBeVisible();
@@ -51,8 +50,4 @@ test("finished tasks group by week with tracked time against estimates", async (
   await expect(page.getByText("Still open")).toBeHidden();
   // Nothing to capture into a record of finished work.
   await expect(page.getByRole("textbox", { name: "Add a task" })).toBeHidden();
-  await page.screenshot({ path: "/private/tmp/claude-501/-Users-blake-Projects-timetracker-app/ed74931f-ab73-414f-bf30-33250cc1991d/scratchpad/history.png" });
-
-  await page.getByRole("tab", { name: /^All/ }).click();
-  await page.screenshot({ path: "/private/tmp/claude-501/-Users-blake-Projects-timetracker-app/ed74931f-ab73-414f-bf30-33250cc1991d/scratchpad/history-all-header.png" });
 });
