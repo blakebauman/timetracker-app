@@ -19,6 +19,7 @@ import {
   clientId,
   formatEntry,
   markTaskStarted,
+  inheritTaskTags,
   getEntryById,
   upsertTags,
   tagLinkStatements,
@@ -214,7 +215,10 @@ export const timeEntriesRouter = new Hono<{
     if (data.tags?.length) {
       await upsertTags(c.env.DB, workspaceId, id, data.tags);
     }
-    if (data.taskId) await markTaskStarted(c.env.DB, workspaceId, data.taskId, data.start);
+    if (data.taskId) {
+      await markTaskStarted(c.env.DB, workspaceId, data.taskId, data.start);
+      await inheritTaskTags(c.env.DB, workspaceId, id, data.taskId);
+    }
 
     const entry = await getEntryById(c.env.DB, id, workspaceId);
     c.executionCtx.waitUntil(broadcast(c.env, workspaceId, data.stop ? "entries:changed" : "timer:start", entry, clientId(c)));

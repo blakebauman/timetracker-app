@@ -223,6 +223,8 @@ export const TaskSchema = z.object({
   scheduledMinute: z.number().int().nullable(),
   /** When it must be done (a local day), as opposed to `dueDate`, when it's planned. */
   deadlineDate: LocalDateSchema.nullable(),
+  /** Tag names, from the workspace's shared tag vocabulary (same as entries). */
+  tags: z.array(z.string()),
   recurRule: z.string().nullable(),
   subtaskTotal: z.number(),
   subtaskDone: z.number(),
@@ -240,6 +242,8 @@ export const CreateTaskSchema = z.object({
   recurRule: RecurRuleSchema.nullable().optional(),
   scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
   deadlineDate: LocalDateSchema.nullable().optional(),
+  /** Tag names; replaces the task's tags wholesale. Missing tags are created. */
+  tags: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
 });
 
 export const UpdateTaskSchema = z.object({
@@ -258,6 +262,8 @@ export const UpdateTaskSchema = z.object({
   /** Needs a due date to mean anything; clearing `dueDate` clears it too. */
   scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
   deadlineDate: LocalDateSchema.nullable().optional(),
+  /** Tag names; replaces the task's tags wholesale. Missing tags are created. */
+  tags: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
   /**
    * The completing client's own local date. Present only on the request that
    * ticks a recurring task done, and it is what the next occurrence is measured
@@ -595,6 +601,33 @@ export const SavedReportSchema = z.object({
   updatedAt: z.string(),
 });
 
+// ─── Saved task views ────────────────────────────────────────────────────────
+
+/** Everything the task list's All tab can be narrowed and arranged by. */
+export const TaskViewConfigSchema = z.object({
+  query: z.string().max(200).default(""),
+  status: z.enum(["all", "active", "done"]).default("all"),
+  groupBy: z.enum(["project", "status", "due", "none"]).default("project"),
+  sortBy: z.enum(["name", "estimate", "tracked", "recent", "plan"]).default("plan"),
+  projectId: z.string().max(64).nullable().default(null),
+  tag: z.string().max(100).nullable().default(null),
+  /** Show tasks at this priority *or higher* (1 = urgent only). Null = any. */
+  maxPriority: z.number().int().min(1).max(4).nullable().default(null),
+  due: z.enum(["any", "overdue", "today", "week", "none"]).default("any"),
+});
+
+export const CreateTaskViewSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  config: TaskViewConfigSchema,
+});
+
+export const TaskViewSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  config: TaskViewConfigSchema,
+  createdAt: z.string(),
+});
+
 export const CreateSavedReportSchema = z.object({
   name: z.string().min(1).max(120),
   // Stored as JSON text as-is; a filter config is a few hundred bytes, so 16 KiB
@@ -897,6 +930,8 @@ export type CreateClient = z.infer<typeof CreateClientSchema>;
 export type UpdateClient = z.infer<typeof UpdateClientSchema>;
 export type ClientStats = z.infer<typeof ClientStatsSchema>;
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
+export type TaskViewConfig = z.infer<typeof TaskViewConfigSchema>;
+export type TaskView = z.infer<typeof TaskViewSchema>;
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
 export type ApiKeyScope = z.infer<typeof ApiKeyScopeSchema>;
 export type ApiKey = z.infer<typeof ApiKeySchema>;

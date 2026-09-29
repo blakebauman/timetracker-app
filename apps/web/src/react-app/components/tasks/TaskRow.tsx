@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ProjectBadge } from "@/components/ProjectBadge";
 import { useUpdateTask, useCompleteTask } from "@/hooks/useTasks";
+import { useTagColors } from "@/hooks/useProjects";
+import { Badge } from "@/components/ui/badge";
 import { TASK_ROW_ATTR } from "@/hooks/useTaskListKeys";
 import { useTimer } from "@/hooks/useTimer";
 import { useTimerStore } from "@/stores/timerStore";
@@ -170,6 +172,7 @@ export function TaskRow({
 
   const tone = dueTone(task.dueDate);
   const timeFormat = useUIStore((s) => s.timeFormat);
+  const tagColor = useTagColors();
   // "Friday" or "Friday 14:00" — a scheduled time rides on the day chip.
   const dueLabel = task.dueDate
     ? `${formatDueDate(task.dueDate)}${
@@ -285,7 +288,9 @@ export function TaskRow({
   // the task is done, then there's nothing left to warn about.
   const deadlineDays = task.deadlineDate && task.active ? daysBetweenLocal(todayLocalDate(), task.deadlineDate) : null;
   const showDeadline = deadlineDays !== null && !nested;
-  const hasMeta = showDue || showProjectBadge || showSubtaskCount || Boolean(repeats) || showDeadline;
+  const showTags = task.tags.length > 0;
+  const hasMeta =
+    showDue || showProjectBadge || showSubtaskCount || Boolean(repeats) || showDeadline || showTags;
 
   // Laid out by its own width, not the viewport's: the same row sits full-width
   // in a list and in a ~370px board column on a wide screen, and a viewport
@@ -456,6 +461,20 @@ export function TaskRow({
           layout is byte-for-byte what it was. */}
       {hasMeta && (
         <div className="order-last flex min-w-0 basis-full items-center gap-2 pl-6 @xl:contents">
+          {/* Same chip as an entry row's tags: one vocabulary, one look. */}
+          {task.tags.map((tag) => (
+            <Badge
+              key={tag}
+              variant="outline"
+              className="h-4 shrink-0 gap-1 px-1 py-0 text-micro font-normal"
+            >
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: tagColor(tag) }}
+              />
+              {tag}
+            </Badge>
+          ))}
           {showDeadline && (
             <span
               className={cn(

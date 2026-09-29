@@ -540,6 +540,12 @@ export const api = {
   },
 
   // ─── Saved reports ────────────────────────────────────────────────────────
+  taskViews: {
+    list: () => request<unknown[]>("/task-views"),
+    create: (body: Record<string, unknown>) =>
+      request<unknown>("/task-views", { method: "POST", body: JSON.stringify(body) }),
+    delete: (id: string) => request<unknown>(`/task-views/${id}`, { method: "DELETE" }),
+  },
   savedReports: {
     list: () => request<unknown[]>("/saved-reports"),
     create: (body: { name: string; config: Record<string, unknown> }) =>

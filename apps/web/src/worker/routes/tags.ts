@@ -35,10 +35,14 @@ export const tagsRouter = new Hono<{
   })
   .delete("/:id", async (c) => {
     const workspaceId = c.get("workspaceId");
-    await c.env.DB.prepare(
-      `DELETE FROM tags WHERE id = ? AND workspace_id = ?`
-    )
-      .bind(c.req.param("id"), workspaceId)
-      .run();
+    const id = c.req.param("id");
+    // Links first, explicitly: D1 doesn't guarantee `PRAGMA foreign_keys`, and
+    // a task_tags row pointing at a deleted tag would render as a nameless chip.
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `DELETE FROM task_tags WHERE tag_id IN (SELECT id FROM tags WHERE id = ? AND workspace_id = ?)`
+      ).bind(id, workspaceId),
+      c.env.DB.prepare(`DELETE FROM tags WHERE id = ? AND workspace_id = ?`).bind(id, workspaceId),
+    ]);
     return c.json({ ok: true });
   });

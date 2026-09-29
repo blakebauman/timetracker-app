@@ -7,7 +7,7 @@ import {
   nextOccurrence,
   normalizeRecurRule,
 } from "@timetracker/core/task-recurrence";
-import { broadcast, clientId } from "../db/queries";
+import { broadcast, canonicalTagNames, clientId, taskTagStatements } from "../db/queries";
 
 type Row = Record<string, unknown>;
 
@@ -31,6 +31,8 @@ function formatTask(row: Row) {
     startedAt: (row.started_at as string | null) ?? null,
     scheduledMinute: (row.scheduled_minute as number | null) ?? null,
     deadlineDate: (row.deadline_date as string | null) ?? null,
+    // json_group_array, not GROUP_CONCAT: a tag name may contain a comma.
+    tags: row.tag_names ? (JSON.parse(row.tag_names as string) as (string | null)[]).filter((n): n is string => !!n) : [],
     recurRule: (row.recur_rule as string | null) ?? null,
     subtaskTotal: (row.subtask_total as number) ?? 0,
     subtaskDone: (row.subtask_done as number) ?? 0,
@@ -56,7 +58,10 @@ const TASK_SELECT = `
               OR te.task_id IN (SELECT c.id FROM tasks c WHERE c.parent_id = tk.id))
     ) AS tracked_seconds,
     (SELECT COUNT(*) FROM tasks c WHERE c.parent_id = tk.id) AS subtask_total,
-    (SELECT COUNT(*) FROM tasks c WHERE c.parent_id = tk.id AND c.active = 0) AS subtask_done
+    (SELECT COUNT(*) FROM tasks c WHERE c.parent_id = tk.id AND c.active = 0) AS subtask_done,
+    (SELECT json_group_array(t.name) FROM task_tags tt
+       JOIN tags t ON t.id = tt.tag_id AND t.workspace_id = tk.workspace_id
+       WHERE tt.task_id = tk.id) AS tag_names
   FROM tasks tk
   LEFT JOIN projects p ON p.id = tk.project_id AND p.workspace_id = tk.workspace_id
 `;
@@ -197,6 +202,10 @@ export const tasksRouter = new Hono<{
       data.deadlineDate ?? null,
       now
     ).run();
+    if (data.tags?.length) {
+      const names = await canonicalTagNames(c.env.DB, workspaceId, data.tags);
+      await c.env.DB.batch(taskTagStatements(c.env.DB, workspaceId, id, names));
+    }
 
     const row = await readTask(c.env.DB, id, workspaceId);
     announceTasksChanged(c.env, c.executionCtx, workspaceId, clientId(c));
@@ -278,6 +287,10 @@ export const tasksRouter = new Hono<{
         `UPDATE tasks SET ${fields.join(", ")} WHERE id = ? AND workspace_id = ?`
       ).bind(...values, id, workspaceId).run();
     }
+    if (data.tags !== undefined) {
+      const names = await canonicalTagNames(c.env.DB, workspaceId, data.tags);
+      await c.env.DB.batch(taskTagStatements(c.env.DB, workspaceId, id, names));
+    }
 
     // Ticking a parent ticks its children: a parent left "done" over five open
     // subtasks is a list that disagrees with itself. Reopening does the same in
@@ -328,6 +341,11 @@ export const tasksRouter = new Hono<{
           shiftedDeadline(existing, due),
           now
         ).run();
+
+        // Its tags come round with it — same kind of work each time.
+        await c.env.DB.prepare(
+          `INSERT OR IGNORE INTO task_tags (task_id, tag_id) SELECT ?, tag_id FROM task_tags WHERE task_id = ?`
+        ).bind(spawnId, id).run();
 
         // A repeating checklist is only useful if the checklist comes back too.
         const { results: kids } = await c.env.DB.prepare(
@@ -384,6 +402,9 @@ export const tasksRouter = new Hono<{
     // `PRAGMA foreign_keys` is on, and an orphaned subtask is invisible — it
     // renders nowhere and still counts toward its project's tracked total.
     await c.env.DB.batch([
+      c.env.DB.prepare(
+        `DELETE FROM task_tags WHERE task_id IN (SELECT id FROM tasks WHERE (id = ? OR parent_id = ?) AND workspace_id = ?)`
+      ).bind(id, id, workspaceId),
       c.env.DB.prepare(`DELETE FROM tasks WHERE parent_id = ? AND workspace_id = ?`).bind(id, workspaceId),
       c.env.DB.prepare(`DELETE FROM tasks WHERE id = ? AND workspace_id = ?`).bind(id, workspaceId),
     ]);

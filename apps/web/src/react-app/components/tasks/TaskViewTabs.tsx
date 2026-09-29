@@ -7,7 +7,7 @@ import {
   SEGMENT_TRACK,
 } from "@/components/ui/segmented-control";
 
-export type TaskView = "today" | "upcoming" | "all" | "board";
+export type TaskView = "today" | "upcoming" | "all" | "board" | "history";
 
 export interface TaskViewCounts {
   today: number;
@@ -17,6 +17,8 @@ export interface TaskViewCounts {
   all: number;
   /** What's in progress — the one number a board is opened to check. */
   board: number;
+  /** Finished this week. */
+  history: number;
 }
 
 const VIEWS: { value: TaskView; label: string }[] = [
@@ -24,6 +26,7 @@ const VIEWS: { value: TaskView; label: string }[] = [
   { value: "upcoming", label: "Upcoming" },
   { value: "all", label: "All" },
   { value: "board", label: "Board" },
+  { value: "history", label: "History" },
 ];
 
 interface TaskViewTabsProps {
@@ -89,6 +92,8 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
               count > 0
                 ? value === "board"
                   ? `${label}, ${count} in progress`
+                  : value === "history"
+                    ? `${label}, ${count} done this week`
                   : `${label}, ${count} task${count === 1 ? "" : "s"}${
                       late ? `, ${counts.overdue} overdue` : ""
                     }`

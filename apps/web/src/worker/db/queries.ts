@@ -211,6 +211,78 @@ export async function upsertTags(
 }
 
 /**
+ * Map typed tag names onto the workspace's existing spelling, case-insensitively,
+ * so "@Discovery" joins the "discovery" tag instead of minting a twin. Names
+ * with no match are kept as typed (they become new tags).
+ */
+export async function canonicalTagNames(
+  db: D1Database,
+  workspaceId: string,
+  names: string[]
+): Promise<string[]> {
+  const wanted = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+  if (!wanted.length) return [];
+  const { results } = await db
+    .prepare(
+      `SELECT name FROM tags WHERE workspace_id = ? AND lower(name) IN (${wanted.map(() => "lower(?)").join(",")})`
+    )
+    .bind(workspaceId, ...wanted)
+    .all<{ name: string }>();
+  const byLower = new Map(results.map((r) => [r.name.toLowerCase(), r.name]));
+  return [...new Set(wanted.map((n) => byLower.get(n.toLowerCase()) ?? n))];
+}
+
+/**
+ * Replace a task's tags with `tagNames`: create any missing workspace tags
+ * (with the same deterministic colour an entry's new tag gets), then relink.
+ * One batch, so a task never sits half-tagged.
+ */
+export function taskTagStatements(
+  db: D1Database,
+  workspaceId: string,
+  taskId: string,
+  tagNames: string[]
+): D1PreparedStatement[] {
+  const names = [...new Set(tagNames.map((n) => n.trim()).filter(Boolean))];
+  const clear = db.prepare(`DELETE FROM task_tags WHERE task_id = ?`).bind(taskId);
+  if (!names.length) return [clear];
+  const insertTag = db.prepare(
+    `INSERT OR IGNORE INTO tags (id, workspace_id, name, color) VALUES (?, ?, ?, ?)`
+  );
+  const link = db.prepare(
+    `INSERT OR IGNORE INTO task_tags (task_id, tag_id)
+     SELECT ?, id FROM tags WHERE workspace_id = ? AND name IN (${names.map(() => "?").join(",")})`
+  );
+  return [
+    ...names.map((name) => insertTag.bind(crypto.randomUUID(), workspaceId, name, colorForTagName(name))),
+    clear,
+    link.bind(taskId, workspaceId, ...names),
+  ];
+}
+
+/**
+ * An entry logged against a task picks up the task's tags — added to whatever
+ * the entry already carries, never replacing it. Server-side so every path
+ * that creates an entry (timer, calendar, palette, Assistant, MCP) gets it.
+ */
+export async function inheritTaskTags(
+  db: D1Database,
+  workspaceId: string,
+  entryId: string,
+  taskId: string
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO time_entry_tags (time_entry_id, tag_id)
+       SELECT ?, tt.tag_id FROM task_tags tt
+       JOIN tasks tk ON tk.id = tt.task_id AND tk.workspace_id = ?
+       WHERE tt.task_id = ?`
+    )
+    .bind(entryId, workspaceId, taskId)
+    .run();
+}
+
+/**
  * The statements behind upsertTags, for callers that link the same tags to
  * several entries at once (bulk edit): the missing tags are created once, then
  * one link statement per entry. Callers must have proven every entry id

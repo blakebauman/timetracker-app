@@ -27,6 +27,11 @@ export interface ParsedQuickAdd {
   scheduledMinute: number | null;
   /** `by fri`, `by next week`, `by 2026-10-15` — when it must be done. */
   deadlineDate: string | null;
+  /**
+   * `@discovery @client-call` — tag hints, as typed (no `@`). The caller maps
+   * each onto an existing tag where the name matches, else it becomes a new tag.
+   */
+  tagHints: string[];
 }
 
 /**
@@ -150,7 +155,7 @@ function parseEvery(
 /**
  * Parse date, time, priority, estimate and repeat tokens out of a quick-add
  * line — `tomorrow`, `fri`, `next week`, `in 3 days`, `3d`, `3pm`, `at 15:00`,
- * `by fri` (a deadline), `p1`, `~45m`, `every mon`, `#project`.
+ * `by fri` (a deadline), `p1`, `~45m`, `every mon`, `#project`, `@tag`.
  *
  * **Deliberately deterministic, with no AI round-trip.** Capture has to be
  * instant and repeatable: the same words must always produce the same task, and
@@ -167,6 +172,7 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
   let every: ReturnType<typeof parseEvery> = null;
   let scheduledMinute: number | null = null;
   let deadlineDate: string | null = null;
+  const tagHints: string[] = [];
 
   const raws = input.split(/\s+/).filter(Boolean);
   const kept: string[] = [];
@@ -203,6 +209,12 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
     if (dueDate === null) {
       const d = parseDateAt(raws, i, today);
       if (d) { dueDate = d.date; i += d.consumed - 1; continue; }
+    }
+    // Tags are the one token that repeats: a task can carry several.
+    if (/^@[\p{L}\p{N}][\p{L}\p{N}_-]*$/u.test(raw)) {
+      const hint = raw.slice(1);
+      if (!tagHints.some((h) => h.toLowerCase() === hint.toLowerCase())) tagHints.push(hint);
+      continue;
     }
     if (projectHint === null && token.startsWith("#") && token.length > 1) {
       projectHint = token.slice(1);
@@ -256,6 +268,7 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
     recurRule,
     scheduledMinute,
     deadlineDate,
+    tagHints,
   };
 }
 

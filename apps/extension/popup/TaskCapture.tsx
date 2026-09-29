@@ -86,6 +86,7 @@ export function TaskCapture() {
           ...(parsed.estimatedSeconds ? { estimatedSeconds: parsed.estimatedSeconds } : {}),
           ...(parsed.scheduledMinute !== null ? { scheduledMinute: parsed.scheduledMinute } : {}),
           ...(parsed.deadlineDate ? { deadlineDate: parsed.deadlineDate } : {}),
+          ...(parsed.tagHints.length ? { tags: parsed.tagHints } : {}),
           ...(parsed.recurRule ? { recurRule: parsed.recurRule } : {}),
         },
       },
@@ -115,6 +116,7 @@ export function TaskCapture() {
     parsed.estimatedSeconds ? `estimate ${describeEstimate(parsed.estimatedSeconds)}` : null,
     parsed.recurRule ? describeRecurRule(parsed.recurRule)?.toLowerCase() : null,
     hinted ? hinted.name : null,
+    ...parsed.tagHints.map((t) => `@${t}`),
   ].filter(Boolean);
 
   const fieldStyle: React.CSSProperties = {

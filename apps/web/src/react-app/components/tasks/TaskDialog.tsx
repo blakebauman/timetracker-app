@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
+import { TagPicker } from "@/components/entries/TagPicker";
 import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
 import { parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import { dayLabel } from "@/lib/recurrence";
@@ -94,6 +95,7 @@ export function TaskDialog({
   const [estimate, setEstimate] = useState(formatTimeInput(task?.estimatedSeconds ?? null));
   const [dueDate, setDueDate] = useState<string | null>(task?.dueDate ?? defaultDueDate);
   const [deadline, setDeadline] = useState<string | null>(task?.deadlineDate ?? null);
+  const [tags, setTags] = useState<string[]>(task?.tags ?? []);
   /** `HH:mm` for the time input; empty = no time of day. */
   const [time, setTime] = useState(minuteToTimeInput(task?.scheduledMinute ?? null));
   const [priority, setPriority] = useState(task?.priority ?? 4);
@@ -116,6 +118,7 @@ export function TaskDialog({
     setDueDate(task?.dueDate ?? defaultDueDate);
     setTime(minuteToTimeInput(task?.scheduledMinute ?? null));
     setDeadline(task?.deadlineDate ?? null);
+    setTags(task?.tags ?? []);
     setPriority(task?.priority ?? 4);
     setRepeat(repeatValue(task?.recurRule ?? null));
     setWeekDays(ruleDays(task?.recurRule ?? null));
@@ -129,6 +132,7 @@ export function TaskDialog({
     setDueDate(defaultDueDate);
     setTime("");
     setDeadline(null);
+    setTags([]);
     setPriority(4);
     setRepeat("none");
     setWeekDays([]);
@@ -188,6 +192,7 @@ export function TaskDialog({
       // A time only means something on a day; with no date it's dropped.
       scheduledMinute: dueDate ? timeInputToMinute(time) : null,
       deadlineDate: deadline,
+      tags,
       priority,
       recurRule: resolveRepeat(),
     };
@@ -348,6 +353,13 @@ export function TaskDialog({
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* The workspace's one tag vocabulary. An entry logged against
+              this task inherits these. */}
+          <div className="space-y-1.5">
+            <Label>Tags</Label>
+            <TagPicker value={tags} onChange={setTags} field />
           </div>
 
           {!isSubtask && (
