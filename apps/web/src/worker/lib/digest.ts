@@ -8,7 +8,14 @@
 // one people stop opening.
 
 import { sendEmail } from "./mailer";
-import { DailyBriefEmail, type BriefBudgetLine, type BriefProjectLine } from "../emails/daily-brief";
+import {
+  DailyBriefEmail,
+  type BriefBudgetLine,
+  type BriefPlan,
+  type BriefProjectLine,
+} from "../emails/daily-brief";
+import { loadTodayEvents } from "./assistant";
+import { describeDay, loadTaskPlan } from "./task-plan";
 import { atRiskProjects, loadProjectPacing } from "./pacing";
 import { runBriefNarrative } from "./ai";
 import { forEachLimited, SWEEP_CONCURRENCY } from "./concurrency";
@@ -17,6 +24,8 @@ const APP_URL = "https://timetracker.run";
 /** Top N projects in the split — past this it stops being a glance. */
 const MAX_PROJECT_LINES = 6;
 const MAX_BUDGET_LINES = 3;
+// The plan lists the day's work, not the backlog; past this it says "and N more".
+const MAX_PLAN_LINES = 6;
 /** Weekly digests go out on Monday, covering the seven days before it. */
 const WEEKLY_SEND_WEEKDAY = 1;
 
@@ -91,6 +100,68 @@ export interface DigestContent {
   draftsWaiting: number;
   narrative: string | null;
   billableSeconds: number;
+  /** What's planned next: today for the daily brief, the week ahead for the weekly. */
+  plan: BriefPlan | null;
+}
+
+function hhmm(minute: number): string {
+  return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+}
+
+/**
+ * The forward half of the brief. Built from the task plan (deterministic) and,
+ * for a single day, the calendar's meeting hours — so "5h of estimates" sits
+ * next to "4h of meetings" and the day's arithmetic is visible before it
+ * starts. Null when there's nothing planned, so the section disappears rather
+ * than printing zeros.
+ */
+async function buildPlan(
+  env: Env,
+  user: DigestUser,
+  kind: DigestKind,
+  todayLocal: string
+): Promise<BriefPlan | null> {
+  const untilLocal = kind === "weekly" ? shiftLocalDate(todayLocal, 6) : todayLocal;
+  const plan = await loadTaskPlan(env.DB, user.workspaceId, todayLocal, untilLocal);
+  if (!plan.overdue && !plan.due.length && !plan.deadlines.length) return null;
+
+  let meetingSeconds: number | null = null;
+  if (kind === "daily") {
+    const { sinceIso, untilIso } = utcBounds(todayLocal, todayLocal, user.timezoneOffsetMinutes);
+    const events = await loadTodayEvents(env, user.workspaceId, sinceIso, untilIso);
+    const total = events.reduce(
+      (sum, e) => sum + (new Date(e.stop).getTime() - new Date(e.start).getTime()) / 1000,
+      0
+    );
+    meetingSeconds = total > 0 ? total : null;
+  }
+
+  return {
+    heading: kind === "weekly" ? "This week" : "Today",
+    overdue: plan.overdue,
+    due: plan.due.slice(0, MAX_PLAN_LINES).map((t) => ({
+      name: t.name,
+      when: [
+        kind === "weekly" ? formatLocalDate(t.dueDate!, false) : null,
+        t.scheduledMinute !== null ? hhmm(t.scheduledMinute) : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      projectName: t.projectName,
+      estimateLabel: t.estimatedSeconds ? formatSeconds(t.estimatedSeconds) : null,
+    })),
+    moreDue: Math.max(0, plan.due.length - MAX_PLAN_LINES),
+    estimateLabel: plan.remainingEstimateSeconds > 0 ? formatSeconds(plan.remainingEstimateSeconds) : null,
+    meetingsLabel: meetingSeconds ? formatSeconds(meetingSeconds) : null,
+    deadlines: plan.deadlines.slice(0, MAX_BUDGET_LINES).map((d) => ({
+      name: d.task.name,
+      verdict:
+        d.daysLeft < 0
+          ? `was due by ${describeDay(d.task.deadlineDate!, d.daysLeft)}`
+          : `due by ${describeDay(d.task.deadlineDate!, d.daysLeft)}`,
+      missed: d.daysLeft < 0,
+    })),
+  };
 }
 
 /** Plain-language budget verdict, matching what the Projects page says. */
@@ -173,6 +244,10 @@ export async function buildDigest(
     loadProjectPacing(env.DB, user.workspaceId),
   ]);
 
+  // The brief is read the morning after the day it covers: "today" is the day
+  // after `endLocalDate` (the Monday after the week, for the weekly one).
+  const plan = await buildPlan(env, user, kind, shiftLocalDate(endLocalDate, 1)).catch(() => null);
+
   const totalSeconds = totalsRow?.total ?? 0;
   const entryCount = totalsRow?.n ?? 0;
 
@@ -226,6 +301,7 @@ export async function buildDigest(
     budgets,
     draftsWaiting: draftRow?.n ?? 0,
     narrative,
+    plan,
   };
 }
 
@@ -256,6 +332,7 @@ export async function sendDigest(
       budgets: content.budgets,
       draftsWaiting: content.draftsWaiting,
       narrative: content.narrative,
+      plan: content.plan,
       appUrl: APP_URL,
     })
   );

@@ -93,6 +93,7 @@ export function TaskDialog({
   const [projectId, setProjectId] = useState<string | null>(task?.projectId ?? defaultProjectId);
   const [estimate, setEstimate] = useState(formatTimeInput(task?.estimatedSeconds ?? null));
   const [dueDate, setDueDate] = useState<string | null>(task?.dueDate ?? defaultDueDate);
+  const [deadline, setDeadline] = useState<string | null>(task?.deadlineDate ?? null);
   /** `HH:mm` for the time input; empty = no time of day. */
   const [time, setTime] = useState(minuteToTimeInput(task?.scheduledMinute ?? null));
   const [priority, setPriority] = useState(task?.priority ?? 4);
@@ -114,6 +115,7 @@ export function TaskDialog({
     setEstimate(formatTimeInput(task?.estimatedSeconds ?? null));
     setDueDate(task?.dueDate ?? defaultDueDate);
     setTime(minuteToTimeInput(task?.scheduledMinute ?? null));
+    setDeadline(task?.deadlineDate ?? null);
     setPriority(task?.priority ?? 4);
     setRepeat(repeatValue(task?.recurRule ?? null));
     setWeekDays(ruleDays(task?.recurRule ?? null));
@@ -126,6 +128,7 @@ export function TaskDialog({
     setEstimate("");
     setDueDate(defaultDueDate);
     setTime("");
+    setDeadline(null);
     setPriority(4);
     setRepeat("none");
     setWeekDays([]);
@@ -184,6 +187,7 @@ export function TaskDialog({
       dueDate,
       // A time only means something on a day; with no date it's dropped.
       scheduledMinute: dueDate ? timeInputToMinute(time) : null,
+      deadlineDate: deadline,
       priority,
       recurRule: resolveRepeat(),
     };
@@ -312,6 +316,33 @@ export function TaskDialog({
                     setTime("");
                   }}
                   aria-label="Clear due date"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* When it must be done, as opposed to when it's planned. Kept apart
+              from the due date because the two drift: you plan the report for
+              Monday because it's owed on Friday. */}
+          <div className="space-y-1.5">
+            <Label>Deadline</Label>
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <DatePicker
+                  value={deadline ? localDateToDate(deadline) : null}
+                  onSelect={(d) => setDeadline(dateToLocalDate(d))}
+                  placeholder="No deadline"
+                />
+              </div>
+              {deadline && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => setDeadline(null)}
+                  aria-label="Clear deadline"
                 >
                   Clear
                 </Button>

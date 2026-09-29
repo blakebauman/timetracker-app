@@ -158,6 +158,7 @@ Each tab carries a count, so you can see whether a view is worth opening without
 | `chase SOW in 3 days` | due in 3 days (`in 2 weeks`, `in 1 month` too) |
 | `plan Q4 next week` | due next Monday (`next month` is the 1st) |
 | `draft runbook ~2h` | a 2-hour estimate (`~45m`, `~1h30m`, `~1.5h`) |
+| `quarterly report mon by fri` | due (planned) Monday, deadline Friday — `by` takes any of the date forms above |
 | `call the bank 3pm` | scheduled at 3pm (today, unless the line names a day; `3:30pm`, `15:00`, `at 9:30` too) |
 | `timesheet every fri` | repeats every Friday, first due the coming Friday (`every day`, `every weekday`, `every week`, `every month`, `every mon,thu`) |
 | `chase SOW p1` | priority Urgent (`p1`–`p4`) |
@@ -185,6 +186,8 @@ The line under the field shows what it understood before you commit it. Anything
 **Subtasks.** A task can hold a checklist one level deep. Time is tracked against whichever one you actually worked on, and a parent's tracked total includes its subtasks'. Ticking a parent ticks its children with it.
 
 **Repeats.** A task can repeat daily, on weekdays, weekly on one or more chosen days (pick them under **Weekly on…** in the task dialog), or monthly on a date. The next occurrence is created **when you tick the current one off** — so a repeating task you never complete simply goes overdue rather than piling up copies. If it has subtasks, the fresh occurrence gets a fresh checklist.
+
+**Deadlines.** A task's due date is when you *plan* to work on it; its **deadline** is when it *must* be done. They're separate because they drift: you plan the report for Monday because it's owed on Friday. Set one with `by …` when you capture, or the **Deadline** field in the task dialog. The row shows a flag with "by Fri", amber inside two days and red once it has passed. A repeating task keeps the same gap between its due date and deadline on every occurrence.
 
 **Scheduling a time.** Give a task a time of day, with a time token when you capture it, the **Time** field in the task dialog, or by dropping it on a future calendar slot, and it appears on the Timer's calendar as a *planned* block. The block is dotted and nearly hollow, in the project's colour, and as long as the task's estimate (half an hour without one). It's the plan, so it never counts toward any total, and it sits beside whatever you actually tracked in that slot. Drag the block to move the task, stretch it to change the estimate, click it to open the task, or click its ▷ to start the timer. When a block's time arrives you get a toast with **Start timer** (and a browser notification if the tab is in the background). That's controlled by **Nudges and reminders** under Settings → Productivity. A repeating task keeps its time on every occurrence, and clearing a task's due date clears its time too.
 
