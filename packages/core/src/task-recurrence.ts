@@ -101,6 +101,17 @@ export function localWeekday(date: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+/**
+ * Whole days from `from` to `to` (negative when `to` is earlier). Calendar days
+ * have no timezone, so both are read as UTC midnights and the difference is
+ * exact — no DST day can make it 0.96 of a day.
+ */
+export function daysBetweenLocal(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
+}
+
 /** Positive if `a` is after `b`, 0 if equal, negative if before. */
 export function compareLocalDates(a: string, b: string): number {
   return a === b ? 0 : a > b ? 1 : -1;

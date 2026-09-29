@@ -1,7 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "../lib/validate";
 import { CreateTaskSchema, UpdateTaskSchema } from "@timetracker/core/schemas";
-import { nextOccurrence, normalizeRecurRule } from "@timetracker/core/task-recurrence";
+import {
+  addLocalDays,
+  daysBetweenLocal,
+  nextOccurrence,
+  normalizeRecurRule,
+} from "@timetracker/core/task-recurrence";
 import { broadcast, clientId } from "../db/queries";
 
 type Row = Record<string, unknown>;
@@ -25,6 +30,7 @@ function formatTask(row: Row) {
     completedAt: (row.completed_at as string | null) ?? null,
     startedAt: (row.started_at as string | null) ?? null,
     scheduledMinute: (row.scheduled_minute as number | null) ?? null,
+    deadlineDate: (row.deadline_date as string | null) ?? null,
     recurRule: (row.recur_rule as string | null) ?? null,
     subtaskTotal: (row.subtask_total as number) ?? 0,
     subtaskDone: (row.subtask_done as number) ?? 0,
@@ -99,6 +105,19 @@ async function resolveParent(
   return { id: row.id as string, projectId: row.project_id as string };
 }
 
+/**
+ * A repeating task's next deadline keeps the same lead over its due date: a
+ * report planned Monday and owed Friday is, next week, planned Monday and owed
+ * Friday. Without a due date to measure from there's no lead to keep, so the
+ * next occurrence carries no deadline rather than a stale one.
+ */
+function shiftedDeadline(existing: Row, nextDue: string): string | null {
+  const deadline = existing.deadline_date as string | null;
+  const due = existing.due_date as string | null;
+  if (!deadline || !due) return null;
+  return addLocalDays(nextDue, daysBetweenLocal(due, deadline));
+}
+
 /** Next free sort key within a project, so a new task lands at the end. */
 async function nextSortOrder(db: D1Database, workspaceId: string, projectId: string) {
   const row = await db
@@ -158,8 +177,9 @@ export const tasksRouter = new Hono<{
     await c.env.DB.prepare(
       `INSERT INTO tasks
          (id, workspace_id, project_id, name, description, active, estimated_seconds,
-          due_date, priority, sort_order, parent_id, recur_rule, scheduled_minute, created_at)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`
+          due_date, priority, sort_order, parent_id, recur_rule, scheduled_minute,
+          deadline_date, created_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       id,
       workspaceId,
@@ -174,6 +194,7 @@ export const tasksRouter = new Hono<{
       recurRule,
       // A time needs a day to sit on.
       data.dueDate ? (data.scheduledMinute ?? null) : null,
+      data.deadlineDate ?? null,
       now
     ).run();
 
@@ -205,6 +226,7 @@ export const tasksRouter = new Hono<{
     if (data.dueDate === null)               set("scheduled_minute", null);
     else if (data.scheduledMinute !== undefined) set("scheduled_minute", data.scheduledMinute ?? null);
     if (data.priority !== undefined)         set("priority", data.priority);
+    if (data.deadlineDate !== undefined)     set("deadline_date", data.deadlineDate ?? null);
     if (data.sortOrder !== undefined)        set("sort_order", data.sortOrder);
     if (data.inProgress !== undefined) {
       // Keep the original start when it's already set: re-marking a task in
@@ -286,8 +308,9 @@ export const tasksRouter = new Hono<{
         await c.env.DB.prepare(
           `INSERT INTO tasks
              (id, workspace_id, project_id, name, description, active, estimated_seconds,
-              due_date, priority, sort_order, parent_id, recur_rule, scheduled_minute, created_at)
-           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, NULL, ?, ?, ?)`
+              due_date, priority, sort_order, parent_id, recur_rule, scheduled_minute,
+              deadline_date, created_at)
+           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`
         ).bind(
           spawnId,
           workspaceId,
@@ -302,6 +325,7 @@ export const tasksRouter = new Hono<{
           rule,
           // A 9am stand-up is at 9am every time it comes round.
           data.scheduledMinute !== undefined ? data.scheduledMinute : (existing.scheduled_minute ?? null),
+          shiftedDeadline(existing, due),
           now
         ).run();
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { useAssistantNudges } from "@/hooks/useAssistant";
@@ -23,6 +24,7 @@ export function AssistantNudgeNotifier() {
   const dismissed = useAssistantStore((s) => s.dismissed);
   const markSeen = useAssistantStore((s) => s.markSeen);
   const setOpen = useAssistantStore((s) => s.setOpen);
+  const navigate = useNavigate();
 
   // A toast outlives the render that created it, so its action must not close
   // over `stopTimer`. The running entry is restored asynchronously on mount, so
@@ -68,7 +70,9 @@ export function AssistantNudgeNotifier() {
         action:
           n.kind === "long_timer"
             ? { label: "Stop timer", onClick: () => stopTimerRef.current() }
-            : { label: "Open Assistant", onClick: () => setOpen(true) },
+            : n.kind === "deadline_risk" || n.kind === "tasks_overdue"
+              ? { label: "Open tasks", onClick: () => navigate("/tasks") }
+              : { label: "Open Assistant", onClick: () => setOpen(true) },
       });
       // The toast is invisible when the tab is backgrounded — that's exactly
       // when the OS-level notification earns its keep. No-op unless granted.
@@ -77,7 +81,7 @@ export function AssistantNudgeNotifier() {
     // Mark the whole batch (even beyond the toast cap) so a backlog doesn't
     // drip-feed three more toasts on every later poll.
     markSeen(fresh.map((n) => n.id));
-  }, [nudges, alertsEnabled, open, seen, markSeen, setOpen]);
+  }, [nudges, alertsEnabled, open, seen, markSeen, setOpen, navigate]);
 
   return null;
 }
