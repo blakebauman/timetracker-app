@@ -24,6 +24,11 @@ function describeDue(date: string): string {
   return due.toLocaleDateString(undefined, { day: "numeric", month: "short" }).toLowerCase();
 }
 
+/** 900 → "15:00" (the popup has no time-format preference; 24-hour is unambiguous). */
+function describeMinute(minute: number): string {
+  return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+}
+
 function describeEstimate(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
@@ -79,6 +84,7 @@ export function TaskCapture() {
           ...(parsed.dueDate ? { dueDate: parsed.dueDate } : {}),
           ...(parsed.priority ? { priority: parsed.priority } : {}),
           ...(parsed.estimatedSeconds ? { estimatedSeconds: parsed.estimatedSeconds } : {}),
+          ...(parsed.scheduledMinute !== null ? { scheduledMinute: parsed.scheduledMinute } : {}),
           ...(parsed.recurRule ? { recurRule: parsed.recurRule } : {}),
         },
       },
@@ -98,7 +104,11 @@ export function TaskCapture() {
   };
 
   const echo = [
-    parsed.dueDate ? `due ${describeDue(parsed.dueDate)}` : null,
+    parsed.dueDate
+      ? `due ${describeDue(parsed.dueDate)}${
+          parsed.scheduledMinute !== null ? ` at ${describeMinute(parsed.scheduledMinute)}` : ""
+        }`
+      : null,
     parsed.priority ? `priority ${PRIORITY_LABEL[parsed.priority]}` : null,
     parsed.estimatedSeconds ? `estimate ${describeEstimate(parsed.estimatedSeconds)}` : null,
     parsed.recurRule ? describeRecurRule(parsed.recurRule)?.toLowerCase() : null,

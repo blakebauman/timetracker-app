@@ -30,6 +30,8 @@ import {
   PRIORITY_LABEL,
   dateToLocalDate,
   localDateToDate,
+  minuteToTimeInput,
+  timeInputToMinute,
 } from "@/lib/taskUtils";
 import type { Task } from "@timetracker/core/schemas";
 
@@ -91,6 +93,8 @@ export function TaskDialog({
   const [projectId, setProjectId] = useState<string | null>(task?.projectId ?? defaultProjectId);
   const [estimate, setEstimate] = useState(formatTimeInput(task?.estimatedSeconds ?? null));
   const [dueDate, setDueDate] = useState<string | null>(task?.dueDate ?? defaultDueDate);
+  /** `HH:mm` for the time input; empty = no time of day. */
+  const [time, setTime] = useState(minuteToTimeInput(task?.scheduledMinute ?? null));
   const [priority, setPriority] = useState(task?.priority ?? 4);
   const [repeat, setRepeat] = useState(repeatValue(task?.recurRule ?? null));
   const [weekDays, setWeekDays] = useState<number[]>(ruleDays(task?.recurRule ?? null));
@@ -109,6 +113,7 @@ export function TaskDialog({
     setProjectId(task?.projectId ?? defaultProjectId);
     setEstimate(formatTimeInput(task?.estimatedSeconds ?? null));
     setDueDate(task?.dueDate ?? defaultDueDate);
+    setTime(minuteToTimeInput(task?.scheduledMinute ?? null));
     setPriority(task?.priority ?? 4);
     setRepeat(repeatValue(task?.recurRule ?? null));
     setWeekDays(ruleDays(task?.recurRule ?? null));
@@ -120,6 +125,7 @@ export function TaskDialog({
     setProjectId(defaultProjectId);
     setEstimate("");
     setDueDate(defaultDueDate);
+    setTime("");
     setPriority(4);
     setRepeat("none");
     setWeekDays([]);
@@ -176,6 +182,8 @@ export function TaskDialog({
       description: description.trim() || null,
       estimatedSeconds: parsed,
       dueDate,
+      // A time only means something on a day; with no date it's dropped.
+      scheduledMinute: dueDate ? timeInputToMinute(time) : null,
       priority,
       recurRule: resolveRepeat(),
     };
@@ -281,12 +289,28 @@ export function TaskDialog({
                   placeholder="No due date"
                 />
               </div>
+              {/* A time turns the due date into a block on the calendar, for
+                  the estimate's length. Only offered once there's a day for
+                  it to sit on. */}
+              {dueDate && (
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  aria-label="Time"
+                  title="Schedule a time: the task appears on the calendar"
+                  className="w-28 shrink-0"
+                />
+              )}
               {dueDate && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="shrink-0"
-                  onClick={() => setDueDate(null)}
+                  onClick={() => {
+                    setDueDate(null);
+                    setTime("");
+                  }}
                   aria-label="Clear due date"
                 >
                   Clear

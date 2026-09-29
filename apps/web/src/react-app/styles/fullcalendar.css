@@ -145,6 +145,18 @@
   filter: brightness(1.05);
 }
 
+/* Planned = a task scheduled at a time of day. Dotted, where a draft is
+   dashed: a draft is "what I think you did", a plan is "what you meant to do",
+   and the two can share a slot. Nearly hollow, so the tracked entry beside it
+   is the solid thing on the grid. */
+.tt-calendar .fc-event.tt-event-planned {
+  border-style: dotted;
+  cursor: pointer;
+}
+.tt-calendar .fc-event.tt-event-planned:hover {
+  border-style: solid;
+}
+
 /* Now-indicator line + arrow. */
 .tt-calendar .fc .fc-timegrid-now-indicator-line {
   border-color: var(--primary);

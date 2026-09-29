@@ -135,9 +135,9 @@ the record of what each item needed.*
 now (2026-09-28). Every task keeps a project, and quick-add already defaults
 to the sole or last-used one. Revisit only if capture feels slow. Extension
 quick-add shipped in the following PR, sharing the parser via
-`@timetracker/core/quick-add`. Still open: a time-of-day token (it needs Phase
-2's scheduled time to have somewhere to go), `@label` (needs Phase 3's tags),
-and `every 2 weeks` (needs an interval in the recurrence vocabulary).*
+`@timetracker/core/quick-add`. The time-of-day token (`3pm`) shipped with
+Phase 2's scheduled blocks. Still open: `@label` (needs Phase 3's tags) and
+`every 2 weeks` (needs an interval in the recurrence vocabulary).*
 
 - **Quick-add vocabulary** — `next week`, `in 3 days`, a time of day (`3pm`),
   an estimate (`~45m`), `every mon` / `every 2 weeks`, and `@label` once labels
@@ -155,8 +155,13 @@ and `every 2 weeks` (needs an interval in the recurrence vocabulary).*
   task is one call to `POST /api/tasks`.
 
 ### Phase 2: plan meets time
+*Scheduled blocks and reminders shipped in the scheduled-blocks PR, with the
+Phase 1 time-of-day token. The rail drop decides schedule-vs-log by the slot's
+side of "now", so it never asks. Still open: deadlines, and tasks in the
+digest and nudges.*
+
 The part a pure task list can't do, because it has no actual to compare against.
-- **Scheduled blocks** — give a task a local time of day, use its estimate as
+- ~~**Scheduled blocks**~~ — give a task a local time of day, use its estimate as
   the duration, and render it as a fourth event kind in `lib/calendarMapping.ts`
   beside entries, ghosts and gaps. Dropping a task from the rail then asks
   *schedule* or *log*; today it always logs a finished entry. Starting a
@@ -169,7 +174,7 @@ The part a pure task list can't do, because it has no actual to compare against.
   don't reference tasks at all. The morning digest should list overdue and
   due-today tasks with their total estimate against calendar-free time; add an
   overdue-tasks nudge.
-- **Reminders** — a browser notification when a scheduled block starts, via
+- ~~**Reminders**~~ — a browser notification when a scheduled block starts, via
   the existing `AssistantNudgeNotifier` path. Email only through the digest; no
   new cron job.
 

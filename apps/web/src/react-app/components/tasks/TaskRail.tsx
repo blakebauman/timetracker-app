@@ -115,7 +115,7 @@ export function TaskRail() {
                 data-project-id={task.projectId}
                 data-task-name={task.name}
                 data-estimate={task.estimatedSeconds ?? ""}
-                title="Drag onto the grid to log this at that time"
+                title="Drag onto the grid: a slot ahead of now schedules it, one behind now logs the time"
               >
                 <TaskRow
                   task={task}

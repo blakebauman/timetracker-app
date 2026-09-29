@@ -23,6 +23,25 @@ export interface ParsedQuickAdd {
   estimatedSeconds: number | null;
   /** A stored rule (`daily`, `weekdays`, `weekly:1,3`, `monthly:15`) from `every …`. */
   recurRule: string | null;
+  /** `3pm`, `3:30pm`, `15:00` (optionally after `at`) → minutes after local midnight. */
+  scheduledMinute: number | null;
+}
+
+/**
+ * A time of day, or null. 12-hour needs its am/pm (`3pm`, `12:30am`); 24-hour
+ * needs two-digit minutes (`15:00`, `9:30`), which is what keeps a task called
+ * "1:1 with Sam" from being read as 1:01.
+ */
+function parseTimeOfDay(token: string): number | null {
+  const twelve = /^(\d{1,2})(?::([0-5]\d))?(am|pm)$/.exec(token);
+  if (twelve) {
+    const h = Number(twelve[1]);
+    if (h < 1 || h > 12) return null;
+    return ((h % 12) + (twelve[3] === "pm" ? 12 : 0)) * 60 + Number(twelve[2] ?? 0);
+  }
+  const twentyFour = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(token);
+  if (twentyFour) return Number(twentyFour[1]) * 60 + Number(twentyFour[2]);
+  return null;
 }
 
 const WEEKDAY_TOKENS: Record<string, number> = {
@@ -82,9 +101,9 @@ function parseEvery(
 }
 
 /**
- * Parse date, priority, estimate and repeat tokens out of a quick-add line —
- * `tomorrow`, `fri`, `next week`, `in 3 days`, `3d`, `p1`, `~45m`,
- * `every mon`, `#project`.
+ * Parse date, time, priority, estimate and repeat tokens out of a quick-add
+ * line — `tomorrow`, `fri`, `next week`, `in 3 days`, `3d`, `3pm`, `at 15:00`,
+ * `p1`, `~45m`, `every mon`, `#project`.
  *
  * **Deliberately deterministic, with no AI round-trip.** Capture has to be
  * instant and repeatable: the same words must always produce the same task, and
@@ -99,6 +118,7 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
   let projectHint: string | null = null;
   let estimatedSeconds: number | null = null;
   let every: ReturnType<typeof parseEvery> = null;
+  let scheduledMinute: number | null = null;
 
   const raws = input.split(/\s+/).filter(Boolean);
   const kept: string[] = [];
@@ -112,6 +132,12 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
     if (priority === null && /^p[1-4]$/.test(token)) {
       priority = Number(token[1]);
       continue;
+    }
+    if (scheduledMinute === null) {
+      const at = token === "at" && next ? parseTimeOfDay(next) : null;
+      if (at !== null) { scheduledMinute = at; i++; continue; }
+      const time = parseTimeOfDay(token);
+      if (time !== null) { scheduledMinute = time; continue; }
     }
     if (estimatedSeconds === null) {
       const est = parseEstimate(token);
@@ -199,6 +225,19 @@ export function parseQuickAdd(input: string, today = todayLocalDate()): ParsedQu
     }
   }
 
-  return { name: kept.join(" ").trim(), dueDate, priority, projectHint, estimatedSeconds, recurRule };
+  // A time with no day means today — "call bank 3pm" is a plan for this
+  // afternoon. Even when 3pm has passed: the row shows it overdue, which is
+  // the honest reading, rather than silently moving it to tomorrow.
+  if (scheduledMinute !== null) dueDate ??= today;
+
+  return {
+    name: kept.join(" ").trim(),
+    dueDate,
+    priority,
+    projectHint,
+    estimatedSeconds,
+    recurRule,
+    scheduledMinute,
+  };
 }
 

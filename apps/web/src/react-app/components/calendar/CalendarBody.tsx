@@ -15,11 +15,14 @@ import { toast } from "sonner";
 import { CalendarView, type CalendarViewType } from "./CalendarView";
 import { CalendarCreateDialog } from "./CalendarCreateDialog";
 import { EntryForm, type EditableEntry } from "@/components/entries/EntryForm";
+import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { useEntriesRange, useUpdateEntry, useCreateEntry, useDeleteEntry } from "@/hooks/useEntries";
 import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarSync";
+import { useAllTasks, useUpdateTask } from "@/hooks/useTasks";
+import { useTimer } from "@/hooks/useTimer";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import {
@@ -27,10 +30,13 @@ import {
   buildGapEvents,
   draftToEvent,
   externalEventToEvent,
+  taskToEvent,
   type CalendarEventExtendedProps,
 } from "@/lib/calendarMapping";
 import { useDraftRange } from "@/hooks/useDrafts";
 import { localDayKey, formatEntryTime } from "@/lib/dateUtils";
+import { dateToLocalDate, formatDueDate, formatMinute } from "@/lib/taskUtils";
+import type { Task } from "@timetracker/core/schemas";
 
 import "@/styles/fullcalendar.css";
 
@@ -138,6 +144,10 @@ export function CalendarBody({
   const updateEntry = useUpdateEntry();
   const createEntry = useCreateEntry();
   const deleteEntry = useDeleteEntry();
+  const { data: tasks = [] } = useAllTasks();
+  const updateTask = useUpdateTask();
+  const { startTimer } = useTimer();
+  const [editTask, setEditTask] = useState<Task | null>(null);
 
   const { data: externalEvents = [], isError: externalEventsError } = useCalendarEvents(
     range.start.toISOString(),
@@ -180,6 +190,15 @@ export function CalendarBody({
       (g) => !draftedEventIds.has(String(g.id).replace(/^ghost:/, ""))
     );
     const draftBlocks = drafts.map(draftToEvent);
+    // Open tasks with a time of day, inside the visible range.
+    const planned = tasks
+      .filter((t) => t.active)
+      .map(taskToEvent)
+      .filter((e): e is NonNullable<typeof e> => {
+        if (!e) return false;
+        const start = (e.start as Date).getTime();
+        return start < range.end.getTime() && (e.end as Date).getTime() > range.start.getTime();
+      });
     // Gaps only make sense on the time grid, not the month overview.
     const allGaps =
       showGaps && calendarView !== "dayGridMonth" ? buildGapEvents(entries, nowIso) : [];
@@ -197,12 +216,12 @@ export function CalendarBody({
       );
     });
     return {
-      events: [...gaps, ...draftBlocks, ...real, ...visibleGhosts],
+      events: [...gaps, ...draftBlocks, ...planned, ...real, ...visibleGhosts],
       // What the "Convert N events" button offers to do — the ghosts still on
       // screen, not every unconfirmed event (a drafted one is already handled).
       ghostCount: visibleGhosts.length,
     };
-  }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView, drafts]);
+  }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView, drafts, tasks]);
 
   const convertRange = useConvertCalendarRange();
   const handleConvertAll = () =>
@@ -247,6 +266,25 @@ export function CalendarBody({
       arg.revert();
       return;
     }
+    // A planned block: moving it reschedules the task (its local day and
+    // minute); stretching it re-estimates it. Nothing is tracked either way.
+    const { task } = arg.event.extendedProps as CalendarEventExtendedProps;
+    if (task) {
+      updateTask.mutate(
+        {
+          id: task.id,
+          data: {
+            dueDate: dateToLocalDate(start),
+            scheduledMinute: start.getHours() * 60 + start.getMinutes(),
+            ...("endDelta" in arg
+              ? { estimatedSeconds: Math.round((end.getTime() - start.getTime()) / 1000) }
+              : {}),
+          },
+        },
+        { onError: () => arg.revert() }
+      );
+      return;
+    }
     updateEntry.mutate(
       { id: arg.event.id, data: { start: start.toISOString(), stop: end.toISOString() } },
       {
@@ -275,6 +313,37 @@ export function CalendarBody({
     const projectId = el.getAttribute("data-project-id");
     const name = el.getAttribute("data-task-name") ?? "";
     if (!taskId || !projectId) return;
+
+    // Dropped ahead of now, it's a plan: schedule the task into that slot.
+    // Behind now, it's a record of time already spent: log it (below). The
+    // slot's side of "now" already says which one you meant, so the drop
+    // never has to stop and ask.
+    if (arg.date.getTime() > Date.now()) {
+      const task = tasks.find((t) => t.id === taskId);
+      const before = { dueDate: task?.dueDate ?? null, scheduledMinute: task?.scheduledMinute ?? null };
+      const dueDate = dateToLocalDate(arg.date);
+      const scheduledMinute = arg.date.getHours() * 60 + arg.date.getMinutes();
+      updateTask.mutate(
+        { id: taskId, data: { dueDate, scheduledMinute } },
+        {
+          onSuccess: () =>
+            toast.success(`Scheduled ${name}`, {
+              description: `${formatDueDate(dueDate)} at ${formatMinute(scheduledMinute, timeFormat)}`,
+              action: {
+                label: "Undo",
+                onClick: () =>
+                  updateTask.mutate({
+                    id: taskId,
+                    data: before.dueDate
+                      ? { dueDate: before.dueDate, scheduledMinute: before.scheduledMinute }
+                      : { dueDate: null },
+                  }),
+              },
+            }),
+        }
+      );
+      return;
+    }
 
     const estimate = Number(el.getAttribute("data-estimate")) || 30 * 60;
     const start = arg.date;
@@ -323,6 +392,15 @@ export function CalendarBody({
         calendarEventId: props.external.calendarEventId,
       });
       setCreateOpen(true);
+      return;
+    }
+    if (props.task) {
+      const target = arg.jsEvent.target as HTMLElement | null;
+      if (target?.closest("[data-start-task]")) {
+        startTimer({ description: props.task.name, projectId: props.task.projectId, taskId: props.task.id });
+      } else {
+        setEditTask(props.task);
+      }
       return;
     }
     if (props.entry) setEditEntry(props.entry);
@@ -417,6 +495,8 @@ export function CalendarBody({
         calendarEventId={createRange.calendarEventId}
         onClose={closeCreate}
       />
+
+      <TaskDialog open={!!editTask} task={editTask} onClose={() => setEditTask(null)} />
 
       {editEntry && (
         <EntryForm

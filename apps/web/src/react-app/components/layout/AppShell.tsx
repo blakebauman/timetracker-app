@@ -6,6 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { TimerBar } from "@/components/timer/TimerBar";
 import { ProductivityManager } from "@/components/timer/ProductivityManager";
 import { AssistantNudgeNotifier } from "@/components/assistant/AssistantNudgeNotifier";
+import { TaskReminderNotifier } from "@/components/tasks/TaskReminderNotifier";
 import { AiQuickAddDialog } from "@/components/entries/AiQuickAddDialog";
 import { CommandPalette } from "./CommandPalette";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
@@ -156,6 +157,7 @@ export function AppShell() {
         </Suspense>
       )}
       <AssistantNudgeNotifier />
+      <TaskReminderNotifier />
       <AiQuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
       {logTimeTaskId && (
         <Suspense fallback={null}>

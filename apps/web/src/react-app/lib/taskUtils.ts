@@ -79,6 +79,40 @@ export function formatDueHeading(dueDate: string, today = todayLocalDate()): str
   return `${rel} · ${abs}`;
 }
 
+// ─── Time of day ─────────────────────────────────────────────────────────────
+
+/** How long a scheduled task's block is when it carries no estimate. */
+export const DEFAULT_BLOCK_SECONDS = 30 * 60;
+
+/** Minutes after midnight → "14:30" / "2:30 PM", following the time-format pref. */
+export function formatMinute(minute: number, timeFormat: "24h" | "12h" = "24h"): string {
+  const h = Math.floor(minute / 60);
+  const m = String(minute % 60).padStart(2, "0");
+  if (timeFormat === "24h") return `${String(h).padStart(2, "0")}:${m}`;
+  return `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** Minutes after midnight → the `HH:mm` a `<input type="time">` wants, and back. */
+export function minuteToTimeInput(minute: number | null): string {
+  return minute === null ? "" : formatMinute(minute, "24h");
+}
+export function timeInputToMinute(value: string): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+/**
+ * A scheduled task's block, in real instants: its local due day at its local
+ * minute, for its estimate. Null for a task with no day or no time.
+ */
+export function scheduledBlock(task: Pick<Task, "dueDate" | "scheduledMinute" | "estimatedSeconds">) {
+  if (!task.dueDate || task.scheduledMinute === null) return null;
+  const [y, mo, d] = task.dueDate.split("-").map(Number);
+  const start = new Date(y, mo - 1, d, 0, task.scheduledMinute);
+  const end = new Date(start.getTime() + (task.estimatedSeconds || DEFAULT_BLOCK_SECONDS) * 1000);
+  return { start, end };
+}
+
 /** Convert a local date string into a Date at local midnight (for the picker). */
 export function localDateToDate(date: string): Date {
   const [y, m, d] = date.split("-").map(Number);

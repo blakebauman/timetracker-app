@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { EventContentArg } from "@fullcalendar/core";
-import { CalendarPlus, Wand2 } from "lucide-react";
+import { CalendarPlus, Play, Wand2 } from "lucide-react";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
@@ -8,8 +8,43 @@ import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 // Custom renderer for a calendar block. Passed to FullCalendar's `eventContent`.
 // Kept intentionally compact so short (15–30 min) blocks stay legible.
 export function CalendarEventContent(arg: EventContentArg) {
-  const { entry, running, ghost, external, gap, draft } =
+  const { entry, running, ghost, external, gap, draft, task } =
     arg.event.extendedProps as Partial<CalendarEventExtendedProps>;
+
+  if (task) {
+    const taskColor = task.projectColor ?? DEFAULT_PROJECT_COLOR;
+    return (
+      <div className="flex h-full flex-col gap-0.5 overflow-hidden text-left leading-tight">
+        <div className="flex items-center gap-1">
+          {/* Caught by CalendarBody's eventClick via `data-start-task`:
+              FullCalendar's own click listener runs before React's, so
+              stopPropagation here couldn't keep the block's click from
+              opening the task. */}
+          <span
+            role="button"
+            data-start-task
+            aria-label={`Start timer for ${task.name}`}
+            title="Start a timer on this task"
+            className="tt-on-tint-muted -m-0.5 flex shrink-0 items-center justify-center rounded-full p-0.5 transition-colors duration-fast ease-out-quart hover:text-primary"
+          >
+            <Play className="h-3 w-3" />
+          </span>
+          <span className="truncate text-xs font-medium">{task.name}</span>
+        </div>
+        <span className="tt-on-tint-muted truncate text-micro">
+          {arg.timeText} · planned
+        </span>
+        {task.projectName && (
+          <span
+            className="tt-swatch-ink truncate text-micro font-medium"
+            style={{ "--swatch": taskColor } as CSSProperties}
+          >
+            {task.projectName}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   // Untracked gap between two entries — reads as a subtle "fill me" affordance.
   //
