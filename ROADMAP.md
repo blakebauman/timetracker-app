@@ -200,12 +200,21 @@ lists remain open, and they wait for a real need.*
   only if the fixed stages prove too coarse.
 
 ### Phase 4: agents
-- **MCP task tools** — `list_tasks` for read keys; `create_task` and
+*Shipped: task logic moved into `lib/tasks.ts` (shared by REST, MCP and the
+Assistant); MCP `list_tasks` / `create_task` / `complete_task` plus `taskId`
+on `start_timer`; Assistant `listTasks` / `createTask` / `completeTask` /
+`planDay` / `scheduleTasks` (writes approval-gated). The day plan is
+deterministic (`lib/day-plan.ts`) and exposed read-only at
+`GET /api/assistant/plan-day`. Still open: a per-user working-hours setting
+(the plan assumes 09:00–17:30), and a "Plan my day" button in the Tasks UI
+that uses the same endpoint without the chat.*
+
+- ~~**MCP task tools**~~ — `list_tasks` for read keys; `create_task` and
   `complete_task` only for `read_write` keys. The create / complete /
   next-occurrence logic lives inline in `routes/tasks.ts` and has to move into a
   `lib/tasks.ts` helper first, keeping the MCP rule that every tool wraps the
   same helper REST uses.
-- **Assistant tools** — create and complete a task (approval-gated like the
+- ~~**Assistant tools**~~ — create and complete a task (approval-gated like the
   other writes), and "plan my day": fit today's estimates into calendar-free
   time and propose scheduled blocks.
 

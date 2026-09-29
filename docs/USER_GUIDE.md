@@ -124,7 +124,7 @@ Connect Claude, ChatGPT, or any other MCP client to your workspace and ask about
 Under **Settings → Workspace → MCP connector**:
 
 1. Copy the **server URL** (`https://timetracker.run/mcp`).
-2. Create a key. **Read only** lets the assistant look at projects, clients, entries, summaries, budgets and drafts. **Read + write** also lets it start and stop timers, log entries, and draft a day.
+2. Create a key. **Read only** lets the assistant look at projects, clients, entries, summaries, budgets, drafts and tasks. **Read + write** also lets it start and stop timers (on a task, too), log entries, draft a day, and create or complete tasks.
 3. Paste both into your client — it authenticates with `Authorization: Bearer <your key>`.
 
 The key is shown **once** and can't be recovered; if you lose it, revoke it and make another. Revoking takes effect immediately.
@@ -237,6 +237,8 @@ Dismissals stick per-device. Turn nudge alerts on/off under Settings → Product
 
 **Chat** — ask the Assistant things in plain language: *"start a timer for the Acme redesign"*, *"how much did I bill this week?"*, *"log 2 hours of code review yesterday afternoon"*, *"track my 10am meeting"*. It can start/stop timers, log and delete entries, track meetings, summarize your time, and look up your projects — anything that **changes time already on your sheet asks for your approval first** with an in-chat confirm card: logging, deleting, stopping a running timer, or starting a new one while another is running. Starting a timer when nothing is running just starts it.
 
+It knows your tasks too: *"what's due today?"*, *"remind me to send the SOW by Friday"*, *"I finished the vendor review"*. Adding or completing a task asks first, like every other change. Ask it to **plan my day** and it fits today's unscheduled tasks, those due today or overdue, into the free part of your working day (09:00–17:30, around meetings and anything already scheduled), most urgent first. It never splits a task around a meeting, and it tells you what didn't fit. It only proposes; say yes and it puts the tasks on your calendar as planned blocks.
+
 **Memory** — tell the Assistant to remember preferences ("remember that standups are never billable") and it stores them per-workspace, using them in future conversations. Review and delete everything it knows under **Settings → Assistant memory**.
 
 ## Reports & exports
@@ -298,6 +300,7 @@ Both systems file time against a calendar day rather than a timestamp, and the d
 | `Alt+Shift+S` | Start / stop the timer |
 | `Alt+Shift+X` | Discard the running timer |
 | `Alt+Shift+R` | Keep running — undo the last Stop (for 10 seconds) |
+| `Alt+Shift+T` | Open Tasks with the add-task line focused (J/K, X, E, 1–4, S, Delete, Q work on the Tasks page — see "Planning with tasks") |
 | `?` | Show the shortcut reference |
 
 The command palette is the fastest path to almost everything — try it first.

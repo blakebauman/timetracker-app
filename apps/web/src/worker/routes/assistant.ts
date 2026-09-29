@@ -9,6 +9,7 @@ import { computeNudges } from "../lib/assistant";
 import { inferEventProjects } from "../lib/ai";
 import { listMemories, deleteMemory, clearMemories } from "../lib/assistant-memory";
 import { broadcast } from "../db/queries";
+import { buildDayPlan } from "../lib/day-plan";
 
 // Clamp to sane UTC offsets so a bad client can't shift day-bound queries
 // arbitrarily far. Same JS getTimezoneOffset() convention as the AI routes.
@@ -25,6 +26,13 @@ export const assistantRouter = new Hono<{
     const { timezoneOffsetMinutes } = c.req.valid("query");
     const nudges = await computeNudges(c.env, c.get("workspaceId"), timezoneOffsetMinutes);
     return c.json(nudges);
+  })
+  // "Plan my day", without the chat: the same deterministic proposal the
+  // Assistant's planDay tool presents. Read-only — applying it is a task
+  // update per slot, which the client or the Assistant does with consent.
+  .get("/plan-day", zValidator("query", NudgesQuerySchema), async (c) => {
+    const { timezoneOffsetMinutes } = c.req.valid("query");
+    return c.json(await buildDayPlan(c.env, c.get("workspaceId"), timezoneOffsetMinutes));
   })
   // One-click "Add to timesheet" from an untracked-meeting nudge. Server-side
   // so the entry can be pre-categorized via grounded AI project inference —
