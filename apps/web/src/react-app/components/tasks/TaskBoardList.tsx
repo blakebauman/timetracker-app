@@ -21,6 +21,13 @@ import { TaskDialog } from "./TaskDialog";
 import { TaskViewTabs, type TaskView } from "./TaskViewTabs";
 import { useAllTasks, useCompleteTask, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
 import { useTaskListKeys } from "@/hooks/useTaskListKeys";
+import { TaskFilterPopover, TaskViewPicker } from "./TaskFilters";
+import {
+  NO_FILTERS,
+  activeFilterCount,
+  useActiveTaskView,
+  type TaskFilterValues,
+} from "@/lib/taskViews";
 import { BELOW_SM, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort } from "@/lib/dateUtils";
@@ -115,7 +122,11 @@ export function TaskBoardList() {
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
 
   const [view, setView] = useState<TaskView>("today");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  /** All: status + project / tag / priority / due, edited in the filter popover. */
+  const [filters, setFilters] = useState<TaskFilterValues>(NO_FILTERS);
+  const status: StatusFilter = filters.status;
+  const setStatus = (s: StatusFilter) => setFilters((f) => ({ ...f, status: s }));
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<GroupBy>("project");
   const [sortBy, setSortBy] = useState<SortBy>("plan");
   /** All: free-text filter over names and notes. */
@@ -132,6 +143,8 @@ export function TaskBoardList() {
   /** Board: the column a drag is over, which changes stage on drop. */
   const [dragOverStage, setDragOverStage] = useState<Stage | null>(null);
   const phone = useMediaQuery(BELOW_SM);
+  const currentView = { query, groupBy, sortBy, ...filters };
+  const activeView = useActiveTaskView(activeViewId, currentView);
 
   // Q on this page, Alt+Shift+T from anywhere (which navigates here with a
   // `capture` stamp): straight into the capture line. With no tasks yet there
@@ -275,9 +288,45 @@ export function TaskBoardList() {
       matches(t) ||
       (t.parentId ? matchedParents.has(t.parentId) : parentsOfMatches.has(t.id));
 
+    // Project / tag / priority / due judge the top-level task; a subtask
+    // follows its parent (it has no due date of its own and rides its row).
+    const byId = new Map(tasks.map((t) => [t.id, t]));
+    const weekEnd = addLocalDays(today, 6);
+    const passes = (t: Task) => {
+      if (filters.projectId && t.projectId !== filters.projectId) return false;
+      if (filters.tag && !t.tags.includes(filters.tag)) return false;
+      if (filters.maxPriority && t.priority > filters.maxPriority) return false;
+      switch (filters.due) {
+        case "overdue":
+          return !!t.dueDate && compareLocalDates(t.dueDate, today) < 0;
+        case "today":
+          return t.dueDate === today;
+        case "week":
+          return (
+            !!t.dueDate &&
+            compareLocalDates(t.dueDate, today) >= 0 &&
+            compareLocalDates(t.dueDate, weekEnd) <= 0
+          );
+        case "none":
+          return !t.dueDate;
+        default:
+          return true;
+      }
+    };
+    const passesFilters = (t: Task) => {
+      const owner = t.parentId ? byId.get(t.parentId) : t;
+      return owner ? passes(owner) : false;
+    };
+
+    // A drag writes the midpoint of its *visible* neighbours; with a search
+    // or filter hiding rows between them, that lands somewhere unseen.
+    const narrowed = !!q || activeFilterCount(filters) > 0;
+
     const filtered = tasks.filter(
       (t) =>
-        inQuery(t) && (status === "all" ? true : status === "active" ? t.active : !t.active)
+        inQuery(t) &&
+        passesFilters(t) &&
+        (status === "all" ? true : status === "active" ? t.active : !t.active)
     );
 
     if (groupBy === "none") {
@@ -289,9 +338,7 @@ export function TaskBoardList() {
               label: "All tasks",
               trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
               nodes,
-              // A drag writes the midpoint of its *visible* neighbours; with a
-              // search hiding rows between them that lands somewhere unseen.
-              reorderable: sortBy === "plan" && !q,
+              reorderable: sortBy === "plan" && !narrowed,
             },
           ]
         : [];
@@ -333,7 +380,7 @@ export function TaskBoardList() {
         trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
         // Ordering is only the user's own inside a project; in any other
         // grouping a drag would be rewriting a sequence the group doesn't own.
-        reorderable: groupBy === "project" && sortBy === "plan" && !q,
+        reorderable: groupBy === "project" && sortBy === "plan" && !narrowed,
       };
     });
 
@@ -341,7 +388,7 @@ export function TaskBoardList() {
     return groupBy === "due"
       ? entries.sort((a, b) => (a.key === "none" ? 1 : b.key === "none" ? -1 : a.key.localeCompare(b.key)))
       : entries.sort((a, b) => a.label.localeCompare(b.label));
-  }, [tasks, view, status, groupBy, sortBy, today, query]);
+  }, [tasks, view, status, groupBy, sortBy, today, query, filters]);
 
   // A board with empty columns is still a board; only a workspace with no tasks
   // at all gets the first-run state there.
@@ -533,12 +580,16 @@ export function TaskBoardList() {
       ) : (
         <EmptyState
           icon={SearchX}
-          title="No tasks match this filter"
-          description={`Showing ${status === "done" ? "done" : "active"} tasks only.`}
+          title="No tasks match these filters"
+          description={
+            activeFilterCount(filters) === 1 && status !== "all"
+              ? `Showing ${status === "done" ? "done" : "open"} tasks only.`
+              : "Nothing passes every filter at once."
+          }
           className="py-24"
           action={
-            <Button size="sm" variant="outline" onClick={() => setStatus("all")}>
-              Clear filter
+            <Button size="sm" variant="outline" onClick={() => setFilters(NO_FILTERS)}>
+              Clear filters
             </Button>
           }
         />
@@ -690,16 +741,31 @@ export function TaskBoardList() {
                   className="h-8 w-40 pl-8 text-sm"
                 />
               </div>
-              <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-                <SelectTrigger size="sm" className="w-28" aria-label="Filter by status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                </SelectContent>
-              </Select>
+              <TaskFilterPopover
+                value={filters}
+                onChange={setFilters}
+                viewName={activeView?.name ?? null}
+                viewSlot={
+    <TaskViewPicker
+                    current={currentView}
+                    activeViewId={activeViewId}
+                    onApply={(id, config) => {
+                      setActiveViewId(id);
+                      if (!config) return;
+                      setQuery(config.query);
+                      setGroupBy(config.groupBy);
+                      setSortBy(config.sortBy);
+                      setFilters({
+                        status: config.status,
+                        projectId: config.projectId,
+                        tag: config.tag,
+                        maxPriority: config.maxPriority,
+                        due: config.due,
+                      });
+                    }}
+                  />
+                }
+              />
 
               <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
                 <SelectTrigger size="sm" className="w-36" aria-label="Group by">
@@ -727,6 +793,7 @@ export function TaskBoardList() {
                   <SelectItem value="tracked">Sort: Tracked</SelectItem>
                 </SelectContent>
               </Select>
+
           </>
         )}
 

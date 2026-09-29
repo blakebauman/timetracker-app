@@ -10,7 +10,7 @@ import {
   nextOccurrence,
   todayLocalDate,
 } from "@timetracker/core/task-recurrence";
-import type { Task, CreateTask, UpdateTask } from "@timetracker/core/schemas";
+import type { Task, CreateTask, UpdateTask, TaskView, TaskViewConfig } from "@timetracker/core/schemas";
 
 /** How long a deleted task can be brought back before the DELETE is sent. */
 const DELETE_UNDO_MS = 6000;
@@ -323,4 +323,36 @@ export function useDeleteTask() {
     },
     [queryClient]
   );
+}
+
+// ─── Saved views ──────────────────────────────────────────────────────────────
+
+export function useTaskViews() {
+  return useQuery({
+    queryKey: ["task-views"],
+    queryFn: () => api.taskViews.list() as Promise<TaskView[]>,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCreateTaskView() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; config: TaskViewConfig }) =>
+      api.taskViews.create(body as unknown as Record<string, unknown>) as Promise<TaskView>,
+    onSuccess: (view) => {
+      queryClient.invalidateQueries({ queryKey: ["task-views"] });
+      toast.success(`Saved view "${view.name}"`);
+    },
+    onError: (err) => toast.error(mutationErrorMessage(err, "Couldn't save the view")),
+  });
+}
+
+export function useDeleteTaskView() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.taskViews.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["task-views"] }),
+    onError: (err) => toast.error(mutationErrorMessage(err, "Couldn't delete the view")),
+  });
 }
