@@ -136,8 +136,8 @@ now (2026-09-28). Every task keeps a project, and quick-add already defaults
 to the sole or last-used one. Revisit only if capture feels slow. Extension
 quick-add shipped in the following PR, sharing the parser via
 `@timetracker/core/quick-add`. The time-of-day token (`3pm`) shipped with
-Phase 2's scheduled blocks. Still open: `@label` (needs Phase 3's tags) and
-`every 2 weeks` (needs an interval in the recurrence vocabulary).*
+Phase 2's scheduled blocks. `@tag` shipped with Phase 3's tags. Still open: `every 2 weeks`
+(needs an interval in the recurrence vocabulary).*
 
 - **Quick-add vocabulary** — `next week`, `in 3 days`, a time of day (`3pm`),
   an estimate (`~45m`), `every mon` / `every 2 weeks`, and `@label` once labels
@@ -179,12 +179,16 @@ The part a pure task list can't do, because it has no actual to compare against.
   new cron job.
 
 ### Phase 3: organise and review
-- **Labels are tags** — a `task_tags` join onto the existing `tags` table, so
+*Tags, saved views and completed history shipped together (one PR, three
+commits). The board shipped earlier with Phase 0. Only freeform per-project
+lists remain open, and they wait for a real need.*
+
+- ~~**Labels are tags**~~ — a `task_tags` join onto the existing `tags` table, so
   there is one vocabulary rather than two. Starting a timer from a task carries
   its tags onto the entry.
-- **Saved task views** — priority / label / project / due filters, stored the
+- ~~**Saved task views**~~ — priority / label / project / due filters, stored the
   way `saved_reports` stores report configurations.
-- **Completed history** — a per-week list of finished tasks with estimate vs
+- ~~**Completed history**~~ — a per-week list of finished tasks with estimate vs
   tracked time. Today completed tasks only show as "Completed today" or under
   All → Done.
 - ~~**Board view**~~ — shipped as a fourth Tasks tab with fixed workflow

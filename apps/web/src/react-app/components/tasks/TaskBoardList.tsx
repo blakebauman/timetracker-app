@@ -30,7 +30,7 @@ import {
 } from "@/lib/taskViews";
 import { BELOW_SM, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/stores/uiStore";
-import { formatDurationShort } from "@/lib/dateUtils";
+import { formatDurationShort, localDayKey } from "@/lib/dateUtils";
 import {
   comparePlanned,
   formatDueHeading,
@@ -43,6 +43,7 @@ import {
 import {
   addLocalDays,
   compareLocalDates,
+  localWeekday,
   todayLocalDate,
 } from "@timetracker/core/task-recurrence";
 import { cn } from "@/lib/utils";
@@ -75,7 +76,12 @@ interface Section {
   dropDate?: string;
   /** Board columns: dropping a card here moves it to this stage. */
   stage?: Stage;
+  /** History weeks: "5 done · 12h tracked · 110% of estimates", right-aligned. */
+  summary?: string;
 }
+
+/** How many weeks of finished work History shows; older is under All → Done. */
+const HISTORY_WEEKS = 8;
 
 /**
  * What the quick-add line files a task under when the line itself says nothing.
@@ -164,6 +170,13 @@ export function TaskBoardList() {
   }, [captureStamp, isLoading, focusCapture]);
 
   const today = todayLocalDate();
+  const weekStartsOn = useUIStore((s) => s.weekStart);
+  /** The local day a week containing `day` starts on, by the week-start pref. */
+  const weekStartOf = useCallback(
+    (day: string) => addLocalDays(day, -((localWeekday(day) - weekStartsOn + 7) % 7)),
+    [weekStartsOn]
+  );
+  const thisWeekStart = weekStartOf(today);
   const hasAnyTask = tasks.length > 0;
   const capture = captureDefaults(view, today);
 
@@ -235,6 +248,53 @@ export function TaskBoardList() {
         });
       }
       return out;
+    }
+
+    // ─── History ────────────────────────────────────────────────────────────
+    //
+    // Finished top-level tasks by the week they were finished in, newest
+    // first. The point is the review a plain to-do list can't give: each week
+    // puts what got done beside what it actually cost against what was
+    // estimated, so estimates can get better.
+    if (view === "history") {
+      const oldest = addLocalDays(thisWeekStart, -7 * (HISTORY_WEEKS - 1));
+      const byWeek = new Map<string, Task[]>();
+      for (const t of tasks) {
+        if (t.active || t.parentId || !t.completedAt) continue;
+        const day = localDayKey(t.completedAt);
+        const week = weekStartOf(day);
+        if (compareLocalDates(week, oldest) < 0) continue;
+        byWeek.set(week, [...(byWeek.get(week) ?? []), t]);
+      }
+      return [...byWeek.entries()]
+        .sort(([a], [b]) => compareLocalDates(b, a))
+        .map(([week, done]) => {
+          done.sort((a, b) => b.completedAt!.localeCompare(a.completedAt!));
+          const tracked = done.reduce((sum, t) => sum + t.trackedSeconds, 0);
+          const estimated = done.filter((t) => t.estimatedSeconds);
+          const estimate = estimated.reduce((sum, t) => sum + (t.estimatedSeconds ?? 0), 0);
+          const trackedOnEstimated = estimated.reduce((sum, t) => sum + t.trackedSeconds, 0);
+          const nodes = nest(withSubtasks(done, tasks), () => 0);
+          return {
+            key: `week:${week}`,
+            label:
+              week === thisWeekStart
+                ? "This week"
+                : week === addLocalDays(thisWeekStart, -7)
+                  ? "Last week"
+                  : `Week of ${formatDueHeading(week, today).replace(/^[^·]*· /, "")}`,
+            nodes,
+            trackedSeconds: tracked,
+            summary: [
+              tracked > 0 ? `${formatDurationShort(tracked)} tracked` : "nothing tracked",
+              // Only over tasks that had an estimate — an unestimated task says
+              // nothing about how good the estimates were.
+              estimate > 0 ? `${Math.round((trackedOnEstimated / estimate) * 100)}% of estimates` : null,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+          };
+        });
     }
 
     // ─── Board ──────────────────────────────────────────────────────────────
@@ -388,7 +448,7 @@ export function TaskBoardList() {
     return groupBy === "due"
       ? entries.sort((a, b) => (a.key === "none" ? 1 : b.key === "none" ? -1 : a.key.localeCompare(b.key)))
       : entries.sort((a, b) => a.label.localeCompare(b.label));
-  }, [tasks, view, status, groupBy, sortBy, today, query, filters]);
+  }, [tasks, view, status, groupBy, sortBy, today, query, filters, thisWeekStart, weekStartOf]);
 
   // A board with empty columns is still a board; only a workspace with no tasks
   // at all gets the first-run state there.
@@ -410,8 +470,15 @@ export function TaskBoardList() {
       upcoming: top.filter((t) => t.dueDate && compareLocalDates(t.dueDate, today) > 0).length,
       all: top.length,
       board: top.filter((t) => t.startedAt).length,
+      history: tasks.filter(
+        (t) =>
+          !t.parentId &&
+          !t.active &&
+          t.completedAt &&
+          compareLocalDates(localDayKey(t.completedAt), thisWeekStart) >= 0
+      ).length,
     };
-  }, [tasks, today]);
+  }, [tasks, today, thisWeekStart]);
 
   /** Commit a drag: one row's `sort_order` becomes the midpoint of its new neighbours. */
   const handleDrop = (ordered: Task[], toIndex: number) => {
@@ -821,7 +888,8 @@ export function TaskBoardList() {
           </div>
         ) : (
           <>
-            {hasAnyTask && (
+            {/* Nothing to capture into a record of what's finished. */}
+            {hasAnyTask && view !== "history" && (
               <QuickAddTask
                 className="mb-4"
                 defaultDueDate={capture.dueDate}
@@ -947,10 +1015,16 @@ export function TaskBoardList() {
                         <span className="text-xs tabular-nums text-muted-foreground">
                           {section.nodes.length || "Nothing due"}
                         </span>
-                        {section.trackedSeconds > 0 && (
-                          <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
-                            {formatDurationShort(section.trackedSeconds)}
+                        {section.summary ? (
+                          <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                            {section.summary}
                           </span>
+                        ) : (
+                          section.trackedSeconds > 0 && (
+                            <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
+                              {formatDurationShort(section.trackedSeconds)}
+                            </span>
+                          )
                         )}
                       </div>
                       <div className="space-y-2">

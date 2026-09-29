@@ -146,6 +146,8 @@ The Tasks page opens on **Today**: overdue work first, then what's due today, th
 
 **Board** lays the same tasks out as three columns: **To do**, **In progress** and **Done**. A task moves to In progress on its own the first time you track or log time against it (or one of its subtasks). Drag a card between columns to move it yourself. Dragging to Done ticks it off, with the same Undo and next-occurrence behaviour as the checkbox, and dragging a done task back reopens it. On a phone, or from the keyboard, use **⋯ → Mark in progress** / **Move back to To do**. Done shows the last seven days; everything older is under All → Done.
 
+**History** is the record: finished tasks grouped by the week you finished them (the last eight weeks; older ones are under All → Done). Each week's heading gives the time tracked and, over the tasks that had an estimate, how that time compares with what you estimated. "150% of estimates" means the work took half as long again as you planned.
+
 Each tab carries a count, so you can see whether a view is worth opening without opening it. Today's count turns red when part of it is overdue, and Board's count is what's in progress.
 
 **Capturing.** The field at the top of the list adds a task and stays open for the next one, so several go in as several lines of typing. It reads a few tokens out of what you type and strips them from the name:
@@ -159,6 +161,7 @@ Each tab carries a count, so you can see whether a view is worth opening without
 | `plan Q4 next week` | due next Monday (`next month` is the 1st) |
 | `draft runbook ~2h` | a 2-hour estimate (`~45m`, `~1h30m`, `~1.5h`) |
 | `quarterly report mon by fri` | due (planned) Monday, deadline Friday — `by` takes any of the date forms above |
+| `map vendors @discovery` | tagged "discovery" (several `@tags` work; an existing tag is matched whatever its case) |
 | `call the bank 3pm` | scheduled at 3pm (today, unless the line names a day; `3:30pm`, `15:00`, `at 9:30` too) |
 | `timesheet every fri` | repeats every Friday, first due the coming Friday (`every day`, `every weekday`, `every week`, `every month`, `every mon,thu`) |
 | `chase SOW p1` | priority Urgent (`p1`–`p4`) |
@@ -166,7 +169,11 @@ Each tab carries a count, so you can see whether a view is worth opening without
 
 The line under the field shows what it understood before you commit it. Anything it doesn't recognise stays in the name — "every 2 weeks" isn't a repeat the app can store yet, so it's left as text rather than quietly approximated.
 
-**Finding a task.** Type part of a task's name or notes into the command palette (⌘K / Ctrl+K) and it appears under **Tasks**; choosing it starts a timer on it. On the **All** tab, the search field filters the list by name and notes; a matching subtask brings its parent with it.
+**Tags.** Tasks use the same tags as time entries: one list, one set of colours. Add them with `@tag` when you capture, or in the task dialog. Any time you track or log against a task picks up the task's tags automatically, on top of any you add to the entry yourself, so reports by tag include task work without extra effort. A repeating task keeps its tags.
+
+**Filters and saved views.** On the **All** tab, **Filter** narrows the list by status, project, tag, priority and due date. To keep a combination, choose **Save current view…** at the top of the same popover and give it a name. It remembers the search text, filters, grouping and sort. Pick it again any time from that list, and the Filter button shows its name while it's the view on screen. Saved views are yours alone.
+
+**Finding a task.** Type part of a task's name or notes into the command palette (⌘K / Ctrl+K) and it appears under **Tasks**; choosing it starts a timer on it. On the **All** tab, the search field narrows the list by name and notes; a matching subtask brings its parent with it.
 
 **From the keyboard.** On the Tasks page, **J** / **K** move between tasks (then **↓** / **↑** work too). On the highlighted task: **X** completes or reopens it, **E** edits it, **1**–**4** set priority, **S** starts or stops a timer on it, and **Delete** removes it (with Undo). **Q** jumps to the add-task line, and **Alt+Shift+T** gets you there from any page. **?** lists every shortcut.
 
