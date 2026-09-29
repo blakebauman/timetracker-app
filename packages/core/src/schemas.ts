@@ -223,6 +223,8 @@ export const TaskSchema = z.object({
   scheduledMinute: z.number().int().nullable(),
   /** When it must be done (a local day), as opposed to `dueDate`, when it's planned. */
   deadlineDate: LocalDateSchema.nullable(),
+  /** Tag names, from the workspace's shared tag vocabulary (same as entries). */
+  tags: z.array(z.string()),
   recurRule: z.string().nullable(),
   subtaskTotal: z.number(),
   subtaskDone: z.number(),
@@ -240,6 +242,8 @@ export const CreateTaskSchema = z.object({
   recurRule: RecurRuleSchema.nullable().optional(),
   scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
   deadlineDate: LocalDateSchema.nullable().optional(),
+  /** Tag names; replaces the task's tags wholesale. Missing tags are created. */
+  tags: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
 });
 
 export const UpdateTaskSchema = z.object({
@@ -258,6 +262,8 @@ export const UpdateTaskSchema = z.object({
   /** Needs a due date to mean anything; clearing `dueDate` clears it too. */
   scheduledMinute: ScheduledMinuteSchema.nullable().optional(),
   deadlineDate: LocalDateSchema.nullable().optional(),
+  /** Tag names; replaces the task's tags wholesale. Missing tags are created. */
+  tags: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
   /**
    * The completing client's own local date. Present only on the request that
    * ticks a recurring task done, and it is what the next occurrence is measured

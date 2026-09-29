@@ -134,6 +134,7 @@ export function useUpdateTask() {
                   : {}),
               ...(data.priority !== undefined ? { priority: data.priority } : {}),
               ...(data.deadlineDate !== undefined ? { deadlineDate: data.deadlineDate } : {}),
+              ...(data.tags !== undefined ? { tags: data.tags } : {}),
               ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
               ...(data.estimatedSeconds !== undefined
                 ? { estimatedSeconds: data.estimatedSeconds }

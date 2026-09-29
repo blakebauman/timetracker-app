@@ -86,6 +86,7 @@ export function QuickAddTask({
         ...(parsed.estimatedSeconds ? { estimatedSeconds: parsed.estimatedSeconds } : {}),
         ...(parsed.scheduledMinute !== null && dueDate ? { scheduledMinute: parsed.scheduledMinute } : {}),
         ...(parsed.deadlineDate ? { deadlineDate: parsed.deadlineDate } : {}),
+        ...(parsed.tagHints.length ? { tags: parsed.tagHints } : {}),
         ...(recurRule ? { recurRule } : {}),
         ...(parentId ? { parentId } : {}),
       },
@@ -138,7 +139,13 @@ export function QuickAddTask({
           A parser that silently eats "fri" is worse than no parser — and since
           the tokens are stripped from the name, the name it will actually save
           is echoed too. */}
-      {(parsed.dueDate || parsed.deadlineDate || parsed.priority || parsed.estimatedSeconds || recurRule || hinted) && (
+      {(parsed.dueDate ||
+        parsed.deadlineDate ||
+        parsed.priority ||
+        parsed.estimatedSeconds ||
+        recurRule ||
+        hinted ||
+        parsed.tagHints.length > 0) && (
         <p className="px-3 text-micro text-muted-foreground">
           {[
             `“${parsed.name}”`,
@@ -152,6 +159,7 @@ export function QuickAddTask({
             parsed.estimatedSeconds ? `estimate ${formatDurationShort(parsed.estimatedSeconds)}` : null,
             recurRule ? describeRecurRule(recurRule)?.toLowerCase() : null,
             hinted ? hinted.name : null,
+            ...parsed.tagHints.map((t) => `@${t}`),
           ]
             .filter(Boolean)
             .join(" · ")}
