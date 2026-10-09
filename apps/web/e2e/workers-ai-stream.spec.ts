@@ -70,3 +70,25 @@ test("without the wrapper the provider doubles both (guards the premise)", async
   // If a provider release fixes this upstream, this fails — and the wrapper can go.
   expect(text).toBe("thethe quick quick brown brown fox fox");
 });
+
+test("a chunk with no delta keeps its text", async () => {
+  const { dedupeChunk } = await import("../src/worker/lib/workers-ai-stream");
+  const tail = JSON.stringify({ choices: [], response: "tail" });
+  expect(dedupeChunk(tail)).toBe(tail);
+  expect(JSON.parse(dedupeChunk(JSON.stringify({ choices: [{ delta: { content: "a" } }], response: "a" })))).not.toHaveProperty("response");
+});
+
+// Llama writes tool calls in pythonic form — `getTimeSummary(from="…")` — and
+// Workers AI's streaming parser drops a call that isn't valid Python without a
+// trace: the turn ends with an empty reply. A Python keyword as a parameter
+// name does exactly that (`from` did). Guard every tool's input names.
+test("no Assistant tool takes a parameter named after a Python keyword", async () => {
+  const { buildAssistantTools } = await import("../src/worker/lib/assistant-tools");
+  const KEYWORDS = new Set("False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+  const tools = buildAssistantTools({ env: {} as Env, workspaceId: "w", offsetMinutes: 0 });
+  const keys = Object.entries(tools).flatMap(([name, t]) =>
+    Object.keys((t.inputSchema as unknown as { shape?: Record<string, unknown> }).shape ?? {}).map((k) => `${name}.${k}`)
+  );
+  expect(keys).toContain("getTimeSummary.startDate"); // the guard is actually reading the schemas
+  for (const key of keys) expect(KEYWORDS.has(key.split(".")[1]), key).toBe(false);
+});

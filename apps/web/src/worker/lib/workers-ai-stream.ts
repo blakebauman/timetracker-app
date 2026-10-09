@@ -11,13 +11,13 @@
 // call's arguments were assembled twice into JSON that doesn't parse, so the
 // Assistant's tools failed instead of running.
 //
-// The fix is at the binding, not in the provider: when a chunk carries
-// `choices`, its native copies are dropped before the provider sees it, so it
+// The fix is at the binding, not in the provider: when a chunk carries a
+// `choices[0].delta`, its native copies are dropped before the provider sees it, so it
 // reads one format. Chunks without `choices` (older native-format models, the
 // trailing `{"response":""}`) pass through untouched, as does every
 // non-streaming call.
 
-/** Rewrites one SSE `data:` payload; anything that isn't a JSON object with `choices` is returned as-is. */
+/** Rewrites one SSE `data:` payload; anything without a `choices[0].delta` is returned as-is. */
 export function dedupeChunk(data: string): string {
   if (!data || data === "[DONE]") return data;
   let chunk: unknown;
@@ -26,9 +26,12 @@ export function dedupeChunk(data: string): string {
   } catch {
     return data;
   }
-  if (!chunk || typeof chunk !== "object" || !Array.isArray((chunk as { choices?: unknown }).choices)) {
-    return data;
-  }
+  // Only a chunk whose first choice carries a delta has the text twice; one
+  // with `choices: []` may still carry text in `response` alone, and must
+  // keep it.
+  const choices = (chunk as { choices?: unknown }).choices;
+  const delta = Array.isArray(choices) ? (choices[0] as { delta?: unknown } | undefined)?.delta : undefined;
+  if (!delta || typeof delta !== "object") return data;
   const rest = { ...(chunk as Record<string, unknown>) };
   delete rest.response;
   delete rest.tool_calls;

@@ -13,17 +13,30 @@ import { rememberFact, searchMemories } from "./assistant-memory";
 import { createTask, getTask, listTasks, updateTask } from "./tasks";
 import { buildDayPlan } from "./day-plan";
 import { promptSafe } from "./untrusted-text";
+import {
+  LOCAL_DATE_PATTERN,
+  LOCAL_TIME_PATTERN,
+  localDayStart,
+  localToInstant,
+  nextLocalDate,
+} from "./local-time";
 
 export interface AssistantToolContext {
   env: Env;
   workspaceId: string;
-  /** JS getTimezoneOffset() convention (minutes); used only for human-readable echoes. */
+  /** JS getTimezoneOffset() convention (minutes). */
   offsetMinutes: number;
+  /** The browser's IANA zone, when sent — makes local→UTC right across DST. */
+  timeZone?: string | null;
 }
 
-const ISO = z
+// Times go in as the user said them — local wall-clock, no `Z` — and the
+// server converts (lib/local-time.ts). The model used to do the UTC
+// arithmetic itself and logged "2pm" as 6am.
+const LOCAL_TIME = z
   .string()
-  .refine((s) => !Number.isNaN(Date.parse(s)), "must be an ISO 8601 timestamp");
+  .regex(LOCAL_TIME_PATTERN, "local wall-clock time as YYYY-MM-DDTHH:MM, with no Z or offset");
+const LOCAL_DATE = z.string().regex(LOCAL_DATE_PATTERN, "local date as YYYY-MM-DD");
 
 /** Resolve a free-text project name to a real id via the grounded matcher. */
 async function resolveProject(
@@ -49,6 +62,15 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
   /** The user's local calendar date now — what "today" means for their tasks. */
   const localToday = () => new Date(Date.now() - ctx.offsetMinutes * 60_000).toISOString().slice(0, 10);
   const tasksChanged = () => broadcast(env, workspaceId, "tasks:changed", null);
+  const zone = { timeZone: ctx.timeZone, offsetMinutes: ctx.offsetMinutes };
+  /** Local start/stop → UTC instants, or the reason they can't be used. */
+  const toRange = (start: string, stop: string) => {
+    const s = localToInstant(start, zone);
+    const e = localToInstant(stop, zone);
+    if (!s || !e) return { error: "That isn't a real date and time." } as const;
+    if (Date.parse(e) <= Date.parse(s)) return { error: "Stop must be after start." } as const;
+    return { start: s, stop: e } as const;
+  };
 
   return {
     startTimer: tool({
@@ -151,8 +173,8 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         "Log a COMPLETED past time entry (both start and stop known). Use for retroactively recording work, e.g. 'I worked on Acme from 2 to 4pm'. Do not use to start a live timer.",
       inputSchema: z.object({
         description: z.string().max(500),
-        start: ISO.describe("UTC ISO 8601 start"),
-        stop: ISO.describe("UTC ISO 8601 stop; must be after start"),
+        start: LOCAL_TIME.describe("Local start as the user said it, YYYY-MM-DDTHH:MM (no Z)"),
+        stop: LOCAL_TIME.describe("Local stop, YYYY-MM-DDTHH:MM (no Z); after start"),
         projectName: z.string().nullish(),
         billable: z.boolean().nullish(),
       }),
@@ -160,10 +182,10 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
       // so an instruction injected via calendar/entry text can't silently invent
       // billable hours (native AI-SDK human-in-the-loop; see the ToolCard UI).
       needsApproval: true,
-      execute: async ({ description, start, stop, projectName, billable }) => {
-        if (Date.parse(stop) <= Date.parse(start)) {
-          return { ok: false, reason: "Stop must be after start." };
-        }
+      execute: async ({ description, start: localStart, stop: localStop, projectName, billable }) => {
+        const range = toRange(localStart, localStop);
+        if ("error" in range) return { ok: false, reason: range.error };
+        const { start, stop } = range;
         const proj = await resolveProject(env, workspaceId, projectName);
         const now = new Date().toISOString();
         const id = crypto.randomUUID();
@@ -203,15 +225,15 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         "Add a calendar meeting to the timesheet as a completed entry, categorized by AI project inference. Use for an untracked meeting the user asks to log.",
       inputSchema: z.object({
         title: z.string().max(500),
-        start: ISO,
-        stop: ISO,
+        start: LOCAL_TIME.describe("Local start, YYYY-MM-DDTHH:MM (no Z)"),
+        stop: LOCAL_TIME.describe("Local stop, YYYY-MM-DDTHH:MM (no Z)"),
       }),
       // Creates a billable record — confirm before writing (see logTimeEntry).
       needsApproval: true,
-      execute: async ({ title, start, stop }) => {
-        if (Date.parse(stop) <= Date.parse(start)) {
-          return { ok: false, reason: "Stop must be after start." };
-        }
+      execute: async ({ title, start: localStart, stop: localStop }) => {
+        const range = toRange(localStart, localStop);
+        if ("error" in range) return { ok: false, reason: range.error };
+        const { start, stop } = range;
         let match = null;
         try {
           match = (await inferEventProjects(db, env.AI, workspaceId, [title])).get(title.trim()) ?? null;
@@ -237,12 +259,20 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
 
     getTimeSummary: tool({
       description:
-        "Summarize tracked time over a date range: total hours, billable split, and per-project breakdown. Dates are UTC ISO. Use to answer 'how much did I bill this week?'.",
+        "Summarize tracked time over the user's local days startDate..endDate (both inclusive): total hours, billable split, and per-project breakdown. Use to answer 'how much did I track this week?' — e.g. Monday's date to today's.",
+      // Not `from`/`to`: Llama emits pythonic calls, `from` is a Python
+      // keyword, and Workers AI's streaming parser silently drops a call it
+      // can't parse — the turn ended with an empty reply.
       inputSchema: z.object({
-        since: ISO.describe("range start (inclusive)"),
-        until: ISO.describe("range end (exclusive)"),
+        startDate: LOCAL_DATE.describe("first local day, YYYY-MM-DD (inclusive)"),
+        endDate: LOCAL_DATE.describe("last local day, YYYY-MM-DD (inclusive)"),
       }),
-      execute: async ({ since, until }) => {
+      execute: async ({ startDate, endDate }) => {
+        const since = localDayStart(startDate, zone);
+        const until = localDayStart(nextLocalDate(endDate), zone);
+        if (!since || !until || Date.parse(until) <= Date.parse(since)) {
+          return { ok: false, reason: "That date range isn't valid.", totalHours: "0.00", billableHours: "0.00", byProject: [] };
+        }
         const { results } = await db
           .prepare(
             `SELECT COALESCE(p.name, 'No project') AS project,
