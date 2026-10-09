@@ -2,7 +2,13 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useCompleteTask, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
 import { useTimer } from "@/hooks/useTimer";
 import { useTimerStore } from "@/stores/timerStore";
+import { overlayOpen } from "@/lib/overlay";
 import type { Task } from "@timetracker/core/schemas";
+
+// A dialog, menu or popover owns the keyboard while it's open (`overlayOpen`).
+// Its buttons aren't form fields, so react-hotkeys-hook's own input guard lets
+// them through — pressing "e" on a menu item would otherwise open the edit
+// dialog behind it.
 
 /** Rows opt in with this attribute (and `tabIndex={-1}`), carrying their task id. */
 export const TASK_ROW_ATTR = "data-task-row";
@@ -14,17 +20,6 @@ function rows(): HTMLElement[] {
 /** The row holding focus — the row itself, or any control inside it. */
 function focusedRow(): HTMLElement | null {
   return (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(`[${TASK_ROW_ATTR}]`) ?? null;
-}
-
-/**
- * A dialog, menu or popover owns the keyboard while it's open. Its buttons
- * aren't form fields, so react-hotkeys-hook's own input guard lets them through
- * — pressing "e" on a menu item would otherwise open the edit dialog behind it.
- */
-function overlayOpen(): boolean {
-  return !!document.querySelector(
-    '[role="dialog"][data-state="open"], [role="menu"], [role="listbox"], [data-radix-popper-content-wrapper]'
-  );
 }
 
 /** Where focus goes after the focused row leaves the list (done, deleted). */

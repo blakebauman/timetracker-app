@@ -1,20 +1,7 @@
 import { useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import {
-  Timer,
-  FolderOpen,
-  ListChecks,
-  Users,
-  BarChart2,
-  Settings,
-  LogOut,
-  Menu,
-  ShieldCheck,
-  Search,
-  Keyboard,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useHotkeys } from "react-hotkeys-hook";
+import { Settings, LogOut, Menu, Search, Keyboard, Sparkles } from "lucide-react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { cn } from "@/lib/utils";
 import { useTimerStore } from "@/stores/timerStore";
@@ -36,16 +23,15 @@ import { useUIStore } from "@/stores/uiStore";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { useAssistantNudges } from "@/hooks/useAssistant";
 import { modKey } from "@/lib/platform";
-import { Kbd } from "@/components/ui/kbd";
-
-const navItems: { to: string; icon: LucideIcon; label: string }[] = [
-  { to: "/", icon: Timer, label: "Timer" },
-  { to: "/tasks", icon: ListChecks, label: "Tasks" },
-  { to: "/projects", icon: FolderOpen, label: "Projects" },
-  { to: "/clients", icon: Users, label: "Clients" },
-  { to: "/reports", icon: BarChart2, label: "Reports" },
-  { to: "/settings", icon: Settings, label: "Settings" },
-];
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { overlayOpen } from "@/lib/overlay";
+import {
+  ADMIN_ROUTE,
+  SETTINGS_ROUTE,
+  WORK_ROUTES,
+  routeHotkey,
+  type NavRoute,
+} from "./navRoutes";
 
 const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
@@ -60,7 +46,7 @@ const FOCUS_RING =
  * always mounted and crossfaded, so switching routes moves both together at
  * the fast duration instead of popping the ring and easing the fill.
  */
-const RAIL_BUTTON = `relative flex size-12 items-center justify-center rounded-full transition-[color,background-color,box-shadow] duration-fast ease-out-quart ${FOCUS_RING}`;
+const RAIL_BUTTON = `relative flex size-12 short:size-10 shrink-0 items-center justify-center rounded-full transition-[color,background-color,box-shadow] duration-fast ease-out-quart ${FOCUS_RING}`;
 const RAIL_ACTIVE = "bg-foreground/6 text-foreground shadow-lg";
 const RAIL_IDLE = "text-muted-foreground hover:bg-foreground/6 hover:text-foreground";
 
@@ -74,18 +60,46 @@ function RailRing({ shown }: { shown: boolean }) {
     <span
       aria-hidden
       className={cn(
-        "tt-rail-ring pointer-events-none absolute inset-0 rounded-full border border-primary/60 transition-opacity duration-fast ease-out-quart",
+        "tt-rail-ring pointer-events-none absolute inset-0 rounded-full border border-primary/60 dark:border-primary transition-opacity duration-fast ease-out-quart",
         shown ? "opacity-100" : "opacity-0"
       )}
     />
   );
 }
 
-function useNavItems() {
+/** Settings, plus Admin for a site admin: the rail's foot, not its work group. */
+function useSystemRoutes() {
   const { user } = useAuth();
-  return user?.role === "admin"
-    ? [...navItems, { to: "/admin", icon: ShieldCheck, label: "Admin" }]
-    : navItems;
+  return user?.role === "admin" ? [SETTINGS_ROUTE, ADMIN_ROUTE] : [SETTINGS_ROUTE];
+}
+
+/** A route's `G` sequence as chips: "G" "T". */
+function RouteKeys({ route, className }: { route: NavRoute; className?: string }) {
+  if (!route.key) return null;
+  return (
+    <KbdGroup className={className}>
+      <Kbd>G</Kbd>
+      <Kbd>{route.key.toUpperCase()}</Kbd>
+    </KbdGroup>
+  );
+}
+
+/**
+ * `G` then a letter goes to a work route from anywhere. Off inside fields
+ * (react-hotkeys-hook's default) and while an overlay owns the keyboard, so
+ * typing "got" in a description or a menu's typeahead never navigates.
+ */
+function RouteHotkey({ route }: { route: NavRoute }) {
+  const navigate = useNavigate();
+  useHotkeys(
+    routeHotkey(route) ?? "",
+    () => {
+      if (!overlayOpen()) navigate(route.to);
+    },
+    { enabled: Boolean(route.key) },
+    [navigate, route.to]
+  );
+  return null;
 }
 
 /**
@@ -154,7 +168,7 @@ function useIdentity() {
 
 /** Icon rail for md and up. */
 function Rail() {
-  const items = useNavItems();
+  const systemRoutes = useSystemRoutes();
   const isActive = useIsActive();
   const { user, signOut } = useAuth();
   const identity = useIdentity();
@@ -172,21 +186,28 @@ function Rail() {
   };
 
   return (
+    // Scrolls (without a scrollbar, like everything here) only when the window
+    // is shorter than the rail even at its `short` size, so no button clips.
     <aside
-      aria-label="Sidebar"
-      className="hidden h-full w-20 shrink-0 flex-col items-center border-r bg-rail py-5 md:flex"
+      aria-label="Navigation rail"
+      className="hidden h-full w-20 shrink-0 flex-col items-center overflow-y-auto border-r bg-rail py-5 short:py-3 md:flex"
     >
-      {/* Brand — the one place the red is a light rather than a fill. */}
-      <NavLink
+      {/* Brand — the one place the red is a light rather than a fill. Out of
+          the tab order and the accessibility tree: Timer, right below it, is
+          the same destination, and two links to "/" were both announced as
+          the current page. It still takes a click home. */}
+      <Link
         to="/"
-        aria-label="Time Tracker home"
-        className={`mb-5 flex size-12 items-center justify-center rounded-full ${FOCUS_RING}`}
+        tabIndex={-1}
+        aria-hidden
+        className="mb-5 flex size-12 shrink-0 items-center justify-center rounded-full short:mb-3 short:size-10"
       >
-        <BrandMark className="tt-brand-glow size-9" />
-      </NavLink>
+        <BrandMark className="tt-brand-glow size-9 short:size-8" />
+      </Link>
 
-      <nav aria-label="Main" className="flex flex-col items-center gap-2">
-        {items.map(({ to, icon: Icon, label }) => {
+      <nav aria-label="Main" className="flex flex-col items-center gap-2 short:gap-1">
+        {WORK_ROUTES.map((route) => {
+          const { to, icon: Icon, label } = route;
           // "Timer — running" rather than a silent dot: the rail is the only
           // place the running state shows once the route has moved on.
           const timerRunning = to === "/" && running;
@@ -198,20 +219,26 @@ function Rail() {
                   to={to}
                   end={to === "/"}
                   aria-label={name}
+                  aria-keyshortcuts={route.key ? `g ${route.key}` : undefined}
                   className={cn(RAIL_BUTTON, isActive(to) ? RAIL_ACTIVE : RAIL_IDLE)}
                 >
                   <RailRing shown={isActive(to)} />
                   <Icon className="relative size-5" />
-                  {timerRunning && <RunningDot className="top-2.5 right-2.5" />}
+                  {timerRunning && <RunningDot className="top-2.5 right-2.5 short:top-2 short:right-2" />}
                 </NavLink>
               </TooltipTrigger>
-              <TooltipContent side="right">{name}</TooltipContent>
+              <TooltipContent side="right">
+                {name}
+                <RouteKeys route={route} className="ml-1.5" />
+              </TooltipContent>
             </Tooltip>
           );
         })}
       </nav>
 
-      <div className="mt-auto flex flex-col items-center gap-2">
+      {/* The rail's foot: the tool and you. pt-4 keeps a gap from the work
+          group however short the window gets. */}
+      <div className="mt-auto flex flex-col items-center gap-2 pt-4 short:gap-1">
         {/* The Assistant. Its nudge count is a live indicator, which is what the
             brand red is reserved for. */}
         <Tooltip>
@@ -251,6 +278,22 @@ function Rail() {
           </TooltipContent>
         </Tooltip>
 
+        {systemRoutes.map(({ to, icon: Icon, label }) => (
+          <Tooltip key={to}>
+            <TooltipTrigger asChild>
+              <NavLink
+                to={to}
+                aria-label={label}
+                className={cn(RAIL_BUTTON, isActive(to) ? RAIL_ACTIVE : RAIL_IDLE)}
+              >
+                <RailRing shown={isActive(to)} />
+                <Icon className="relative size-5" />
+              </NavLink>
+            </TooltipTrigger>
+            <TooltipContent side="right">{label}</TooltipContent>
+          </Tooltip>
+        ))}
+
         {user && identity && (
           <DropdownMenu>
             <Tooltip>
@@ -265,7 +308,7 @@ function Rail() {
                       name={user.name}
                       email={user.email}
                       image={user.image}
-                      className="size-9 border border-border bg-muted text-foreground"
+                      className="size-9 border border-border bg-muted text-foreground short:size-8"
                     />
                   </button>
                 </DropdownMenuTrigger>
@@ -315,7 +358,7 @@ function Rail() {
  * a phone it is the only thing that says which route you are on.
  */
 function SheetNav({ onNavigate }: { onNavigate: () => void }) {
-  const items = useNavItems();
+  const systemRoutes = useSystemRoutes();
   const isActive = useIsActive();
   const { user, signOut } = useAuth();
   const identity = useIdentity();
@@ -332,7 +375,7 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <nav aria-label="Main" className="flex-1 space-y-1 p-3">
-        {items.map(({ to, icon: Icon, label }) => {
+        {WORK_ROUTES.map(({ to, icon: Icon, label }) => {
           const timerRunning = to === "/" && running;
           return (
             <NavLink
@@ -352,6 +395,9 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
             </NavLink>
           );
         })}
+        {/* The rail's two groups, kept apart here too: work above the
+            hairline, the tool and its settings below. */}
+        <div role="separator" className="mx-4 my-2 border-t" />
         <button
           type="button"
           onClick={() => {
@@ -379,6 +425,18 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
           <span className="flex-1 text-left">Keyboard shortcuts</span>
           <Kbd className="pointer-coarse:hidden">?</Kbd>
         </button>
+        {systemRoutes.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            className={cn(SHEET_ROW, isActive(to) ? SHEET_ROW_ACTIVE : SHEET_ROW_IDLE)}
+          >
+            <RailRing shown={isActive(to)} />
+            <Icon className="relative size-4 shrink-0" />
+            <span className="relative">{label}</span>
+          </NavLink>
+        ))}
       </nav>
       {user && identity && (
         <div className="flex items-center gap-3 border-t p-4">
@@ -414,16 +472,20 @@ export function Sidebar() {
 
   return (
     <>
+      {WORK_ROUTES.map((route) => (
+        <RouteHotkey key={route.to} route={route} />
+      ))}
+
       {/* Phone: a chassis strip across the top, with the nav in a sheet. */}
       <div className="flex h-14 shrink-0 items-center justify-between border-b bg-rail px-3 md:hidden">
-        <NavLink
+        {/* A plain Link: the sheet's Timer row is the one marked current. */}
+        <Link
           to="/"
-          end
           className={`-mx-2 flex items-center gap-2 rounded-full px-2 py-1 ${FOCUS_RING}`}
         >
           <BrandMark className="tt-brand-glow size-6 shrink-0" />
           <span className="font-semibold tracking-tight">Time Tracker</span>
-        </NavLink>
+        </Link>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

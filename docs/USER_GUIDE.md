@@ -297,6 +297,7 @@ Both systems file time against a calendar day rather than a timestamp, and the d
 | Shortcut | Action |
 |---|---|
 | `⌘K` / `Ctrl+K` | Command palette — start/stop, continue a recent entry, navigate, ask the Assistant |
+| `G` then `T` / `A` / `P` / `C` / `R` | Go to Timer / Tasks / Projects / Clients / Reports (press one key, then the other; hover a rail icon to see its pair) |
 | `Alt+Shift+S` | Start / stop the timer |
 | `Alt+Shift+X` | Discard the running timer |
 | `Alt+Shift+R` | Keep running — undo the last Stop (for 10 seconds) |
