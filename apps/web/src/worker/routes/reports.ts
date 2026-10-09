@@ -23,6 +23,7 @@ interface ReportQuery {
   search?: string;
   roundMode?: RoundMode;
   roundMinutes?: number;
+  timezoneOffsetMinutes?: number;
 }
 
 // Pull the shared filter args out of a validated query.
@@ -50,6 +51,14 @@ function exprs(q: { roundMode?: RoundMode; roundMinutes?: number }) {
     billable: `SUM(CASE WHEN te.billable = 1 THEN ${dur} ELSE 0 END)`,
     amount: `SUM((CASE WHEN te.billable = 1 THEN ${dur} ELSE 0 END) * COALESCE(p.rate, 0) / 3600.0)`,
   };
+}
+
+// The entry's start shifted onto the caller's local clock, for day/week
+// buckets. Inlined rather than bound: the offset is a zod-validated integer
+// (±840), and the bucket expressions sit ahead of WHERE's positional bindings.
+function localStart(q: { timezoneOffsetMinutes?: number }) {
+  const offset = q.timezoneOffsetMinutes ?? 0;
+  return offset === 0 ? "te.start" : `datetime(te.start, '${-offset} minutes')`;
 }
 
 // Grouped-summary dimension → SQL column + display-name + color expressions.
@@ -170,14 +179,14 @@ export const reportsRouter = new Hono<{
         c.env.DB.prepare(
           `
       SELECT
-        date(te.start) as date,
+        date(${localStart(q)}) as date,
         ${e.total} as total_seconds,
         ${e.billable} as billable_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
-      GROUP BY date(te.start)
+      GROUP BY date(${localStart(q)})
       ORDER BY date ASC
     `
         ).bind(...bindings),
@@ -188,7 +197,7 @@ export const reportsRouter = new Hono<{
         c.env.DB.prepare(
           `
       SELECT
-        date(te.start) as date,
+        date(${localStart(q)}) as date,
         te.project_id as project_id,
         p.name as project_name,
         p.color as color,
@@ -198,7 +207,7 @@ export const reportsRouter = new Hono<{
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
-      GROUP BY date(te.start), te.project_id
+      GROUP BY date(${localStart(q)}), te.project_id
       ORDER BY date ASC, total_seconds DESC
     `
         ).bind(...bindings),
@@ -391,15 +400,15 @@ export const reportsRouter = new Hono<{
       const { results } = await c.env.DB.prepare(
         `
       SELECT
-        date(te.start) as date,
-        strftime('%Y-W%W', te.start) as week,
+        date(${localStart(q)}) as date,
+        strftime('%Y-W%W', ${localStart(q)}) as week,
         ${e.total} as total_seconds,
         ${e.billable} as billable_seconds,
         COUNT(*) as entry_count
       FROM time_entries te
       LEFT JOIN projects p ON p.id = te.project_id AND p.workspace_id = te.workspace_id
       WHERE ${where}
-      GROUP BY date(te.start)
+      GROUP BY date(${localStart(q)})
       ORDER BY date ASC
       `
       )

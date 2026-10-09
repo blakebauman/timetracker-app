@@ -573,6 +573,10 @@ export const ReportQuerySchema = z.object({
   // per-entry duration rounding applied before aggregation
   roundMode: RoundingModeSchema.optional(),
   roundMinutes: z.coerce.number().int().min(0).max(1440).optional(),
+  // The caller's UTC offset (JS getTimezoneOffset sign: west of UTC is
+  // positive). Day buckets are the user's local days; without it they're UTC
+  // days, and every evening entry west of UTC lands on tomorrow.
+  timezoneOffsetMinutes: z.coerce.number().int().min(-840).max(840).optional(),
 });
 
 // Group/sub-group dimensions for the grouped summary tree.

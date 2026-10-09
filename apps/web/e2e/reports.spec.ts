@@ -97,3 +97,43 @@ test.describe("reports charts", () => {
     await expect(page.locator('[data-slot="chart"]').first()).toBeVisible();
   });
 });
+
+test.describe("reports day buckets west of UTC", () => {
+  test.use({ timezoneId: "America/Denver" });
+
+  test("an evening entry is charted on its local day, not tomorrow's UTC date", async ({
+    page,
+  }) => {
+    // 20:30 local on Aug 13 — already Aug 14 in UTC.
+    await page.clock.install({ time: new Date("2026-08-14T02:30:00.000Z") });
+    await signUp(page);
+    const origin = new URL(page.url()).origin;
+
+    const res = await page.request.post("/api/time_entries", {
+      // 20:00–20:15 local, both stamped on Aug 14 in UTC.
+      data: {
+        description: "Evening report entry",
+        start: "2026-08-14T02:00:00.000Z",
+        stop: "2026-08-14T02:15:00.000Z",
+        billable: false,
+        tags: [],
+      },
+      headers: { origin },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    const summary = page.waitForResponse((r) => r.url().includes("/api/reports/summary"));
+    const weekly = page.waitForResponse((r) => r.url().includes("/api/reports/weekly"));
+    await page.goto("/reports");
+
+    const summaryBody = (await (await summary).json()) as {
+      daily: { date: string }[];
+      dailyByProject: { date: string }[];
+    };
+    expect(summaryBody.daily.map((d) => d.date)).toEqual(["2026-08-13"]);
+    expect(summaryBody.dailyByProject.map((d) => d.date)).toEqual(["2026-08-13"]);
+
+    const weeklyBody = (await (await weekly).json()) as { days: { date: string }[] }[];
+    expect(weeklyBody.flatMap((w) => w.days.map((d) => d.date))).toEqual(["2026-08-13"]);
+  });
+});
