@@ -211,6 +211,6 @@ tools are only registered for read+write.
 | Task reads/writes (shared with REST and the Assistant) | `apps/web/src/worker/lib/tasks.ts` |
 | Tests | `e2e/mcp.spec.ts`, `e2e/mcp-tasks.spec.ts` |
 
-Transport is `agents/mcp`'s `createLegacyMcpHandler` — Streamable HTTP, stateless. ("Legacy" is the Agents SDK's name for its MCP SDK v1 path; `createMcpHandler` now expects an SDK v2 server factory, and this server is built on `@modelcontextprotocol/sdk` 1.x. Moving to v2 is a separate change.) A
+Transport is `createMcpHandler` from the MCP SDK v2 package, `@modelcontextprotocol/server` — Streamable HTTP, stateless, serving 2025-era clients and the 2026-07-28 revision from one factory. It does no auth of its own: the API key is verified in front of it. A
 fresh `McpServer` is built per request, bound to the workspace the key resolved
 to. See `docs/ARCHITECTURE.md` for how it sits in the request lifecycle.

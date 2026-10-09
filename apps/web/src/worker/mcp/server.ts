@@ -13,7 +13,7 @@
 //   2. Write tools are registered ONLY for a read_write key. A read key is not
 //      told they exist, rather than being refused when it calls them.
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
   buildReportWhere,
@@ -184,7 +184,13 @@ export interface McpContext {
 export function buildMcpServer(ctx: McpContext): McpServer {
   const { env, workspaceId, scope } = ctx;
   const db = env.DB;
-  const server = new McpServer(SERVER_INFO, { instructions: SERVER_INSTRUCTIONS });
+  const server = new McpServer(SERVER_INFO, {
+    instructions: SERVER_INSTRUCTIONS,
+    // The tool list is fixed by the key's scope for the life of a request, and
+    // a stateless server has no channel to announce a change on — so say so
+    // rather than inherit v2's default `listChanged: true`.
+    capabilities: { tools: { listChanged: false } },
+  });
 
   // ─── Read ─────────────────────────────────────────────────────────────────
 
@@ -194,7 +200,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "List projects",
       description:
         "Every active project in the workspace with its client, billable default, hourly rate, time budget and total tracked time. Call this first when a question names a project or client.",
-      inputSchema: {},
+      inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
     async () => {
@@ -234,7 +240,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
     {
       title: "List clients",
       description: "Every client in the workspace, with how many projects each has.",
-      inputSchema: {},
+      inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
     async () => {
@@ -265,7 +271,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Summarize tracked time",
       description:
         "Total, billable and invoiceable time over a date range, broken down by project, client, task or tag. This is the tool for 'how much did I bill client X last quarter' and 'which project took the most time'. Amounts use each project's own hourly rate.",
-      inputSchema: {
+      inputSchema: z.object({
         since: DateArg.describe("First day of the range (inclusive), YYYY-MM-DD"),
         until: DateArg.describe("Last day of the range (inclusive), YYYY-MM-DD"),
         groupBy: z
@@ -273,7 +279,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .default("project")
           .describe("Which dimension to break the total down by"),
         timezoneOffsetMinutes: TimezoneArg,
-      },
+      }),
       annotations: READ_ONLY,
     },
     async ({ since, until, groupBy, timezoneOffsetMinutes }) => {
@@ -361,7 +367,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "List time entries",
       description:
         "Individual time entries in a date range, newest first — descriptions, projects, durations and billable flags. Use this when the question is about what specific work was done, not how much.",
-      inputSchema: {
+      inputSchema: z.object({
         since: DateArg.describe("First day of the range (inclusive), YYYY-MM-DD"),
         until: DateArg.describe("Last day of the range (inclusive), YYYY-MM-DD"),
         search: z
@@ -370,7 +376,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .optional()
           .describe("Optional case-insensitive substring of the entry description"),
         timezoneOffsetMinutes: TimezoneArg,
-      },
+      }),
       annotations: READ_ONLY,
     },
     async ({ since, until, search, timezoneOffsetMinutes }) => {
@@ -414,7 +420,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Check project budgets",
       description:
         "For every budgeted project: how much of the budget is spent, the recent burn rate per working day, working days left before the end date, and whether the current rate overruns the budget. Use this for 'which projects are at risk' and 'am I going to blow the budget on X'.",
-      inputSchema: {},
+      inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
     async () => {
@@ -443,7 +449,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
     {
       title: "Check the running timer",
       description: "The timer running right now, if any, and how long it has been going.",
-      inputSchema: {},
+      inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
     async () => {
@@ -477,7 +483,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "List drafted entries",
       description:
         "Proposed time entries waiting for review on a given day, with why each was proposed. Drafts are NOT tracked time and do not appear in any report until a person confirms them in the app.",
-      inputSchema: { date: DateArg.describe("The local day to inspect, YYYY-MM-DD") },
+      inputSchema: z.object({ date: DateArg.describe("The local day to inspect, YYYY-MM-DD") }),
       annotations: READ_ONLY,
     },
     async ({ date }) => {
@@ -505,11 +511,11 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "List tasks",
       description:
         "The workspace's tasks — the plan side of tracked time — with due date, scheduled time, deadline, priority (1 = urgent … 4 = none), estimate vs tracked hours, tags and repeat rule. Defaults to open tasks. Use dueBy for \"what's due today\" (pass today's local date).",
-      inputSchema: {
+      inputSchema: z.object({
         status: z.enum(["open", "done", "all"]).default("open").describe("Which tasks to include"),
         projectId: z.string().optional().describe("Only this project's tasks (an id from list_projects)"),
         dueBy: DateArg.optional().describe("Only open tasks due on or before this local date, YYYY-MM-DD"),
-      },
+      }),
       annotations: READ_ONLY,
     },
     async ({ status, projectId, dueBy }) => {
@@ -536,7 +542,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Start a timer",
       description:
         "Start tracking time now. Stops any timer already running, exactly as the app's own timer bar does. Pass a project id from list_projects when the work belongs to one.",
-      inputSchema: {
+      inputSchema: z.object({
         description: z.string().max(2000).describe("What is being worked on"),
         projectId: z
           .string()
@@ -546,7 +552,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .string()
           .optional()
           .describe("A task id from list_tasks to track against; its project is used if projectId is omitted"),
-      },
+      }),
       annotations: MUTATES,
     },
     async ({ description, projectId: requestedProjectId, taskId }) => {
@@ -608,7 +614,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
     {
       title: "Stop the running timer",
       description: "Stop whatever timer is currently running and keep the entry.",
-      inputSchema: {},
+      inputSchema: z.object({}),
       // Calling it twice is a no-op ("No timer is running"), not a second stop.
       annotations: { ...MUTATES, idempotentHint: true },
     },
@@ -647,7 +653,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Create a task",
       description:
         "Add a task to the plan. Dates are the user's local days. A time of day (scheduledTime) puts it on their calendar as a planned block for its estimate. A deadline is when it must be done, as opposed to dueDate, when it's planned. Tags join the workspace's existing tags by name.",
-      inputSchema: {
+      inputSchema: z.object({
         name: z.string().min(1).max(255),
         projectId: z.string().describe("A project id from list_projects"),
         dueDate: DateArg.optional().describe("When it's planned, YYYY-MM-DD"),
@@ -662,7 +668,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         notes: z.string().max(5000).optional().describe("The task's own notes; never copied onto a time entry"),
         tags: z.array(z.string().min(1).max(100)).max(20).optional(),
         parentId: z.string().optional().describe("A top-level task id to make this a subtask of"),
-      },
+      }),
       annotations: MUTATES,
     },
     async (args) => {
@@ -691,10 +697,10 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Complete a task",
       description:
         "Tick a task off. Its subtasks are ticked with it. A repeating task gets its next occurrence, dated from the user's local day — pass timezoneOffsetMinutes. Completing a task that's already done changes nothing.",
-      inputSchema: {
+      inputSchema: z.object({
         taskId: z.string().describe("A task id from list_tasks"),
         timezoneOffsetMinutes: TimezoneArg,
-      },
+      }),
       annotations: { ...MUTATES, idempotentHint: true },
     },
     async ({ taskId, timezoneOffsetMinutes }) => {
@@ -733,7 +739,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Log a completed time entry",
       description:
         "Record work that has already happened. Times are ISO 8601 instants — resolve any relative phrasing before calling.",
-      inputSchema: {
+      inputSchema: z.object({
         description: z.string().max(2000).describe("What the work was"),
         start: z.string().describe("ISO 8601 start instant, e.g. 2026-08-24T14:00:00Z"),
         stop: z.string().describe("ISO 8601 stop instant, after start"),
@@ -742,7 +748,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .boolean()
           .optional()
           .describe("Omit to inherit the project's billable default"),
-      },
+      }),
       // Deliberately NOT idempotent: a second identical call logs a second
       // entry, which is sometimes exactly what the user means.
       annotations: MUTATES,
@@ -799,10 +805,10 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       title: "Draft a day's missing entries",
       description:
         "Propose the entries missing from a day, from calendar events that ended untracked, uncovered stretches between the day's activity, and work usually logged on that weekday. Proposals are NOT tracked time — they wait for a person to review and confirm them in the app.",
-      inputSchema: {
+      inputSchema: z.object({
         date: DateArg.describe("The local day to draft, YYYY-MM-DD"),
         timezoneOffsetMinutes: TimezoneArg,
-      },
+      }),
       // Idempotent by unique index on both the calendar event and the slot —
       // re-drafting a day proposes only what is still missing.
       annotations: { ...MUTATES, idempotentHint: true },
