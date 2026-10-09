@@ -111,9 +111,30 @@ test("the Assistant nudges about overdue tasks and a close deadline", async ({ p
 
   // In the panel, a task nudge points at the task list.
   await page.goto("/projects");
-  await page.getByRole("button", { name: /^Assistant — \d+ nudges?$/ }).click();
+  await page.getByRole("button", { name: /^Assistant — \d+ new nudges?$/ }).click();
   const panel = page.getByRole("dialog");
   await expect(panel.getByText("2 tasks are overdue")).toBeVisible();
   await panel.getByRole("button", { name: "Open tasks" }).first().click();
   await expect(page).toHaveURL(/\/tasks$/);
+});
+
+test("a late task the deadline nudge already names isn't counted again as overdue", async ({ page }) => {
+  const { mk } = await seed(page);
+  // Planned for two days ago *and* due by yesterday: one fact, one card.
+  await mk({ name: "Board pack", dueDate: localDate(-2), deadlineDate: localDate(-1) });
+
+  const offset = new Date().getTimezoneOffset();
+  const get = async () =>
+    (await (
+      await page.request.get(`/api/assistant/nudges?timezoneOffsetMinutes=${offset}`)
+    ).json()) as { kind: string; title: string }[];
+
+  let nudges = await get();
+  expect(nudges.filter((n) => n.kind === "deadline_risk")).toHaveLength(1);
+  expect(nudges.find((n) => n.kind === "tasks_overdue")).toBeUndefined();
+
+  // A second slipped task with no deadline is still news — counted as the other one.
+  await mk({ name: "Expense claims", dueDate: localDate(-1) });
+  nudges = await get();
+  expect(nudges.find((n) => n.kind === "tasks_overdue")?.title).toBe("Another task is overdue");
 });

@@ -385,8 +385,16 @@ Fully rounded, Label 500, 8px/2px padding, transparent 1px border. Variants: def
 
 ### Overlays
 - **Dialog:** `--popover`, 12px corners, hairline, 24px padding, large shadow, over a 50% black scrim; fades and scales in from 95% at the base duration. Title at Subtitle; description at Body in muted ink, balanced.
-- **Sheet:** `--popover`, large shadow, 12px corners on the open edge, hairline on that edge; slides at the slow duration, scrim included, on the shared curve (the Assistant panel is a sheet, so this is the most-felt motion in the app). Three-quarters width, capped at 384px.
+- **Sheet:** `--popover`, large shadow, 12px corners on the open edge, hairline on that edge; slides at the slow duration, scrim included, on the shared curve (the Assistant panel is a sheet, so this is the most-felt motion in the app). Three-quarters width, capped at 384px — except the Assistant, capped at 448px, because a conversation carrying entry rows and a day plan needs the measure. The close control on a sheet or dialog is an `icon-sm` ghost circle like every other icon button, not a bare 16px glyph.
 - **Popover / dropdown / select:** `--popover`, 12px corners, hairline, medium shadow, 4px inner padding for menus and 16px for popovers; items are 8px-cornered at Body with `--accent` focus. Tooltips are the inverted surface with shortcut hints in `--background` at 60%.
+
+### The Assistant Panel
+One sheet, three layers, in order: what needs your attention (nudges), the conversation, one composer.
+- **Nudges lead only while the chat is empty.** Once you're talking they fold into a single disclosure line ("2 things need your attention") above the thread, so the inbox never pushes the conversation below the fold. "All caught up" is a plain muted line with a success check, not a box. The rail badge counts nudges the panel hasn't shown yet, not every open one, and opening the panel takes down any nudge toast.
+- **Turns:** the user's turn is recessed on `--muted` with a hairline; the Assistant's is a card. Neither carries the brand red — in this panel the red belongs to the Send disc and to Approve.
+- **Tool results are rows, not status chips.** A logged or tracked entry is drawn the way the timesheet draws it: project swatch, description, a muted line with project and time range in the user's clock, and the duration right-aligned in mono. Summaries, task lists and the day plan are rows with a mono figure column; a day plan leads each line with its time range. Completion is a `--success-ink` icon, never a green wash; only a failure tints the edge (`--destructive` at 40%).
+- **An approval is a sentence and a verb.** "Log **1h 30m** to **Acme Retainer**", then the details (quoted description, day and range, billable), then what will happen ("…stops and is saved first"), then the verb as the primary pill (Log time, Add task, Schedule, Stop) beside an outline Decline. Never a tool name, an id fragment or a locale timestamp. A delete names the entry it removes and is the only approval in `--destructive`. The shell is a card with a `--border-strong` edge — the one card in the thread that's waiting on you.
+- **The panel says when it can't hear you.** After a 2s grace a status line above the composer reads "Reconnecting to the Assistant…" (or "Can't reach the Assistant…" with Retry once the socket gives up); a message sent meanwhile stays in the composer, queued, and goes when the socket opens. A turn with no first token after 20s turns "Thinking…" into "No reply yet" with Try again.
 
 ### Keyboard Chip
 See The One-Keycap Rule.

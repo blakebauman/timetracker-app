@@ -73,3 +73,14 @@ export function useDeleteAssistantMemory() {
   });
 }
 
+
+/**
+ * The rail badge: nudges the panel hasn't shown yet. Not `nudges.length` —
+ * that counted every open nudge, so the badge read "3" long after the user had
+ * looked at all three.
+ */
+export function useUnreadNudgeCount(): number {
+  const { nudges } = useAssistantNudges();
+  const viewed = useAssistantStore((s) => s.viewed);
+  return nudges.filter((n) => !(n.id in viewed)).length;
+}

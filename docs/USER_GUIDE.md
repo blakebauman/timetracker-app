@@ -232,14 +232,17 @@ The Assistant is built in, reachable from the sparkle button at the bottom of th
 - a timer that's been running suspiciously long
 - a weekday with nothing tracked
 - a budgeted project that's over, or on pace to overrun
+- a task whose deadline has passed or is close, and tasks past their due date (a late task is named once, not counted again as "overdue")
 
-Dismissals stick per-device. Turn nudge alerts on/off under Settings → Productivity.
+Once you start chatting, the nudges fold into one line above the conversation — click it to see them. The badge on the rail counts nudges you haven't seen yet, and opening the panel clears it. Dismissals stick per-device. Turn nudge alerts on/off under Settings → Productivity.
 
-**Chat** — ask the Assistant things in plain language: *"start a timer for the Acme redesign"*, *"how much did I bill this week?"*, *"log 2 hours of code review yesterday afternoon"*, *"track my 10am meeting"*. It can start/stop timers, log and delete entries, track meetings, summarize your time, and look up your projects — anything that **changes time already on your sheet asks for your approval first** with an in-chat confirm card: logging, deleting, stopping a running timer, or starting a new one while another is running. Starting a timer when nothing is running just starts it.
+**Chat** — ask the Assistant things in plain language: *"start a timer for the Acme redesign"*, *"how much did I bill this week?"*, *"log 2 hours of code review yesterday afternoon"*, *"track my 10am meeting"*. It can start/stop timers, log and delete entries, track meetings, summarize your time, and look up your projects — anything that **changes time already on your sheet asks for your approval first** with an in-chat confirm card: logging, deleting, stopping a running timer, or starting a new one while another is running. The card says exactly what will happen — *"Log 1h 30m to Acme Retainer · Today · 14:00–15:30 · billable"* — and its button names the action; a delete names the entry it removes. Starting a timer when nothing is running just starts it.
+
+If the Assistant loses its connection, the panel says so above the input; anything you send meanwhile waits in the box and goes as soon as it reconnects. Press `↑` in an empty input to bring back the last thing you sent. Prefer a form? **Log time with the form** opens the regular entry dialog.
 
 It knows your tasks too: *"what's due today?"*, *"remind me to send the SOW by Friday"*, *"I finished the vendor review"*. Adding or completing a task asks first, like every other change. Ask it to **plan my day** and it fits today's unscheduled tasks, those due today or overdue, into the free part of your working day (09:00–17:30, around meetings and anything already scheduled), most urgent first. It never splits a task around a meeting, and it tells you what didn't fit. It only proposes; say yes and it puts the tasks on your calendar as planned blocks.
 
-**Memory** — tell the Assistant to remember preferences ("remember that standups are never billable") and it stores them per-workspace, using them in future conversations. Review and delete everything it knows under **Settings → Assistant memory**.
+**Memory** — tell the Assistant to remember preferences ("remember that standups are never billable") and it stores them per-workspace, using them in future conversations. Review and delete everything it knows under **Settings → Tracking → Assistant memory** (or **What I remember** in the panel).
 
 ## Reports & exports
 

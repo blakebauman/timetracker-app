@@ -227,6 +227,7 @@ export const api = {
       );
       return request<unknown[]>(`/time_entries?${qs}`);
     },
+    get: (id: string) => request<unknown>(`/time_entries/${id}`),
     current: () => request<unknown | null>("/time_entries/current"),
     suggestions: () => request<unknown[]>("/time_entries/suggestions"),
     create: (body: Record<string, unknown>) =>

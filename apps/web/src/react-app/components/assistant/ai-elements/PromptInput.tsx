@@ -11,7 +11,8 @@ import { LIT_DISC } from "@/components/ui/lit-disc";
  * theme and deps — no attachments/model-selector). A form-wrapped Textarea that
  * grows with content via `field-sizing-content`, submits on Enter (Shift+Enter
  * for a newline, IME-composition safe), and an integrated send/stop button that
- * mirrors the turn state.
+ * mirrors the turn state. ArrowUp in an empty composer recalls the last thing
+ * you sent, to fix a typo or ask again.
  */
 export function PromptInput({
   value,
@@ -20,9 +21,11 @@ export function PromptInput({
   onStop,
   busy = false,
   status,
-  placeholder = "Ask the assistant…",
+  placeholder = "Ask anything…",
   ariaLabel = "Message the Assistant",
   textareaRef,
+  offline = false,
+  onRecall,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -35,6 +38,10 @@ export function PromptInput({
   ariaLabel?: string;
   /** Lets the host focus the composer (e.g. when the panel opens). */
   textareaRef?: Ref<HTMLTextAreaElement>;
+  /** No connection to the agent yet: Send still works — the host queues the text — but says so. */
+  offline?: boolean;
+  /** The last message sent, for ArrowUp in an empty composer. */
+  onRecall?: () => string | undefined;
 }) {
   const [isComposing, setIsComposing] = useState(false);
   const canSend = value.trim().length > 0 && !busy;
@@ -47,13 +54,21 @@ export function PromptInput({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "ArrowUp" && !value && onRecall) {
+        const last = onRecall();
+        if (last) {
+          e.preventDefault();
+          onChange(last);
+        }
+        return;
+      }
       if (e.key !== "Enter") return;
       // Let IME composition and Shift+Enter fall through to insert a newline.
       if (isComposing || e.nativeEvent.isComposing || e.shiftKey) return;
       e.preventDefault();
       submit();
     },
-    [isComposing, submit]
+    [isComposing, submit, value, onRecall, onChange]
   );
 
   return (
@@ -105,7 +120,7 @@ export function PromptInput({
           className={cn("shrink-0", LIT_DISC)}
           disabled={!canSend}
           aria-label="Send message"
-          title="Send"
+          title={offline ? "Send when the Assistant connects" : "Send"}
         >
           <Send className="h-4 w-4" />
         </Button>

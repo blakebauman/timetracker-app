@@ -16,6 +16,11 @@ interface AssistantStore {
   // Nudge id → first-alerted/viewed timestamp (ms). Persisted so a nudge only
   // ever produces one toast/notification per browser, even across reloads.
   seen: Record<string, number>;
+  // Nudge id → first time it was on screen in the open panel (ms). Distinct
+  // from `seen`: a toast marks a nudge seen (so it never alerts twice) but the
+  // user hasn't read it until the panel showed it, and the rail badge counts
+  // the unread ones — counting every open nudge kept it at "3" forever.
+  viewed: Record<string, number>;
   // Toast + browser-notification alerts for new nudges (Settings toggle).
   alertsEnabled: boolean;
 
@@ -23,6 +28,7 @@ interface AssistantStore {
   toggleOpen: () => void;
   dismissNudge: (id: string) => void;
   markSeen: (ids: string[]) => void;
+  markViewed: (ids: string[]) => void;
   setAlertsEnabled: (v: boolean) => void;
 }
 
@@ -37,6 +43,7 @@ export const useAssistantStore = create<AssistantStore>()(
       open: false,
       dismissed: {},
       seen: {},
+      viewed: {},
       alertsEnabled: true,
 
       setOpen: (v) => set({ open: v }),
@@ -50,6 +57,14 @@ export const useAssistantStore = create<AssistantStore>()(
           for (const id of ids) seen[id] = seen[id] ?? now;
           return { seen };
         }),
+      markViewed: (ids) =>
+        set((s) => {
+          if (ids.every((id) => id in s.viewed)) return s;
+          const viewed = pruneOld(s.viewed);
+          const now = Date.now();
+          for (const id of ids) viewed[id] = viewed[id] ?? now;
+          return { viewed };
+        }),
       setAlertsEnabled: (v) => set({ alertsEnabled: v }),
     }),
     {
@@ -57,6 +72,7 @@ export const useAssistantStore = create<AssistantStore>()(
       partialize: (s) => ({
         dismissed: s.dismissed,
         seen: s.seen,
+        viewed: s.viewed,
         alertsEnabled: s.alertsEnabled,
       }),
     }

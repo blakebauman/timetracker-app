@@ -35,6 +35,8 @@ export interface DeadlineRisk {
 export interface TaskPlan {
   /** Open top-level tasks due before `fromLocal`. */
   overdue: number;
+  /** Their ids, so a caller that names some of them elsewhere can count the rest. */
+  overdueIds: string[];
   /** Open top-level tasks due within [fromLocal, toLocal], scheduled ones first by time. */
   due: PlannedTask[];
   /** Sum of the due tasks' remaining estimates. */
@@ -108,7 +110,9 @@ export async function loadTaskPlan(
     trackedSeconds: (r.tracked_seconds as number) ?? 0,
   }));
 
-  const overdue = tasks.filter((t) => t.dueDate && compareLocalDates(t.dueDate, fromLocal) < 0).length;
+  const overdueIds = tasks
+    .filter((t) => t.dueDate && compareLocalDates(t.dueDate, fromLocal) < 0)
+    .map((t) => t.id);
   const due = tasks
     .filter(
       (t) =>
@@ -124,7 +128,8 @@ export async function loadTaskPlan(
     );
 
   return {
-    overdue,
+    overdue: overdueIds.length,
+    overdueIds,
     due,
     remainingEstimateSeconds: due.reduce((sum, t) => sum + (remaining(t) ?? 0), 0),
     deadlines: deadlineRisks(tasks, fromLocal),

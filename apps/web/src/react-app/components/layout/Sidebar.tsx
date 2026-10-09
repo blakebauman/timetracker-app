@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUIStore } from "@/stores/uiStore";
 import { useAssistantStore } from "@/stores/assistantStore";
-import { useAssistantNudges } from "@/hooks/useAssistant";
+import { useUnreadNudgeCount } from "@/hooks/useAssistant";
 import { modKey } from "@/lib/platform";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { overlayOpen } from "@/lib/overlay";
@@ -156,7 +156,7 @@ function NudgeBadge({ count, className }: { count: number; className?: string })
  * while the Assistant is open contradicts it.
  */
 function assistantLabel(count: number) {
-  return count > 0 ? `Assistant — ${count} ${count === 1 ? "nudge" : "nudges"}` : "Assistant";
+  return count > 0 ? `Assistant — ${count} new ${count === 1 ? "nudge" : "nudges"}` : "Assistant";
 }
 
 /** A name to greet by, and the email only when it isn't already the name. */
@@ -179,7 +179,7 @@ function Rail() {
   const openShortcuts = useUIStore((s) => s.openShortcuts);
   const toggleAssistant = useAssistantStore((s) => s.toggleOpen);
   const assistantOpen = useAssistantStore((s) => s.open);
-  const { nudges } = useAssistantNudges();
+  const unread = useUnreadNudgeCount();
 
   const handleSignOut = async () => {
     await signOut();
@@ -248,12 +248,12 @@ function Rail() {
               type="button"
               onClick={toggleAssistant}
               aria-pressed={assistantOpen}
-              aria-label={assistantLabel(nudges.length)}
+              aria-label={assistantLabel(unread)}
               className={cn(RAIL_BUTTON, assistantOpen ? RAIL_ACTIVE : RAIL_IDLE)}
             >
               <RailRing shown={assistantOpen} />
               <Sparkles className="relative size-5" />
-              <NudgeBadge count={nudges.length} className="top-1.5 right-1.5" />
+              <NudgeBadge count={unread} className="top-1.5 right-1.5" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
@@ -469,7 +469,7 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const toggleAssistant = useAssistantStore((s) => s.toggleOpen);
   const assistantOpen = useAssistantStore((s) => s.open);
-  const { nudges } = useAssistantNudges();
+  const unread = useUnreadNudgeCount();
 
   return (
     <>
@@ -494,10 +494,10 @@ export function Sidebar() {
             className="relative text-muted-foreground"
             onClick={toggleAssistant}
             aria-pressed={assistantOpen}
-            aria-label={assistantLabel(nudges.length)}
+            aria-label={assistantLabel(unread)}
           >
             <Sparkles className="size-5" />
-            <NudgeBadge count={nudges.length} className="top-1 right-1" />
+            <NudgeBadge count={unread} className="top-1 right-1" />
           </Button>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>

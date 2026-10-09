@@ -42,7 +42,7 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   // one called "Open Assistant", so the anchor keeps the two apart.
   const launcher = page.getByRole("button", { name: /^Assistant/ });
   await expect(launcher).toBeVisible();
-  await expect(launcher).toHaveAccessibleName(/\d+ nudge/);
+  await expect(launcher).toHaveAccessibleName(/\d+ new nudge/);
 
   // A stale timer is the one nudge whose fix is a single call, so its toast
   // performs it rather than routing to a chat window (every other kind still
@@ -56,8 +56,15 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   // The card carries the same fix, so the alarm never dead-ends in a chat.
   await expect(panel.getByRole("button", { name: "Stop timer", exact: true })).toBeVisible();
   // Opening lands focus on the composer — input-first.
-  await expect(page.getByPlaceholder("Ask the assistant…")).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Message the Assistant" })).toBeFocused();
   await expect(page.getByRole("button", { name: "Send message" })).toBeVisible();
+  // Reading the panel clears the badge and takes down the nudge's toast,
+  // which used to sit over the composer for its full 12s.
+  await expect(nudgeToast).toBeHidden();
+  await page.keyboard.press("Escape");
+  const read = page.getByRole("button", { name: "Assistant", exact: true });
+  await expect(read).toBeVisible();
+  await read.click();
 
   // Dismissal hides the nudge and persists client-side.
   await panel.getByRole("button", { name: "Dismiss nudge" }).first().click();
@@ -78,7 +85,7 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   await expect(page.getByRole("dialog")).toBeHidden();
   await page.keyboard.press("ControlOrMeta+i");
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByPlaceholder("Ask the assistant…")).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Message the Assistant" })).toBeFocused();
 });
 
 // AI project inference is best-effort and unavailable in CI — this exercises
