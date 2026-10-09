@@ -32,7 +32,7 @@ import { runAutoTrack } from "./lib/calendar-autotrack";
 import { runRecurring } from "./lib/recurring";
 import { runDigests } from "./lib/digest";
 import { routeAgentRequest } from "agents";
-import { createLegacyMcpHandler } from "agents/mcp";
+import { createMcpHandler } from "@modelcontextprotocol/server";
 import { buildMcpServer } from "./mcp/server";
 import { resolveApiKey, touchApiKey } from "./lib/api-keys";
 export { TimerRoom } from "./durable-objects/TimerRoom";
@@ -254,21 +254,35 @@ async function handleMcpRequest(
 
   ctx.waitUntil(touchApiKey(env.DB, resolved.id));
 
-  const server = buildMcpServer({
-    env,
-    workspaceId: resolved.workspaceId,
-    userId: resolved.userId,
-    scope: resolved.scope,
-  });
-  // Agents SDK ≥ 0.20: createMcpHandler expects an MCP SDK v2 factory and
-  // only shims a v1 McpServer instance with a deprecation warning. This server
-  // is built on SDK v1 (@modelcontextprotocol/sdk 1.x), so call the legacy
-  // handler by name; moving to v2 is its own change.
-  return createLegacyMcpHandler(server, { route: "/mcp" })(
-    limitBody(request, RAW_BODY_MAX),
-    env,
-    ctx
+  // The SDK handler answers on any path; the endpoint is /mcp exactly.
+  if (new URL(request.url).pathname !== "/mcp") {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  // The SDK's own handler is a web-standard fetch, so it runs on the Worker
+  // as-is. It is stateless — the factory builds a fresh server for each
+  // request, which is what pins every call to the key's workspace — and it
+  // serves 2025-era clients alongside the 2026-07-28 revision from the same
+  // factory. It does no auth of its own; the key was verified above.
+  const handler = createMcpHandler(() =>
+    buildMcpServer({
+      env,
+      workspaceId: resolved.workspaceId,
+      userId: resolved.userId,
+      scope: resolved.scope,
+    })
   );
+  try {
+    return await handler.fetch(limitBody(request, RAW_BODY_MAX));
+  } catch (error) {
+    // A throw escaping the handler is a bug, not a protocol error a client can
+    // act on — log it and answer in JSON-RPC rather than with a bare 500 page.
+    console.error("MCP handler error:", error);
+    return Response.json(
+      { jsonrpc: "2.0", error: { code: -32603, message: "Internal server error" }, id: null },
+      { status: 500 }
+    );
+  }
 }
 
 /**

@@ -50,7 +50,7 @@ The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together 
 | `/api/ws` | `websocket.ts` | upgrade → `TimerRoom` (`idFromName(workspaceId)`) |
 | `/api/health` | `index.ts` | unauthenticated liveness probe: `SELECT 1` against D1 → `{ ok }` and nothing else (no version, env or bindings) |
 
-`/mcp` is **not** a Hono route: like `/agents/*` it is intercepted in `index.ts` before the app, authenticated by API key rather than session, and handed to `agents/mcp`'s `createLegacyMcpHandler`. See MCP below.
+`/mcp` is **not** a Hono route: like `/agents/*` it is intercepted in `index.ts` before the app, authenticated by API key rather than session, and handed to the MCP SDK's `createMcpHandler` (`@modelcontextprotocol/server`). See MCP below.
 
 `db/queries.ts` holds the shared SQL helpers — `ENTRY_SELECT` is the canonical time-entry JOIN; `broadcast()` fans WebSocket events out through the DO; `upsertTags()` implicitly creates tags with deterministic colors.
 
@@ -109,7 +109,7 @@ Deliberately AI-free — pacing goes in front of a client, so it must be reprodu
 
 ## MCP server (`mcp/server.ts`, `lib/api-keys.ts`)
 
-`/mcp` speaks Streamable HTTP via `agents/mcp`'s `createLegacyMcpHandler` — stateless, no Durable Object. A fresh `McpServer` is built per request, bound to the workspace resolved from the API key.
+`/mcp` speaks Streamable HTTP via `createMcpHandler` from `@modelcontextprotocol/server` (MCP SDK v2) — a web-standard fetch handler, stateless, no Durable Object. It serves 2025-era clients and the 2026-07-28 revision from the same factory. A fresh `McpServer` is built per request, bound to the workspace resolved from the API key.
 
 - **Fourteen tools**, each a thin wrapper over the helpers the REST API already uses (report builder, pacing, draft pipeline, `lib/tasks.ts`), so a chat answer and a Reports page answer come from one implementation. Task tools: `list_tasks` (read), `create_task` / `complete_task` (write); `start_timer` takes an optional `taskId`.
 - **No tool takes a workspace id** — it is fixed at construction, so nothing a model can invent reaches a tenant boundary.
