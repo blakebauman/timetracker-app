@@ -38,9 +38,10 @@ const FOCUS_RING =
 
 /**
  * A rail button: a 48px circle. The active one lifts a step off the chassis
- * and carries a brand-red ring that fades downward (`tt-rail-ring`) — the
- * rail's signature, in the brand's colour. Everything else on the rail
- * is muted ink that brightens on hover.
+ * and carries an ink ring that fades downward (`tt-rail-ring`) — the rail's
+ * signature. It is ink, not brand red: where you are isn't something
+ * happening, and red on the rail means one thing — the Timer button's running
+ * dot. Everything else on the rail is muted ink that brightens on hover.
  *
  * The lift is in the transition list alongside the colours, and the ring is
  * always mounted and crossfaded, so switching routes moves both together at
@@ -60,7 +61,7 @@ function RailRing({ shown }: { shown: boolean }) {
     <span
       aria-hidden
       className={cn(
-        "tt-rail-ring pointer-events-none absolute inset-0 rounded-full border border-primary/60 dark:border-primary transition-opacity duration-fast ease-out-quart",
+        "tt-rail-ring pointer-events-none absolute inset-0 rounded-full border border-foreground/50 dark:border-foreground/70 transition-opacity duration-fast ease-out-quart",
         shown ? "opacity-100" : "opacity-0"
       )}
     />
