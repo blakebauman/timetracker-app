@@ -80,12 +80,13 @@ export function useTasks(projectId?: string | null) {
   });
 }
 
-export function useAllTasks() {
+export function useAllTasks(enabled = true) {
   const select = useHidePendingDeletes();
   return useQuery({
     queryKey: ["tasks", "all", "withDone"],
     queryFn: () => api.tasks.list({ includeInactive: "true" }) as Promise<Task[]>,
     staleTime: 30_000,
+    enabled,
     select,
   });
 }

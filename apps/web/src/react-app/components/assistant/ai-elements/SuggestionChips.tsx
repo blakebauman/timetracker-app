@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Horizontal row of tappable prompt suggestions (fold.run ai-elements/suggestion,
- * trimmed to our Button + theme). Shown on an empty conversation to prime the assistant.
+ * trimmed to our Button + theme). Shown on an empty conversation to prime the Assistant.
  */
 export function SuggestionChips({
   suggestions,
@@ -20,7 +20,9 @@ export function SuggestionChips({
           key={s}
           variant="outline"
           size="sm"
-          className="h-auto rounded-full py-1 text-xs font-normal text-muted-foreground"
+          // h-auto so a long suggestion wraps; min-h-8 and the coarse-pointer
+          // pseudo-element keep it a real target under a thumb (it was 26px).
+          className="relative h-auto min-h-8 rounded-full py-1.5 text-xs font-normal text-muted-foreground pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 pointer-coarse:after:content-['']"
           disabled={disabled}
           onClick={() => onSelect(s)}
         >

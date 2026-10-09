@@ -145,7 +145,7 @@ export function buildNudges(
   facts: TodayFacts,
   events: ExternalEvent[],
   pacing: ProjectPacing[] = [],
-  plan: Pick<TaskPlan, "overdue" | "deadlines"> = { overdue: 0, deadlines: [] }
+  plan: Pick<TaskPlan, "overdueIds" | "deadlines"> = { overdueIds: [], deadlines: [] }
 ): AssistantNudge[] {
   const nudges: AssistantNudge[] = [];
   const { localHour, localWeekday, localDate } = localDayBounds(nowMs, offsetMinutes);
@@ -264,7 +264,9 @@ export function buildNudges(
 
   // Deadlines: a commitment, so each nearby one is worth its own line. Keyed by
   // task *and* deadline, so moving the deadline re-arms the alert.
+  const named = new Set<string>();
   for (const risk of plan.deadlines.slice(0, MAX_DEADLINE_NUDGES)) {
+    named.add(risk.task.id);
     const when = describeDay(risk.task.deadlineDate!, risk.daysLeft);
     const left =
       risk.remainingSeconds && risk.remainingSeconds > 0
@@ -284,16 +286,25 @@ export function buildNudges(
 
   // Overdue plans: one counted line a day, not one per task — a backlog of
   // slipped due dates is a single fact ("you're behind"), and ten toasts about
-  // it would be noise.
-  if (plan.overdue > 0) {
+  // it would be noise. A task a deadline nudge already names isn't counted
+  // again: one late task used to arrive as "Deadline passed" *and* "A task is
+  // overdue", two cards with the same button for the same fix.
+  const unnamed = plan.overdueIds.filter((id) => !named.has(id)).length;
+  if (unnamed > 0) {
+    const others = plan.overdueIds.length > unnamed;
     nudges.push({
       id: `tasks_overdue:${localDate}`,
       kind: "tasks_overdue",
-      title: plan.overdue === 1 ? "A task is overdue" : `${plan.overdue} tasks are overdue`,
+      title:
+        unnamed === 1
+          ? others
+            ? "Another task is overdue"
+            : "A task is overdue"
+          : `${unnamed} ${others ? "other " : ""}tasks are overdue`,
       body:
-        plan.overdue === 1
+        unnamed === 1
           ? "One open task is past its due date. Re-date it or tick it off."
-          : `${plan.overdue} open tasks are past their due dates. Re-date them or tick them off.`,
+          : `${unnamed} open tasks are past their due dates. Re-date them or tick them off.`,
       event: null,
     });
   }

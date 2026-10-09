@@ -66,12 +66,14 @@ function DialogContent({
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity duration-fast ease-out-quart hover:opacity-100 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
+          <DialogPrimitive.Close data-slot="dialog-close" asChild>
+            {/* A control is a circle at a size token (The Geometry Rule), so the
+                close button gets the same 32px target — and the same 44px
+                coarse-pointer hit area — as every other icon button. It was a
+                bare 16px glyph with a 2px corner. */}
+            <Button variant="ghost" size="icon-sm" className="absolute top-4 right-4 text-muted-foreground hover:text-foreground" aria-label="Close" title="Close">
+              <XIcon />
+            </Button>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
