@@ -259,10 +259,11 @@ forward).
 - ~~**Agents SDK 0.17 → 0.24 (+ `@cloudflare/ai-chat` 0.12)**~~ — shipped in
   #147. The one code change was `/mcp` calling `createLegacyMcpHandler` by
   name: since 0.20 `createMcpHandler` expects an MCP SDK **v2** server
-  factory, and this server is built on `@modelcontextprotocol/sdk` 1.x. **Still
-  open:** the SDK v2 move itself (new `@modelcontextprotocol/server` package,
-  `createMcpHandler` with a factory, and then the stateless handler's
-  `allowedOriginHostnames` becomes relevant). First deploy after #147 runs the
+  factory, and this server was built on `@modelcontextprotocol/sdk` 1.x. The
+  SDK v2 move has since shipped too: `/mcp` is on `@modelcontextprotocol/server`
+  and its own `createMcpHandler`, no longer `agents/mcp`. Origin validation
+  stays off deliberately — it guards localhost binds against DNS rebinding,
+  and every call here already needs a bearer key a page can't hold. First deploy after #147 runs the
   SDK's one-way Durable Object SQLite migrations on each agent's first wake;
   a rollback after that loses at most the 100-message chat history.
 - **Workspace role policy (decision, not a bug)** — every route gates on

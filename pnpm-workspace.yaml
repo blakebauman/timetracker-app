@@ -90,7 +90,11 @@ catalog:
   zod: ^4.4.3
   better-auth: ^1.7.6
   "@better-auth/passkey": ^1.7.6
-  "@modelcontextprotocol/sdk": 1.29.0
+  # The /mcp server is on the v2 package. `agents` still imports the v1
+  # package's types from its core (the Assistant's ChatAgent), so v1 stays
+  # installed at the exact version agents peers on.
+  "@modelcontextprotocol/server": 2.3.1
+  "@modelcontextprotocol/sdk": 1.30.0
   mimetext: ^3.0.28
   react-email: ^6.9.0
   "@react-email/ui": ^6.9.0
@@ -98,3 +102,10 @@ catalog:
   # ai — @cloudflare/ai-chat peers ai ^6, NOT v7
   ai: ^6.0.300
   "@ai-sdk/react": ^3.0.303
+
+peerDependencyRules:
+  allowedVersions:
+    # agents pins @modelcontextprotocol/server 2.0.0 exactly, but only its
+    # agents/mcp handler imports it, and this app serves /mcp with the SDK's
+    # own createMcpHandler instead.
+    agents>@modelcontextprotocol/server: 2.x

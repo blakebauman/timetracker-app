@@ -25,6 +25,7 @@
 		"@fullcalendar/react": "catalog:",
 		"@hono/zod-validator": "catalog:",
 		"@modelcontextprotocol/sdk": "catalog:",
+		"@modelcontextprotocol/server": "catalog:",
 		"@tanstack/react-query": "catalog:",
 		"@tanstack/react-query-devtools": "catalog:",
 		"@timetracker/core": "workspace:*",
