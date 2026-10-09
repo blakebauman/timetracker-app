@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { EventContentArg } from "@fullcalendar/core";
+import type { EventDisplayInfo } from "@fullcalendar/react";
 import { CalendarPlus, Play, Wand2 } from "lucide-react";
 import { formatDurationShort } from "@/lib/dateUtils";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
@@ -7,7 +7,7 @@ import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 
 // Custom renderer for a calendar block. Passed to FullCalendar's `eventContent`.
 // Kept intentionally compact so short (15–30 min) blocks stay legible.
-export function CalendarEventContent(arg: EventContentArg) {
+export function CalendarEventContent(arg: EventDisplayInfo) {
   const { entry, running, ghost, external, gap, draft, task } =
     arg.event.extendedProps as Partial<CalendarEventExtendedProps>;
 

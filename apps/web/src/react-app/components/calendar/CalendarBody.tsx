@@ -1,7 +1,11 @@
 import { useMemo, useRef, useState, useEffect } from "react";
-import type FullCalendar from "@fullcalendar/react";
-import type { EventClickArg, EventDropArg } from "@fullcalendar/core";
-import type { EventResizeDoneArg, DropArg } from "@fullcalendar/interaction";
+import type {
+  CalendarRef,
+  DropInfo,
+  EventClickInfo,
+  EventDropInfo,
+  EventResizeDoneInfo,
+} from "@fullcalendar/react";
 import {
   endOfWeek,
   startOfWeek,
@@ -84,7 +88,7 @@ export function CalendarBody({
 }: CalendarBodyProps) {
   // date-fns wants a 0–6 literal; the setting is validated to that range.
   const wso = weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  const calendarRef = useRef<FullCalendar>(null);
+  const calendarRef = useRef<CalendarRef>(null);
   const api = () => calendarRef.current?.getApi();
 
   // Captured once — FullCalendar's initialView/initialDate must be constant;
@@ -260,7 +264,7 @@ export function CalendarBody({
     api()?.unselect();
   };
 
-  const handleMoveOrResize = (arg: EventDropArg | EventResizeDoneArg) => {
+  const handleMoveOrResize = (arg: EventDropInfo | EventResizeDoneInfo) => {
     const { start, end } = arg.event;
     if (!start || !end) {
       arg.revert();
@@ -307,7 +311,7 @@ export function CalendarBody({
    * the block matches the space the pointer was over. Month view has no time of
    * day to drop onto, so it isn't a target.
    */
-  const handleTaskDrop = (arg: DropArg) => {
+  const handleTaskDrop = (arg: DropInfo) => {
     const el = arg.draggedEl;
     const taskId = el.getAttribute("data-task-id");
     const projectId = el.getAttribute("data-project-id");
@@ -373,7 +377,7 @@ export function CalendarBody({
     );
   };
 
-  const handleEventClick = (arg: EventClickArg) => {
+  const handleEventClick = (arg: EventClickInfo) => {
     const props = arg.event.extendedProps as CalendarEventExtendedProps;
     if (props.draft) {
       onReviewDay?.(props.draft.localDate);

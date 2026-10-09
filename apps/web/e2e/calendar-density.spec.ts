@@ -17,7 +17,7 @@ const MIN_LEGIBLE_COLUMN = 90; // slightly under MIN_DAY_COLUMN to allow borders
 
 async function columnMetrics(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
-    const cols = document.querySelectorAll(".fc-col-header-cell");
+    const cols = document.querySelectorAll(".tt-fc-day-header");
     return {
       count: cols.length,
       width: cols[0] ? Math.round(cols[0].getBoundingClientRect().width) : 0,

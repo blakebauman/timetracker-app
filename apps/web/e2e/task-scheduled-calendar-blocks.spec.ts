@@ -165,13 +165,13 @@ test("a rail task dropped on a future slot is scheduled there, not logged", asyn
   await page.getByRole("button", { name: "Show today's tasks" }).click();
 
   const rail = page.locator("[data-task-drag]", { hasText: "Rail task" });
-  const future = page.locator(".fc-timegrid-col.fc-day-future").first();
+  const future = page.locator(".tt-fc-lane.tt-fc-future").first();
   // Only a week with a future day in view can take this drop (not Sundays
   // with a Monday week start, say); the logged-entry path covers the rest.
   test.skip((await future.count()) === 0, "no future day in the visible week");
   const r = (await rail.boundingBox())!;
   const c = (await future.boundingBox())!;
-  const l = (await page.locator(".fc-timegrid-slot-lane").nth(28).boundingBox())!;
+  const l = (await page.locator(".tt-fc-slot").nth(28).boundingBox())!;
   await page.mouse.move(r.x + 20, r.y + 10);
   await page.mouse.down();
   for (let i = 1; i <= 15; i++) {
