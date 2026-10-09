@@ -268,8 +268,13 @@ export function AssistantPanel() {
     error,
   } = useAgentChat({
     agent,
-    // Sent per request; ChatAgent.onChatMessage reads options.body for local time.
-    body: () => ({ timezoneOffsetMinutes: new Date().getTimezoneOffset() }),
+    // Sent per request; ChatAgent.onChatMessage reads options.body for local
+    // time. The tools take local wall-clock times and the worker converts them
+    // with the zone, so "2pm" means 2pm here — across DST changes too.
+    body: () => ({
+      timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
   });
 
   const busy = status === "submitted" || status === "streaming" || isStreaming;

@@ -20,6 +20,7 @@ import { buildAssistantContext } from "../lib/assistant";
 import { buildAssistantTools } from "../lib/assistant-tools";
 import { recallMemories, buildMemoryBlock } from "../lib/assistant-memory";
 import { dedupedAI } from "../lib/workers-ai-stream";
+import { isValidTimeZone } from "../lib/local-time";
 
 // Same model the app already uses for structured AI (JSON mode + function
 // calling). Llama 4 Scout supports tool calling, which is what the assistant needs.
@@ -60,6 +61,9 @@ export class ChatAgent extends AIChatAgent<Cloudflare.Env> {
     // the user's local zone; 0 (UTC) if absent.
     const rawOffset = Number(options?.body?.timezoneOffsetMinutes);
     const offset = Number.isFinite(rawOffset) ? Math.max(-14 * 60, Math.min(14 * 60, rawOffset)) : 0;
+    // The IANA zone makes local→UTC right on dates across a DST change; the
+    // offset alone is only right on this side of one. Older clients omit it.
+    const timeZone = isValidTimeZone(options?.body?.timeZone) ? options.body.timeZone : null;
 
     const [context, memories] = await Promise.all([
       buildAssistantContext(this.env, workspaceId, offset),
@@ -92,7 +96,7 @@ When to use which tool (call the tool — never just describe the action or tell
 
 Rules:
 - Prefer taking the action over explaining it. After a tool runs, confirm briefly what happened in one sentence.
-- Resolve relative times ("yesterday", "2pm", "this morning") against the local date/time in CURRENT FACTS, then pass tool start/stop as UTC ISO 8601 timestamps.
+- Resolve relative times ("yesterday", "2pm", "this morning") against the local date/time in CURRENT FACTS, and pass them to tools as the user's LOCAL wall-clock time, YYYY-MM-DDTHH:MM, with no Z and no offset — "yesterday 2pm" is yesterday's date at T14:00. Never convert to UTC; the app does that.
 - Use the EXACT known project names when matching work to a project. If unsure which project, act without one rather than guessing.
 - Ground factual answers ONLY in CURRENT FACTS and tool results. Never invent entries, meetings, hours, or ids.
 - Be concise and friendly — a sentence or two, plain text, no markdown headings. Times shown are the user's local time.
@@ -106,7 +110,7 @@ ${context}
     // dedupedAI: Workers AI streams every token in two formats and the provider
     // emits both — see lib/workers-ai-stream.ts.
     const workersai = createWorkersAI({ binding: dedupedAI(this.env.AI) });
-    const tools = buildAssistantTools({ env: this.env, workspaceId, offsetMinutes: offset });
+    const tools = buildAssistantTools({ env: this.env, workspaceId, offsetMinutes: offset, timeZone });
 
     // Clamp any oversized message before it reaches the model, so a single huge
     // paste can't inflate the prompt (and cost/CPU) unbounded.
