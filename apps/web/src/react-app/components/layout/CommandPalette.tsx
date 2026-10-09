@@ -12,7 +12,8 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { modKey } from "@/lib/platform";
-import { Kbd } from "@/components/ui/kbd";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { SETTINGS_ROUTE, WORK_ROUTES } from "./navRoutes";
 import { useTimer } from "@/hooks/useTimer";
 import { useGroupedEntries } from "@/hooks/useEntries";
 import { useAllTasks } from "@/hooks/useTasks";
@@ -20,12 +21,7 @@ import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAssistantStore } from "@/stores/assistantStore";
 import {
-  Timer,
   ListChecks,
-  FolderOpen,
-  Users,
-  BarChart2,
-  Settings,
   Play,
   Square,
   Sparkles,
@@ -108,16 +104,8 @@ export function CommandPalette() {
         .slice(0, 6)
     : [];
 
-  const navItems = [
-    { to: "/", label: "Timer", icon: Timer },
-    // Same order as the sidebar. Tasks was missing here entirely — a top-level
-    // page with no command-palette entry.
-    { to: "/tasks", label: "Tasks", icon: ListChecks },
-    { to: "/projects", label: "Projects", icon: FolderOpen },
-    { to: "/clients", label: "Clients", icon: Users },
-    { to: "/reports", label: "Reports", icon: BarChart2 },
-    { to: "/settings", label: "Settings", icon: Settings },
-  ];
+  // The rail's own list, so the two can't drift (Tasks was once missing here).
+  const navItems = [...WORK_ROUTES, SETTINGS_ROUTE];
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen} title="Command palette">
@@ -231,10 +219,18 @@ export function CommandPalette() {
         {/* Navigation */}
         <CommandSeparator />
         <CommandGroup heading="Navigate">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, label, icon: Icon, key }) => (
             <CommandItem key={to} onSelect={() => handleNavigate(to)}>
               <Icon className="h-4 w-4" />
               {label}
+              {key && (
+                <CommandShortcut>
+                  <KbdGroup>
+                    <Kbd>G</Kbd>
+                    <Kbd>{key.toUpperCase()}</Kbd>
+                  </KbdGroup>
+                </CommandShortcut>
+              )}
             </CommandItem>
           ))}
         </CommandGroup>

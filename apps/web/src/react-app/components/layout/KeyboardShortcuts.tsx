@@ -10,10 +10,13 @@ import {
 import { useUIStore } from "@/stores/uiStore";
 import { modKey as mod } from "@/lib/platform";
 import { Kbd } from "@/components/ui/kbd";
+import { WORK_ROUTES } from "./navRoutes";
 
 interface Shortcut {
   keys: string[];
   label: string;
+  /** Pressed one after the other ("G then T"), not held together. */
+  sequence?: boolean;
 }
 
 interface ShortcutGroup {
@@ -29,6 +32,14 @@ const GROUPS: ShortcutGroup[] = [
       { keys: [mod, "I"], label: "Open the Assistant" },
       { keys: ["?"], label: "Show this keyboard shortcut reference" },
     ],
+  },
+  {
+    title: "Go to",
+    items: WORK_ROUTES.filter((r) => r.key).map((r) => ({
+      keys: ["G", r.key!.toUpperCase()],
+      label: r.label,
+      sequence: true,
+    })),
   },
   {
     title: "Timer",
@@ -53,12 +64,14 @@ const GROUPS: ShortcutGroup[] = [
   },
 ];
 
-function Keys({ keys }: { keys: string[] }) {
+function Keys({ keys, sequence }: { keys: string[]; sequence?: boolean }) {
   return (
     <span className="flex items-center gap-1">
       {keys.map((k, i) => (
         <span key={k} className="flex items-center gap-1">
-          {i > 0 && <span className="text-micro text-muted-foreground">+</span>}
+          {i > 0 && (
+            <span className="text-micro text-muted-foreground">{sequence ? "then" : "+"}</span>
+          )}
           <Kbd className="h-6 min-w-6">
             {k}
           </Kbd>
@@ -113,7 +126,7 @@ export function KeyboardShortcuts() {
                 {group.items.map((s) => (
                   <li key={s.label} className="flex items-center justify-between gap-4">
                     <span className="text-sm">{s.label}</span>
-                    <Keys keys={s.keys} />
+                    <Keys keys={s.keys} sequence={s.sequence} />
                   </li>
                 ))}
               </ul>
