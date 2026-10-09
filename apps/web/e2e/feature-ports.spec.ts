@@ -28,7 +28,7 @@ test("calendar: month view renders", async ({ page }) => {
   await page.getByRole("button", { name: "View options" }).click();
   await page.getByRole("radio", { name: "Month" }).click();
 
-  await expect(page.locator(".fc-daygrid")).toBeVisible();
+  await expect(page.locator(".tt-fc-day-cell").first()).toBeVisible();
 });
 
 test("settings: productivity + calendar preferences render", async ({ page }) => {

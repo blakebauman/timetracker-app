@@ -1,8 +1,7 @@
-import type { EventInput } from "@fullcalendar/core";
+import type { EventInput } from "@fullcalendar/react";
 import type { TimeEntry, DraftEntry, Task } from "@timetracker/core/schemas";
 import { scheduledBlock } from "@/lib/taskUtils";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
-import { hexToRgba } from "@/lib/colorUtils";
 
 // An unconfirmed external calendar event (Google) shown as a "ghost" block the
 // user can click to confirm into a tracked entry.
@@ -74,8 +73,7 @@ export function buildGapEvents(
       end: stop,
       editable: false,
       display: "block",
-      backgroundColor: hexToRgba(GAP_COLOR, 0.06),
-      borderColor: hexToRgba(GAP_COLOR, 0.5),
+      color: GAP_COLOR,
       extendedProps: {
         running: false,
         gap: true,
@@ -101,8 +99,7 @@ export function draftToEvent(draft: DraftEntry): EventInput {
     end: draft.stop,
     editable: false,
     display: "block",
-    backgroundColor: hexToRgba(color, 0.08),
-    borderColor: hexToRgba(color, 0.65),
+    color,
     extendedProps: { running: false, draft } satisfies CalendarEventExtendedProps,
   };
 }
@@ -127,8 +124,7 @@ export function taskToEvent(task: Task): EventInput | null {
     end: block.end,
     editable: true,
     display: "block",
-    backgroundColor: hexToRgba(color, 0.05),
-    borderColor: hexToRgba(color, 0.7),
+    color,
     extendedProps: { running: false, task } satisfies CalendarEventExtendedProps,
   };
 }
@@ -141,8 +137,7 @@ export function externalEventToEvent(ext: ExternalEvent): EventInput {
     end: ext.stop,
     editable: false,
     display: "block",
-    backgroundColor: hexToRgba(GHOST_COLOR, 0.1),
-    borderColor: GHOST_COLOR,
+    color: GHOST_COLOR,
     extendedProps: { running: false, ghost: true, external: ext } satisfies CalendarEventExtendedProps,
   };
 }
@@ -158,10 +153,9 @@ export function entryToEvent(entry: TimeEntry, nowIso: string): EventInput {
     start: entry.start,
     end: entry.stop ?? nowIso,
     editable: !running,
-    // FullCalendar paints the block; the custom eventContent renderer draws the
-    // label. A translucent fill with a solid left border reads well in both themes.
-    backgroundColor: hexToRgba(color, 0.16),
-    borderColor: color,
+    // FullCalendar exposes this as --fc-event-color; styles/fullcalendar.css
+    // mixes each kind's translucent fill and edge from it.
+    color,
     extendedProps: { entry, running } satisfies CalendarEventExtendedProps,
   };
 }

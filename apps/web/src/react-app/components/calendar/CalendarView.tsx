@@ -1,18 +1,21 @@
 import { forwardRef } from "react";
-import FullCalendar from "@fullcalendar/react";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import type {
-  EventInput,
-  DateSelectArg,
-  EventClickArg,
-  DatesSetArg,
-  EventDropArg,
-} from "@fullcalendar/core";
-import type { DateClickArg, EventResizeDoneArg, DropArg } from "@fullcalendar/interaction";
+import FullCalendar, {
+  type CalendarRef,
+  type DateClickInfo,
+  type DateSelectInfo,
+  type DatesSetInfo,
+  type DropInfo,
+  type EventClickInfo,
+  type EventDropInfo,
+  type EventInput,
+  type EventResizeDoneInfo,
+} from "@fullcalendar/react";
+import timeGridPlugin from "@fullcalendar/react/timegrid";
+import dayGridPlugin from "@fullcalendar/react/daygrid";
+import interactionPlugin from "@fullcalendar/react/interaction";
+import "@fullcalendar/react/skeleton.css";
 import { CalendarEventContent } from "./CalendarEventContent";
-import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
+import { calendarClassOptions } from "./calendarClasses";
 
 export type CalendarViewType =
   | "timeGridWeek"
@@ -31,22 +34,22 @@ interface CalendarViewProps {
   events: EventInput[];
   onSelect: (startIso: string, stopIso: string) => void;
   onDateClick: (startIso: string) => void;
-  onEventDrop: (arg: EventDropArg) => void;
-  onEventResize: (arg: EventResizeDoneArg) => void;
-  onEventClick: (arg: EventClickArg) => void;
-  onDatesSet: (arg: DatesSetArg) => void;
+  onEventDrop: (arg: EventDropInfo) => void;
+  onEventResize: (arg: EventResizeDoneInfo) => void;
+  onEventClick: (arg: EventClickInfo) => void;
+  onDatesSet: (arg: DatesSetInfo) => void;
   /**
    * An element dragged in from outside the grid (a task from the rail) was
    * dropped on it. Absent means the grid isn't a drop target at all — the
    * pointer shouldn't advertise an affordance that leads nowhere.
    */
-  onExternalDrop?: (arg: DropArg) => void;
+  onExternalDrop?: (arg: DropInfo) => void;
 }
 
 // Presentational FullCalendar wrapper. All persistence lives in the parent page;
 // this component only translates FC callbacks into typed intents. The forwarded
 // ref exposes the FullCalendar instance so the toolbar can drive prev/next/view.
-export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
+export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
   function CalendarView(
     {
       initialView,
@@ -81,22 +84,17 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
       : ({ hour: "2-digit", minute: "2-digit", hour12: false, meridiem: false } as const);
 
     return (
-      <div
-        className="tt-calendar min-h-0 flex-1"
-        style={{ ["--fc-slot-height" as string]: `${slotHeight}px` }}
-      >
+      <div className="tt-calendar min-h-0 flex-1">
         <FullCalendar
+          {...calendarClassOptions}
           ref={ref}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
           initialView={initialView}
           initialDate={initialDate}
           // A work-week (5-day) view alongside the built-in week/day/month views.
           views={{
-            timeGridFiveDay: {
-              type: "timeGrid",
-              duration: { days: 5 },
-              buttonText: "5 days",
-            },
+            ...calendarClassOptions.views,
+            timeGridFiveDay: { type: "timeGrid", duration: { days: 5 } },
           }}
           headerToolbar={false}
           height="100%"
@@ -106,10 +104,13 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
           allDaySlot={false}
           nowIndicator
           slotDuration="00:30:00"
+          // Driven by the zoom control; expandRows stretches past it when the
+          // pane is taller than the day.
+          slotMinHeight={slotHeight}
           snapDuration="00:15:00"
           scrollTime="08:00:00"
           eventTimeFormat={timeFmt}
-          slotLabelFormat={timeFmt}
+          slotHeaderFormat={timeFmt}
           expandRows
           dayHeaderFormat={{ weekday: "short", day: "numeric" }}
           selectable
@@ -119,18 +120,10 @@ export const CalendarView = forwardRef<FullCalendar, CalendarViewProps>(
           eventDurationEditable
           events={events}
           eventContent={CalendarEventContent}
-          eventClassNames={(arg) => {
-            const props = arg.event.extendedProps as CalendarEventExtendedProps;
-            if (props.gap) return ["tt-event-gap"];
-            if (props.ghost) return ["tt-event-ghost"];
-            if (props.draft) return ["tt-event-draft"];
-            if (props.task) return ["tt-event-planned"];
-            return props.running ? ["tt-event-running"] : [];
-          }}
-          select={(arg: DateSelectArg) =>
+          select={(arg: DateSelectInfo) =>
             onSelect(arg.start.toISOString(), arg.end.toISOString())
           }
-          dateClick={(arg: DateClickArg) => onDateClick(arg.date.toISOString())}
+          dateClick={(arg: DateClickInfo) => onDateClick(arg.date.toISOString())}
           eventDrop={onEventDrop}
           eventResize={onEventResize}
           eventClick={onEventClick}

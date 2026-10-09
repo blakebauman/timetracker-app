@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Draggable } from "@fullcalendar/interaction";
+import { Draggable } from "@fullcalendar/react/interaction";
 import { ListChecks, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -1,70 +1,42 @@
 /*
- * FullCalendar theming, scoped to `.tt-calendar`, mapping FC's CSS variables to
- * the app's design tokens. Tokens (--border, --card, --primary, …) are swapped
- * by the `.dark` class, so these overrides adapt to dark mode automatically —
- * no separate dark block needed.
+ * Calendar event chrome, by kind. FullCalendar 7 has no stable class names of
+ * its own, so these key off the `tt-event*` classes that calendarClasses.ts
+ * adds through `eventClass`; the grid itself (borders, headers, today, the
+ * now-indicator) is styled there with utilities.
+ *
+ * Every kind is tinted from `--fc-event-color`, which FullCalendar sets from
+ * the event's `color` (the project colour, or slate for ghosts and gaps). The
+ * app's tokens swap with the `.dark` class, so nothing here needs a dark block.
+ *
+ * Unlayered on purpose: these must beat the utility layer that
+ * calendarClasses.ts writes border widths and radii with.
  */
 .tt-calendar {
-  --fc-border-color: var(--border);
-  --fc-page-bg-color: var(--background);
-  --fc-neutral-bg-color: var(--muted);
-  --fc-neutral-text-color: var(--muted-foreground);
-  /* Neutral, not brand red: this washed the entire today column full-height,
-     which is the accent as a large background fill (the One Accent Rule
-     forbids exactly that) and muddied red project blocks sitting on it. The
-     now-indicator line below stays red — that one is precise and earned. */
-  --fc-today-bg-color: color-mix(in oklab, var(--foreground) 4%, transparent);
-  --fc-now-indicator-color: var(--primary);
-  --fc-highlight-color: color-mix(in oklab, var(--primary) 14%, transparent);
-  --fc-event-selected-overlay-color: color-mix(in oklab, var(--foreground) 8%, transparent);
-  --fc-small-font-size: 0.75rem;
-
   font-family: var(--font-sans);
   height: 100%;
 }
 
-/* Grid text uses muted foreground; the app font already applies via inheritance. */
-.tt-calendar .fc {
-  color: var(--foreground);
-}
-
-.tt-calendar .fc .fc-col-header-cell-cushion,
-.tt-calendar .fc .fc-timegrid-axis-cushion,
-.tt-calendar .fc .fc-timegrid-slot-label-cushion {
-  color: var(--muted-foreground);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.tt-calendar .fc .fc-col-header-cell {
-  padding: 0.5rem 0;
-}
-
-/* Slot height is driven by the zoom control (--fc-slot-height, px), falling
-   back to a comfortable drag target when unset. */
-.tt-calendar .fc .fc-timegrid-slot {
-  height: var(--fc-slot-height, 2.75rem);
-}
-
-.tt-calendar .fc-theme-standard td,
-.tt-calendar .fc-theme-standard th,
-.tt-calendar .fc-theme-standard .fc-scrollgrid {
-  border-color: var(--border);
-}
-
-/* Events: rounded, no heavy default chrome; our renderer supplies the content. */
-.tt-calendar .fc .fc-timegrid-event {
-  border-radius: var(--radius-sm);
-  border: none;
-  border-left: 3px solid var(--fc-event-border-color, var(--primary));
+/* A tracked entry: translucent fill, solid 3px spine on the start edge. */
+.tt-calendar .tt-event {
+  background: color-mix(in srgb, var(--fc-event-color) 16%, transparent);
+  border-color: var(--fc-event-color);
   box-shadow: none;
-  padding: 0;
-  overflow: hidden;
+  transition: filter var(--transition-duration-fast) var(--ease-out-quart);
+}
+.tt-calendar .tt-event:hover {
+  filter: brightness(1.03);
 }
 
-.tt-calendar .fc .fc-timegrid-event .fc-event-main {
-  padding: 2px 6px;
-  color: var(--foreground);
+/* Month view lists timed entries as rows of text, not blocks: no fill, and
+   the row lights on hover instead. */
+.tt-calendar .tt-event.tt-event-item {
+  background: transparent;
+}
+.tt-calendar .tt-event.tt-event-item:hover {
+  background: color-mix(in oklab, var(--foreground) 5%, transparent);
+}
+
+.tt-calendar .tt-event-main {
   /* Event labels degrade by how much room THIS block has, not by viewport width:
      a week grid on a tablet and a day grid on a phone give wildly different
      column widths at similar viewports. Without this, the meta line wraps into
@@ -91,44 +63,40 @@
   }
 }
 
-.tt-calendar .fc .fc-timegrid-event {
-  transition: filter var(--transition-duration-fast) var(--ease-out-quart);
-}
-.tt-calendar .fc .fc-timegrid-event:hover {
-  filter: brightness(1.03);
-}
-
-/* Running entry: animated left border pulse. */
-.tt-calendar .fc-event.tt-event-running {
-  border-left-style: dashed;
+/* Running entry: dashed spine. */
+.tt-calendar .tt-event.tt-event-running {
+  border-style: dashed;
 }
 /* Shares the app-wide running-dot cue rather than redeclaring its own keyframe
    — see index.css. Three separate pulse implementations used to exist for the
    one "a timer is running" signal, at three different durations and curves. */
-.tt-calendar .fc-event.tt-event-running .tt-running-dot {
+.tt-calendar .tt-event.tt-event-running .tt-running-dot {
   animation: var(--animate-running-dot);
 }
 
 /* Ghost = unconfirmed external calendar event: dashed outline, hollow fill,
    cursor affordance. Sits visually "behind" real tracked blocks. */
-.tt-calendar .fc-event.tt-event-ghost {
+.tt-calendar .tt-event.tt-event-ghost {
+  background: color-mix(in srgb, var(--fc-event-color) 10%, transparent);
   border-style: dashed;
   cursor: pointer;
 }
-.tt-calendar .fc-event.tt-event-ghost:hover {
+.tt-calendar .tt-event.tt-event-ghost:hover {
   filter: brightness(1);
   border-style: solid;
 }
 
 /* Untracked gap: barely-there dashed block that reads as fillable empty time.
    Sits behind real blocks and brightens on hover. */
-.tt-calendar .fc-event.tt-event-gap {
+.tt-calendar .tt-event.tt-event-gap {
+  background: color-mix(in srgb, var(--fc-event-color) 6%, transparent);
+  border-color: color-mix(in srgb, var(--fc-event-color) 50%, transparent);
   border-style: dashed;
+  border-width: 2px;
   cursor: pointer;
-  box-shadow: none;
 }
-.tt-calendar .fc-event.tt-event-gap:hover {
-  background: var(--muted) !important;
+.tt-calendar .tt-event.tt-event-gap:hover {
+  background: var(--muted);
   border-style: solid;
 }
 
@@ -136,11 +104,13 @@
    with its proposed project's colour so a drafted week still reads as a week of
    work rather than a row of grey placeholders. Solidifies on hover — the block
    is a door into review. */
-.tt-calendar .fc-event.tt-event-draft {
+.tt-calendar .tt-event.tt-event-draft {
+  background: color-mix(in srgb, var(--fc-event-color) 8%, transparent);
+  border-color: color-mix(in srgb, var(--fc-event-color) 65%, transparent);
   border-style: dashed;
   cursor: pointer;
 }
-.tt-calendar .fc-event.tt-event-draft:hover {
+.tt-calendar .tt-event.tt-event-draft:hover {
   border-style: solid;
   filter: brightness(1.05);
 }
@@ -149,21 +119,12 @@
    dashed: a draft is "what I think you did", a plan is "what you meant to do",
    and the two can share a slot. Nearly hollow, so the tracked entry beside it
    is the solid thing on the grid. */
-.tt-calendar .fc-event.tt-event-planned {
+.tt-calendar .tt-event.tt-event-planned {
+  background: color-mix(in srgb, var(--fc-event-color) 5%, transparent);
+  border-color: color-mix(in srgb, var(--fc-event-color) 70%, transparent);
   border-style: dotted;
   cursor: pointer;
 }
-.tt-calendar .fc-event.tt-event-planned:hover {
+.tt-calendar .tt-event.tt-event-planned:hover {
   border-style: solid;
 }
-
-/* Now-indicator line + arrow. */
-.tt-calendar .fc .fc-timegrid-now-indicator-line {
-  border-color: var(--primary);
-  border-width: 2px 0 0;
-}
-.tt-calendar .fc .fc-timegrid-now-indicator-arrow {
-  border-color: var(--primary);
-  background: var(--primary);
-}
-
