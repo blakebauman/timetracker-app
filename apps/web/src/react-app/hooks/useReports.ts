@@ -70,6 +70,8 @@ function queryParams(
     search: filters?.search?.trim() || undefined,
     roundMode: rounded ? rounding!.mode : undefined,
     roundMinutes: rounded ? String(rounding!.minutes) : undefined,
+    // Day buckets on the server are the user's local days, not UTC's.
+    timezoneOffsetMinutes: String(new Date().getTimezoneOffset()),
   };
   return { params, key: JSON.stringify(params) };
 }

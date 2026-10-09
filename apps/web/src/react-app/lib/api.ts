@@ -199,6 +199,7 @@ export interface ReportParams {
   search?: string;
   roundMode?: string;
   roundMinutes?: string;
+  timezoneOffsetMinutes?: string;
   groupBy?: string;
   // Allows passing the object straight to reportQuery() (all values stringy).
   [k: string]: string | undefined;
