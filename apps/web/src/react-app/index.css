@@ -354,10 +354,10 @@
   mask-image: linear-gradient(to bottom, black, transparent 60%);
   -webkit-mask-image: linear-gradient(to bottom, black, transparent 60%);
 }
-/* On the near-black rail a 60%-red hairline gone by 60% of the way down was a
-   short dim arc — the current route was a grey disc. Dark draws the ring at
-   full strength (`dark:border-primary` on the element) and carries it three
-   quarters of the way round. */
+/* On the near-black rail a hairline gone by 60% of the way down was a short dim
+   arc — the current route was a grey disc. Dark draws the ring stronger
+   (`dark:border-foreground/70` on the element) and carries it three quarters
+   of the way round. */
 .dark .tt-rail-ring {
   mask-image: linear-gradient(to bottom, black 20%, transparent 78%);
   -webkit-mask-image: linear-gradient(to bottom, black 20%, transparent 78%);
