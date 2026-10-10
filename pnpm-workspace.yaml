@@ -94,7 +94,7 @@ catalog:
   # package's types from its core (the Assistant's ChatAgent), so v1 stays
   # installed at the exact version agents peers on.
   "@modelcontextprotocol/server": 2.3.1
-  "@modelcontextprotocol/sdk": 1.30.0
+  "@modelcontextprotocol/sdk": 1.31.0
   mimetext: ^3.0.28
   react-email: ^6.9.0
   "@react-email/ui": ^6.9.0
