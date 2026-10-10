@@ -115,3 +115,35 @@ test("track-event materializes a meeting idempotently", async ({ page }) => {
   await page.reload();
   await expect(page.getByText("Design sync")).toBeVisible();
 });
+
+// The panel opens from app state (rail launcher, ⌘I, a nudge toast) rather than
+// a Radix Trigger, so closing it used to drop focus on <body> — a keyboard user
+// started again from the top of the page, and ⌘I mid-sentence lost the field.
+test("closing the Assistant returns focus to where it was opened from", async ({ page }) => {
+  await signUp(page);
+  const panel = page.getByRole("dialog");
+  const launcher = page.getByRole("button", { name: /^Assistant/ }).first();
+  // Escape belongs to the panel once it has focus — wait for the composer.
+  const composer = page.getByRole("textbox", { name: "Message the Assistant" });
+
+  await launcher.focus();
+  await page.keyboard.press("Enter");
+  await expect(composer).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(launcher).toBeFocused();
+
+  await launcher.click();
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(panel).toBeHidden();
+  await expect(launcher).toBeFocused();
+
+  const description = page.getByPlaceholder("What are you working on?");
+  await description.focus();
+  await page.keyboard.press("ControlOrMeta+i");
+  await expect(composer).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(description).toBeFocused();
+});
