@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -20,7 +20,8 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useAgent } from "agents/react";
-import { useAgentChat } from "@cloudflare/ai-chat/react";
+import { useAgentChat, getToolPartState } from "@cloudflare/ai-chat/react";
+import type { UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
@@ -32,6 +33,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
+  SheetClose,
 } from "@/components/ui/sheet";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { useTimerStore } from "@/stores/timerStore";
@@ -196,7 +198,9 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
         size="icon-xs"
         className="shrink-0 text-muted-foreground"
         onClick={() => dismissNudge(nudge.id)}
-        aria-label="Dismiss nudge"
+        // Named for its nudge: two "Dismiss nudge" buttons in a screen
+        // reader's list couldn't be told apart.
+        aria-label={`Dismiss: ${nudge.title}`}
         title="Dismiss"
       >
         <X className="h-3.5 w-3.5" />
@@ -204,6 +208,61 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
     </div>
   );
 }
+
+function textOf(m: UIMessage): string {
+  return m.parts
+    .map((p) => (p.type === "text" ? p.text : ""))
+    .join("")
+    .trim();
+}
+
+/**
+ * One turn of the thread. Memoized: the hook hands back a new object only for
+ * the message that changed, so a streamed token re-renders the reply being
+ * written instead of re-parsing every reply and tool row above it.
+ */
+const MessageItem = memo(function MessageItem({
+  message: m,
+  canRegenerate,
+  onApprove,
+  onRegenerate,
+}: {
+  message: UIMessage;
+  canRegenerate: boolean;
+  onApprove: (id: string, approved: boolean) => void;
+  onRegenerate: () => void;
+}) {
+  // Two bubbles, one grammar: the user's turn is recessed on the muted step,
+  // the Assistant's is a card on the rack. Neither carries the brand red —
+  // that's for the Send disc.
+  if (m.role === "user") {
+    return (
+      <div className="ml-8 rounded-container border bg-muted px-3 py-2 text-sm whitespace-pre-wrap">
+        {m.parts.map((part, i) => (part.type === "text" ? <span key={i}>{part.text}</span> : null))}
+      </div>
+    );
+  }
+  // Copy / Regenerate hang under the card rather than inside it: hover-revealed
+  // inside, they left an empty band at the foot of every reply that read as
+  // stray padding.
+  return (
+    <div className="group mr-4 space-y-1">
+      <div className="flex gap-2 rounded-container border bg-card px-3 py-2.5">
+        <Sparkles className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1 space-y-2">
+          {m.parts.map((part, i) => {
+            if (part.type === "text") return <AssistantMarkdown key={i} text={part.text} />;
+            if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+              return <ToolCard key={i} part={part} onApprove={onApprove} />;
+            }
+            return null;
+          })}
+        </div>
+      </div>
+      <MessageActions message={m} canRegenerate={canRegenerate} onRegenerate={onRegenerate} />
+    </div>
+  );
+});
 
 /**
  * Right-side sheet hosting the Assistant: what needs your attention, then the
@@ -301,26 +360,27 @@ export function AssistantPanel() {
     );
     return !settled;
   }, [status, error, messages]);
-  const lastAssistantId = useMemo(
-    () => [...messages].reverse().find((m) => m.role === "assistant")?.id,
-    [messages]
-  );
-  const lastUserText = useMemo(() => {
-    const last = [...messages].reverse().find((m) => m.role === "user");
-    return last?.parts
-      .map((p) => (p.type === "text" ? p.text : ""))
-      .join("")
-      .trim();
+  // One backward pass for everything the panel reads off the tail of the
+  // thread; this runs on every streamed token.
+  const { lastAssistant, lastUserText } = useMemo(() => {
+    let assistant: UIMessage | undefined;
+    let user: UIMessage | undefined;
+    for (let i = messages.length - 1; i >= 0 && !(assistant && user); i--) {
+      const m = messages[i];
+      if (m.role === "assistant") assistant ??= m;
+      else if (m.role === "user") user ??= m;
+    }
+    return { lastAssistant: assistant, lastUserText: user ? textOf(user) : undefined };
   }, [messages]);
+  const lastAssistantId = lastAssistant?.id;
 
   // The Assistant is "thinking" when a turn is in flight but no assistant text
   // has streamed in yet (covers the pre-first-token and tool round-trip gaps).
-  const showThinking = useMemo(() => {
-    if (!busy) return false;
-    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-    const hasText = lastAssistant?.parts.some((p) => p.type === "text" && p.text.trim());
-    return !hasText;
-  }, [busy, messages]);
+  // It reads the thread's last message, not the last assistant one: right
+  // after a send that is the user's, and the previous reply's text used to
+  // count as this turn's.
+  const tail = messages[messages.length - 1];
+  const showThinking = busy && !(tail?.role === "assistant" && textOf(tail));
   const [retries, setRetries] = useState(0);
   const stuck = useSlowReply(showThinking, `${messages.length}:${retries}`);
 
@@ -334,6 +394,24 @@ export function AssistantPanel() {
     markViewed(ids);
     for (const id of ids) toast.dismiss(id);
   }, [open, nudges, markSeen, markViewed]);
+
+  // The thread is a log, but its live announcements are off: a streaming
+  // reply changes its text on every token, and a log reads each change out,
+  // so a screen reader heard the answer in fragments. The finished turn is
+  // announced once, here, instead.
+  const [announcement, setAnnouncement] = useState("");
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    if (wasBusy.current && !busy && lastAssistant) {
+      const waiting = lastAssistant.parts.some(
+        (p) => "toolCallId" in p && getToolPartState(p) === "waiting-approval"
+      );
+      setAnnouncement(
+        waiting ? "The Assistant is waiting for your approval." : textOf(lastAssistant) || "The Assistant replied."
+      );
+    }
+    wasBusy.current = busy;
+  }, [busy, lastAssistant]);
 
   // A message sent before the socket is open used to go nowhere — the bubble
   // appeared and no reply ever came. Now it waits in the composer, marked as
@@ -369,7 +447,17 @@ export function AssistantPanel() {
     regenerate();
   };
 
-  const approve = (id: string, approved: boolean) => addToolApprovalResponse({ id, approved });
+  // Stable identities for the memoized message rows: the hook's own
+  // functions aren't guaranteed stable, so they're read through a ref.
+  const actions = useRef({ addToolApprovalResponse, regenerate });
+  useEffect(() => {
+    actions.current = { addToolApprovalResponse, regenerate };
+  });
+  const approve = useMemo(
+    () => (id: string, approved: boolean) => actions.current.addToolApprovalResponse({ id, approved }),
+    []
+  );
+  const regenerateLast = useMemo(() => () => actions.current.regenerate(), []);
 
   const hasConversation = messages.length > 0;
   const nudgesOpen = nudgesExpanded ?? !hasConversation;
@@ -378,6 +466,9 @@ export function AssistantPanel() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side="right"
+        // The header draws its own close, so clear-chat and close are one
+        // group rather than two absolutes whose offsets had to agree.
+        showCloseButton={false}
         // Wider than the 384px sheet default: a conversation with tool rows and
         // a day plan needs the measure (see DESIGN.md, Overlays).
         className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
@@ -389,31 +480,43 @@ export function AssistantPanel() {
           if (!window.matchMedia("(pointer: coarse)").matches) promptRef.current?.focus();
         }}
       >
-        {/* The clear control sits in the close button's row, at its size and
-            top edge — it used to centre on the two-line header and float 11px
-            below it, and squeezed the description into an ellipsis on a phone. */}
-        <SheetHeader className={cn("gap-0.5 border-b", hasConversation ? "pr-24" : "pr-14")}>
-          <SheetTitle className="flex items-center gap-2">
-            <Sparkles className="size-4 text-muted-foreground" />
-            Assistant
-          </SheetTitle>
-          <SheetDescription>Watches your calendar, timesheet and plan.</SheetDescription>
-          {hasConversation && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="absolute top-3 right-12 text-muted-foreground hover:text-foreground"
-              onClick={() => setConfirmClear(true)}
-              disabled={busy}
-              aria-label="Clear chat"
-              title="Clear chat"
-            >
-              <Eraser />
-            </Button>
-          )}
+        <SheetHeader className="flex-row items-start gap-3 border-b">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <SheetTitle className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" />
+              Assistant
+            </SheetTitle>
+            <SheetDescription>Watches your calendar, timesheet and plan.</SheetDescription>
+          </div>
+          <div className="-mt-1 -mr-1 flex shrink-0 items-center gap-1">
+            {hasConversation && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setConfirmClear(true)}
+                disabled={busy}
+                aria-label="Clear chat"
+                title="Clear chat"
+              >
+                <Eraser />
+              </Button>
+            )}
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Close"
+                title="Close"
+              >
+                <X />
+              </Button>
+            </SheetClose>
+          </div>
         </SheetHeader>
 
-        <Conversation className="min-h-0 flex-1">
+        <Conversation className="min-h-0 flex-1" aria-live="off">
           <ConversationContent className="p-4">
             {/* What needs your attention */}
             <section aria-label="Needs your attention" className="space-y-2">
@@ -441,7 +544,7 @@ export function AssistantPanel() {
                       type="button"
                       onClick={() => setNudgesExpanded(!nudgesOpen)}
                       aria-expanded={nudgesOpen}
-                      className="flex w-full items-center gap-2 rounded-full px-1 py-1 text-left text-xs font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      className="relative flex w-full items-center gap-2 rounded-full px-1 py-1 text-left pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-[''] text-xs font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     >
                       <ChevronDown
                         className={cn(
@@ -495,46 +598,15 @@ export function AssistantPanel() {
                 </div>
               )}
 
-              {messages.map((m) =>
-                // Two bubbles, one grammar: the user's turn is recessed on the
-                // muted step, the Assistant's is a card on the rack. Neither
-                // carries the brand red — that's for the Send disc.
-                m.role === "user" ? (
-                  <div
-                    key={m.id}
-                    className="ml-8 rounded-container border bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
-                  >
-                    {m.parts.map((part, i) =>
-                      part.type === "text" ? <span key={i}>{part.text}</span> : null
-                    )}
-                  </div>
-                ) : (
-                  // Copy / Regenerate hang under the card rather than inside
-                  // it: hover-revealed inside, they left an empty band at the
-                  // foot of every reply that read as stray padding.
-                  <div key={m.id} className="group mr-4 space-y-1">
-                    <div className="flex gap-2 rounded-container border bg-card px-3 py-2.5">
-                      <Sparkles className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1 space-y-2">
-                        {m.parts.map((part, i) => {
-                          if (part.type === "text") {
-                            return <AssistantMarkdown key={i} text={part.text} />;
-                          }
-                          if (typeof part.type === "string" && part.type.startsWith("tool-")) {
-                            return <ToolCard key={i} part={part} onApprove={approve} />;
-                          }
-                          return null;
-                        })}
-                      </div>
-                    </div>
-                    <MessageActions
-                      message={m}
-                      canRegenerate={m.id === lastAssistantId && !busy}
-                      onRegenerate={() => regenerate()}
-                    />
-                  </div>
-                )
-              )}
+              {messages.map((m) => (
+                <MessageItem
+                  key={m.id}
+                  message={m}
+                  canRegenerate={m.id === lastAssistantId && !busy}
+                  onApprove={approve}
+                  onRegenerate={regenerateLast}
+                />
+              ))}
 
               {showThinking &&
                 (stuck ? (
@@ -573,6 +645,9 @@ export function AssistantPanel() {
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+        <p role="status" className="sr-only">
+          {announcement}
+        </p>
 
         <div className="space-y-2 p-3">
           {(connection.showProblem || queued) && (

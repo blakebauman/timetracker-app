@@ -42,10 +42,15 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 px-2.5 text-xs has-[>svg]:px-2 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 px-3.5 has-[>svg]:px-2.5",
-        lg: "h-10 px-6 has-[>svg]:px-4",
+        // Text buttons grow their coarse-pointer hit area vertically only:
+        // they are already wider than 44px with a label in them, and they
+        // sit side by side (Approve / Decline, Retry beside a message), where
+        // a sideways overlap would steal a thumb from the neighbour.
+        default:
+          "relative h-9 px-4 py-2 has-[>svg]:px-3 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-1 pointer-coarse:after:content-['']",
+        xs: "relative h-6 gap-1 px-2.5 text-xs has-[>svg]:px-2 [&_svg:not([class*='size-'])]:size-3 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-['']",
+        sm: "relative h-8 gap-1.5 px-3.5 has-[>svg]:px-2.5 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-1.5 pointer-coarse:after:content-['']",
+        lg: "relative h-10 px-6 has-[>svg]:px-4 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-0.5 pointer-coarse:after:content-['']",
         // On a coarse pointer the *hit area* grows to 44px through a
         // pseudo-element; the box never does. A `min-h-11` here would blow
         // up the 32px segment tracks, the split-pill caret and every row
