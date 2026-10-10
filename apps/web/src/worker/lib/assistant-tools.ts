@@ -12,6 +12,7 @@ import { loadGroundingProjects, resolveGrounding, inferEventProjects } from "./a
 import { rememberFact, searchMemories } from "./assistant-memory";
 import { createTask, getTask, listTasks, updateTask } from "./tasks";
 import { buildDayPlan } from "./day-plan";
+import { workDescription } from "@timetracker/core/entry-text";
 import { promptSafe } from "./untrusted-text";
 import {
   LOCAL_DATE_PATTERN,
@@ -52,6 +53,20 @@ async function resolveProject(
   }
   const matched = projects.find((p) => p.id === r.projectId)!;
   return { projectId: matched.id, projectName: matched.name, billable: matched.billable };
+}
+
+/**
+ * "1h 30m", "45m", "2h" — what a tool result says a duration is. The tools
+ * used to return decimal hours ("9.40") and the model read them out: "you've
+ * tracked 9.40 hours", which a person reads as 9h 40m when it's 9h 24m.
+ * Seconds ride alongside for the cards.
+ */
+function human(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds / 60));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h && m) return `${h}h ${m}m`;
+  return h ? `${h}h` : `${m}m`;
 }
 
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -164,7 +179,7 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         const entry = await getEntryById(db, running.id, workspaceId);
         await broadcast(env, workspaceId, "timer:stop", entry);
         const seconds = Math.round((Date.parse(now) - Date.parse(running.start)) / 1000);
-        return { ok: true, stoppedAt: now, durationHours: (seconds / 3600).toFixed(2) };
+        return { ok: true, stoppedAt: now, duration: human(seconds), durationSeconds: seconds };
       },
     }),
 
@@ -187,6 +202,8 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         if ("error" in range) return { ok: false, reason: range.error };
         const { start, stop } = range;
         const proj = await resolveProject(env, workspaceId, projectName);
+        // Not the model's text verbatim when it only restates the project.
+        const work = workDescription(description, [projectName, proj.projectName]);
         const now = new Date().toISOString();
         const id = crypto.randomUUID();
         const duration = Math.round((Date.parse(stop) - Date.parse(start)) / 1000);
@@ -200,7 +217,7 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
             id,
             workspaceId,
             proj.projectId,
-            description,
+            work,
             start,
             stop,
             duration,
@@ -213,7 +230,8 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         await broadcast(env, workspaceId, "entries:changed", entry);
         return {
           ok: true,
-          durationHours: (duration / 3600).toFixed(2),
+          duration: human(duration),
+          durationSeconds: duration,
           project: proj.projectName,
           note: proj.warning,
         };
@@ -253,7 +271,7 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
           .run();
         const entry = await getEntryById(db, id, workspaceId);
         await broadcast(env, workspaceId, "entries:changed", entry);
-        return { ok: true, project: match?.projectName ?? null, durationHours: (duration / 3600).toFixed(2) };
+        return { ok: true, project: match?.projectName ?? null, duration: human(duration), durationSeconds: duration };
       },
     }),
 
@@ -271,7 +289,7 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         const since = localDayStart(startDate, zone);
         const until = localDayStart(nextLocalDate(endDate), zone);
         if (!since || !until || Date.parse(until) <= Date.parse(since)) {
-          return { ok: false, reason: "That date range isn't valid.", totalHours: "0.00", billableHours: "0.00", byProject: [] };
+          return { ok: false, reason: "That date range isn't valid." };
         }
         const { results } = await db
           .prepare(
@@ -289,11 +307,14 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         const totalSeconds = results.reduce((s, r) => s + (r.seconds ?? 0), 0);
         const billableSeconds = results.reduce((s, r) => s + (r.billable_seconds ?? 0), 0);
         return {
-          totalHours: (totalSeconds / 3600).toFixed(2),
-          billableHours: (billableSeconds / 3600).toFixed(2),
+          total: human(totalSeconds),
+          billable: human(billableSeconds),
+          totalSeconds,
+          billableSeconds,
           byProject: results.map((r) => ({
             project: r.project,
-            hours: ((r.seconds ?? 0) / 3600).toFixed(2),
+            time: human(r.seconds ?? 0),
+            seconds: r.seconds ?? 0,
             entries: r.entries,
           })),
         };
@@ -433,6 +454,7 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         const plan = await buildDayPlan(env, workspaceId, ctx.offsetMinutes);
         return {
           date: plan.localDate,
+          free: human(plan.freeMinutes * 60),
           freeMinutes: plan.freeMinutes,
           plan: plan.placed.map((p) => ({
             taskId: p.taskId,

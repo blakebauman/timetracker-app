@@ -26,6 +26,7 @@ import {
   getToolApproval,
 } from "@cloudflare/ai-chat/react";
 import type { TimeEntry } from "@timetracker/core/schemas";
+import { workDescription } from "@timetracker/core/entry-text";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useProjects } from "@/hooks/useProjects";
@@ -85,9 +86,14 @@ function isOk(o: Rec): boolean {
 function failure(o: Rec, fallback: string): string {
   return str(o, "reason") ?? str(o, "error") ?? fallback;
 }
-/** "1.50" (decimal hours) → "1h 30m". */
-function hours(v: unknown): string {
-  const n = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+/**
+ * A duration from a tool result: seconds when the result has them, else the
+ * decimal-hour strings ("1.50") results carried before — those still sit in
+ * persisted conversations.
+ */
+function duration(secs: unknown, decimalHours?: unknown): string {
+  if (typeof secs === "number" && Number.isFinite(secs)) return formatDurationShort(secs);
+  const n = typeof decimalHours === "string" ? Number(decimalHours) : typeof decimalHours === "number" ? decimalHours : NaN;
   return Number.isFinite(n) ? formatDurationShort(Math.round(n * 3600)) : "0m";
 }
 /** "HH:MM" (local) → the user's clock. */
@@ -111,6 +117,12 @@ function useToolContext(needsTasks: boolean) {
   const { data: tasks = [] } = useAllTasks(needsTasks);
   return {
     timeFormat,
+    /** The project a free-text name refers to, as best the client can tell (the server's matcher is fuzzier). */
+    projectName: (name: string | undefined) => {
+      if (!name) return null;
+      const n = name.toLowerCase();
+      return (projects.find((p) => p.name.toLowerCase() === n) ?? projects.find((p) => p.name.toLowerCase().includes(n)))?.name ?? null;
+    },
     projectColor: (name: string | undefined) =>
       name ? (projects.find((p) => p.name.toLowerCase() === name.toLowerCase())?.color ?? null) : null,
     task: (id: unknown) => (typeof id === "string" ? tasks.find((t) => t.id === id) : undefined),
@@ -189,7 +201,9 @@ function Row({
           <span className="shrink-0 font-mono text-sm tabular-nums text-foreground">{figure}</span>
         )}
       </div>
-      {meta && <div className="mt-0.5 truncate pl-5.5 text-muted-foreground">{meta}</div>}
+      {/* Wraps rather than truncates: the time range at the end is the part
+          worth checking, and it was the part an ellipsis cut off. */}
+      {meta && <div className="mt-0.5 pl-5.5 text-pretty text-muted-foreground">{meta}</div>}
       {children && <div className="mt-1.5 pl-5.5 text-muted-foreground">{children}</div>}
     </div>
   );
@@ -251,7 +265,7 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
 
     case "stopTimer":
       if (!isOk(out)) return <Row icon={Square} tone="warn" title={failure(out, "No timer was running")} />;
-      return <Row icon={Square} tone="done" title="Timer stopped · saved" figure={hours(out.durationHours)} />;
+      return <Row icon={Square} tone="done" title="Timer stopped · saved" figure={duration(out.durationSeconds, out.durationHours)} />;
 
     case "logTimeEntry":
     case "trackMeeting": {
@@ -268,24 +282,28 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
       return (
         <Row
           swatch={ctx.projectColor(project)}
-          title={str(input, "description") ?? str(input, "title") ?? "Logged"}
+          title={
+            name === "logTimeEntry"
+              ? workDescription(str(input, "description") ?? "", [project]) || "No description"
+              : (str(input, "title") ?? "Tracked meeting")
+          }
           meta={[project ?? "No project", start && stop ? range(start, stop, tf) : null, str(out, "note")]
             .filter(Boolean)
             .join(" · ")}
-          figure={hours(out.durationHours)}
+          figure={duration(out.durationSeconds, out.durationHours)}
         />
       );
     }
 
     case "getTimeSummary": {
       const byProject =
-        (out.byProject as Array<{ project?: string; hours?: string }> | undefined) ?? [];
+        (out.byProject as Array<{ project?: string; seconds?: number; hours?: string }> | undefined) ?? [];
       return (
         <Row
           icon={BarChart3}
           title="Tracked"
-          meta={`${hours(out.billableHours)} billable`}
-          figure={hours(out.totalHours)}
+          meta={`${duration(out.billableSeconds, out.billableHours)} billable`}
+          figure={duration(out.totalSeconds, out.totalHours)}
         >
           <Lines
             max={6}
@@ -293,7 +311,7 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
               key: `${i}`,
               swatch: ctx.projectColor(r.project),
               label: r.project ?? "No project",
-              figure: hours(r.hours),
+              figure: duration(r.seconds, r.hours),
             }))}
           />
         </Row>
@@ -536,7 +554,10 @@ function propose(name: string, input: Rec, ctx: ToolContext, running: { descript
         consequence: "It's saved with the time so far.",
         verb: "Stop",
       };
-    case "logTimeEntry":
+    case "logTimeEntry": {
+      // The description the server will save — not one it will drop for
+      // only restating the project (workDescription).
+      const work = workDescription(str(input, "description") ?? "", [project, ctx.projectName(project)]);
       return {
         sentence: (
           <>
@@ -547,12 +568,13 @@ function propose(name: string, input: Rec, ctx: ToolContext, running: { descript
         ),
         swatch: ctx.projectColor(project),
         details: [
-          str(input, "description") ? `“${str(input, "description")}”` : null,
+          work ? `“${work}”` : "no description",
           start && stop ? range(start, stop, tf) : null,
           billable,
         ].filter(Boolean) as string[],
         verb: "Log time",
       };
+    }
     case "trackMeeting":
       return {
         sentence: (
