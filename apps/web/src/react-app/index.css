@@ -340,27 +340,12 @@
    a glow on a light ground reads as a smudge. */
 .dark .tt-brand-glow {
   /* Two layers, not three: with a 28px third layer the mark was the brightest
-     red on the rail and the active route's ring read as an afterthought. The
-     ring is what says "you are here"; the mark only says whose rack it is. */
+     red on the rail and the active route read as an afterthought. The active
+     route's well is what says "you are here"; the mark only says whose rack
+     it is. */
   filter:
     drop-shadow(0 0 5px color-mix(in oklab, var(--primary) 40%, transparent))
     drop-shadow(0 0 12px color-mix(in oklab, var(--primary) 18%, transparent));
-}
-
-/* The active rail button carries a ring that fades downward — the rail's
-   signature. A mask on the border, so the ring is brightest where it meets the
-   icon's top edge and gone by two thirds of the way down. */
-.tt-rail-ring {
-  mask-image: linear-gradient(to bottom, black, transparent 60%);
-  -webkit-mask-image: linear-gradient(to bottom, black, transparent 60%);
-}
-/* On the near-black rail a hairline gone by 60% of the way down was a short dim
-   arc — the current route was a grey disc. Dark draws the ring stronger
-   (`dark:border-foreground/70` on the element) and carries it three quarters
-   of the way round. */
-.dark .tt-rail-ring {
-  mask-image: linear-gradient(to bottom, black 20%, transparent 78%);
-  -webkit-mask-image: linear-gradient(to bottom, black 20%, transparent 78%);
 }
 
 /* ─── Glass ─────────────────────────────────────────────────────────────────

@@ -37,18 +37,20 @@ const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
 /**
- * A rail button: a 48px circle. The active one lifts a step off the chassis
- * and carries an ink ring that fades downward (`tt-rail-ring`) — the rail's
- * signature. It is ink, not brand red: where you are isn't something
- * happening, and red on the rail means one thing — the Timer button's running
- * dot. Everything else on the rail is muted ink that brightens on hover.
+ * A rail button: a 48px circle. Hover washes the circle; the active one adds a
+ * well inside the wash — a recessed `--muted` disc with a hairline edge, 6px
+ * in, the same two circles the account avatar makes under the pointer. One
+ * composition across the rail's foot and its routes, so "you are here" and
+ * "you" read as the same family. It is ink, not brand red: where you are isn't
+ * something happening, and red on the rail means one thing — the Timer
+ * button's running dot.
  *
- * The lift is in the transition list alongside the colours, and the ring is
- * always mounted and crossfaded, so switching routes moves both together at
- * the fast duration instead of popping the ring and easing the fill.
+ * The well is always mounted and crossfaded, so switching routes moves it
+ * and the wash together at the fast duration instead of popping one and
+ * easing the other. Flat, no shadow: the rail is chassis, not an overlay.
  */
-const RAIL_BUTTON = `relative flex size-12 short:size-10 shrink-0 items-center justify-center rounded-full transition-[color,background-color,box-shadow] duration-fast ease-out-quart ${FOCUS_RING}`;
-const RAIL_ACTIVE = "bg-foreground/6 text-foreground shadow-lg";
+const RAIL_BUTTON = `relative flex size-12 short:size-10 shrink-0 items-center justify-center rounded-full transition-[color,background-color] duration-fast ease-out-quart ${FOCUS_RING}`;
+const RAIL_ACTIVE = "bg-foreground/6 text-foreground";
 const RAIL_IDLE = "text-muted-foreground hover:bg-foreground/6 hover:text-foreground";
 
 /** The sheet nav's rows: the rail's buttons, unrolled into labelled pills. */
@@ -56,13 +58,15 @@ const SHEET_ROW = `flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-
 const SHEET_ROW_ACTIVE = "bg-foreground/6 text-foreground";
 const SHEET_ROW_IDLE = "text-muted-foreground hover:bg-foreground/6 hover:text-foreground";
 
-function RailRing({ shown }: { shown: boolean }) {
+/** The active state's inner well. `inset` sets how far in it sits. */
+function RailWell({ shown, className }: { shown: boolean; className?: string }) {
   return (
     <span
       aria-hidden
       className={cn(
-        "tt-rail-ring pointer-events-none absolute inset-0 rounded-full border border-foreground/50 dark:border-foreground/70 transition-opacity duration-fast ease-out-quart",
-        shown ? "opacity-100" : "opacity-0"
+        "pointer-events-none absolute rounded-full border border-border bg-muted transition-opacity duration-fast ease-out-quart",
+        shown ? "opacity-100" : "opacity-0",
+        className ?? "inset-1.5 short:inset-1"
       )}
     />
   );
@@ -223,7 +227,7 @@ function Rail() {
                   aria-keyshortcuts={route.key ? `g ${route.key}` : undefined}
                   className={cn(RAIL_BUTTON, isActive(to) ? RAIL_ACTIVE : RAIL_IDLE)}
                 >
-                  <RailRing shown={isActive(to)} />
+                  <RailWell shown={isActive(to)} />
                   <Icon className="relative size-5" />
                   {timerRunning && <RunningDot className="top-2.5 right-2.5 short:top-2 short:right-2" />}
                 </NavLink>
@@ -251,7 +255,7 @@ function Rail() {
               aria-label={assistantLabel(unread)}
               className={cn(RAIL_BUTTON, assistantOpen ? RAIL_ACTIVE : RAIL_IDLE)}
             >
-              <RailRing shown={assistantOpen} />
+              <RailWell shown={assistantOpen} />
               <Sparkles className="relative size-5" />
               <NudgeBadge count={unread} className="top-1.5 right-1.5" />
             </button>
@@ -287,7 +291,7 @@ function Rail() {
                 aria-label={label}
                 className={cn(RAIL_BUTTON, isActive(to) ? RAIL_ACTIVE : RAIL_IDLE)}
               >
-                <RailRing shown={isActive(to)} />
+                <RailWell shown={isActive(to)} />
                 <Icon className="relative size-5" />
               </NavLink>
             </TooltipTrigger>
@@ -303,7 +307,7 @@ function Rail() {
                   <button
                     type="button"
                     aria-label={`Account menu — ${identity.name}`}
-                    className={cn(RAIL_BUTTON, RAIL_IDLE, "mt-1")}
+                    className={cn(RAIL_BUTTON, RAIL_IDLE, "mt-1 data-[state=open]:bg-foreground/6 data-[state=open]:text-foreground")}
                   >
                     <UserAvatar
                       name={user.name}
@@ -354,9 +358,9 @@ function Rail() {
 }
 
 /**
- * The labelled nav list inside the phone sheet — the rail, unrolled. It wears
- * the rail's own signature on the active row (the fading red ring) because on
- * a phone it is the only thing that says which route you are on.
+ * The labelled nav list inside the phone sheet — the rail, unrolled. Its active
+ * row wears the rail's well, stretched to a pill, because on a phone it is the
+ * only thing that says which route you are on.
  */
 function SheetNav({ onNavigate }: { onNavigate: () => void }) {
   const systemRoutes = useSystemRoutes();
@@ -386,7 +390,7 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
               onClick={onNavigate}
               className={cn(SHEET_ROW, isActive(to) ? SHEET_ROW_ACTIVE : SHEET_ROW_IDLE)}
             >
-              <RailRing shown={isActive(to)} />
+              <RailWell shown={isActive(to)} className="inset-1" />
               <span className="relative shrink-0">
                 <Icon className="size-4" />
                 {timerRunning && <RunningDot className="-top-0.5 -right-1" />}
@@ -433,7 +437,7 @@ function SheetNav({ onNavigate }: { onNavigate: () => void }) {
             onClick={onNavigate}
             className={cn(SHEET_ROW, isActive(to) ? SHEET_ROW_ACTIVE : SHEET_ROW_IDLE)}
           >
-            <RailRing shown={isActive(to)} />
+            <RailWell shown={isActive(to)} className="inset-1" />
             <Icon className="relative size-4 shrink-0" />
             <span className="relative">{label}</span>
           </NavLink>
