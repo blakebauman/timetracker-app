@@ -2,8 +2,9 @@ import { Fragment, memo } from "react";
 
 // Deliberately tiny markdown renderer — the assistant runs on Llama, which emits plain
 // prose with the occasional list or **bold**. This avoids pulling in streamdown
-// + shiki (heavy) for output that never contains code blocks or tables. Handles
-// paragraphs, bullet lists, inline bold, and inline `code`.
+// + shiki (heavy). Handles paragraphs, bullet lists, inline bold, inline `code`,
+// and ``` fences — rare, but Llama does write one when asked, and unhandled the
+// backticks rendered as literal lines around the text. No highlighting.
 
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -53,8 +54,41 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({ text }: { tex
     bullets = [];
   };
 
+  // Lines inside an open fence. A fence still open when the text ends (mid-
+  // stream) renders as a block anyway, so the reply doesn't jump on its close.
+  let code: string[] | null = null;
+  const flushCode = (key: string) => {
+    if (code === null) return;
+    blocks.push(
+      // Scrolls rather than wraps: a code line's breaks are its meaning. In the
+      // tab order (and ringed) because a scroll region a keyboard can't reach
+      // hides whatever is past its edge.
+      <pre
+        key={key}
+        tabIndex={0}
+        className="overflow-x-auto rounded-md border bg-background px-3 py-2 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        <code>{code.join("\n")}</code>
+      </pre>
+    );
+    code = null;
+  };
+
   lines.forEach((line, idx) => {
     const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      if (code === null) {
+        flushBullets(`ul-${idx}`);
+        code = [];
+      } else {
+        flushCode(`pre-${idx}`);
+      }
+      return;
+    }
+    if (code !== null) {
+      code.push(line);
+      return;
+    }
     const bullet = trimmed.match(/^[-*]\s+(.*)$/);
     if (bullet) {
       bullets.push(bullet[1]);
@@ -70,6 +104,9 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({ text }: { tex
     }
   });
   flushBullets("ul-end");
+  flushCode("pre-end");
 
-  return <div className="space-y-2 text-sm leading-relaxed">{blocks.map((b, i) => <Fragment key={i}>{b}</Fragment>)}</div>;
+  // wrap-anywhere: a pasted URL or path has no break opportunity, and ran
+  // past the card's edge, clipped.
+  return <div className="space-y-2 text-sm leading-relaxed wrap-anywhere">{blocks.map((b, i) => <Fragment key={i}>{b}</Fragment>)}</div>;
 });

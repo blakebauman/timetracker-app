@@ -237,7 +237,7 @@ const MessageItem = memo(function MessageItem({
   // that's for the Send disc.
   if (m.role === "user") {
     return (
-      <div className="ml-8 rounded-container border bg-muted px-3 py-2 text-sm whitespace-pre-wrap">
+      <div className="ml-8 rounded-container border bg-muted px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere">
         {m.parts.map((part, i) => (part.type === "text" ? <span key={i}>{part.text}</span> : null))}
       </div>
     );
@@ -293,6 +293,10 @@ export function AssistantPanel() {
   const [nudgesExpanded, setNudgesExpanded] = useState<boolean | null>(null);
   const suggestions = useContextualSuggestions();
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  // Where focus was when the panel opened. The sheet opens from the store
+  // (rail launcher, ⌘I, a nudge toast), never a Radix Trigger, so Radix had
+  // nothing to return focus to and closing dropped it on <body>.
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // The structured, review-before-save path. Close the sheet first so the two
   // modals (sheet + dialog) don't stack their focus traps.
@@ -477,7 +481,27 @@ export function AssistantPanel() {
         // the nudges before you'd read them.
         onOpenAutoFocus={(e) => {
           e.preventDefault();
+          returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
           if (!window.matchMedia("(pointer: coarse)").matches) promptRef.current?.focus();
+        }}
+        // Escape from inside the sheet always closes it. Radix gives Escape
+        // to the topmost layer only, and the rail launcher's tooltip — shown
+        // when focus comes back to the launcher — could still be registered
+        // above a sheet reopened by ⌘I. It took the Escape (and prevented it)
+        // and the panel stayed open until a second press. Nothing in the panel
+        // claims Escape for itself; the one layer that opens above it, the
+        // clear-chat confirm, keeps its Escape — one press dismisses the
+        // confirm, not the conversation behind it too.
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && !confirmClear && e.currentTarget.contains(e.target as Node)) setOpen(false);
+        }}
+        onCloseAutoFocus={(e) => {
+          const el = returnFocusRef.current;
+          returnFocusRef.current = null;
+          if (el?.isConnected && el !== document.body) {
+            e.preventDefault();
+            el.focus();
+          }
         }}
       >
         {/* A grid, not title-column-beside-buttons: the description runs the
