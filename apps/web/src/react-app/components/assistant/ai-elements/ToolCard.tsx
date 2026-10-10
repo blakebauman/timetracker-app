@@ -316,10 +316,17 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
           title="Tracked"
           // Most of this workspace's time is non-billable; "0m billable" on
           // every summary was noise, so the line appears only when it says something.
+          // A running timer is in the total and still climbing; say so, or the
+          // figure reads as stale next to the timer bar ticking below it.
           meta={
-            Number(out.billableSeconds ?? out.billableHours) > 0
-              ? `${duration(out.billableSeconds, out.billableHours)} billable`
-              : undefined
+            [
+              Number(out.runningSeconds) > 0 ? `incl. ${duration(out.runningSeconds)} running` : null,
+              Number(out.billableSeconds ?? out.billableHours) > 0
+                ? `${duration(out.billableSeconds, out.billableHours)} billable`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined
           }
           figure={duration(out.totalSeconds, out.totalHours)}
         >
@@ -731,7 +738,9 @@ function Approval({
       ) : (
         proposal && <ProposalBody proposal={proposal} />
       )}
-      <div className="flex gap-2">
+      {/* Wraps: at large text sizes the pair is wider than the card, and an
+          unwrapped row pushed Decline out past its edge and scrolled the thread. */}
+      <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
           variant={name === "deleteEntry" ? "destructive" : "default"}

@@ -388,8 +388,8 @@ export async function buildAssistantContext(
   const entryLines = entries.results.length
     ? entries.results
         .map((e) => {
-          const hours = (((e.duration as number) ?? 0) / 3600).toFixed(2);
-          return `- ${t(e.start as string)}–${t(e.stop as string)} | ${promptSafe(e.project_name ?? "No project", 80)} | ${hours}h | ${e.billable ? "billable" : "non-billable"} | ${promptSafe(e.description) || "(no description)"}`;
+          const time = formatDuration(((e.duration as number) ?? 0) * 1000);
+          return `- ${t(e.start as string)}–${t(e.stop as string)} | ${promptSafe(e.project_name ?? "No project", 80)} | ${time} | ${e.billable ? "billable" : "non-billable"} | ${promptSafe(e.description) || "(no description)"}`;
         })
         .join("\n")
     : "(none yet)";
@@ -412,6 +412,13 @@ export async function buildAssistantContext(
         .join("\n")
     : "(no calendar events today, or no calendar connected)";
 
+  // The total includes the running timer's share of today — durations, never
+  // decimal hours, since the model reads them out verbatim. A timer started
+  // before midnight counts from midnight.
+  const completedMs = facts.totalSeconds * 1000;
+  const runningTodayMs = facts.running
+    ? Math.max(0, nowMs - Math.max(new Date(facts.running.start).getTime(), new Date(dayStartIso).getTime()))
+    : 0;
   const runningLine = facts.running
     ? `"${promptSafe(facts.running.description) || "(no description)"}" — started ${t(facts.running.start)}, running for ${formatDuration(nowMs - new Date(facts.running.start).getTime())}`
     : "(none)";
@@ -420,9 +427,9 @@ export async function buildAssistantContext(
 
 Running timer: ${runningLine}
 
-Today's completed time entries (start–stop | project | hours | billing | description):
+Today's completed time entries (start–stop | project | duration | billing | description):
 ${entryLines}
-Total tracked today: ${(facts.totalSeconds / 3600).toFixed(2)}h across ${facts.entryCount} entries.
+Total tracked today: ${formatDuration(completedMs + runningTodayMs)}${facts.running ? ` (${formatDuration(completedMs)} completed across ${facts.entryCount} entries, plus ${formatDuration(runningTodayMs)} on the running timer)` : ` across ${facts.entryCount} entries`}.
 
 Today's calendar events (start–stop | title | status):
 ${eventLines}

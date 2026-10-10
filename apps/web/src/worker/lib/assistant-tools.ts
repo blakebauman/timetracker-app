@@ -12,6 +12,7 @@ import { loadGroundingProjects, resolveGrounding, inferEventProjects } from "./a
 import { rememberFact, searchMemories } from "./assistant-memory";
 import { createTask, getTask, listTasks, updateTask } from "./tasks";
 import { buildDayPlan } from "./day-plan";
+import { summarizeTime } from "./time-summary";
 import { workDescription } from "@timetracker/core/entry-text";
 import { promptSafe } from "./untrusted-text";
 import {
@@ -277,7 +278,7 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
 
     getTimeSummary: tool({
       description:
-        "Summarize tracked time over the user's local days startDate..endDate (both inclusive): total hours, billable split, and per-project breakdown. Use to answer 'how much did I track this week?' — e.g. Monday's date to today's.",
+        "Summarize tracked time over the user's local days startDate..endDate (both inclusive): total, billable split, and per-project breakdown. A running timer counts up to now; includesRunningTimer says how much of the total it is. Use to answer 'how much did I track this week?' — e.g. Monday's date to today's.",
       // Not `from`/`to`: Llama emits pythonic calls, `from` is a Python
       // keyword, and Workers AI's streaming parser silently drops a call it
       // can't parse — the turn ended with an empty reply.
@@ -291,30 +292,25 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         if (!since || !until || Date.parse(until) <= Date.parse(since)) {
           return { ok: false, reason: "That date range isn't valid." };
         }
-        const { results } = await db
-          .prepare(
-            `SELECT COALESCE(p.name, 'No project') AS project,
-                    SUM(te.duration) AS seconds,
-                    SUM(CASE WHEN te.billable = 1 THEN te.duration ELSE 0 END) AS billable_seconds,
-                    COUNT(*) AS entries
-             FROM time_entries te
-             LEFT JOIN projects p ON p.id = te.project_id
-             WHERE te.workspace_id = ? AND te.stop IS NOT NULL AND te.start >= ? AND te.start < ?
-             GROUP BY project ORDER BY seconds DESC`
-          )
-          .bind(workspaceId, since, until)
-          .all<{ project: string; seconds: number; billable_seconds: number; entries: number }>();
-        const totalSeconds = results.reduce((s, r) => s + (r.seconds ?? 0), 0);
-        const billableSeconds = results.reduce((s, r) => s + (r.billable_seconds ?? 0), 0);
+        const { totalSeconds, billableSeconds, runningSeconds, byProject } = await summarizeTime(
+          db,
+          workspaceId,
+          since,
+          until
+        );
         return {
           total: human(totalSeconds),
           billable: human(billableSeconds),
+          // Present only while a timer in the range is running, so the model
+          // can say the total is still climbing.
+          ...(runningSeconds > 0 && { includesRunningTimer: human(runningSeconds) }),
           totalSeconds,
           billableSeconds,
-          byProject: results.map((r) => ({
+          runningSeconds,
+          byProject: byProject.map((r) => ({
             project: r.project,
-            time: human(r.seconds ?? 0),
-            seconds: r.seconds ?? 0,
+            time: human(r.seconds),
+            seconds: r.seconds,
             entries: r.entries,
           })),
         };

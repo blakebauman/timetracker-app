@@ -480,15 +480,15 @@ export function AssistantPanel() {
           if (!window.matchMedia("(pointer: coarse)").matches) promptRef.current?.focus();
         }}
       >
-        <SheetHeader className="flex-row items-start gap-3 border-b">
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="size-4 text-muted-foreground" />
-              Assistant
-            </SheetTitle>
-            <SheetDescription>Watches your calendar, timesheet and plan.</SheetDescription>
-          </div>
-          <div className="-mt-1 -mr-1 flex shrink-0 items-center gap-1">
+        {/* A grid, not title-column-beside-buttons: the description runs the
+            full width under both, so at large text sizes it isn't squeezed
+            into one word per line beside the buttons. */}
+        <SheetHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-0.5 border-b">
+          <SheetTitle className="flex items-center gap-2">
+            <Sparkles className="size-4 text-muted-foreground" />
+            Assistant
+          </SheetTitle>
+          <div className="-my-1 -mr-1 flex items-center gap-1">
             {hasConversation && (
               <Button
                 variant="ghost"
@@ -514,6 +514,7 @@ export function AssistantPanel() {
               </Button>
             </SheetClose>
           </div>
+          <SheetDescription className="col-span-2">Watches your calendar, timesheet and plan.</SheetDescription>
         </SheetHeader>
 
         <Conversation className="min-h-0 flex-1" aria-live="off">
