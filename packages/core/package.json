@@ -11,7 +11,8 @@
 		"./schemas": "./src/schemas.ts",
 		"./task-recurrence": "./src/task-recurrence.ts",
 		"./quick-add": "./src/quick-add.ts",
-		"./brand-mark": "./src/brand-mark.ts"
+		"./brand-mark": "./src/brand-mark.ts",
+		"./entry-text": "./src/entry-text.ts"
 	},
 	"scripts": {
 		"lint": "eslint .",
