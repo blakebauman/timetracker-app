@@ -67,7 +67,7 @@ test("assistant surfaces a long-running-timer nudge and dismisses it", async ({ 
   await read.click();
 
   // Dismissal hides the nudge and persists client-side.
-  await panel.getByRole("button", { name: "Dismiss nudge" }).first().click();
+  await panel.getByRole("button", { name: /^Dismiss: / }).first().click();
   await expect(panel.getByText("Timer still running")).toBeHidden();
   await expect(panel.getByText(/All caught up/)).toBeVisible();
 

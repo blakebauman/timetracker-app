@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, memo } from "react";
 
 // Deliberately tiny markdown renderer — the assistant runs on Llama, which emits plain
 // prose with the occasional list or **bold**. This avoids pulling in streamdown
@@ -35,7 +35,8 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   return nodes;
 }
 
-export function AssistantMarkdown({ text }: { text: string }) {
+// Memoized on the text: only the reply being streamed re-parses per token.
+export const AssistantMarkdown = memo(function AssistantMarkdown({ text }: { text: string }) {
   const lines = text.split("\n");
   const blocks: React.ReactNode[] = [];
   let bullets: string[] = [];
@@ -71,4 +72,4 @@ export function AssistantMarkdown({ text }: { text: string }) {
   flushBullets("ul-end");
 
   return <div className="space-y-2 text-sm leading-relaxed">{blocks.map((b, i) => <Fragment key={i}>{b}</Fragment>)}</div>;
-}
+});
