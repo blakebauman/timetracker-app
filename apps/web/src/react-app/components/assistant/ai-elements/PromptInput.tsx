@@ -117,7 +117,15 @@ export function PromptInput({
         <Button
           type="submit"
           size="icon-lg"
-          className={cn("shrink-0", LIT_DISC)}
+          // Lit only when there's something to send: an empty composer used
+          // to show a faded red disc, the brand light spent on nothing. The
+          // house ring vanishes on the red fill, so it lifts off on an offset
+          // like the Start disc's.
+          className={cn(
+            "shrink-0 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            LIT_DISC,
+            "disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+          )}
           disabled={!canSend}
           aria-label="Send message"
           title={offline ? "Send when the Assistant connects" : "Send"}

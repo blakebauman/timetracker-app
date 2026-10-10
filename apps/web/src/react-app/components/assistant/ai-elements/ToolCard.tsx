@@ -133,9 +133,11 @@ type ToolContext = ReturnType<typeof useToolContext>;
 const TASK_TOOLS = new Set(["completeTask", "scheduleTasks", "planDay", "listTasks"]);
 
 // ---------------------------------------------------------------------------
-// Layout primitives. A result is drawn as a row on the rack — the same card,
+// Layout primitives. A result is drawn as a row on the rack — the same
 // hairline and mono figure as an entry row — rather than a tinted status chip:
 // the thing the Assistant just logged should look like the thing it logged.
+// It sits inside the Assistant's card, so it is recessed onto the ground the
+// way an input is, not a second card stacked on the first.
 // ---------------------------------------------------------------------------
 
 type Tone = "done" | "info" | "warn" | "error";
@@ -175,14 +177,14 @@ function Row({
   title: React.ReactNode;
   /** The secondary line: project, time range, billable. */
   meta?: React.ReactNode;
-  /** The right-hand figure — a duration, a count — in mono. */
+  /** The right-hand figure — a duration, a count — in mono. Wrap any words in `<Word>`. */
   figure?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "rounded-container border bg-card px-3 py-2 text-xs",
+        "rounded-container border bg-background px-3 py-2 text-xs",
         tone === "error" && "border-destructive/40"
       )}
     >
@@ -208,6 +210,9 @@ function Row({
     </div>
   );
 }
+
+/** A word beside a mono figure ("since 14:00", "30m free"): the number holds the column, the word stays in the text face. */
+const Word = ({ children }: { children: React.ReactNode }) => <span className="font-sans">{children}</span>;
 
 /** A list inside a row: label left, mono figure right. */
 function Lines({
@@ -259,7 +264,14 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
           meta={[project ?? "No project", billable(out.billable), str(out, "note")]
             .filter(Boolean)
             .join(" · ")}
-          figure={str(out, "startedAt") ? `since ${formatEntryTime(str(out, "startedAt")!, tf)}` : undefined}
+          figure={
+            str(out, "startedAt") ? (
+              <>
+                <Word>since </Word>
+                {formatEntryTime(str(out, "startedAt")!, tf)}
+              </>
+            ) : undefined
+          }
         />
       );
 
@@ -302,7 +314,13 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
         <Row
           icon={BarChart3}
           title="Tracked"
-          meta={`${duration(out.billableSeconds, out.billableHours)} billable`}
+          // Most of this workspace's time is non-billable; "0m billable" on
+          // every summary was noise, so the line appears only when it says something.
+          meta={
+            Number(out.billableSeconds ?? out.billableHours) > 0
+              ? `${duration(out.billableSeconds, out.billableHours)} billable`
+              : undefined
+          }
           figure={duration(out.totalSeconds, out.totalHours)}
         >
           <Lines
@@ -328,7 +346,7 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
               key: `${i}`,
               swatch: ctx.projectColor(p.name),
               label: p.name ?? "?",
-              figure: p.billable ? "billable" : undefined,
+              figure: p.billable ? <Word>billable</Word> : undefined,
             }))}
           />
         </Row>
@@ -379,10 +397,9 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
         <Row
           swatch={ctx.projectColor(project)}
           title={str(out, "name") ?? str(input, "name") ?? "Task added"}
-          meta={[project, str(out, "due") ? `due ${formatDueDate(str(out, "due")!)}` : "no due date"]
+          meta={["Added", project, str(out, "due") ? `due ${formatDueDate(str(out, "due")!)}` : "no due date"]
             .filter(Boolean)
             .join(" · ")}
-          figure="added"
         />
       );
 
@@ -414,8 +431,23 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
       return (
         <Row
           icon={CalendarRange}
-          title={plan.length ? "A plan for the rest of today" : "Nothing left to plan today"}
-          figure={free !== null ? `${formatDurationShort(free * 60)} free` : undefined}
+          // "Nothing left to plan" over a list of tasks that didn't fit told
+          // the user the opposite of the truth.
+          title={
+            plan.length
+              ? "A plan for the rest of today"
+              : misfits.length
+                ? "Nothing fits in the rest of today"
+                : "Nothing left to plan today"
+          }
+          figure={
+            free !== null ? (
+              <>
+                {formatDurationShort(free * 60)}
+                <Word> free</Word>
+              </>
+            ) : undefined
+          }
         >
           {plan.length > 0 && (
             // A timeline, not a list: the start time leads, in mono, so the
@@ -432,9 +464,19 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
             </ol>
           )}
           {misfits.length > 0 && (
-            <p className="mt-1.5">
-              Doesn't fit: {misfits.map((m) => `${m.name} (${formatDurationShort(m.minutes * 60)})`).join(", ")}
-            </p>
+            // The same label-and-figure column as every other list here, not a
+            // comma run-on that buried the estimates mid-sentence.
+            <div className={cn(plan.length > 0 && "mt-2")}>
+              <p className="mb-1">{plan.length ? "Doesn't fit" : "Needs more time than is left"}</p>
+              <Lines
+                max={6}
+                items={misfits.map((m) => ({
+                  key: m.taskId,
+                  label: m.name,
+                  figure: formatDurationShort(m.minutes * 60),
+                }))}
+              />
+            </div>
           )}
         </Row>
       );
@@ -682,7 +724,7 @@ function Approval({
     <div
       role="group"
       aria-label="Waiting for your approval"
-      className="space-y-2.5 rounded-container border border-border-strong bg-card px-3 py-2.5"
+      className="space-y-2.5 rounded-container border border-border-strong bg-background px-3 py-2.5"
     >
       {name === "deleteEntry" ? (
         <DeleteProposal id={str(input, "id")} ctx={ctx} />

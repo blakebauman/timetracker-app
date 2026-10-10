@@ -389,21 +389,20 @@ export function AssistantPanel() {
           if (!window.matchMedia("(pointer: coarse)").matches) promptRef.current?.focus();
         }}
       >
-        <SheetHeader className="flex-row items-center gap-3 border-b pr-14">
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="size-4 text-muted-foreground" />
-              Assistant
-            </SheetTitle>
-            <SheetDescription className="truncate">
-              Watches your calendar, timesheet and plan.
-            </SheetDescription>
-          </div>
+        {/* The clear control sits in the close button's row, at its size and
+            top edge — it used to centre on the two-line header and float 11px
+            below it, and squeezed the description into an ellipsis on a phone. */}
+        <SheetHeader className={cn("gap-0.5 border-b", hasConversation ? "pr-24" : "pr-14")}>
+          <SheetTitle className="flex items-center gap-2">
+            <Sparkles className="size-4 text-muted-foreground" />
+            Assistant
+          </SheetTitle>
+          <SheetDescription>Watches your calendar, timesheet and plan.</SheetDescription>
           {hasConversation && (
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-muted-foreground"
+              className="absolute top-3 right-12 text-muted-foreground hover:text-foreground"
               onClick={() => setConfirmClear(true)}
               disabled={busy}
               aria-label="Clear chat"
@@ -496,45 +495,46 @@ export function AssistantPanel() {
                 </div>
               )}
 
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  // Two bubbles, one grammar: the user's turn is recessed on
-                  // the muted step, the Assistant's is a card on the rack.
-                  // Neither carries the brand red — that's for the Send disc.
-                  className={
-                    m.role === "user"
-                      ? "ml-8 rounded-container border bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
-                      : "group mr-4 flex gap-2 rounded-container border bg-card px-3 py-2.5"
-                  }
-                >
-                  {m.role === "assistant" && (
-                    <Sparkles className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0 flex-1 space-y-2">
-                    {m.parts.map((part, i) => {
-                      if (part.type === "text") {
-                        return m.role === "user" ? (
-                          <span key={i}>{part.text}</span>
-                        ) : (
-                          <AssistantMarkdown key={i} text={part.text} />
-                        );
-                      }
-                      if (typeof part.type === "string" && part.type.startsWith("tool-")) {
-                        return <ToolCard key={i} part={part} onApprove={approve} />;
-                      }
-                      return null;
-                    })}
-                    {m.role === "assistant" && (
-                      <MessageActions
-                        message={m}
-                        canRegenerate={m.id === lastAssistantId && !busy}
-                        onRegenerate={() => regenerate()}
-                      />
+              {messages.map((m) =>
+                // Two bubbles, one grammar: the user's turn is recessed on the
+                // muted step, the Assistant's is a card on the rack. Neither
+                // carries the brand red — that's for the Send disc.
+                m.role === "user" ? (
+                  <div
+                    key={m.id}
+                    className="ml-8 rounded-container border bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
+                  >
+                    {m.parts.map((part, i) =>
+                      part.type === "text" ? <span key={i}>{part.text}</span> : null
                     )}
                   </div>
-                </div>
-              ))}
+                ) : (
+                  // Copy / Regenerate hang under the card rather than inside
+                  // it: hover-revealed inside, they left an empty band at the
+                  // foot of every reply that read as stray padding.
+                  <div key={m.id} className="group mr-4 space-y-1">
+                    <div className="flex gap-2 rounded-container border bg-card px-3 py-2.5">
+                      <Sparkles className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        {m.parts.map((part, i) => {
+                          if (part.type === "text") {
+                            return <AssistantMarkdown key={i} text={part.text} />;
+                          }
+                          if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+                            return <ToolCard key={i} part={part} onApprove={approve} />;
+                          }
+                          return null;
+                        })}
+                      </div>
+                    </div>
+                    <MessageActions
+                      message={m}
+                      canRegenerate={m.id === lastAssistantId && !busy}
+                      onRegenerate={() => regenerate()}
+                    />
+                  </div>
+                )
+              )}
 
               {showThinking &&
                 (stuck ? (

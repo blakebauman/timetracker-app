@@ -36,7 +36,7 @@ export function MessageActions({
   };
 
   return (
-    <div className="tt-reveal flex items-center gap-0.5">
+    <div className="tt-reveal flex items-center gap-0.5 pl-1.5">
       <Button
         variant="ghost"
         size="icon-xs"
