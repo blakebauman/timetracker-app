@@ -19,19 +19,19 @@ catalog:
   lefthook: ^2.1.16
   "@commitlint/cli": ^21.2.3
   "@commitlint/config-conventional": ^21.2.3
-  eslint: 10.11.0
+  eslint: 10.12.0
   jiti: ^2.7.0
   "@eslint/js": 10.0.1
   eslint-plugin-react-hooks: 7.1.1
   eslint-plugin-react-refresh: 0.5.7
   globals: 17.7.0
-  typescript-eslint: 8.71.0
+  typescript-eslint: 8.71.1
   shadcn: ^4.21.0
   sharp: ^0.35.4
 
   # bundler / test runner
   vite: ^8.3.2
-  "@vitejs/plugin-react": 6.1.1
+  "@vitejs/plugin-react": 6.1.2
   "@playwright/test": ^1.63.0
 
   # cloudflare
