@@ -30,7 +30,12 @@ const kindClass = (props: CalendarEventExtendedProps) => {
   if (props.gap) return "tt-event-gap";
   if (props.ghost) return "tt-event-ghost";
   if (props.draft) return "tt-event-draft";
-  if (props.task) return "tt-event-planned";
+  if (props.task)
+    return cn(
+      "tt-event-planned",
+      props.planFlag?.kind === "missed" && "tt-event-missed",
+      props.planFlag?.kind === "over" && "tt-event-over"
+    );
   return props.running && "tt-event-running";
 };
 

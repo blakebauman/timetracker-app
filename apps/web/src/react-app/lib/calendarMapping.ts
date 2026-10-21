@@ -1,6 +1,7 @@
 import type { EventInput } from "@fullcalendar/react";
 import type { TimeEntry, DraftEntry, Task } from "@timetracker/core/schemas";
 import { scheduledBlock } from "@/lib/taskUtils";
+import type { PlanFlag } from "@/lib/planState";
 import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 
 // An unconfirmed external calendar event (Google) shown as a "ghost" block the
@@ -28,6 +29,8 @@ export interface CalendarEventExtendedProps {
   draft?: DraftEntry;
   // A task scheduled at a time of day: the plan, beside the tracked actual.
   task?: Task;
+  // Where the actual passed that plan by (lib/planState), held until acted on.
+  planFlag?: PlanFlag;
 }
 
 const GHOST_COLOR = "#94a3b8"; // slate-400 — muted, project-agnostic
@@ -85,6 +88,52 @@ export function buildGapEvents(
 }
 
 /**
+ * Cut planned task blocks out of the untracked gaps.
+ *
+ * A gap is "time nobody accounted for"; a planned block inside it is the
+ * account — and the one place the plan meets the actual on the grid. Left
+ * overlapping, the gap took most of the column and squeezed the planned block
+ * (often the very one flagged "not started") into an unreadable sliver. What
+ * remains of a gap either side is kept if it is still worth filling.
+ */
+export function clipGapsAround(
+  gaps: EventInput[],
+  planned: { start: number; end: number }[],
+  minGapMs = 15 * 60_000
+): EventInput[] {
+  if (planned.length === 0) return gaps;
+  const out: EventInput[] = [];
+  for (const gap of gaps) {
+    let pieces = [
+      { start: new Date(gap.start as string).getTime(), end: new Date(gap.end as string).getTime() },
+    ];
+    for (const p of planned) {
+      pieces = pieces.flatMap((g) =>
+        p.end <= g.start || p.start >= g.end
+          ? [g]
+          : [
+              { start: g.start, end: Math.max(g.start, p.start) },
+              { start: Math.min(g.end, p.end), end: g.end },
+            ]
+      );
+    }
+    for (const piece of pieces) {
+      if (piece.end - piece.start < minGapMs) continue;
+      const start = new Date(piece.start).toISOString();
+      const stop = new Date(piece.end).toISOString();
+      out.push({
+        ...gap,
+        id: `gap:${start}`,
+        start,
+        end: stop,
+        extendedProps: { ...gap.extendedProps, gapRange: { start, stop } },
+      });
+    }
+  }
+  return out;
+}
+
+/**
  * Map a drafted entry to a proposal block.
  *
  * Painted in its proposed project's colour but at a lower alpha than a real
@@ -114,7 +163,7 @@ export function draftToEvent(draft: DraftEntry): EventInput {
  * side is the point. Draggable (reschedules) and resizable (re-estimates),
  * because moving a plan is the whole job of a plan.
  */
-export function taskToEvent(task: Task): EventInput | null {
+export function taskToEvent(task: Task, planFlag?: PlanFlag): EventInput | null {
   const block = scheduledBlock(task);
   if (!block) return null;
   const color = task.projectColor ?? DEFAULT_PROJECT_COLOR;
@@ -125,7 +174,7 @@ export function taskToEvent(task: Task): EventInput | null {
     editable: true,
     display: "block",
     color,
-    extendedProps: { running: false, task } satisfies CalendarEventExtendedProps,
+    extendedProps: { running: false, task, planFlag } satisfies CalendarEventExtendedProps,
   };
 }
 

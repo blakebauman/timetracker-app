@@ -80,6 +80,8 @@ interface TimerWorkspaceHeaderProps {
   listRangeSince: string | null;
   listRangeUntil: string | null;
   onListRangeChange: (key: ListRangeKey, since?: string | null, until?: string | null) => void;
+  /** Opens the plan where the column can't stand beside the view (see TimerWorkspace). */
+  planControl?: React.ReactNode;
 }
 
 // Shared header for the unified Timer tab: period navigation, the "logged this
@@ -117,6 +119,7 @@ export function TimerWorkspaceHeader({
   listRangeSince,
   listRangeUntil,
   onListRangeChange,
+  planControl,
 }: TimerWorkspaceHeaderProps) {
   const showCalendarControls = view === "calendar" || view === "split";
   // A single-day grid has no week number to stamp on its label.
@@ -232,6 +235,7 @@ export function TimerWorkspaceHeader({
         </div>
 
         <PaneActions>
+          {planControl}
           {showCalendarControls && (
             <CalendarViewOptions
               calendarView={calendarView}

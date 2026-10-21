@@ -86,8 +86,13 @@ interface TaskRowProps {
   showProject?: boolean;
   /** Rendered as a subtask: indented, no project pill, no nesting affordances. */
   nested?: boolean;
-  /** Compact single-line form for the Timer rail. */
+  /** Compact single-line form for the Timer's plan column. */
   dense?: boolean;
+  /**
+   * A second line under a dense row, inside its hover and drag area — the plan
+   * column's project, spent-vs-estimate and plan state. Ignored when not dense.
+   */
+  denseMeta?: React.ReactNode;
   expanded?: boolean;
   onToggleExpanded?: () => void;
   onRequestDelete: (task: Task) => void;
@@ -119,6 +124,7 @@ export function TaskRow({
   showProject = true,
   nested = false,
   dense = false,
+  denseMeta,
   expanded = false,
   onToggleExpanded,
   onRequestDelete,
@@ -256,24 +262,27 @@ export function TaskRow({
     return (
       <div
         className={cn(
-          "group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
+          "group rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
           dragging && "opacity-50"
         )}
         {...dragHandlers}
       >
-        {doneToggle}
-        <span className={cn("min-w-0 flex-1 truncate text-sm", !task.active && "text-muted-foreground line-through")}>
-          {task.name}
-        </span>
-        {task.scheduledMinute !== null && tone !== "overdue" && (
-          <span className="shrink-0 font-mono text-micro tabular-nums text-muted-foreground">
-            {formatMinute(task.scheduledMinute, timeFormat)}
+        <div className="flex items-center gap-2">
+          {doneToggle}
+          <span className={cn("min-w-0 flex-1 truncate text-sm", !task.active && "text-muted-foreground line-through")}>
+            {task.name}
           </span>
-        )}
-        {task.dueDate && tone === "overdue" && (
-          <span className="shrink-0 text-micro text-destructive">Overdue</span>
-        )}
-        {startControl}
+          {task.scheduledMinute !== null && tone !== "overdue" && (
+            <span className="shrink-0 font-mono text-micro tabular-nums text-muted-foreground">
+              {formatMinute(task.scheduledMinute, timeFormat)}
+            </span>
+          )}
+          {/* No "Overdue" chip: the plan column files a late task under its
+              Overdue heading, and the chip under it said the same word twice. */}
+          {startControl}
+        </div>
+        {/* Indented to the name, past the done toggle (16px + the 8px gap). */}
+        {denseMeta && <div className="mt-0.5 pl-6">{denseMeta}</div>}
       </div>
     );
   }

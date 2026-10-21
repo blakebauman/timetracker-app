@@ -91,9 +91,21 @@ interface UIStore {
   logTimeTaskId: string | null;
   openTaskLogTime: (id: string) => void;
   closeTaskLogTime: () => void;
-  /** The task rail beside the Timer grid. Persisted — it's a workspace layout choice. */
-  taskRailOpen: boolean;
-  setTaskRailOpen: (v: boolean) => void;
+  /**
+   * The plan column beside the Timer's list and grid. Persisted — it's a
+   * workspace layout choice — under a new key, open by default: the column is
+   * where the day's plan lives now, and the old rail's `false` default was
+   * hiding it from everyone who never found the toggle.
+   */
+  planColumnOpen: boolean;
+  setPlanColumnOpen: (v: boolean) => void;
+  /**
+   * "The plan was passed" marks the user has acknowledged (see lib/planState).
+   * Keys carry the plan they describe, so re-scheduling or re-estimating a
+   * task raises a fresh mark. Client-side like nudge dismissals; capped.
+   */
+  dismissedPlanFlags: string[];
+  dismissPlanFlag: (key: string) => void;
 
   setTheme: (theme: "light" | "dark" | "system") => void;
   setTimeFormat: (v: "24h" | "12h") => void;
@@ -229,8 +241,15 @@ export const useUIStore = create<UIStore>()(
       logTimeTaskId: null,
       openTaskLogTime: (id) => set({ logTimeTaskId: id }),
       closeTaskLogTime: () => set({ logTimeTaskId: null }),
-      taskRailOpen: false,
-      setTaskRailOpen: (v) => set({ taskRailOpen: v }),
+      planColumnOpen: true,
+      setPlanColumnOpen: (v) => set({ planColumnOpen: v }),
+      dismissedPlanFlags: [],
+      dismissPlanFlag: (key) =>
+        set((s) =>
+          s.dismissedPlanFlags.includes(key)
+            ? s
+            : { dismissedPlanFlags: [...s.dismissedPlanFlags, key].slice(-200) }
+        ),
       flashEntry: (id) => {
         clearTimeout(flashTimeout);
         set({ highlightedEntryId: id, pinnedEntryId: id });
@@ -253,7 +272,8 @@ export const useUIStore = create<UIStore>()(
       name: "time-tracker-ui",
       // Only persist real preferences — not transient UI like the palette.
       partialize: (s) => ({
-        taskRailOpen: s.taskRailOpen,
+        planColumnOpen: s.planColumnOpen,
+        dismissedPlanFlags: s.dismissedPlanFlags,
         theme: s.theme,
         timeFormat: s.timeFormat,
         currency: s.currency,

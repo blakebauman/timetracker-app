@@ -101,7 +101,8 @@ through the app.
 timer: Today / Upcoming / All views, deterministic quick-add tokens (dates,
 `p1`–`p4`, `#project`), four recurrence forms (`daily`, `weekdays`,
 `weekly:<days>`, `monthly:<n>`), one level of subtasks with a tracked-time
-rollup, and the `TaskRail` beside the Timer calendar. Tasks are the plan and
+rollup, and the plan column beside the Timer's list and calendar (it was a
+collapsed-by-default `TaskRail` until the plan + actual workspace). Tasks are the plan and
 time entries the actual; every item below should either shrink the gap between
 the two or make it easier to see. Nothing here should turn the app into a
 general-purpose to-do list.
@@ -205,9 +206,24 @@ Assistant); MCP `list_tasks` / `create_task` / `complete_task` plus `taskId`
 on `start_timer`; Assistant `listTasks` / `createTask` / `completeTask` /
 `planDay` / `scheduleTasks` (writes approval-gated). The day plan is
 deterministic (`lib/day-plan.ts`) and exposed read-only at
-`GET /api/assistant/plan-day`. Still open: a per-user working-hours setting
-(the plan assumes 09:00–17:30), and a "Plan my day" button in the Tasks UI
-that uses the same endpoint without the chat.*
+`GET /api/assistant/plan-day`. The "Plan my day" button shipped in the Timer's
+plan column, on the same endpoint without the chat. Still open: a per-user
+working-hours setting (the plan assumes 09:00–17:30).*
+
+### Plan + actual workspace
+*Shipped: the plan stands beside the day in the Timer workspace (plan column,
+plan sheet, plan flags, Plan my day, next-task control). Still open:*
+- **Dedupe Today / Upcoming on /tasks** — the column now carries both. Kept on
+  /tasks for now because Upcoming owns drag-to-redate between days, which a
+  320px column doesn't replicate; move that first, then retire the tabs.
+- **Planned vs logged in the header strip** — the column's "left today" carries
+  the plan total for now.
+- **Open the grid on now** — the calendar still opens at 08:00, so late in the
+  day the rest of today's plan starts below the fold. A scroll time relative to
+  now changes app-wide behaviour that several specs click against (they target
+  fixed slots); do it with those specs rewritten to locate slots by time.
+- **Server-side flag dismissals** — dismissals are per browser, like nudge
+  dismissals; sync them only if the same day is worked across devices.
 
 - ~~**MCP task tools**~~ — `list_tasks` for read keys; `create_task` and
   `complete_task` only for `read_write` keys. The create / complete /

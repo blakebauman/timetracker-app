@@ -128,3 +128,11 @@
 .tt-calendar .tt-event.tt-event-planned:hover {
   border-style: solid;
 }
+
+/* A plan the day passed by: the block ended and nothing was tracked against
+   the task. Still dotted — it is still "empty, click to fill" — but the edge
+   takes the warning hue so it reads from across the week, and it stays that
+   way until the task is started, logged or moved (lib/planState). */
+.tt-calendar .tt-event.tt-event-planned.tt-event-missed {
+  border-color: color-mix(in oklab, var(--warning) 80%, transparent);
+}

@@ -180,7 +180,7 @@ The line under the field shows what it understood before you commit it. Anything
 **Turning a task into time.** Four ways, all of them one gesture:
 
 - **Start a timer** — the ▷ on every row starts the clock with the task's name, project and task already set. While it runs the row shows a stop control instead.
-- **Drag it onto the calendar** — open the task rail beside the Timer's calendar view and drag a task onto a time slot. Onto a slot that has already passed, that logs a finished entry there, as long as its estimate (or half an hour if it has none). Onto a slot still ahead of you, it *schedules* the task there instead (see below). Either way there's an **Undo** in the toast.
+- **Drag it onto the calendar** — in the Timer's calendar view, drag a task from the plan column onto a time slot. Onto a slot that has already passed, that logs a finished entry there, as long as its estimate (or half an hour if it has none). Onto a slot still ahead of you, it *schedules* the task there instead (see below). Either way there's an **Undo** in the toast.
 - **Log time already spent** — the clock icon opens the entry form prefilled from the task. Nothing is written until you submit. If the task was due before today, the form opens on the day it was due rather than on today.
 - **Tick it off** — and if nothing is tracked against it, the toast offers to log the time then and there. In the other direction, stopping a timer on a task that's due today or has used up its estimate offers to mark it done.
 
@@ -198,7 +198,13 @@ The line under the field shows what it understood before you commit it. Anything
 
 **Scheduling a time.** Give a task a time of day, with a time token when you capture it, the **Time** field in the task dialog, or by dropping it on a future calendar slot, and it appears on the Timer's calendar as a *planned* block. The block is dotted and nearly hollow, in the project's colour, and as long as the task's estimate (half an hour without one). It's the plan, so it never counts toward any total, and it sits beside whatever you actually tracked in that slot. Drag the block to move the task, stretch it to change the estimate, click it to open the task, or click its ▷ to start the timer. When a block's time arrives you get a toast with **Start timer** (and a browser notification if the tab is in the background). That's controlled by **Nudges and reminders** under Settings → Productivity. A repeating task keeps its time on every occurrence, and clearing a task's due date clears its time too.
 
-**The task rail.** In the Timer's calendar and split views (on wider screens) a rail on the right shows what's due today, so you can start or drag straight onto the grid you're tracking into. Collapse it with the control in its header.
+**The plan beside the day.** On wider screens the Timer's list and calendar views have a **Plan** column on the left: what's overdue, today's tasks (scheduled ones first, in time order), and the week ahead, each with its project and how much of its estimate you've used, plus how much estimate is left today. Start a task from its ▷, tick it off, add one at the foot, or in the calendar view drag it onto the grid. Fold the column to a slim strip with the control in its header; it remembers. In Split, Timesheet and Planner, and on narrow screens, the **Plan** button in the header opens the same list as a sheet. Its dot means something in the plan needs attention.
+
+**When the day passes the plan.** A scheduled block whose time has ended with nothing tracked against the task says **Not started**, in the column and on the block itself. A task that has run past its estimate says **Over estimate by …**. Both stay until you act: start or log the task, move the block, or dismiss the note with its ✕. Moving the block or changing the estimate gives the new plan a fresh chance to be flagged.
+
+**Plan my day.** The button at the top of the plan fits today's unscheduled tasks (due today or overdue) into the rest of your working day (09:00–17:30), around meetings and anything already scheduled. It's the same plan the Assistant makes, without the chat. It shows the times and anything that doesn't fit, and nothing changes until you press **Schedule**. The toast has an **Undo**.
+
+**Next up.** While no timer is running, the list icon beside **Continue** in the timer bar starts the next task on your plan: the scheduled block that's on now or starts soonest, or otherwise the first of today's tasks. Hover it to see which task. A task is never required; you can always just type what you're working on.
 
 ## Favorites & recurring entries
 

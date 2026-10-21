@@ -11,6 +11,14 @@ import type {
 } from "@timetracker/core/schemas";
 import { BULK_ENTRY_IDS_MAX } from "@timetracker/core/limits";
 
+/** Mirrors worker/lib/day-plan.ts `DayPlan`; minutes are local minutes-of-day. */
+export interface DayPlan {
+  localDate: string;
+  placed: { taskId: string; name: string; startMinute: number; minutes: number }[];
+  unplaced: { taskId: string; name: string; minutes: number }[];
+  freeMinutes: number;
+}
+
 export type CalendarProviderId = "google" | "microsoft";
 
 /** What `GET /api/calendar/status` returns for each supported provider. */
@@ -425,6 +433,11 @@ export const api = {
       request<unknown[]>(
         `/assistant/nudges?timezoneOffsetMinutes=${timezoneOffsetMinutes}`
       ),
+    // The deterministic day plan (worker/lib/day-plan.ts): today's unscheduled
+    // due/overdue tasks fitted around calendar events and existing blocks.
+    // Read-only — scheduling it is ordinary task PUTs, so it can be undone.
+    planDay: (timezoneOffsetMinutes: number) =>
+      request<DayPlan>(`/assistant/plan-day?timezoneOffsetMinutes=${timezoneOffsetMinutes}`),
     // Chat moved to the ChatAgent Durable Object (streaming over WebSocket via
     // useAgentChat); there's no longer a REST chat endpoint.
     trackEvent: (body: Record<string, unknown>) =>
