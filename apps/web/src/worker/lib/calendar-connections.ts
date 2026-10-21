@@ -136,6 +136,58 @@ export async function accessTokenFor(
 }
 
 /**
+ * How long one connection's read of one range is reused. Every surface asks for
+ * "today" or "this week" — the nudge poll (every tab, plus the extension), each
+ * Assistant turn, plan-day, drafting, the calendar grid — and each used to make
+ * its own live Google/Graph call for the same answer. A meeting created in the
+ * provider shows up at most this late.
+ */
+const EVENTS_CACHE_TTL_S = 90;
+
+/**
+ * Cache API key for one connection's read of one range. Keyed by connection id,
+ * not just workspace: a reconnect is a new row (a new key), and a disconnected
+ * connection is never loaded, so its entries are simply never read again. The
+ * host is never routed — the key only has to be a URL.
+ */
+function eventsCacheKey(conn: CalendarConnection, since: string, until: string): Request {
+  const q = new URLSearchParams({ since, until });
+  return new Request(
+    `https://calendar-cache.timetracker.internal/${encodeURIComponent(conn.workspaceId)}/${conn.id}?${q}`
+  );
+}
+
+/** The per-colo cache, where the runtime has one (not in every test harness). */
+function eventsCache(): Cache | null {
+  return typeof caches === "undefined" ? null : caches.default;
+}
+
+async function readCachedEvents(key: Request): Promise<ExternalEvent[] | null> {
+  try {
+    const hit = await eventsCache()?.match(key);
+    return hit ? ((await hit.json()) as ExternalEvent[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCachedEvents(key: Request, events: ExternalEvent[]): Promise<void> {
+  try {
+    await eventsCache()?.put(
+      key,
+      new Response(JSON.stringify(events), {
+        headers: {
+          "content-type": "application/json",
+          "cache-control": `max-age=${EVENTS_CACHE_TTL_S}`,
+        },
+      })
+    );
+  } catch {
+    // A cache that won't take the write costs the next caller a live read, nothing more.
+  }
+}
+
+/**
  * Events across every connected calendar in [since, until].
  *
  * One provider failing (revoked token, Graph outage) yields that provider's
@@ -144,13 +196,18 @@ export async function accessTokenFor(
  *
  * `onlyAutoTrack` restricts to connections the user opted into auto-tracking,
  * which is what the cron sweep wants.
+ *
+ * Successful reads are cached per connection and range for EVENTS_CACHE_TTL_S
+ * (a failed read is not, so the next caller retries the provider). `fresh`
+ * skips the cache read — for the auto-track sweep, which turns events into
+ * entries and must see the provider as it is now.
  */
 export async function fetchWorkspaceEvents(
   env: Env,
   workspaceId: string,
   since: string,
   until: string,
-  opts: { onlyAutoTrack?: boolean } = {}
+  opts: { onlyAutoTrack?: boolean; fresh?: boolean } = {}
 ): Promise<ExternalEvent[]> {
   const connections = (await loadCalendarConnections(env, workspaceId)).filter(
     (c) => !opts.onlyAutoTrack || c.autoTrack
@@ -159,9 +216,16 @@ export async function fetchWorkspaceEvents(
 
   const perProvider = await Promise.all(
     connections.map(async (conn) => {
+      const key = eventsCacheKey(conn, since, until);
+      if (!opts.fresh) {
+        const cached = await readCachedEvents(key);
+        if (cached) return cached;
+      }
       try {
         const accessToken = await accessTokenFor(env, conn);
-        return await conn.provider.listEvents({ accessToken, since, until });
+        const events = await conn.provider.listEvents({ accessToken, since, until });
+        await writeCachedEvents(key, events);
+        return events;
       } catch (e) {
         console.warn("calendar: provider read failed", {
           workspaceId,
