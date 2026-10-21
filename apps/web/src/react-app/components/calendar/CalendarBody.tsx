@@ -44,6 +44,10 @@ import type { Task } from "@timetracker/core/schemas";
 
 import "@/styles/fullcalendar.css";
 
+// Shared defaults for queries that are disabled or haven't answered: a fresh
+// `[]` per render invalidated the events memo on every timer tick.
+const EMPTY: never[] = [];
+
 interface CalendarBodyProps {
   // Start of the visible period: a week start for time-grid views, a month
   // start for the month view.
@@ -137,7 +141,7 @@ export function CalendarBody({
   }, []);
 
   const {
-    data: entries = [],
+    data: entries = EMPTY,
     isLoading: entriesLoading,
     isError: entriesError,
     refetch: refetchEntries,
@@ -148,12 +152,12 @@ export function CalendarBody({
   const updateEntry = useUpdateEntry();
   const createEntry = useCreateEntry();
   const deleteEntry = useDeleteEntry();
-  const { data: tasks = [] } = useAllTasks();
+  const { data: tasks = EMPTY } = useAllTasks();
   const updateTask = useUpdateTask();
   const { startTimer } = useTimer();
   const [editTask, setEditTask] = useState<Task | null>(null);
 
-  const { data: externalEvents = [], isError: externalEventsError } = useCalendarEvents(
+  const { data: externalEvents = EMPTY, isError: externalEventsError } = useCalendarEvents(
     range.start.toISOString(),
     range.end.toISOString()
   );
@@ -172,7 +176,7 @@ export function CalendarBody({
 
   // Drafts are stored against the user's LOCAL date, so the range is asked for
   // in those terms rather than as UTC instants.
-  const { data: drafts = [] } = useDraftRange(
+  const { data: drafts = EMPTY } = useDraftRange(
     localDayKey(range.start.toISOString()),
     localDayKey(range.end.toISOString()),
     Boolean(onReviewDay)

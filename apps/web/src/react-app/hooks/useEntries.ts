@@ -5,6 +5,7 @@ import {
   type QueryClient,
   type QueryKey,
 } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { api, ApiError, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import { useTimerStore } from "@/stores/timerStore";
@@ -175,16 +176,23 @@ export function groupEntriesByDay(
     });
 }
 
+const EMPTY_ENTRIES: TimeEntry[] = [];
+
 export function useGroupedEntries(days = 30) {
-  const { data: entries = [], ...rest } = useEntries(days);
-  return { days: groupEntriesByDay(entries), entries, ...rest };
+  const { data: entries = EMPTY_ENTRIES, ...rest } = useEntries(days);
+  const grouped = useMemo(() => groupEntriesByDay(entries), [entries]);
+  return { days: grouped, entries, ...rest };
 }
 
 // Range-scoped variant used by the period-navigable timer list.
 export function useGroupedEntriesRange(sinceIso: string, untilIso: string) {
-  const { data: entries = [], ...rest } = useEntriesRange(sinceIso, untilIso);
+  const { data: entries = EMPTY_ENTRIES, ...rest } = useEntriesRange(sinceIso, untilIso);
   const pinnedEntryId = useUIStore((s) => s.pinnedEntryId);
-  return { days: groupEntriesByDay(entries, pinnedEntryId), entries, ...rest };
+  const grouped = useMemo(
+    () => groupEntriesByDay(entries, pinnedEntryId),
+    [entries, pinnedEntryId]
+  );
+  return { days: grouped, entries, ...rest };
 }
 
 

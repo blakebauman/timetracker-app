@@ -40,7 +40,7 @@ function asEntry(data: unknown): TimeEntry | null {
 
 export function useWebSocket() {
   const queryClient = useQueryClient();
-  const { setFromWS } = useTimerStore();
+  const setFromWS = useTimerStore((s) => s.setFromWS);
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCount = useRef(0);

@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -32,8 +33,9 @@ export function Pane({
   ...props
 }: React.ComponentProps<"div">) {
   const [headerHeight, setHeaderHeight] = useState<number | null>(null);
+  const context = useMemo(() => ({ setHeaderHeight }), []);
   return (
-    <PaneContext.Provider value={{ setHeaderHeight }}>
+    <PaneContext.Provider value={context}>
       <div
         data-slot="pane"
         className={cn("relative flex h-full min-h-0 flex-col overflow-hidden", className)}
