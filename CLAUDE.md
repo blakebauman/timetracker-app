@@ -17,6 +17,7 @@ pnpm zip:ext          # Build + package apps/extension/timetracker-extension.zip
 pnpm ext:id           # Print the dev extension ID derived from apps/extension/.keys/extension.pem
 pnpm email:dev        # React Email preview server for apps/web/src/worker/emails/ templates (http://localhost:3333)
 pnpm seed:demo        # Seed the LOCAL dev workspace with data that exercises drafting, pacing and digests (needs `pnpm dev` running)
+pnpm check:bundle     # First-load budget: gzipped entry + modulepreloads + CSS from apps/web/dist/client/index.html vs BUDGET_KB (run after `pnpm build`; CI enforces it)
 pnpm generate-icons   # Regenerate apps/web/public icons + apps/extension/icons from packages/core's brand mark
 pnpm cf-typegen       # Regenerate apps/web/worker-configuration.d.ts from wrangler.jsonc bindings (run after binding changes)
 pnpm test:e2e         # Run Playwright e2e tests in apps/web (spins up `pnpm dev` against localhost:5173)
@@ -24,13 +25,13 @@ pnpm backup:d1        # Export the PRODUCTION D1 to backups/*.sql.gz (plaintext,
 cd apps/web && npx wrangler tail   # Stream live worker logs (wrangler commands run where wrangler.jsonc lives)
 ```
 
-Every root script except `seed:demo` and `generate-icons` delegates to a workspace (`turbo run …` or `pnpm --filter …`). Running a workspace script directly (`cd apps/web && pnpm dev`) is always fine.
+Every root script except `seed:demo`, `generate-icons`, `check:bundle` and `backup:d1` delegates to a workspace (`turbo run …` or `pnpm --filter …`). Running a workspace script directly (`cd apps/web && pnpm dev`) is always fine.
 
 No unit test framework is configured. Playwright e2e tests live in `apps/web/e2e/` and drive the app through a real browser against the Vite dev server.
 
 ### CI / merging
 
-`.github/workflows/e2e.yml` runs the Playwright suite on every push to `main` and every PR (applies local D1 migrations from `apps/web`, then `pnpm test:e2e`). This `e2e` check is a **required branch-protection check** — `gh pr merge` is blocked until it reports `pass`; poll `gh pr checks <PR#>` rather than assuming an immediate merge succeeds. `.github/workflows/ci.yml` runs `pnpm lint`, `pnpm typecheck` and `pnpm build` as three parallel jobs alongside it.
+`.github/workflows/e2e.yml` runs the Playwright suite on every push to `main` and every PR (applies local D1 migrations from `apps/web`, then `pnpm test:e2e`). This `e2e` check is a **required branch-protection check** — `gh pr merge` is blocked until it reports `pass`; poll `gh pr checks <PR#>` rather than assuming an immediate merge succeeds. `.github/workflows/ci.yml` runs `pnpm lint`, `pnpm typecheck` and `pnpm build` (+ `pnpm check:bundle`, the first-load size budget) as three parallel jobs alongside it.
 
 Git hooks are managed by **lefthook** (`lefthook.yml`, installed by the root `prepare` script): pre-commit runs `eslint --fix` on staged `.ts`/`.tsx`, commit-msg runs commitlint (conventional commits; `design` and `polish` are allowed types alongside the standard set — see `.commitlintrc.json`), and pre-push runs `pnpm lint` + `pnpm typecheck`. The e2e suite is deliberately not a hook.
 
