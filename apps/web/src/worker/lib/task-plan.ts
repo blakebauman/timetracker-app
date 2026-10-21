@@ -8,6 +8,7 @@
  * caller — the worker runs in UTC and never derives "today" itself.
  */
 import { compareLocalDates, daysBetweenLocal } from "@timetracker/core/task-recurrence";
+import { TASK_TRACKED_SECONDS_SQL } from "./tasks";
 
 /** A deadline this many days out (or nearer) with the task still open is a risk. */
 export const DEADLINE_HORIZON_DAYS = 2;
@@ -86,11 +87,7 @@ export async function loadTaskPlan(
     .prepare(
       `SELECT tk.id, tk.name, p.name AS project_name, tk.due_date, tk.scheduled_minute,
               tk.deadline_date, tk.estimated_seconds,
-              (SELECT COALESCE(SUM(te.duration), 0) FROM time_entries te
-                 WHERE te.workspace_id = tk.workspace_id AND te.stop IS NOT NULL
-                   AND (te.task_id = tk.id
-                        OR te.task_id IN (SELECT c.id FROM tasks c WHERE c.parent_id = tk.id))
-              ) AS tracked_seconds
+              ${TASK_TRACKED_SECONDS_SQL} AS tracked_seconds
        FROM tasks tk
        LEFT JOIN projects p ON p.id = tk.project_id AND p.workspace_id = tk.workspace_id
        WHERE tk.workspace_id = ? AND tk.active = 1 AND tk.parent_id IS NULL
