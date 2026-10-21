@@ -11,7 +11,34 @@ function randomSlug(): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 }
 
-export function createAuth(env: Env, baseURL: string) {
+// One Better Auth instance per isolate and origin, not one per request.
+//
+// A fresh instance re-runs Better Auth's schema check — a sqlite_master scan
+// plus a pragma_table_info for every auth table, ~28 statements — and every
+// `auth.api.*` call awaits it before doing anything. Built per request, that
+// put the introspection in front of every /api/* call: 785 checks and ~18.8k
+// of the ~24.7k D1 queries in a day of production traffic. The check's cache
+// lives on the instance, so reusing the instance runs it once per isolate.
+//
+// Keyed weakly on `env`, which the runtime hands every request in an isolate;
+// a new deploy is a new isolate, so secrets and bindings can't go stale here.
+const instances = new WeakMap<Env, Map<string, Auth>>();
+
+export function createAuth(env: Env, baseURL: string): Auth {
+  let byOrigin = instances.get(env);
+  if (!byOrigin) {
+    byOrigin = new Map();
+    instances.set(env, byOrigin);
+  }
+  let auth = byOrigin.get(baseURL);
+  if (!auth) {
+    auth = buildAuth(env, baseURL);
+    byOrigin.set(baseURL, auth);
+  }
+  return auth;
+}
+
+function buildAuth(env: Env, baseURL: string) {
   // WebAuthn/passkey relying-party is derived from the request origin so it works
   // unchanged in local dev (localhost) and production (timetracker.run). Frontend
   // and worker share an origin here, so the RP origin is just the base origin.
@@ -213,4 +240,4 @@ export function createAuth(env: Env, baseURL: string) {
   return auth;
 }
 
-export type Auth = ReturnType<typeof createAuth>;
+export type Auth = ReturnType<typeof buildAuth>;
