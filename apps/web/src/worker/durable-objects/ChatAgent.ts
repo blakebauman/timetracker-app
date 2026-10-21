@@ -31,6 +31,11 @@ const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 // model, and how many turns a workspace can fire per minute.
 const MAX_OUTPUT_TOKENS = 800;
 const MAX_MESSAGE_CHARS = 4000;
+// How much of the conversation the model sees each turn. History is kept to
+// maxPersistedMessages for the panel, but sending all of it made every turn's
+// prompt (and its cost and time to first token) grow with the conversation.
+// The day's facts are re-grounded every turn, so older turns add little.
+const MODEL_CONTEXT_MESSAGES = 20;
 const RATE_LIMIT_MAX = 15;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
@@ -117,7 +122,7 @@ ${context}
 
     // Clamp any oversized message before it reaches the model, so a single huge
     // paste can't inflate the prompt (and cost/CPU) unbounded.
-    const bounded = this.messages.map((m) => ({
+    const bounded = windowForModel(this.messages).map((m) => ({
       ...m,
       parts: m.parts.map((p) =>
         p.type === "text" && p.text.length > MAX_MESSAGE_CHARS
@@ -152,4 +157,17 @@ ${context}
     });
     return createUIMessageStreamResponse({ stream });
   }
+}
+
+/**
+ * The tail of the conversation the model is given: the last
+ * MODEL_CONTEXT_MESSAGES, starting on a user turn so the model never opens on a
+ * reply to a question it can't see. A tool call and its result are parts of the
+ * same UI message, so a message-boundary cut can't separate them.
+ */
+function windowForModel(messages: UIMessage[]): UIMessage[] {
+  if (messages.length <= MODEL_CONTEXT_MESSAGES) return messages;
+  const tail = messages.slice(-MODEL_CONTEXT_MESSAGES);
+  const firstUser = tail.findIndex((m) => m.role === "user");
+  return firstUser > 0 ? tail.slice(firstUser) : tail;
 }

@@ -1,5 +1,10 @@
 import { z } from "zod";
+import { BULK_ENTRY_IDS_MAX } from "./limits";
 import { parseRecurRule } from "./task-recurrence";
+
+// Re-exported for existing server imports; the client imports ./limits
+// directly so it never pulls zod in for a number.
+export { ENTRY_LIST_LIMIT, BULK_ENTRY_IDS_MAX } from "./limits";
 
 // ─── Workspace ───────────────────────────────────────────────────────────────
 
@@ -375,10 +380,6 @@ export const TimeEntrySchema = z.object({
   updatedAt: z.string(),
 });
 
-// Max rows `GET /time_entries` returns (newest first). Shared so the list view
-// can tell the user when a wide range like "All dates" has been truncated
-// rather than silently dropping the oldest entries.
-export const ENTRY_LIST_LIMIT = 500;
 
 // ─── Description autocomplete ────────────────────────────────────────────────
 // One suggestion per distinct past description, carrying the project/task combo
@@ -449,11 +450,6 @@ export const UpdateTimeEntrySchema = z
     { message: "Stop time must be after start time", path: ["stop"] }
   );
 
-// D1 allows 100 bound parameters per statement. A bulk `WHERE id IN (…)`
-// spends one per id plus a few for the workspace and patch values, so 90 is
-// the ceiling a single statement can honour; the client chunks larger
-// selections (lib/api.ts) rather than the server silently truncating them.
-export const BULK_ENTRY_IDS_MAX = 90;
 const BulkEntryIds = z.array(z.string().max(64)).min(1).max(BULK_ENTRY_IDS_MAX);
 
 export const BulkUpdateTimeEntriesSchema = z.object({

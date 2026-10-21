@@ -9,7 +9,7 @@ import type {
   ApiKeyScope,
   CreatedApiKey,
 } from "@timetracker/core/schemas";
-import { BULK_ENTRY_IDS_MAX } from "@timetracker/core/schemas";
+import { BULK_ENTRY_IDS_MAX } from "@timetracker/core/limits";
 
 export type CalendarProviderId = "google" | "microsoft";
 

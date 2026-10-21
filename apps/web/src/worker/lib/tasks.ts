@@ -50,22 +50,34 @@ function formatTask(row: Row) {
 }
 
 /**
- * `tracked_seconds` **includes every subtask's tracked time**.
+ * A task's tracked seconds **including every subtask's** — a correlated scalar
+ * for a row aliased `tk`. Shared with lib/task-plan.ts.
  *
  * A parent is a container: time is logged against the leaf you actually worked
  * on, so without the rollup a parent with five tracked children reads as zero
  * and its estimate bar sits empty all sprint. Correlated subqueries rather than
  * a GROUP BY, so the row survives adding more per-task aggregates without
  * every one of them needing a grouping key.
+ *
+ * Two sums, not one `task_id = tk.id OR task_id IN (children)`: with the OR
+ * SQLite can't seek an index on task_id, fell back to the workspace, and summed
+ * every entry the workspace ever logged once per task — 2.7s for a 300-task
+ * list over 20k entries. The CROSS JOIN pins the children as the outer loop
+ * (SQLite never reorders one), so each child seeks idx_te_task_cover
+ * instead of the planner scanning entries and looking children up. ~1ms.
  */
+export const TASK_TRACKED_SECONDS_SQL = `(
+    (SELECT COALESCE(SUM(te.duration), 0) FROM time_entries te
+       WHERE te.task_id = tk.id AND te.workspace_id = tk.workspace_id AND te.stop IS NOT NULL)
+    + (SELECT COALESCE(SUM(te.duration), 0) FROM tasks c CROSS JOIN time_entries te
+       WHERE c.parent_id = tk.id AND te.task_id = c.id
+         AND te.workspace_id = tk.workspace_id AND te.stop IS NOT NULL)
+  )`;
+
 const TASK_SELECT = `
   SELECT tk.*,
     p.name AS project_name, p.color AS project_color,
-    (SELECT COALESCE(SUM(te.duration), 0) FROM time_entries te
-       WHERE te.workspace_id = tk.workspace_id AND te.stop IS NOT NULL
-         AND (te.task_id = tk.id
-              OR te.task_id IN (SELECT c.id FROM tasks c WHERE c.parent_id = tk.id))
-    ) AS tracked_seconds,
+    ${TASK_TRACKED_SECONDS_SQL} AS tracked_seconds,
     (SELECT COUNT(*) FROM tasks c WHERE c.parent_id = tk.id) AS subtask_total,
     (SELECT COUNT(*) FROM tasks c WHERE c.parent_id = tk.id AND c.active = 0) AS subtask_done,
     (SELECT json_group_array(t.name) FROM task_tags tt

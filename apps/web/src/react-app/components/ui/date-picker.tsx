@@ -3,7 +3,7 @@ import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { LazyCalendar } from "@/components/ui/lazy-calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
@@ -57,7 +57,7 @@ export function DatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
+        <LazyCalendar
           mode="single"
           selected={value ?? undefined}
           defaultMonth={value ?? undefined}

@@ -88,8 +88,11 @@ export async function convertRange(
   until: string,
   opts: { onlyEnded?: boolean; onlyAutoTrack?: boolean } = {}
 ): Promise<number> {
+  // Fresh: these events become time entries, so read the provider as it is now
+  // rather than a cached copy that may predate a cancellation.
   let events = await fetchWorkspaceEvents(env, workspaceId, since, until, {
     onlyAutoTrack: opts.onlyAutoTrack,
+    fresh: true,
   });
   if (opts.onlyEnded) {
     const nowMs = Date.now();
