@@ -86,7 +86,7 @@ catalog:
 
   # web / worker
   hono: 4.13.8
-  "@hono/zod-validator": ^0.8.0
+  "@hono/zod-validator": ^0.9.1
   zod: ^4.4.3
   better-auth: ^1.7.6
   "@better-auth/passkey": ^1.7.6
