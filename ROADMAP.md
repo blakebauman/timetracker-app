@@ -299,6 +299,9 @@ AssistantPanel) shipped in #79.
   `wrangler.jsonc`. The worker is D1-chatty, so running it near the D1 primary
   collapses remaining serial-query latency for far-away users. Measure
   before/after; one-line and reversible. Trigger: users outside North America.
+  *Checked 2026-10-21:* the D1 primary runs in WNAM and ~90% of `/api/*`
+  traffic lands at PHX/SJC, so the worker already runs next to its database —
+  trigger not met.
 - **D1 read replication (Sessions API)** — wrap read-heavy report/list queries
   in `env.DB.withSession("first-unconstrained")` with bookmark passthrough via
   a response header for read-your-writes. Free (replicas are automatic); pairs

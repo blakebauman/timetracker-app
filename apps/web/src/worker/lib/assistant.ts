@@ -73,43 +73,44 @@ async function loadTodayFacts(
   dayStartIso: string,
   dayEndIso: string
 ): Promise<TodayFacts> {
-  const [running, totals, confirmed, everTracked] = await Promise.all([
+  // One batch, one round trip to D1 — this runs on every nudge poll and every
+  // Assistant turn.
+  const [runningRes, totalsRes, confirmed, everTrackedRes] = await db.batch([
     db
       .prepare(
         `SELECT id, description, start FROM time_entries
          WHERE workspace_id = ? AND stop IS NULL LIMIT 1`
       )
-      .bind(workspaceId)
-      .first<RunningEntry>(),
+      .bind(workspaceId),
     db
       .prepare(
         `SELECT COUNT(*) AS n, COALESCE(SUM(duration), 0) AS total FROM time_entries
          WHERE workspace_id = ? AND stop IS NOT NULL AND start >= ? AND start < ?`
       )
-      .bind(workspaceId, dayStartIso, dayEndIso)
-      .first<{ n: number; total: number }>(),
+      .bind(workspaceId, dayStartIso, dayEndIso),
     db
       .prepare(
         `SELECT calendar_event_id FROM time_entries
          WHERE workspace_id = ? AND calendar_event_id IS NOT NULL
            AND start >= ? AND start <= ?`
       )
-      .bind(workspaceId, dayStartIso, dayEndIso)
-      .all<{ calendar_event_id: string }>(),
+      .bind(workspaceId, dayStartIso, dayEndIso),
     // Distinguishes "hasn't started today" from "brand-new workspace" — the
     // nothing-tracked nudge is a reminder for the former and a scolding for the
     // latter, whose first-run experience should be the app's own empty state.
-    db
-      .prepare(`SELECT 1 AS n FROM time_entries WHERE workspace_id = ? LIMIT 1`)
-      .bind(workspaceId)
-      .first<{ n: number }>(),
+    db.prepare(`SELECT 1 AS n FROM time_entries WHERE workspace_id = ? LIMIT 1`).bind(workspaceId),
   ]);
+  const running = (runningRes.results[0] as RunningEntry | undefined) ?? null;
+  const totals = totalsRes.results[0] as { n: number; total: number } | undefined;
+  const everTracked = everTrackedRes.results[0];
 
   return {
-    running: running ?? null,
+    running,
     entryCount: totals?.n ?? 0,
     totalSeconds: totals?.total ?? 0,
-    confirmedEventIds: new Set(confirmed.results.map((r) => r.calendar_event_id)),
+    confirmedEventIds: new Set(
+      (confirmed.results as { calendar_event_id: string }[]).map((r) => r.calendar_event_id)
+    ),
     hasEverTracked: Boolean(everTracked),
   };
 }
