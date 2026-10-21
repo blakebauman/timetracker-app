@@ -19,7 +19,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { toCreatePayload } from "@/lib/entryUtils";
-import { ENTRY_LIST_LIMIT } from "@timetracker/core/schemas";
+import { ENTRY_LIST_LIMIT } from "@timetracker/core/limits";
 
 interface EntryListProps {
   since: Date;

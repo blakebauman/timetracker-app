@@ -72,6 +72,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # First-load budget: fails when the entry + modulepreloads + CSS grow
+      # past scripts/check-bundle-size.mjs's BUDGET_KB (gzipped).
+      - run: pnpm check:bundle
 
   # Known-CVE check on the lockfile as it is, not just version currency (that is
   # Dependabot's job). Advisory-only for now — continue-on-error keeps a
