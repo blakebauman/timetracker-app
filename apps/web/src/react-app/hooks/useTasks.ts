@@ -74,7 +74,6 @@ export function useTasks(projectId?: string | null) {
         ...(projectId ? { projectId } : {}),
         includeInactive: "true",
       }) as Promise<Task[]>,
-    staleTime: 30_000,
     enabled: projectId !== undefined, // allow null (returns all) but not skip entirely
     select,
   });
@@ -85,7 +84,6 @@ export function useAllTasks(enabled = true) {
   return useQuery({
     queryKey: ["tasks", "all", "withDone"],
     queryFn: () => api.tasks.list({ includeInactive: "true" }) as Promise<Task[]>,
-    staleTime: 30_000,
     enabled,
     select,
   });

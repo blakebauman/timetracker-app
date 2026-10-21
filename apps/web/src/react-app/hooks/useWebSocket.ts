@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTimerStore } from "@/stores/timerStore";
 import { ACTIVITY_EVENTS, recordRemoteActivity } from "@/lib/activitySync";
-import { invalidateEntryDerived } from "@/hooks/useEntries";
+import { invalidateEntryDerived, isRunningRename, patchEntryInCache } from "@/hooks/useEntries";
 import { CLIENT_ID, api } from "@/lib/api";
 import { clearTimerState } from "@/lib/idb";
 import type { TimeEntry } from "@timetracker/core/schemas";
@@ -114,8 +114,11 @@ export function useWebSocket() {
           pingTimer = null;
         }
         if (destroyed) return;
-        // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
-        const delay = Math.min(1000 * Math.pow(2, retryCount.current), 30_000);
+        // Exponential backoff: 1s, 2s, 4s, 8s, max 30s — jittered ±50%. A
+        // deploy resets the room for every client at once, and without jitter
+        // every tab reconnected, and resynced, in the same second.
+        const base = Math.min(1000 * Math.pow(2, retryCount.current), 30_000);
+        const delay = base * (0.5 + Math.random());
         retryCount.current++;
         retryRef.current = setTimeout(connect, delay);
       };
@@ -222,6 +225,14 @@ export function useWebSocket() {
           // is how trimming idle time and the edit sheet close a timer.
           const changed = asEntry(msg.data);
           const running = useTimerStore.getState().runningEntry;
+          // Another tab renaming the running timer (its 800 ms autosave): the
+          // row is the whole change, so patch it in rather than refetching
+          // every entry-derived query family each typing pause.
+          if (changed && !isOwnEcho && isRunningRename(running, changed)) {
+            reconcileRunning(changed);
+            patchEntryInCache(queryClient, changed);
+            break;
+          }
           if (changed) {
             if (running && changed.id === running.id) reconcileRunning(changed);
           } else if (running) {

@@ -15,7 +15,7 @@ import { modKey } from "@/lib/platform";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { SETTINGS_ROUTE, WORK_ROUTES } from "./navRoutes";
 import { useTimer } from "@/hooks/useTimer";
-import { useGroupedEntries } from "@/hooks/useEntries";
+import { useEntries } from "@/hooks/useEntries";
 import { useAllTasks } from "@/hooks/useTasks";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -37,7 +37,10 @@ export function CommandPalette() {
   const { startTimer, stopTimer } = useTimer();
   const runningEntry = useTimerStore((s) => s.runningEntry);
   const openAssistant = useAssistantStore((s) => s.setOpen);
-  const { entries } = useGroupedEntries(30);
+  // Only while open: the palette is mounted on every page, and its recent
+  // entries were a 30-day fetch (and refetch on every entry change) for a
+  // list nobody had asked to see.
+  const { data: entries = [] } = useEntries(30, open);
   const { data: tasks = [] } = useAllTasks();
 
   useHotkeys(

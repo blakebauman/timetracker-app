@@ -25,7 +25,7 @@ import { settleEntryId, isOptimisticEntryId, amendQueuedStart } from "@/lib/pend
 // range in the app, it has to move when the calendar day does (useDayRollover).
 // Left resolved at mount, a tab open past midnight kept querying yesterday's
 // window and simply never saw the entries logged after it.
-export function useEntries(days = 30) {
+export function useEntries(days = 30, enabled = true) {
   const today = parseISO(useDayRollover());
   const since = startOfDay(subDays(today, days - 1)).toISOString();
   const until = endOfDay(today).toISOString();
@@ -33,6 +33,7 @@ export function useEntries(days = 30) {
   return useQuery({
     queryKey: ["time-entries", since, until],
     queryFn: () => api.timeEntries.list({ since, until }) as Promise<TimeEntry[]>,
+    enabled,
   });
 }
 
@@ -225,6 +226,34 @@ export function invalidateEntryDerived(queryClient: QueryClient, suggestions = f
   if (suggestions) queryClient.invalidateQueries({ queryKey: ["entry-suggestions"] });
 }
 
+/** Write the server's copy of one entry into every cached range that holds it. */
+export function patchEntryInCache(queryClient: QueryClient, entry: TimeEntry) {
+  queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
+    old?.map((e) => (e.id === entry.id ? entry : e))
+  );
+}
+
+/**
+ * True when `next` is the running entry `prev` with nothing but its description
+ * changed — the running timer's 800 ms autosave. Nothing derived from entries
+ * can see that change: totals, reports and task rollups only count stopped
+ * entries, so patching the row in place is the whole update.
+ */
+export function isRunningRename(prev: TimeEntry | null | undefined, next: TimeEntry): boolean {
+  return (
+    !!prev &&
+    prev.id === next.id &&
+    !prev.stop &&
+    !next.stop &&
+    prev.start === next.start &&
+    prev.projectId === next.projectId &&
+    prev.taskId === next.taskId &&
+    prev.billable === next.billable &&
+    prev.tags.length === next.tags.length &&
+    prev.tags.every((t, i) => t === next.tags[i])
+  );
+}
+
 /** The rows an optimistic mutation is about to touch, and the caches holding them. */
 interface EntrySnapshot {
   rows: Map<string, TimeEntry>;
@@ -382,16 +411,21 @@ export function useUpdateEntry() {
       // The invalidate in onSettled still refetches, but this makes the authoritative
       // values (duration rounding, tag ids, syncStatus) visible on the next frame
       // rather than after a round-trip the user can watch.
-      if (updated) {
-        queryClient.setQueriesData<TimeEntry[]>({ queryKey: ["time-entries"] }, (old) =>
-          old?.map((e) => (e.id === updated.id ? updated : e))
-        );
-      }
+      if (updated) patchEntryInCache(queryClient, updated);
     },
     // Refetch on failure too: a rejected edit may have been rejected against
     // state this client hasn't seen yet.
     onSettled: (_data, err, vars) => {
       if (isQueuedOffline(err)) return;
+      // The running timer's description autosave: onSuccess has already written
+      // the server's row into every cached range, and nothing derived from
+      // entries counts a running one. Refetching four query families every
+      // typing pause was the bulk of the app's background requests.
+      const runningDescriptionOnly =
+        !err &&
+        useTimerStore.getState().runningEntry?.id === vars.id &&
+        Object.keys(vars.data).every((k) => k === "description");
+      if (runningDescriptionOnly) return;
       // Renaming a completed entry changes what autocomplete should offer.
       // A running entry's description is still being typed — that's the debounce
       // case the suggestion cache is kept separate for.
