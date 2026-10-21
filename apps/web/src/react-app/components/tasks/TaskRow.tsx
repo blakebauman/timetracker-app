@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { SpentFigure } from "@/components/ui/spent-figure";
-import { Calendar } from "@/components/ui/calendar";
+import { LazyCalendar } from "@/components/ui/lazy-calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
@@ -529,7 +529,7 @@ export function TaskRow({
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
+                <LazyCalendar
                   mode="single"
                   selected={task.dueDate ? localDateToDate(task.dueDate) : undefined}
                   onSelect={(date) => {

@@ -79,7 +79,13 @@ export function AppShell() {
 
   // Warm the assistant chunk once the shell is idle so the first ⌘I still feels
   // instant — the download happens ahead of time, parse/execute waits for mount.
+  // Not on a connection that asked to save data or is too slow to spare ~80 kB
+  // for a panel that may never open; there the first open pays for it instead.
   useEffect(() => {
+    const connection = (
+      navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }
+    ).connection;
+    if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? "")) return;
     const warm = () => void import("@/components/assistant/AssistantPanel");
     if (typeof window.requestIdleCallback === "function") {
       const id = window.requestIdleCallback(warm);

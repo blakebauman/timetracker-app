@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { LazyCalendar } from "@/components/ui/lazy-calendar";
 import { TimeOfDayInput } from "./TimeOfDayInput";
 import { dateDelta, shiftDate, toDateInputValue, formatShortDate, isToday, isYesterday } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
@@ -101,7 +101,7 @@ export function TimeRangePopover({ start, stop, onChange, children, triggerClass
             )}
           </div>
         </div>
-        <Calendar
+        <LazyCalendar
           mode="single"
           selected={new Date(start)}
           onSelect={handleDateSelect}
