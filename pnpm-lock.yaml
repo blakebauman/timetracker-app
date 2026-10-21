@@ -112,8 +112,8 @@ catalogs:
       specifier: 17.7.0
       version: 17.7.0
     hono:
-      specifier: 4.13.8
-      version: 4.13.8
+      specifier: 4.13.13
+      version: 4.13.13
     idb:
       specifier: ^8.0.3
       version: 8.0.3
@@ -314,7 +314,7 @@ importers:
         version: 7.1.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(temporal-polyfill@1.0.5)
       '@hono/zod-validator':
         specifier: 'catalog:'
-        version: 0.8.0(hono@4.13.8)(zod@4.4.3)
+        version: 0.8.0(hono@4.13.13)(zod@4.4.3)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.30.0(@cfworker/json-schema@4.1.1)(zod@4.4.3)
@@ -353,7 +353,7 @@ importers:
         version: 4.4.0
       hono:
         specifier: 'catalog:'
-        version: 4.13.8
+        version: 4.13.13
       idb:
         specifier: 'catalog:'
         version: 8.0.3
@@ -4099,8 +4099,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hono@4.13.8:
-    resolution: {integrity: sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ==}
+  hono@4.13.13:
+    resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
     engines: {node: '>=16.9.0'}
 
   hookified@1.15.1:
@@ -5658,6 +5658,9 @@ packages:
 
   workers-ai-provider@3.3.1:
     resolution: {integrity: sha512-vArwnmiAxQQF1clsXJd9ADn1xK9YUZVxE4umaMhrdsxM2kucxP430LfaoH4rn0AfoqtnuH3bfRhW1ak0r1x/8A==}
+    deprecated: |-
+      Deprecated. Use createAI from agents/models/ai-sdk, or
+       ai-search-provider for AI Search: https://developers.cloudflare.com/agents/models/ai-sdk/
     peerDependencies:
       '@ai-sdk/anthropic': ^3.0.0
       '@ai-sdk/google': ^3.0.0
@@ -6592,13 +6595,13 @@ snapshots:
 
   '@hexagon/base64@1.1.28': {}
 
-  '@hono/node-server@1.19.14(hono@4.13.8)':
+  '@hono/node-server@1.19.14(hono@4.13.13)':
     dependencies:
-      hono: 4.13.8
+      hono: 4.13.13
 
-  '@hono/zod-validator@0.8.0(hono@4.13.8)(zod@4.4.3)':
+  '@hono/zod-validator@0.8.0(hono@4.13.13)(zod@4.4.3)':
     dependencies:
-      hono: 4.13.8
+      hono: 4.13.13
       zod: 4.4.3
 
   '@humanfs/core@0.19.2':
@@ -6871,7 +6874,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)':
     dependencies:
-      '@hono/node-server': 1.19.14(hono@4.13.8)
+      '@hono/node-server': 1.19.14(hono@4.13.13)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -6881,7 +6884,7 @@ snapshots:
       eventsource-parser: 3.1.0
       express: 5.2.1
       express-rate-limit: 8.6.0(express@5.2.1)
-      hono: 4.13.8
+      hono: 4.13.13
       jose: 6.2.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -6895,7 +6898,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(zod@4.4.3)':
     dependencies:
-      '@hono/node-server': 1.19.14(hono@4.13.8)
+      '@hono/node-server': 1.19.14(hono@4.13.13)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -6905,7 +6908,7 @@ snapshots:
       eventsource-parser: 3.1.0
       express: 5.2.1
       express-rate-limit: 8.6.0(express@5.2.1)
-      hono: 4.13.8
+      hono: 4.13.13
       jose: 6.2.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -9385,7 +9388,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hono@4.13.8: {}
+  hono@4.13.13: {}
 
   hookified@1.15.1: {}
 

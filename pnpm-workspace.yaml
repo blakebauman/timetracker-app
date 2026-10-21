@@ -85,7 +85,7 @@ catalog:
   "@tanstack/react-query-devtools": ^5.101.2
 
   # web / worker
-  hono: 4.13.8
+  hono: 4.13.13
   "@hono/zod-validator": ^0.8.0
   zod: ^4.4.3
   better-auth: ^1.7.6
