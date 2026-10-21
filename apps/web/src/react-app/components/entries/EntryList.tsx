@@ -36,7 +36,7 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
     since.toISOString(),
     until.toISOString()
   );
-  const { runningEntry } = useTimerStore();
+  const runningEntry = useTimerStore((s) => s.runningEntry);
   // Cached app-wide (the pickers and header already subscribe), so this is a
   // read of existing state rather than a first-run-only fetch.
   const { data: projects = [], isLoading: projectsLoading } = useProjects();

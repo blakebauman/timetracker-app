@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -23,7 +24,10 @@ export function useAssistantNudges() {
     staleTime: 4 * 60_000,
     refetchInterval: 5 * 60_000,
   });
-  const nudges = (query.data ?? []).filter((n) => !(n.id in dismissed));
+  const nudges = useMemo(
+    () => (query.data ?? []).filter((n) => !(n.id in dismissed)),
+    [query.data, dismissed]
+  );
   return { ...query, nudges };
 }
 

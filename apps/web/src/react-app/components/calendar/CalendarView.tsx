@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useCallback } from "react";
 import FullCalendar, {
   type CalendarRef,
   type DateClickInfo,
@@ -16,6 +16,18 @@ import interactionPlugin from "@fullcalendar/react/interaction";
 import "@fullcalendar/react/skeleton.css";
 import { CalendarEventContent } from "./CalendarEventContent";
 import { calendarClassOptions } from "./calendarClasses";
+
+// Option objects are module constants so FullCalendar doesn't re-diff a fresh
+// copy of each on every parent render.
+const PLUGINS = [timeGridPlugin, dayGridPlugin, interactionPlugin];
+// A work-week (5-day) view alongside the built-in week/day/month views.
+const VIEWS = {
+  ...calendarClassOptions.views,
+  timeGridFiveDay: { type: "timeGrid", duration: { days: 5 } },
+};
+const DAY_HEADER_FORMAT = { weekday: "short", day: "numeric" } as const;
+const TIME_FORMAT_12H = { hour: "numeric", minute: "2-digit", hour12: true, meridiem: true } as const;
+const TIME_FORMAT_24H = { hour: "2-digit", minute: "2-digit", hour12: false, meridiem: false } as const;
 
 export type CalendarViewType =
   | "timeGridWeek"
@@ -78,24 +90,25 @@ export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
     // date-fns "h:mm a" / "HH:mm", so 13:00 reads "1:00 PM" or "13:00". FC's
     // 2-digit + short-meridiem default gives "01:00pm" — the same instant in a
     // third notation.
-    const hour12 = timeFormat === "12h";
-    const timeFmt = hour12
-      ? ({ hour: "numeric", minute: "2-digit", hour12: true, meridiem: true } as const)
-      : ({ hour: "2-digit", minute: "2-digit", hour12: false, meridiem: false } as const);
+    const timeFmt = timeFormat === "12h" ? TIME_FORMAT_12H : TIME_FORMAT_24H;
+    const handleSelect = useCallback(
+      (arg: DateSelectInfo) => onSelect(arg.start.toISOString(), arg.end.toISOString()),
+      [onSelect]
+    );
+    const handleDateClick = useCallback(
+      (arg: DateClickInfo) => onDateClick(arg.date.toISOString()),
+      [onDateClick]
+    );
 
     return (
       <div className="tt-calendar min-h-0 flex-1">
         <FullCalendar
           {...calendarClassOptions}
           ref={ref}
-          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+          plugins={PLUGINS}
           initialView={initialView}
           initialDate={initialDate}
-          // A work-week (5-day) view alongside the built-in week/day/month views.
-          views={{
-            ...calendarClassOptions.views,
-            timeGridFiveDay: { type: "timeGrid", duration: { days: 5 } },
-          }}
+          views={VIEWS}
           headerToolbar={false}
           height="100%"
           timeZone="local"
@@ -112,7 +125,7 @@ export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
           eventTimeFormat={timeFmt}
           slotHeaderFormat={timeFmt}
           expandRows
-          dayHeaderFormat={{ weekday: "short", day: "numeric" }}
+          dayHeaderFormat={DAY_HEADER_FORMAT}
           selectable
           selectMirror
           editable
@@ -120,10 +133,8 @@ export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
           eventDurationEditable
           events={events}
           eventContent={CalendarEventContent}
-          select={(arg: DateSelectInfo) =>
-            onSelect(arg.start.toISOString(), arg.end.toISOString())
-          }
-          dateClick={(arg: DateClickInfo) => onDateClick(arg.date.toISOString())}
+          select={handleSelect}
+          dateClick={handleDateClick}
           eventDrop={onEventDrop}
           eventResize={onEventResize}
           eventClick={onEventClick}

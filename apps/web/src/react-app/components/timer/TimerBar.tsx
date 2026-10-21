@@ -59,7 +59,7 @@ import type { EntrySuggestion } from "@timetracker/core/schemas";
  * published as `--timer-h` so panes clear whichever body is on screen.
  */
 export function TimerBar() {
-  const { runningEntry } = useTimerStore();
+  const runningEntry = useTimerStore((s) => s.runningEntry);
   const { startTimer, stopTimer, discardTimer } = useTimer();
   const updateEntry = useUpdateEntry();
   // Shared with the Alt+Shift+X hotkey (registered in useTimerLifecycle) so
@@ -86,7 +86,9 @@ export function TimerBar() {
   const discRef = useRef<HTMLButtonElement>(null);
   const phoneDiscRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement | null>(null);
-  const elapsed = useTimerStore((s) => s.elapsed);
+  // Only the discard dialog's title reads this; subscribing while it's closed
+  // re-rendered the whole bar every second.
+  const elapsed = useTimerStore((s) => (confirmDiscard ? s.elapsed : 0));
 
   const isRunning = Boolean(runningEntry);
 

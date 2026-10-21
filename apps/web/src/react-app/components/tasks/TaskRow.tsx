@@ -132,7 +132,8 @@ export function TaskRow({
   const completeTask = useCompleteTask();
   const { startTimer, stopTimer } = useTimer();
   const runningEntry = useTimerStore((s) => s.runningEntry);
-  const elapsed = useTimerStore((s) => s.elapsed);
+  // Only the running task's row ticks; the rest read a constant 0.
+  const elapsed = useTimerStore((s) => (s.runningEntry?.taskId === task.id ? s.elapsed : 0));
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
 
   const [editingName, setEditingName] = useState(false);
