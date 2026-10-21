@@ -165,7 +165,11 @@ function openKeepRunningWindow(entry: TimeEntry) {
 }
 
 export function useTimer() {
-  const { runningEntry, setRunningEntry, clearTimer } = useTimerStore();
+  // Field selectors, never the whole store: `elapsed` ticks every second, and
+  // every entry and task row calls this hook.
+  const runningEntry = useTimerStore((s) => s.runningEntry);
+  const setRunningEntry = useTimerStore((s) => s.setRunningEntry);
+  const clearTimer = useTimerStore((s) => s.clearTimer);
   const queryClient = useQueryClient();
 
   // Optimistically drop the just-started entry into the cached time-entries
@@ -764,7 +768,10 @@ export function useTimerLifecycle(
     onBeforeToggleRef.current = opts?.onBeforeToggle;
     onUseDescriptionRef.current = opts?.onUseDescription;
   });
-  const { runningEntry, localStartTime, setElapsed, setRunningEntry } = useTimerStore();
+  const runningEntry = useTimerStore((s) => s.runningEntry);
+  const localStartTime = useTimerStore((s) => s.localStartTime);
+  const setElapsed = useTimerStore((s) => s.setElapsed);
+  const setRunningEntry = useTimerStore((s) => s.setRunningEntry);
   const { startTimer, stopTimer, keepRunning } = useTimer();
 
   // The hotkey fires from outside React's render cycle, so it needs the last

@@ -40,6 +40,11 @@ export default tseslint.config(
 			"no-restricted-syntax": [
 				"error",
 				{
+					selector: "CallExpression[callee.name='useTimerStore'][arguments.length=0]",
+					message:
+						"Read useTimerStore through a selector (`useTimerStore((s) => s.runningEntry)`). The store's `elapsed` ticks every second, so a whole-store read re-renders its component once a second while a timer runs.",
+				},
+				{
 					selector:
 						"Literal[value=/^(?=[\\s\\S]*transition-(all|colors|opacity|transform|shadow))(?![\\s\\S]*ease-out-qu)[\\s\\S]*$/]",
 					message:

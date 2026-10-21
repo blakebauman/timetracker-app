@@ -35,7 +35,7 @@ export function CommandPalette() {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const { startTimer, stopTimer } = useTimer();
-  const { runningEntry } = useTimerStore();
+  const runningEntry = useTimerStore((s) => s.runningEntry);
   const openAssistant = useAssistantStore((s) => s.setOpen);
   const { entries } = useGroupedEntries(30);
   const { data: tasks = [] } = useAllTasks();
