@@ -210,7 +210,7 @@ The line under the field shows what it understood before you commit it. Anything
 
 Connect **Google Calendar**, **Outlook / Microsoft 365**, or both under **Settings → Calendar sync** (read-only access — the app never writes to your calendar). Connecting both is the normal case when work and personal calendars are separate; their events simply appear together. Once connected:
 
-- Your events appear as dashed **ghost blocks** on the Calendar view. Click one → confirm the project → it becomes a tracked entry.
+- Your events appear as dashed **ghost blocks** on the Calendar view. Click one → confirm the project → it becomes a tracked entry. A meeting you've just added or moved in your calendar can take up to a minute and a half to show up here and in the Assistant; auto-track always reads your calendar fresh.
 - **Auto-track** (toggle on the same Settings card): every few minutes, meetings that have *ended* are automatically turned into time entries — no clicking needed. Each event is only ever converted once.
 - You can also convert a whole date range at once ("convert visible events").
 
