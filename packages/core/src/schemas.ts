@@ -39,6 +39,10 @@ export const SettingsSchema = z.object({
   // positive), so the cron knows when their morning is. Refreshed by the client
   // whenever it drifts — a DST change would otherwise send an hour off for months.
   digestTimezoneOffsetMinutes: z.number().int(),
+  // Working hours, as minutes after local midnight — the window "Plan my day"
+  // fills. End is exclusive and may be 1440 (midnight).
+  workdayStartMinute: z.number().int().min(0).max(1439),
+  workdayEndMinute: z.number().int().min(1).max(1440),
 });
 
 export const UpdateSettingsSchema = z
@@ -54,8 +58,17 @@ export const UpdateSettingsSchema = z
     digestWeekly: z.boolean(),
     digestHour: z.coerce.number().int().min(0).max(23),
     digestTimezoneOffsetMinutes: z.coerce.number().int().min(-900).max(900),
+    workdayStartMinute: z.coerce.number().int().min(0).max(1439),
+    workdayEndMinute: z.coerce.number().int().min(1).max(1440),
   })
-  .partial();
+  .partial()
+  .refine(
+    (s) =>
+      s.workdayStartMinute === undefined ||
+      s.workdayEndMinute === undefined ||
+      s.workdayEndMinute > s.workdayStartMinute,
+    { message: "Working hours must end after they start", path: ["workdayEndMinute"] }
+  );
 
 export type Settings = z.infer<typeof SettingsSchema>;
 export type UpdateSettings = z.infer<typeof UpdateSettingsSchema>;

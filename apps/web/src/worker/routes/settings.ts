@@ -3,6 +3,7 @@ import { zValidator } from "../lib/validate";
 import { z } from "zod";
 import { UpdateSettingsSchema } from "@timetracker/core/schemas";
 import { sendDigest, localDateAt } from "../lib/digest";
+import { WORKDAY_END, WORKDAY_START } from "../lib/day-plan";
 
 type Row = {
   currency: string;
@@ -16,6 +17,8 @@ type Row = {
   digest_weekly: number;
   digest_hour: number;
   digest_tz_offset: number;
+  work_start_minute: number;
+  work_end_minute: number;
 };
 
 function toSettings(row: Row | null) {
@@ -31,12 +34,14 @@ function toSettings(row: Row | null) {
     digestWeekly: Boolean(row?.digest_weekly),
     digestHour: row?.digest_hour ?? 8,
     digestTimezoneOffsetMinutes: row?.digest_tz_offset ?? 0,
+    workdayStartMinute: row?.work_start_minute ?? WORKDAY_START,
+    workdayEndMinute: row?.work_end_minute ?? WORKDAY_END,
   };
 }
 
 const SELECT = `SELECT currency, time_format, round_mode, round_minutes, week_start,
                        show_weekends, auto_assign_colors, digest_daily, digest_weekly,
-                       digest_hour, digest_tz_offset
+                       digest_hour, digest_tz_offset, work_start_minute, work_end_minute
                 FROM "user" WHERE id = ?`;
 
 // Per-user display settings (currency, time format, report rounding). Stored on
@@ -65,7 +70,19 @@ export const settingsRouter = new Hono<{
       digestWeekly,
       digestHour,
       digestTimezoneOffsetMinutes,
+      workdayStartMinute,
+      workdayEndMinute,
     } = c.req.valid("json");
+
+    // The schema checks the pair when both arrive; one alone is checked
+    // against the stored other half, so no sequence of edits can store a
+    // window that ends before it starts.
+    if ((workdayStartMinute === undefined) !== (workdayEndMinute === undefined)) {
+      const current = toSettings(await c.env.DB.prepare(SELECT).bind(userId).first<Row>());
+      const start = workdayStartMinute ?? current.workdayStartMinute;
+      const end = workdayEndMinute ?? current.workdayEndMinute;
+      if (end <= start) return c.json({ error: "Working hours must end after they start" }, 400);
+    }
 
     const sets: string[] = [];
     const bindings: unknown[] = [];
@@ -112,6 +129,14 @@ export const settingsRouter = new Hono<{
     if (digestTimezoneOffsetMinutes !== undefined) {
       sets.push("digest_tz_offset = ?");
       bindings.push(digestTimezoneOffsetMinutes);
+    }
+    if (workdayStartMinute !== undefined) {
+      sets.push("work_start_minute = ?");
+      bindings.push(workdayStartMinute);
+    }
+    if (workdayEndMinute !== undefined) {
+      sets.push("work_end_minute = ?");
+      bindings.push(workdayEndMinute);
     }
 
     if (sets.length > 0) {

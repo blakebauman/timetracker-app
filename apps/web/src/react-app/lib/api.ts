@@ -17,6 +17,8 @@ export interface DayPlan {
   placed: { taskId: string; name: string; startMinute: number; minutes: number }[];
   unplaced: { taskId: string; name: string; minutes: number }[];
   freeMinutes: number;
+  /** The working hours the plan filled (Settings → Working hours). */
+  workday: { start: number; end: number };
 }
 
 export type CalendarProviderId = "google" | "microsoft";
@@ -488,6 +490,8 @@ export const api = {
           | "digestWeekly"
           | "digestHour"
           | "digestTimezoneOffsetMinutes"
+          | "workdayStartMinute"
+          | "workdayEndMinute"
         >
       >
     ) =>

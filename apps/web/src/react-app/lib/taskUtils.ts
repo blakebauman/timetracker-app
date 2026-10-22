@@ -92,6 +92,15 @@ export function formatMinute(minute: number, timeFormat: "24h" | "12h" = "24h"):
   return `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
 }
 
+/** The working hours a plan assumes until the user sets their own (mirrors the worker's). */
+export const DEFAULT_WORKDAY = { start: 9 * 60, end: 17 * 60 + 30 };
+
+/** A working-hours edge. "24:00" is right in 24h; in 12h it would read as noon, so say midnight. */
+export function workdayLabel(minute: number, timeFormat: "24h" | "12h"): string {
+  if (minute === 1440) return timeFormat === "24h" ? "24:00" : "Midnight";
+  return formatMinute(minute, timeFormat);
+}
+
 /** Minutes after midnight → the `HH:mm` a `<input type="time">` wants, and back. */
 export function minuteToTimeInput(minute: number | null): string {
   return minute === null ? "" : formatMinute(minute, "24h");

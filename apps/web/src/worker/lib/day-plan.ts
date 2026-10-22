@@ -13,9 +13,27 @@ import { compareLocalDates } from "@timetracker/core/task-recurrence";
 import { loadTodayEvents } from "./assistant";
 import { listTasks, type TaskRecord } from "./tasks";
 
-/** The working day a plan fills. There's no per-user setting yet; drafting infers its own. */
+/**
+ * The working day a plan fills when the user hasn't set their own (Settings →
+ * Working hours, `user.work_start_minute` / `work_end_minute`). Drafting infers
+ * its own window from the day's first and last activity.
+ */
 export const WORKDAY_START = 9 * 60;
 export const WORKDAY_END = 17 * 60 + 30;
+
+export interface WorkingHours {
+  start: number;
+  end: number;
+}
+
+/** A user's working hours, or the default window. */
+export async function loadWorkingHours(db: D1Database, userId: string): Promise<WorkingHours> {
+  const row = await db
+    .prepare(`SELECT work_start_minute AS start, work_end_minute AS "end" FROM "user" WHERE id = ?`)
+    .bind(userId)
+    .first<WorkingHours>();
+  return row && row.end > row.start ? row : { start: WORKDAY_START, end: WORKDAY_END };
+}
 /** A task with no estimate still takes a slot this long. */
 export const DEFAULT_TASK_MINUTES = 30;
 /** Blocks start on a quarter hour. */
@@ -49,6 +67,8 @@ export interface DayPlan {
   unplaced: { taskId: string; name: string; minutes: number }[];
   /** Free minutes left in the working day before placing anything. */
   freeMinutes: number;
+  /** The working hours the plan filled, so a proposal can say what it assumed. */
+  workday: WorkingHours;
 }
 
 /** Urgent first, then the nearest deadline, then the oldest due date. */
@@ -122,7 +142,13 @@ export function placeTasks(input: {
     busy.push({ start: slot.start, end: slot.start + task.minutes });
   }
   placed.sort((a, b) => a.startMinute - b.startMinute);
-  return { localDate: input.localDate, placed, unplaced, freeMinutes };
+  return {
+    localDate: input.localDate,
+    placed,
+    unplaced,
+    freeMinutes,
+    workday: { start: windowStart, end: windowEnd },
+  };
 }
 
 /** Minutes a task still needs: what's left of its estimate, or the default. */
@@ -137,7 +163,12 @@ export function remainingMinutes(t: Pick<TaskRecord, "estimatedSeconds" | "track
  * time yet, placed around today's calendar events and the blocks already
  * scheduled for today.
  */
-export async function buildDayPlan(env: Env, workspaceId: string, offsetMinutes: number): Promise<DayPlan> {
+export async function buildDayPlan(
+  env: Env,
+  workspaceId: string,
+  offsetMinutes: number,
+  hours: WorkingHours = { start: WORKDAY_START, end: WORKDAY_END }
+): Promise<DayPlan> {
   const nowMs = Date.now();
   const local = new Date(nowMs - offsetMinutes * 60_000);
   const localDate = local.toISOString().slice(0, 10);
@@ -183,5 +214,12 @@ export async function buildDayPlan(env: Env, workspaceId: string, offsetMinutes:
       minutes: remainingMinutes(t),
     }));
 
-  return placeTasks({ localDate, nowMinute, busy, tasks: candidates });
+  return placeTasks({
+    localDate,
+    nowMinute,
+    busy,
+    tasks: candidates,
+    windowStart: hours.start,
+    windowEnd: hours.end,
+  });
 }

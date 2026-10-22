@@ -9,7 +9,7 @@ import { computeNudges } from "../lib/assistant";
 import { inferEventProjects } from "../lib/ai";
 import { listMemories, deleteMemory, clearMemories } from "../lib/assistant-memory";
 import { broadcast } from "../db/queries";
-import { buildDayPlan } from "../lib/day-plan";
+import { buildDayPlan, loadWorkingHours } from "../lib/day-plan";
 
 // Clamp to sane UTC offsets so a bad client can't shift day-bound queries
 // arbitrarily far. Same JS getTimezoneOffset() convention as the AI routes.
@@ -19,7 +19,7 @@ const NudgesQuerySchema = z.object({
 
 export const assistantRouter = new Hono<{
   Bindings: Env;
-  Variables: { workspaceId: string };
+  Variables: { workspaceId: string; userId: string };
 }>()
   // Deterministic, cheap to poll — no AI involved.
   .get("/nudges", zValidator("query", NudgesQuerySchema), async (c) => {
@@ -32,7 +32,8 @@ export const assistantRouter = new Hono<{
   // update per slot, which the client or the Assistant does with consent.
   .get("/plan-day", zValidator("query", NudgesQuerySchema), async (c) => {
     const { timezoneOffsetMinutes } = c.req.valid("query");
-    return c.json(await buildDayPlan(c.env, c.get("workspaceId"), timezoneOffsetMinutes));
+    const hours = await loadWorkingHours(c.env.DB, c.get("userId"));
+    return c.json(await buildDayPlan(c.env, c.get("workspaceId"), timezoneOffsetMinutes, hours));
   })
   // One-click "Add to timesheet" from an untracked-meeting nudge. Server-side
   // so the entry can be pre-categorized via grounded AI project inference —
