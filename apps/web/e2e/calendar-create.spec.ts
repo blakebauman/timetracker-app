@@ -19,10 +19,13 @@ test("creating an entry by clicking an empty calendar slot", async ({ page }) =>
   await page.getByRole("tab", { name: "Calendar", exact: true }).click();
   await page.waitForTimeout(1400);
 
-  // Slots are scrolled to ~08:00; target a visible one. Click by coordinates:
-  // the day columns are layered over the slot rows, so the slot itself is
-  // never the hit target, and a locator click would wait on it forever.
-  const slot = (await page.locator(".tt-fc-slot").nth(20).boundingBox())!;
+  // The grid opens relative to now, so bring the 10:00 row into view first.
+  // Click by coordinates: the day columns are layered over the slot rows, so
+  // the slot itself is never the hit target, and a locator click would wait
+  // on it forever.
+  const row = page.locator(".tt-fc-slot").nth(20);
+  await row.scrollIntoViewIfNeeded();
+  const slot = (await row.boundingBox())!;
   await page.mouse.click(slot.x + 40, slot.y + 5);
 
   const form = page.getByRole("dialog", { name: /New entry/i });

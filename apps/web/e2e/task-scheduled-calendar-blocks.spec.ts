@@ -147,6 +147,8 @@ test("dragging a planned block reschedules it", async ({ page }) => {
   await page.getByRole("tab", { name: "Calendar", exact: true }).click();
 
   const block = page.locator(".tt-event-planned", { hasText: "Planned block" });
+  // The grid opens relative to now; a 10:00 block may be scrolled past.
+  await block.scrollIntoViewIfNeeded();
   const b = (await block.boundingBox())!;
   // Real pointer steps: FullCalendar ignores a single-jump synthetic drag.
   await page.mouse.move(b.x + b.width / 2, b.y + 8);
@@ -172,9 +174,11 @@ test("a plan-column task dropped on a future slot is scheduled there, not logged
   // Only a week with a future day in view can take this drop (not Sundays
   // with a Monday week start, say); the logged-entry path covers the rest.
   test.skip((await future.count()) === 0, "no future day in the visible week");
+  const target = page.locator(".tt-fc-slot").nth(28);
+  await target.scrollIntoViewIfNeeded();
   const r = (await rail.boundingBox())!;
   const c = (await future.boundingBox())!;
-  const l = (await page.locator(".tt-fc-slot").nth(28).boundingBox())!;
+  const l = (await target.boundingBox())!;
   await page.mouse.move(r.x + 20, r.y + 10);
   await page.mouse.down();
   for (let i = 1; i <= 15; i++) {

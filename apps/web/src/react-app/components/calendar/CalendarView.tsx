@@ -1,4 +1,4 @@
-import { forwardRef, useCallback } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import FullCalendar, {
   type CalendarRef,
   type DateClickInfo,
@@ -28,6 +28,18 @@ const VIEWS = {
 const DAY_HEADER_FORMAT = { weekday: "short", day: "numeric" } as const;
 const TIME_FORMAT_12H = { hour: "numeric", minute: "2-digit", hour12: true, meridiem: true } as const;
 const TIME_FORMAT_24H = { hour: "2-digit", minute: "2-digit", hour12: false, meridiem: false } as const;
+
+/**
+ * Where the grid opens: the start of the working day in the morning, and an
+ * hour before now once the day is under way. A fixed 08:00 put the rest of
+ * today's plan below the fold every afternoon — the part of the day still to
+ * act on. Taken once per mount: a scroll that followed the clock would yank the
+ * grid out from under someone reading it.
+ */
+function initialScrollTime(now = new Date()) {
+  const hour = Math.max(8, now.getHours() - 1);
+  return `${String(hour).padStart(2, "0")}:00:00`;
+}
 
 export type CalendarViewType =
   | "timeGridWeek"
@@ -91,6 +103,7 @@ export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
     // 2-digit + short-meridiem default gives "01:00pm" — the same instant in a
     // third notation.
     const timeFmt = timeFormat === "12h" ? TIME_FORMAT_12H : TIME_FORMAT_24H;
+    const [scrollTime] = useState(initialScrollTime);
     const handleSelect = useCallback(
       (arg: DateSelectInfo) => onSelect(arg.start.toISOString(), arg.end.toISOString()),
       [onSelect]
@@ -121,7 +134,7 @@ export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
           // pane is taller than the day.
           slotMinHeight={slotHeight}
           snapDuration="00:15:00"
-          scrollTime="08:00:00"
+          scrollTime={scrollTime}
           eventTimeFormat={timeFmt}
           slotHeaderFormat={timeFmt}
           expandRows
