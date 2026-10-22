@@ -89,7 +89,7 @@ test("the command palette finds a task and starts a timer on it", async ({ page 
     description: "Customer master and vendor tables",
   });
   await page.goto("/tasks");
-  await expect(page.getByRole("tab", { name: /Today/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^All/ })).toBeVisible();
 
   await page.keyboard.press("ControlOrMeta+k");
   // Matched by its notes, not its name.

@@ -7,13 +7,13 @@ import {
   SEGMENT_TRACK,
 } from "@/components/ui/segmented-control";
 
-export type TaskView = "today" | "upcoming" | "all" | "board" | "history";
+/**
+ * Today and the week ahead are the Timer's plan column, beside the time they
+ * plan; this page is the whole backlog, the board and the record.
+ */
+export type TaskView = "all" | "board" | "history";
 
 export interface TaskViewCounts {
-  today: number;
-  /** Part of `today` that is already late — tints the count, never the label. */
-  overdue: number;
-  upcoming: number;
   all: number;
   /** What's in progress — the one number a board is opened to check. */
   board: number;
@@ -22,8 +22,6 @@ export interface TaskViewCounts {
 }
 
 const VIEWS: { value: TaskView; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "upcoming", label: "Upcoming" },
   { value: "all", label: "All" },
   { value: "board", label: "Board" },
   { value: "history", label: "History" },
@@ -37,9 +35,7 @@ interface TaskViewTabsProps {
 
 /**
  * The Tasks page's primary navigation: a `tablist` (roving tabindex, arrow
- * keys) drawn as the shared segment track, carrying counts. Overdue tints the
- * Today count, not the label, so lateness is legible from the strip without a
- * second badge.
+ * keys) drawn as the shared segment track, carrying counts.
  */
 export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -79,7 +75,6 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
       {VIEWS.map(({ value, label }) => {
         const active = value === view;
         const count = counts[value];
-        const late = value === "today" && counts.overdue > 0;
         return (
           <button
             key={value}
@@ -94,9 +89,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
                   ? `${label}, ${count} in progress`
                   : value === "history"
                     ? `${label}, ${count} done this week`
-                  : `${label}, ${count} task${count === 1 ? "" : "s"}${
-                      late ? `, ${counts.overdue} overdue` : ""
-                    }`
+                  : `${label}, ${count} task${count === 1 ? "" : "s"}`
                 : label
             }
             onClick={() => onChange(value)}
@@ -110,7 +103,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
                   "tabular-nums",
                   // Muted ink is tuned for the track and vanishes on the
                   // recessed pill, so the active count reads in full ink.
-                  late ? "text-destructive" : active ? "text-foreground" : "text-muted-foreground"
+                  active ? "text-foreground" : "text-muted-foreground"
                 )}
               >
                 {count}

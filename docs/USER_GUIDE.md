@@ -142,7 +142,7 @@ The key is shown **once** and can't be recovered; if you lose it, revoke it and 
 
 ## Planning with tasks
 
-The Tasks page opens on **Today**: overdue work first, then what's due today, then what you've already finished today. **Upcoming** shows the next seven days a day at a time — empty days included, so the week reads as a week — and **All** is the full list with the grouping, sorting and status filters.
+Today and the week ahead live in the **Plan** column on the Timer, beside the time you track against them (see below). The Tasks page is everything else: **All** is the full list with the grouping, sorting and status filters (group by **Due** to see the backlog by day, overdue first — the Assistant's overdue and deadline alerts open it that way).
 
 **Board** lays the same tasks out as three columns: **To do**, **In progress** and **Done**. A task moves to In progress on its own the first time you track or log time against it (or one of its subtasks). Drag a card between columns to move it yourself. Dragging to Done ticks it off, with the same Undo and next-occurrence behaviour as the checkbox, and dragging a done task back reopens it. On a phone, or from the keyboard, use **⋯ → Mark in progress** / **Move back to To do**. Done shows the last seven days; everything older is under All → Done.
 
@@ -186,7 +186,7 @@ The line under the field shows what it understood before you commit it. Anything
 
 **Notes.** A task can carry free-text notes — context, links, acceptance criteria, anything that isn't the name. They show as a single clamped line under the task on the list, in full in the task dialog. Notes belong to the *task* and are never copied onto a time entry, so internal detail can't end up on an invoice line.
 
-**Editing.** Click a task's name to rename it in place, or its due-date chip to re-date it. In **Upcoming** you can also drag a task onto another day to move it there. **⋯ → Edit task…** opens the full form — name, notes, project, estimate, due date, priority and repeat — which is the same form used to create one.
+**Editing.** Click a task's name to rename it in place, or its due-date chip to re-date it. In the Plan column, drag a task onto another day's heading (every day of the coming week is listed, empty ones too), or use the calendar icon on its row to pick a day — that one works from the keyboard and on touch too. Either way there's an **Undo**. **⋯ → Edit task…** opens the full form — name, notes, project, estimate, due date, priority and repeat — which is the same form used to create one.
 
 **Undo.** Ticking a task off and deleting one both show a toast with **Undo**. Deleting doesn't ask first; the task is only really removed when the toast closes, so Undo brings it back exactly as it was, with its time still linked. Undoing a repeating task's completion also removes the next occurrence it had just created.
 

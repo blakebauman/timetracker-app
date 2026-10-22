@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Plus, ListChecks, CalendarCheck, Search, SearchX, AlertTriangle } from "lucide-react";
+import { Plus, ListChecks, Search, SearchX, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,18 +62,10 @@ interface Section {
   key: string;
   label: string;
   color?: string | null;
-  tone?: "overdue";
   trackedSeconds: number;
   nodes: TaskNode[];
   /** Drag-to-reorder is only meaningful where the order is the user's own. */
   reorderable?: boolean;
-  /**
-   * Upcoming's day groups: dropping a task here re-dates it to this day. Empty
-   * days are kept (as a one-line "Nothing due" heading) so the week reads as a
-   * week, and so there is somewhere to drop onto. They render at rest, not only
-   * mid-drag: appearing on dragstart reflowed the list under the pointer.
-   */
-  dropDate?: string;
   /** Board columns: dropping a card here moves it to this stage. */
   stage?: Stage;
   /** History weeks: "5 done · 12h tracked · 110% of estimates", right-aligned. */
@@ -82,28 +74,6 @@ interface Section {
 
 /** How many weeks of finished work History shows; older is under All → Done. */
 const HISTORY_WEEKS = 8;
-
-/**
- * What the quick-add line files a task under when the line itself says nothing.
- *
- * Each view is a promise about what it shows, and the field sits inside that
- * promise: Today captures for today, Upcoming for tomorrow (the nearest day it
- * can show), All for whenever. Typing into Upcoming used to create an undated
- * task that vanished from the view on Enter — the field's one job is not losing
- * what was typed, and "gone" is indistinguishable from "lost".
- */
-function captureDefaults(view: TaskView, today: string) {
-  if (view === "today") {
-    return { dueDate: today, placeholder: "Add a task for today — try “draft report fri p1”" };
-  }
-  if (view === "upcoming") {
-    return {
-      dueDate: addLocalDays(today, 1),
-      placeholder: "Add a task for tomorrow — try “draft report fri p1”",
-    };
-  }
-  return { dueDate: null, placeholder: undefined };
-}
 
 const SORTERS: Record<SortBy, (a: Task, b: Task) => number> = {
   plan: comparePlanned,
@@ -127,7 +97,7 @@ export function TaskBoardList() {
   const completeTask = useCompleteTask();
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
 
-  const [view, setView] = useState<TaskView>("today");
+  const [view, setView] = useState<TaskView>("all");
   /** All: status + project / tag / priority / due, edited in the filter popover. */
   const [filters, setFilters] = useState<TaskFilterValues>(NO_FILTERS);
   const status: StatusFilter = filters.status;
@@ -144,8 +114,6 @@ export function TaskBoardList() {
   const [dragId, setDragId] = useState<string | null>(null);
   /** The row a drag is currently over; the insertion line is drawn above it. */
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  /** Upcoming: the day group a drag is over, which re-dates on drop. */
-  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   /** Board: the column a drag is over, which changes stage on drop. */
   const [dragOverStage, setDragOverStage] = useState<Stage | null>(null);
   const phone = useMediaQuery(BELOW_SM);
@@ -161,7 +129,18 @@ export function TaskBoardList() {
     else setAddOpen(true);
   }, []);
   useTaskListKeys({ tasks, onEdit: setEditTarget, onCapture: focusCapture });
-  const captureStamp = (useLocation().state as { capture?: number } | null)?.capture;
+  const navState = useLocation().state as { capture?: number; groupBy?: GroupBy } | null;
+  const captureStamp = navState?.capture;
+  // The task nudges land here grouped by due date, overdue days first. Taken
+  // once per navigation (state is a fresh object each time), during render.
+  const [seenNav, setSeenNav] = useState<typeof navState>(null);
+  if (navState !== seenNav) {
+    setSeenNav(navState);
+    if (navState?.groupBy) {
+      setView("all");
+      setGroupBy(navState.groupBy);
+    }
+  }
   useEffect(() => {
     if (!captureStamp || isLoading) return;
     // A frame later: straight after navigating here the line hasn't mounted.
@@ -178,77 +157,9 @@ export function TaskBoardList() {
   );
   const thisWeekStart = weekStartOf(today);
   const hasAnyTask = tasks.length > 0;
-  const capture = captureDefaults(view, today);
-
+  
   const sections = useMemo<Section[]>(() => {
     const compare = SORTERS[sortBy];
-
-    // ─── Today ──────────────────────────────────────────────────────────────
-    //
-    // Undated tasks are deliberately absent. Being undated *is* the statement
-    // that a task isn't today's problem; sweeping them in here would make this
-    // view identical to All and remove the only reason to open it.
-    if (view === "today") {
-      const overdue = tasks.filter((t) => t.active && t.dueDate && compareLocalDates(t.dueDate, today) < 0);
-      const due = tasks.filter((t) => t.active && t.dueDate === today);
-      const doneToday = tasks.filter(
-        (t) => !t.active && t.completedAt && t.completedAt.slice(0, 10) === today
-      );
-      return [
-        {
-          key: "overdue",
-          label: "Overdue",
-          tone: "overdue" as const,
-          nodes: nest(withSubtasks(overdue, tasks), compare),
-        },
-        {
-          key: "today",
-          label: "Due today",
-          nodes: nest(withSubtasks(due, tasks), compare),
-        },
-        {
-          key: "done",
-          label: "Completed today",
-          nodes: nest(withSubtasks(doneToday, tasks), compare),
-        },
-      ]
-        .filter((s) => s.nodes.length > 0)
-        .map((s) => ({
-          ...s,
-          trackedSeconds: s.nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
-        }));
-    }
-
-    // ─── Upcoming ───────────────────────────────────────────────────────────
-    if (view === "upcoming") {
-      const horizon = addLocalDays(today, 7);
-      const out: Section[] = [];
-      for (let i = 0; i <= 7; i++) {
-        const day = addLocalDays(today, i);
-        const forDay = tasks.filter((t) => t.active && t.dueDate === day);
-        const nodes = nest(withSubtasks(forDay, tasks), compare);
-        out.push({
-          key: day,
-          label: formatDueHeading(day, today),
-          nodes,
-          trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
-          dropDate: day,
-        });
-      }
-      const later = tasks.filter(
-        (t) => t.active && t.dueDate && compareLocalDates(t.dueDate, horizon) > 0
-      );
-      if (later.length) {
-        const nodes = nest(withSubtasks(later, tasks), compare);
-        out.push({
-          key: "later",
-          label: "Later",
-          nodes,
-          trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
-        });
-      }
-      return out;
-    }
 
     // ─── History ────────────────────────────────────────────────────────────
     //
@@ -453,21 +364,12 @@ export function TaskBoardList() {
   // A board with empty columns is still a board; only a workspace with no tasks
   // at all gets the first-run state there.
   const isEmpty = view === "board" ? !hasAnyTask : sections.every((s) => s.nodes.length === 0);
-  const upcomingCount = tasks.filter(
-    (t) => t.active && t.dueDate && compareLocalDates(t.dueDate, today) > 0
-  ).length;
-  const undatedCount = tasks.filter((t) => !t.dueDate).length;
 
-  // Counts are of *top-level* tasks. A subtask has no due date of its own and
-  // rides its parent's row, so counting them would make "Today 3" disagree with
-  // the three rows underneath it.
+  // Counts are of *top-level* tasks. A subtask rides its parent's row, so
+  // counting them would make "All 3" disagree with the three rows underneath.
   const counts = useMemo(() => {
     const top = tasks.filter((t) => !t.parentId && t.active);
-    const overdue = top.filter((t) => t.dueDate && compareLocalDates(t.dueDate, today) < 0).length;
     return {
-      overdue,
-      today: overdue + top.filter((t) => t.dueDate === today).length,
-      upcoming: top.filter((t) => t.dueDate && compareLocalDates(t.dueDate, today) > 0).length,
       all: top.length,
       board: top.filter((t) => t.startedAt).length,
       history: tasks.filter(
@@ -478,7 +380,7 @@ export function TaskBoardList() {
           compareLocalDates(localDayKey(t.completedAt), thisWeekStart) >= 0
       ).length,
     };
-  }, [tasks, today, thisWeekStart]);
+  }, [tasks, thisWeekStart]);
 
   /** Commit a drag: one row's `sort_order` becomes the midpoint of its new neighbours. */
   const handleDrop = (ordered: Task[], toIndex: number) => {
@@ -494,17 +396,6 @@ export function TaskBoardList() {
       id: dragId,
       data: { sortOrder: midpointOrder(before?.sortOrder ?? null, after?.sortOrder ?? null) },
     });
-  };
-
-  /** Commit an Upcoming drag: the task takes the day it was dropped on. */
-  const handleDayDrop = (day: string) => {
-    setDragOverDay(null);
-    const id = dragId;
-    setDragId(null);
-    if (!id) return;
-    const task = tasks.find((t) => t.id === id);
-    if (!task || task.dueDate === day) return;
-    updateTask.mutate({ id, data: { dueDate: day } });
   };
 
   /**
@@ -576,50 +467,6 @@ export function TaskBoardList() {
           }
         />
       );
-    } else if (view === "today") {
-      // Two different nothings. "Nothing due today" over a backlog of dated work
-      // is a clear day; over a list where nothing has a due date at all it's a
-      // dead end — the view can never fill, and an empty state with no way out
-      // reads as a broken page. Both always offer somewhere to go.
-      empty = (
-        <EmptyState
-          icon={CalendarCheck}
-          title={undatedCount === tasks.length ? "Nothing is scheduled yet" : "Nothing due today"}
-          description={
-            undatedCount === tasks.length
-              ? `None of your ${tasks.length} task${tasks.length === 1 ? " has" : "s have"} a due date. Give one a date and it shows up here.`
-              : upcomingCount > 0
-                ? `${upcomingCount} task${upcomingCount === 1 ? "" : "s"} coming up.`
-                : "Nothing scheduled ahead either."
-          }
-          className="py-24"
-          action={
-            upcomingCount > 0 ? (
-              <Button size="sm" variant="outline" onClick={() => setView("upcoming")}>
-                See what's upcoming
-              </Button>
-            ) : (
-              <Button size="sm" variant="outline" onClick={() => setView("all")}>
-                Show all tasks
-              </Button>
-            )
-          }
-        />
-      );
-    } else if (view === "upcoming") {
-      empty = (
-        <EmptyState
-          icon={CalendarCheck}
-          title="Nothing scheduled"
-          description="Tasks with a due date show up here. Everything else lives under All."
-          className="py-24"
-          action={
-            <Button size="sm" variant="outline" onClick={() => setView("all")}>
-              Show all tasks
-            </Button>
-          }
-        />
-      );
     } else {
       empty = query.trim() ? (
         <EmptyState
@@ -671,10 +518,9 @@ export function TaskBoardList() {
     // the pointer — and not above the row being dragged, where it would promise
     // a move to the place it already is.
     const dropTarget = !!dragId && !dragging && dragOverId === node.task.id;
-    // Upcoming rows are draggable between days; the drop is caught by the day
-    // group (see `handleDayDrop`), not the row, so a drop anywhere in a day's
-    // group lands — there is no in-day order to insert into.
-    const dragHandlers = view === "upcoming" || view === "board"
+    // Board cards drag between columns; the drop is caught by the column
+    // (see `handleStageDrop`), not the card — there is no in-column order.
+    const dragHandlers = view === "board"
       ? {
           draggable: true,
           onDragStart: (e: React.DragEvent) => {
@@ -683,7 +529,6 @@ export function TaskBoardList() {
           },
           onDragEnd: () => {
             setDragId(null);
-            setDragOverDay(null);
             setDragOverStage(null);
           },
         }
@@ -892,8 +737,8 @@ export function TaskBoardList() {
             {hasAnyTask && view !== "history" && (
               <QuickAddTask
                 className="mb-4"
-                defaultDueDate={capture.dueDate}
-                placeholder={capture.placeholder}
+                defaultDueDate={null}
+                placeholder={undefined}
                 // On a phone the inline project picker left the field a third of
                 // the row; stacked, the line is the line.
                 stacked={phone}
@@ -964,38 +809,8 @@ export function TaskBoardList() {
               <div className="space-y-6">
                 {sections.map((section) => {
                   const ordered = section.nodes.map((n) => n.task);
-                  const day = section.dropDate;
-                  const dropProps = day && dragId
-                    ? {
-                        onDragOver: (e: React.DragEvent) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                          if (dragOverDay !== day) setDragOverDay(day);
-                        },
-                        onDragLeave: (e: React.DragEvent) => {
-                          // Leaving for a child row isn't leaving the group.
-                          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-                            setDragOverDay((cur) => (cur === day ? null : cur));
-                          }
-                        },
-                        onDrop: (e: React.DragEvent) => {
-                          e.preventDefault();
-                          handleDayDrop(day);
-                        },
-                      }
-                    : {};
                   return (
-                    <div
-                      key={section.key}
-                      {...dropProps}
-                      className={cn(
-                        // The wash spills 8px past the group as an outline, which
-                        // takes no layout space, so nothing moves under the pointer
-                        // as a day lights up.
-                        day && "rounded-container transition-colors duration-fast ease-out-quart",
-                        dragOverDay === day && day && "bg-muted outline-8 outline-solid outline-muted"
-                      )}
-                    >
+                    <div key={section.key}>
                       <div className="mb-1 flex items-center gap-2 px-2">
                         {groupBy === "project" && view === "all" && <ColorDot color={section.color} />}
                         {/* Sentence case at Label weight. Uppercase + tracking on every group
@@ -1042,7 +857,7 @@ export function TaskBoardList() {
       <TaskDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        defaultDueDate={capture.dueDate}
+        defaultDueDate={null}
       />
 
       <TaskDialog

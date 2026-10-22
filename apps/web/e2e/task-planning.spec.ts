@@ -162,8 +162,8 @@ test("the view tabs carry counts, and overdue tints Today's", async ({ page }) =
       headers: { origin },
     })
   ).json();
-  // Subtasks ride their parent's row and have no date of their own, so they must
-  // not be counted — "Today 2" has to match the two rows underneath it.
+  // Subtasks ride their parent's row, so they must not be counted — "All 4"
+  // has to match the four rows underneath it.
   await mk({ name: "Data mapping", projectId: project.id, parentId: parent.id });
   await mk({ name: "Prep board deck", projectId: project.id, dueDate: localDate(1) });
   await mk({ name: "Backlog grooming", projectId: project.id });
@@ -171,14 +171,14 @@ test("the view tabs carry counts, and overdue tints Today's", async ({ page }) =
   await page.goto("/tasks");
   await page.waitForTimeout(1000);
 
-  await expect(page.getByRole("tab", { name: "Today, 2 tasks, 1 overdue" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Upcoming, 1 task" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "All, 4 tasks" })).toBeVisible();
+  // Today and the week ahead are the Timer's plan column; the page opens on All.
+  await expect(page.getByRole("tab", { name: "All, 4 tasks" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: /^Today/ })).toHaveCount(0);
 
   // Arrow keys move between tabs — it's a tablist, not a radiogroup.
-  await page.getByRole("tab", { name: /^Today/ }).press("ArrowRight");
+  await page.getByRole("tab", { name: /^All/ }).press("ArrowRight");
   await page.waitForTimeout(300);
-  await expect(page.getByRole("tab", { name: /^Upcoming/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: /^Board/ })).toHaveAttribute("aria-selected", "true");
 });
 
 test("a task carries notes, editable through the task dialog", async ({ page }) => {
