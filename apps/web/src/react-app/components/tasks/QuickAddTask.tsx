@@ -121,7 +121,7 @@ export function QuickAddTask({
           }}
           placeholder={placeholder}
           aria-label="Add a task"
-          className="h-6 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+          className="h-6 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
         />
         {!parentId && !hinted && !soleProject && !stacked && (
           <ProjectPicker value={projectId} onChange={setProjectId} className="shrink-0" />

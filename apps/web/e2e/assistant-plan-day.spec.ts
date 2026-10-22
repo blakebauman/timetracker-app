@@ -65,3 +65,25 @@ test("today's tasks are placed around what's already scheduled, most urgent firs
   // 09:15–17:30 less the 10:00 hour.
   expect(plan.freeMinutes).toBe(8 * 60 + 15 - 60);
 });
+
+test("a block today that has already passed is re-planned, not planned around", async ({ page }) => {
+  await signUp(page);
+  const origin = new URL(page.url()).origin;
+  const post = async (url: string, data: Record<string, unknown>) =>
+    (await page.request.post(url, { data, headers: { origin } })).json();
+  const project = await post("/api/projects", { name: "ERP Migration", color: "#e11d48" });
+  const mk = (data: Record<string, unknown>) => post("/api/tasks", { projectId: project.id, ...data });
+  const { offset, day } = nineOhFiveZone();
+
+  // 08:00–08:30 is behind 09:05: the plan column calls this "not started".
+  await mk({ name: "Missed at 8", dueDate: day(0), scheduledMinute: 8 * 60, estimatedSeconds: 30 * 60 });
+  await mk({ name: "Ahead at 10", dueDate: day(0), scheduledMinute: 10 * 60, estimatedSeconds: 3600 });
+
+  const plan = (await (await page.request.get(`/api/assistant/plan-day?timezoneOffsetMinutes=${offset}`)).json()) as Plan;
+  const at = (name: string) => plan.placed.find((p) => p.name === name);
+
+  expect(at("Missed at 8")).toMatchObject({ startMinute: 9 * 60 + 15, minutes: 30 });
+  // A block still ahead stays a commitment, untouched.
+  expect(at("Ahead at 10")).toBeUndefined();
+  expect(plan.freeMinutes).toBe(8 * 60 + 15 - 60);
+});

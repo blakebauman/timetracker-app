@@ -78,7 +78,9 @@ test("a scheduled task is a planned block on the calendar, and its ▷ starts th
   await page.getByRole("tab", { name: "Calendar", exact: true }).click();
   const block = page.locator(".tt-event-planned", { hasText: "Stakeholder sign-off" });
   await expect(block).toBeVisible();
-  await expect(block).toContainText("planned");
+  // 10:00 may already be behind the clock, and a block the day passed by
+  // says so instead (lib/planState) — either way it reads as the plan.
+  await expect(block).toContainText(/planned|Not started/);
 
   await block.locator("[data-start-task]").click();
   await expect
@@ -156,13 +158,14 @@ test("dragging a planned block reschedules it", async ({ page }) => {
   expect((await all())[0].dueDate).toBe(localDate(0));
 });
 
-test("a rail task dropped on a future slot is scheduled there, not logged", async ({ page }) => {
+test("a plan-column task dropped on a future slot is scheduled there, not logged", async ({ page }) => {
   const { mk, all } = await seed(page);
   await mk({ name: "Rail task", dueDate: localDate(0) });
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto("/");
   await page.getByRole("tab", { name: "Calendar", exact: true }).click();
-  await page.getByRole("button", { name: "Show today's tasks" }).click();
+  // The plan stands beside the grid by default; no toggle to find first.
+  await expect(page.getByRole("complementary", { name: "Today's plan" })).toBeVisible();
 
   const rail = page.locator("[data-task-drag]", { hasText: "Rail task" });
   const future = page.locator(".tt-fc-lane.tt-fc-future").first();

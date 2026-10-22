@@ -151,18 +151,29 @@ export async function buildDayPlan(env: Env, workspaceId: string, offsetMinutes:
   ]);
 
   const topLevel = tasks.filter((t) => !t.parentId);
+  // A block today whose time has already passed with the task still open is a
+  // plan the day went by. It needs a new slot, not to be planned around: the
+  // plan column flags exactly these as "not started", and a plan that skipped
+  // them left the one task that most needed rescheduling unplaced.
+  const blockMinutes = (t: TaskRecord) =>
+    t.estimatedSeconds ? Math.ceil(t.estimatedSeconds / 60) : DEFAULT_TASK_MINUTES;
+  const passed = (t: TaskRecord) =>
+    t.dueDate === localDate &&
+    t.scheduledMinute !== null &&
+    t.scheduledMinute + blockMinutes(t) <= nowMinute;
   const busy: Busy[] = [
     ...events.map((e) => ({ start: toLocalMinute(e.start), end: toLocalMinute(e.stop) })),
-    // Blocks already planned for today are commitments the plan works around.
+    // Blocks still ahead (or under way) today are commitments the plan works around.
     ...topLevel
-      .filter((t) => t.dueDate === localDate && t.scheduledMinute !== null)
+      .filter((t) => t.dueDate === localDate && t.scheduledMinute !== null && !passed(t))
       .map((t) => ({ start: t.scheduledMinute!, end: t.scheduledMinute! + remainingMinutes(t) })),
   ];
 
-  // Unscheduled — or scheduled on a day that has already gone, which is the
-  // same thing as far as today is concerned.
+  // Unscheduled — or scheduled on a day that has already gone, or at a time
+  // today that has, which is the same thing as far as the rest of today is
+  // concerned.
   const candidates: PlanCandidate[] = topLevel
-    .filter((t) => t.scheduledMinute === null || t.dueDate !== localDate)
+    .filter((t) => t.scheduledMinute === null || t.dueDate !== localDate || passed(t))
     .map((t) => ({
       id: t.id,
       name: t.name,

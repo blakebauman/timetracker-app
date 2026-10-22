@@ -8,7 +8,7 @@ import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 // Custom renderer for a calendar block. Passed to FullCalendar's `eventContent`.
 // Kept intentionally compact so short (15–30 min) blocks stay legible.
 export function CalendarEventContent(arg: EventDisplayInfo) {
-  const { entry, running, ghost, external, gap, draft, task } =
+  const { entry, running, ghost, external, gap, draft, task, planFlag } =
     arg.event.extendedProps as Partial<CalendarEventExtendedProps>;
 
   if (task) {
@@ -31,9 +31,24 @@ export function CalendarEventContent(arg: EventDisplayInfo) {
           </span>
           <span className="truncate text-xs font-medium">{task.name}</span>
         </div>
-        <span className="tt-on-tint-muted truncate text-micro">
-          {arg.timeText} · planned
-        </span>
+        {/* The plan's state, said where the block's time would be: a block
+            the day passed by keeps saying so until it's started, logged or
+            moved (lib/planState). */}
+        {planFlag?.kind === "missed" ? (
+          <span className="truncate text-micro font-medium text-warning-ink">
+            {/* The state first: a 30-minute block truncates, and the time is
+                already said by where the block sits. */}
+            Not started · {arg.timeText}
+          </span>
+        ) : planFlag?.kind === "over" ? (
+          <span className="truncate text-micro font-medium text-warning-ink">
+            Over estimate by {formatDurationShort(planFlag.overSeconds)}
+          </span>
+        ) : (
+          <span className="tt-on-tint-muted truncate text-micro">
+            {arg.timeText} · planned
+          </span>
+        )}
         {task.projectName && (
           <span
             className="tt-swatch-ink truncate text-micro font-medium"

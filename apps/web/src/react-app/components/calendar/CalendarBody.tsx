@@ -26,6 +26,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useEntriesRange, useUpdateEntry, useCreateEntry, useDeleteEntry } from "@/hooks/useEntries";
 import { useCalendarEvents, useConvertCalendarRange } from "@/hooks/useCalendarSync";
 import { useAllTasks, useUpdateTask } from "@/hooks/useTasks";
+import { usePlanFlags } from "@/hooks/usePlanFlags";
 import { useTimer } from "@/hooks/useTimer";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -35,6 +36,7 @@ import {
   draftToEvent,
   externalEventToEvent,
   taskToEvent,
+  clipGapsAround,
   type CalendarEventExtendedProps,
 } from "@/lib/calendarMapping";
 import { useDraftRange } from "@/hooks/useDrafts";
@@ -153,6 +155,7 @@ export function CalendarBody({
   const createEntry = useCreateEntry();
   const deleteEntry = useDeleteEntry();
   const { data: tasks = EMPTY } = useAllTasks();
+  const planFlags = usePlanFlags(tasks);
   const updateTask = useUpdateTask();
   const { startTimer } = useTimer();
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -201,7 +204,7 @@ export function CalendarBody({
     // Open tasks with a time of day, inside the visible range.
     const planned = tasks
       .filter((t) => t.active)
-      .map(taskToEvent)
+      .map((t) => taskToEvent(t, planFlags.get(t.id)))
       .filter((e): e is NonNullable<typeof e> => {
         if (!e) return false;
         const start = (e.start as Date).getTime();
@@ -215,7 +218,7 @@ export function CalendarBody({
     // it. The proposal wins: it carries a project, a description, and a way to
     // confirm. Left in, the two blocks also split the column and truncated each
     // other's only label.
-    const gaps = allGaps.filter((gap) => {
+    const draftFree = allGaps.filter((gap) => {
       const gapStart = new Date(gap.start as string).getTime();
       const gapStop = new Date(gap.end as string).getTime();
       return !drafts.some(
@@ -223,13 +226,17 @@ export function CalendarBody({
           gapStart < new Date(d.stop).getTime() && gapStop > new Date(d.start).getTime()
       );
     });
+    const gaps = clipGapsAround(
+      draftFree,
+      planned.map((e) => ({ start: (e.start as Date).getTime(), end: (e.end as Date).getTime() }))
+    );
     return {
       events: [...gaps, ...draftBlocks, ...planned, ...real, ...visibleGhosts],
       // What the "Convert N events" button offers to do — the ghosts still on
       // screen, not every unconfirmed event (a drafted one is already handled).
       ghostCount: visibleGhosts.length,
     };
-  }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView, drafts, tasks]);
+  }, [entries, runningEntry, range, nowIso, externalEvents, showGaps, calendarView, drafts, tasks, planFlags]);
 
   const convertRange = useConvertCalendarRange();
   const handleConvertAll = () =>

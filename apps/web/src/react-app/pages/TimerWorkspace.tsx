@@ -33,6 +33,7 @@ import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 import type { LoggedSegment } from "@/components/timer/TimerWorkspaceHeader";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Pane, PaneScroll } from "@/components/layout/Pane";
 
@@ -55,11 +56,29 @@ const TimesheetView = lazy(() =>
 const PlannerView = lazy(() =>
   import("@/components/planner/PlannerView").then((m) => ({ default: m.PlannerView }))
 );
-// The rail pulls FullCalendar's Draggable, so it rides the same lazy boundary
-// as the grid it drags onto rather than the Timer landing chunk.
-const TaskRail = lazy(() =>
-  import("@/components/tasks/TaskRail").then((m) => ({ default: m.TaskRail }))
+
+// The plan column pulls the task row, quick-add, the plan popover and the
+// sheet: ~11 kB gz that the landing route doesn't need before its first paint.
+// It loads beside the list a moment later, behind a placeholder of its size.
+const PlanColumn = lazy(() =>
+  import("@/components/tasks/PlanColumn").then((m) => ({ default: m.PlanColumn }))
 );
+const PlanSheetButton = lazy(() =>
+  import("@/components/tasks/PlanColumn").then((m) => ({ default: m.PlanSheetButton }))
+);
+
+function PlanColumnFallback() {
+  const open = useUIStore((s) => s.planColumnOpen);
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "my-2 ml-4 shrink-0 rounded-container border bg-card",
+        open ? "w-80" : "w-10"
+      )}
+    />
+  );
+}
 
 function BodyFallback() {
   return (
@@ -98,6 +117,11 @@ export function TimerWorkspace() {
 
   const effectiveView: TimerView = view === "split" && belowLg ? "list" : view;
   const isCalendarish = effectiveView === "calendar" || effectiveView === "split";
+  // The plan stands beside the list and the calendar from lg up. Split already
+  // halves the pane, and the timesheet and planner are dense grids a third
+  // column would crush; there, and below lg, the plan opens as a sheet from
+  // the header instead, so it is one click away in every view.
+  const planStands = !belowLg && (effectiveView === "list" || effectiveView === "calendar");
 
   // Grid density comes from the calendar pane's own width, not the viewport.
   // Split halves the pane while leaving the viewport untouched, so a
@@ -298,9 +322,9 @@ export function TimerWorkspace() {
       showGaps={showGaps}
       showEmptyState={view !== "split"}
       onReviewDay={openReview}
-      // The rail only renders at lg and up, and only beside a grid — below that
-      // there is nothing to drag from, so the grid shouldn't claim to accept one.
-      acceptTaskDrops={!belowLg}
+      // Only the standing plan column drags onto the grid — the sheet has no
+      // grid beside it — so the grid shouldn't claim to accept a drop otherwise.
+      acceptTaskDrops={planStands}
     />
   );
   const list = (
@@ -340,6 +364,10 @@ export function TimerWorkspace() {
         </div>
       </Suspense>
     );
+  else if (planStands)
+    // Beside the column the list scrolls in its own region, as it does in
+    // Split: scrolling the whole pane would carry the plan away with it.
+    body = <div className="flex min-h-0 flex-col overflow-y-auto pr-4 pb-4">{list}</div>;
   else body = list;
 
   /** Move whichever period control is active so `date` becomes visible. */
@@ -396,38 +424,44 @@ export function TimerWorkspace() {
         listRangeSince={listRangeSince}
         listRangeUntil={listRangeUntil}
         onListRangeChange={setListRange}
+        planControl={
+          planStands ? undefined : (
+            <Suspense fallback={<Skeleton className="h-8 w-14 rounded-full" />}>
+              <PlanSheetButton />
+            </Suspense>
+          )
+        }
       />
 
-      {/* The rail sits beside the grid, not above or inside it: dragging a task
-          onto a time slot only works when the source and the target are on the
-          same screen, and a plan you can see beside the day is the whole reason
-          the rail exists. Grid views only — the timesheet and planner are their
-          own dense grids and a third column would crush them. */}
-      {/* The list scrolls the pane itself, under the floating header; every
-          grid view owns its scrolling and only starts below the header. */}
+      {/* The plan sits beside the day, not above or inside it: comparing the
+          two is the job, and dragging a task onto a slot only works when the
+          source and the target share the screen. The list scrolls the pane
+          itself, under the floating header, unless the plan stands beside it;
+          every grid view owns its scrolling and only starts below the header. */}
       <PaneScroll
-        padded={effectiveView === "list"}
-        className={effectiveView === "list" ? "px-4 pb-4" : "flex-row"}
+        padded={effectiveView === "list" && !planStands}
+        className={effectiveView === "list" && !planStands ? "px-4 pb-4" : "flex-row"}
       >
+        {planStands && (
+          <Suspense fallback={<PlanColumnFallback />}>
+            <PlanColumn draggable={effectiveView === "calendar"} />
+          </Suspense>
+        )}
         <div
           id={TIMER_PANEL_ID}
           role="tabpanel"
           aria-labelledby={timerTabId(view)}
           // min-w-0: FullCalendar's grid has an intrinsic width, so without it
-          // this pane refuses to shrink and the rail is pushed off the viewport
-          // edge — its collapse control and quick-add clipped by the window.
+          // this pane refuses to shrink and the column is pushed off the
+          // viewport edge.
           className={cn(
             "flex min-h-0 min-w-0 flex-1 flex-col",
-            effectiveView !== "list" && "overflow-hidden"
+            (effectiveView !== "list" || planStands) && "overflow-hidden",
+            planStands && (effectiveView === "list" ? "pl-4" : "pl-2")
           )}
         >
           {body}
         </div>
-        {isCalendarish && !belowLg && (
-          <Suspense fallback={null}>
-            <TaskRail />
-          </Suspense>
-        )}
       </PaneScroll>
 
       <AddEntryDialog
