@@ -212,16 +212,13 @@ working-hours setting (the plan assumes 09:00–17:30).*
 
 ### Plan + actual workspace
 *Shipped: the plan stands beside the day in the Timer workspace (plan column,
-plan sheet, plan flags, Plan my day, next-task control). Still open:*
+plan sheet, plan flags, Plan my day, next-task control; the grid opens an hour
+before now once the day is under way). Still open:*
 - **Dedupe Today / Upcoming on /tasks** — the column now carries both. Kept on
   /tasks for now because Upcoming owns drag-to-redate between days, which a
   320px column doesn't replicate; move that first, then retire the tabs.
 - **Planned vs logged in the header strip** — the column's "left today" carries
   the plan total for now.
-- **Open the grid on now** — the calendar still opens at 08:00, so late in the
-  day the rest of today's plan starts below the fold. A scroll time relative to
-  now changes app-wide behaviour that several specs click against (they target
-  fixed slots); do it with those specs rewritten to locate slots by time.
 - **Server-side flag dismissals** — dismissals are per browser, like nudge
   dismissals; sync them only if the same day is worked across devices.
 

@@ -70,8 +70,10 @@ Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
   on the unstyled `tt-fc-*` hooks `components/calendar/calendarClasses.ts` adds:
   `.tt-fc-slot` (one per 30-min row), `.tt-fc-lane` (a day column; `.tt-fc-future`
   on days after today), `.tt-fc-day-header`, `.tt-fc-day-cell` (month).
-- Slots are scrolled to ~08:00, so early rows (`nth(0..15)`) are **above the
-  viewport** — target visible ones (08:00 ≈ index 16, 12:00 ≈ index 24).
+- The grid opens at 08:00 in the morning and an hour before now after 09:00,
+  so which rows are on screen depends on the clock. Index rows by time
+  (`nth(n)` is `n × 30min` after midnight: 08:00 = 16, 12:00 = 24) and call
+  `scrollIntoViewIfNeeded()` on the row or block before reading its box.
 - **Create by clicking** an empty slot → opens the "New entry" dialog. Click by
   **coordinates** (`page.mouse.click` at the slot's `boundingBox()`): the day
   lanes are layered over the slot rows, so `locator.click()` on a slot waits on a
