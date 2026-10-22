@@ -61,7 +61,6 @@ test("a time token schedules the task, and the row shows the time", async ({ pag
     })
     .toEqual({ due: localDate(1), min: 900 });
 
-  await page.getByRole("tab", { name: /Upcoming/ }).click();
   await expect(page.getByRole("button", { name: "Due Tomorrow 15:00 — change" })).toBeVisible();
 });
 

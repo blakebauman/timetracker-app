@@ -4,7 +4,7 @@ import { signUp } from "./auth";
 /**
  * The gaps in the first cut of tasks: other tabs hear about task edits, a
  * completion or delete can be taken back, a weekly repeat can fall on several
- * days, and Upcoming re-dates by drag.
+ * days, and the plan column re-dates by drag or by its move control.
  */
 
 function localDate(offset = 0) {
@@ -121,20 +121,46 @@ test("a weekly repeat can fall on several days", async ({ page }) => {
   await expect.poll(async () => (await list())[0].recurRule).toBe("weekly:1,3");
 });
 
-test("dragging a task onto another day in Upcoming re-dates it", async ({ page }) => {
+test("dragging a task onto another day in the plan column re-dates it", async ({ page }) => {
   const { mk, list } = await seed(page);
   await mk({ name: "Cutover plan", dueDate: localDate(1) });
-  await mk({ name: "Stakeholder sign-off", dueDate: localDate(3) });
-  await page.goto("/tasks");
-  await page.getByRole("tab", { name: /Upcoming/ }).click();
-  await expect(page.getByText("Cutover plan")).toBeVisible();
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto("/");
+  const plan = page.getByRole("complementary", { name: "Today's plan" });
+  await expect(plan.getByText("Cutover plan")).toBeVisible();
 
-  await page
+  // Today, then each day ahead; an empty day is still a heading, so there is
+  // somewhere to drop onto. No overdue section, so the third day out is nth(3).
+  const target = plan.locator("section").nth(3);
+  const label = await target.getAttribute("aria-label");
+  await plan
     .getByRole("button", { name: "Start timer for Cutover plan" })
     .locator("xpath=ancestor::*[@draggable='true'][1]")
-    .dragTo(page.getByRole("button", { name: "Rename Stakeholder sign-off" }), { timeout: 8000 });
+    .dragTo(target.getByRole("heading"), { timeout: 8000 });
 
   await expect
     .poll(async () => (await list()).find((t) => t.name === "Cutover plan")?.dueDate)
     .toBe(localDate(3));
+  await expect(plan.getByRole("region", { name: label! })).toContainText("Cutover plan");
+});
+
+test("the plan column's move control re-dates a task, and Undo puts it back", async ({ page }) => {
+  const { mk, list } = await seed(page);
+  await mk({ name: "Vendor follow-up", dueDate: localDate(0) });
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto("/");
+  const plan = page.getByRole("complementary", { name: "Today's plan" });
+
+  await plan.getByRole("button", { name: "Move “Vendor follow-up” to another day" }).click();
+  const choices = page.getByRole("group", { name: "Move “Vendor follow-up” to" });
+  await expect(choices.getByRole("button", { name: /^Today/ })).toBeDisabled();
+  await choices.getByRole("button", { name: /^Tomorrow/ }).click();
+
+  await expect
+    .poll(async () => (await list()).find((t) => t.name === "Vendor follow-up")?.dueDate)
+    .toBe(localDate(1));
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect
+    .poll(async () => (await list()).find((t) => t.name === "Vendor follow-up")?.dueDate)
+    .toBe(localDate(0));
 });

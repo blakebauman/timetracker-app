@@ -71,7 +71,7 @@ export function AssistantNudgeNotifier() {
           n.kind === "long_timer"
             ? { label: "Stop timer", onClick: () => stopTimerRef.current() }
             : n.kind === "deadline_risk" || n.kind === "tasks_overdue"
-              ? { label: "Open tasks", onClick: () => navigate("/tasks") }
+              ? { label: "Open tasks", onClick: () => navigate("/tasks", { state: { groupBy: "due" } }) }
               : { label: "Open Assistant", onClick: () => setOpen(true) },
       });
       // The toast is invisible when the tab is backgrounded — that's exactly

@@ -93,6 +93,8 @@ interface TaskRowProps {
    * column's project, spent-vs-estimate and plan state. Ignored when not dense.
    */
   denseMeta?: React.ReactNode;
+  /** A dense row's extra control, before its start button (the plan column's move). */
+  denseAction?: React.ReactNode;
   expanded?: boolean;
   onToggleExpanded?: () => void;
   onRequestDelete: (task: Task) => void;
@@ -125,6 +127,7 @@ export function TaskRow({
   nested = false,
   dense = false,
   denseMeta,
+  denseAction,
   expanded = false,
   onToggleExpanded,
   onRequestDelete,
@@ -279,6 +282,7 @@ export function TaskRow({
           )}
           {/* No "Overdue" chip: the plan column files a late task under its
               Overdue heading, and the chip under it said the same word twice. */}
+          {denseAction}
           {startControl}
         </div>
         {/* Indented to the name, past the done toggle (16px + the 8px gap). */}

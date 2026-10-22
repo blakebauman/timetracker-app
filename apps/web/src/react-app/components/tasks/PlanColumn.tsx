@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ListChecks, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { toast } from "sonner";
+import { CalendarDays, ChevronLeft, ListChecks, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import type { Task } from "@timetracker/core/schemas";
 import { addLocalDays, compareLocalDates } from "@timetracker/core/task-recurrence";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LazyCalendar } from "@/components/ui/lazy-calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SpentFigure } from "@/components/ui/spent-figure";
 import {
   Sheet,
@@ -16,11 +19,20 @@ import { ColorDot } from "@/components/ColorDot";
 import { TaskRow } from "./TaskRow";
 import { QuickAddTask } from "./QuickAddTask";
 import { PlanMyDay } from "./PlanMyDay";
-import { useAllTasks } from "@/hooks/useTasks";
+import { useAllTasks, useUpdateTask } from "@/hooks/useTasks";
 import { usePlanFlags } from "@/hooks/usePlanFlags";
 import { useDayRollover } from "@/hooks/useDayRollover";
 import { useUIStore } from "@/stores/uiStore";
-import { comparePlanned, formatDueHeading, formatMinute } from "@/lib/taskUtils";
+import {
+  comparePlanned,
+  dateToLocalDate,
+  formatDueHeading,
+  formatMinute,
+  localDateToDate,
+} from "@/lib/taskUtils";
+import { formatDurationShort } from "@/lib/dateUtils";
+import type { PlanFlag } from "@/lib/planState";
+import { cn } from "@/lib/utils";
 
 const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -35,9 +47,6 @@ function dayHeading(day: string, today: string): string {
   const [y, m, d] = day.split("-").map(Number);
   return `${WEEKDAY[new Date(y, m - 1, d).getDay()]} ${d} ${MONTH[m - 1]}`;
 }
-import { formatDurationShort } from "@/lib/dateUtils";
-import type { PlanFlag } from "@/lib/planState";
-import { cn } from "@/lib/utils";
 
 /** How far ahead "Upcoming" looks. A week: past that, it's the Tasks page's job. */
 const UPCOMING_DAYS = 7;
@@ -93,7 +102,12 @@ function usePlanSections(tasks: Task[], today: string): PlanSections {
     return {
       overdue,
       today: todays,
-      upcoming: [...byDay].map(([day, list]) => ({ day, tasks: list })),
+      // Every day of the week, empty ones too: the week reads as a week, and
+      // an empty day is still somewhere to move a task to.
+      upcoming: Array.from({ length: UPCOMING_DAYS }, (_, i) => {
+        const day = addLocalDays(today, i + 1);
+        return { day, tasks: byDay.get(day) ?? [] };
+      }),
       remaining,
     };
   }, [tasks, today]);
@@ -125,6 +139,134 @@ function useCalendarDraggable(ref: React.RefObject<HTMLElement | null>, enabled:
   }, [ref, enabled]);
 }
 
+/** Where a move landed, in the column's own words. */
+function moveLabel(day: string | null, today: string): string {
+  if (day === null) return "no date";
+  if (day === today) return "today";
+  if (day === addLocalDays(today, 1)) return "tomorrow";
+  return compareLocalDates(day, today) > 0 &&
+    compareLocalDates(day, addLocalDays(today, UPCOMING_DAYS)) <= 0
+    ? dayHeading(day, today)
+    : formatDueHeading(day, today);
+}
+
+/**
+ * Move a task to another day, with one Undo. The time of day rides along (a
+ * 10:00 block moved to Friday is 10:00 on Friday) unless the date is cleared,
+ * which clears the time server-side; Undo puts both back.
+ */
+function useMoveTask(today: string) {
+  const updateTask = useUpdateTask();
+  return (task: Task, day: string | null) => {
+    if (day === task.dueDate) return;
+    const prev = { dueDate: task.dueDate, scheduledMinute: task.scheduledMinute };
+    updateTask.mutate(
+      { id: task.id, data: { dueDate: day } },
+      {
+        onSuccess: () =>
+          toast.success(`Moved “${task.name}” to ${moveLabel(day, today)}`, {
+            action: {
+              label: "Undo",
+              onClick: () => updateTask.mutate({ id: task.id, data: prev }),
+            },
+          }),
+      }
+    );
+  };
+}
+
+/**
+ * The keyboard and touch path to another day — a drag is neither. The days
+ * offered are the column's own (today and the week ahead), so the choice reads
+ * as "which heading should this sit under"; a date further out is one more
+ * step, through the same calendar the Tasks page's due chip opens.
+ */
+function MoveDayButton({
+  task,
+  today,
+  onMove,
+}: {
+  task: Task;
+  today: string;
+  onMove: (task: Task, day: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const days = Array.from({ length: UPCOMING_DAYS + 1 }, (_, i) => addLocalDays(today, i));
+  const move = (day: string | null) => {
+    setOpen(false);
+    onMove(task, day);
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setPicking(false);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="tt-reveal shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label={`Move “${task.name}” to another day`}
+          title="Move to another day"
+        >
+          <CalendarDays className="h-3.5 w-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className={cn("p-1", picking ? "w-auto" : "w-56")}>
+        {picking ? (
+          <>
+            <Button
+              variant="ghost"
+              size="xs"
+              className="gap-1 text-muted-foreground"
+              onClick={() => setPicking(false)}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+              Back
+            </Button>
+            <LazyCalendar
+              mode="single"
+              selected={task.dueDate ? localDateToDate(task.dueDate) : undefined}
+              onSelect={(date) => date && move(dateToLocalDate(date))}
+            />
+          </>
+        ) : (
+          <div role="group" aria-label={`Move “${task.name}” to`} className="flex flex-col">
+            {days.map((day) => {
+              const current = day === task.dueDate;
+              return (
+                <Button
+                  key={day}
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start font-normal"
+                  disabled={current}
+                  aria-current={current || undefined}
+                  onClick={() => move(day)}
+                >
+                  {day === today ? "Today" : dayHeading(day, today)}
+                  {current && <span className="ml-auto text-xs text-muted-foreground">Now</span>}
+                </Button>
+              );
+            })}
+            <div className="my-1 h-px bg-border" aria-hidden />
+            <Button variant="ghost" size="sm" className="justify-start font-normal" onClick={() => setPicking(true)}>
+              Pick a date…
+            </Button>
+            <Button variant="ghost" size="sm" className="justify-start font-normal" onClick={() => move(null)}>
+              No date
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function FlagLine({ flag }: { flag: PlanFlag }) {
   const timeFormat = useUIStore((s) => s.timeFormat);
   const dismiss = useUIStore((s) => s.dismissPlanFlag);
@@ -150,7 +292,17 @@ function FlagLine({ flag }: { flag: PlanFlag }) {
   );
 }
 
-function PlanRow({ task, flag, draggable }: { task: Task; flag?: PlanFlag; draggable: boolean }) {
+interface PlanRowProps {
+  task: Task;
+  flag?: PlanFlag;
+  /** Rows register with the grid's drag (calendar view): onto a slot. */
+  draggable: boolean;
+  /** Rows drag between the column's days (everywhere else). */
+  dayDrag?: { dragging: boolean; onStart: () => void; onEnd: () => void };
+  move: React.ReactNode;
+}
+
+function PlanRow({ task, flag, draggable, dayDrag, move }: PlanRowProps) {
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
   const meta = (
     <>
@@ -181,13 +333,31 @@ function PlanRow({ task, flag, draggable }: { task: Task; flag?: PlanFlag; dragg
       title={
         draggable
           ? "Drag onto the grid: a slot ahead of now schedules it, one behind now logs the time"
-          : undefined
+          : dayDrag
+            ? "Drag onto another day to move it"
+            : undefined
       }
     >
       <TaskRow
         task={task}
         dense
         denseMeta={meta}
+        denseAction={move}
+        dragging={dayDrag?.dragging}
+        dragHandlers={
+          dayDrag
+            ? {
+                draggable: true,
+                onDragStart: (e: React.DragEvent) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  // Firefox starts no drag without data.
+                  e.dataTransfer.setData("text/plain", task.name);
+                  dayDrag.onStart();
+                },
+                onDragEnd: dayDrag.onEnd,
+              }
+            : undefined
+        }
         onRequestDelete={() => {}}
         onLogTime={(t) => openTaskLogTime(t.id)}
       />
@@ -195,7 +365,18 @@ function PlanRow({ task, flag, draggable }: { task: Task; flag?: PlanFlag; dragg
   );
 }
 
-function SectionHeading({ children, figure, tone }: { children: React.ReactNode; figure?: React.ReactNode; tone?: "late" }) {
+function SectionHeading({
+  children,
+  figure,
+  tone,
+  empty,
+}: {
+  children: React.ReactNode;
+  figure?: React.ReactNode;
+  tone?: "late";
+  /** An empty day: the heading carries "Nothing due" instead of rows. */
+  empty?: boolean;
+}) {
   return (
     <h3
       className={cn(
@@ -207,6 +388,7 @@ function SectionHeading({ children, figure, tone }: { children: React.ReactNode;
     >
       <span>{children}</span>
       {figure !== undefined && <span className="font-mono tabular-nums">{figure}</span>}
+      {empty && <span className="font-normal">Nothing due</span>}
     </h3>
   );
 }
@@ -222,11 +404,64 @@ function PlanBody({ draggable }: { draggable: boolean }) {
   const [showAllOverdue, setShowAllOverdue] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   useCalendarDraggable(listRef, draggable && !isPending);
+  const moveTask = useMoveTask(today);
+  // Beside the grid a row drags onto a slot (FullCalendar's pointer drag, which
+  // the native one would fight); everywhere else it drags between days.
+  const daysDrop = !draggable;
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overDay, setOverDay] = useState<string | null>(null);
+  const endDrag = () => {
+    setDragId(null);
+    setOverDay(null);
+  };
+  /** A day section's drop props; inert unless a row of this column is mid-drag. */
+  const dropOn = (day: string) =>
+    daysDrop && dragId
+      ? {
+          onDragOver: (e: React.DragEvent) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            if (overDay !== day) setOverDay(day);
+          },
+          onDragLeave: (e: React.DragEvent) => {
+            // Leaving for a child row isn't leaving the day.
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setOverDay((cur) => (cur === day ? null : cur));
+            }
+          },
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault();
+            const task = tasks.find((t) => t.id === dragId);
+            endDrag();
+            if (task) moveTask(task, day);
+          },
+        }
+      : {};
+  // A wash, not an outline: the list clips to the card, and an outline would
+  // be cut at its edges. Takes no layout space, so nothing reflows mid-drag.
+  const dropWash = (day: string) =>
+    cn(
+      "rounded-md transition-colors duration-fast ease-out-quart",
+      overDay === day && "bg-muted"
+    );
 
   const overdueShown = showAllOverdue ? sections.overdue : sections.overdue.slice(0, OVERDUE_VISIBLE);
   const hidden = sections.overdue.length - overdueShown.length;
   const nothingToday = sections.overdue.length === 0 && sections.today.length === 0;
-  const row = (t: Task) => <PlanRow key={t.id} task={t} flag={flags.get(t.id)} draggable={draggable} />;
+  const row = (t: Task) => (
+    <PlanRow
+      key={t.id}
+      task={t}
+      flag={flags.get(t.id)}
+      draggable={draggable}
+      dayDrag={
+        daysDrop
+          ? { dragging: dragId === t.id, onStart: () => setDragId(t.id), onEnd: endDrag }
+          : undefined
+      }
+      move={<MoveDayButton task={t} today={today} onMove={moveTask} />}
+    />
+  );
 
   return (
     <>
@@ -279,7 +514,7 @@ function PlanBody({ draggable }: { draggable: boolean }) {
               </section>
             )}
 
-            <section aria-label="Today">
+            <section aria-label="Today" {...dropOn(today)} className={dropWash(today)}>
               <SectionHeading figure={sections.today.length || undefined}>Today</SectionHeading>
               {sections.today.map(row)}
               {nothingToday && (
@@ -291,8 +526,13 @@ function PlanBody({ draggable }: { draggable: boolean }) {
             </section>
 
             {sections.upcoming.map(({ day, tasks: list }) => (
-              <section key={day} aria-label={dayHeading(day, today)}>
-                <SectionHeading>{dayHeading(day, today)}</SectionHeading>
+              <section
+                key={day}
+                aria-label={dayHeading(day, today)}
+                {...dropOn(day)}
+                className={dropWash(day)}
+              >
+                <SectionHeading empty={list.length === 0}>{dayHeading(day, today)}</SectionHeading>
                 {list.map(row)}
               </section>
             ))}

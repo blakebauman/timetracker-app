@@ -160,7 +160,7 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
               variant="outline"
               size="sm"
               onClick={() => {
-                navigate("/tasks");
+                navigate("/tasks", { state: { groupBy: "due" } });
                 setAssistantOpen(false);
               }}
             >
