@@ -11,7 +11,7 @@ import {
   stepCountIs,
   createUIMessageStream,
   createUIMessageStreamResponse,
-  type StreamTextOnFinishCallback,
+  type GenerateTextOnFinishCallback,
   type ToolSet,
   type UIMessage,
 } from "ai";
@@ -51,7 +51,7 @@ export class ChatAgent extends AIChatAgent<Cloudflare.Env> {
   // Workers AI calls, same trade-off as the REST rate-limit middleware.
   private recentTurns: number[] = [];
 
-  async onChatMessage(onFinish: StreamTextOnFinishCallback<ToolSet>, options?: OnChatMessageOptions) {
+  async onChatMessage(onFinish: GenerateTextOnFinishCallback<ToolSet>, options?: OnChatMessageOptions) {
     const workspaceId = this.name;
 
     const now = Date.now();
