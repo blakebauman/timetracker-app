@@ -43,7 +43,7 @@ The repository is a pnpm + Turborepo monorepo: the SPA and Worker live together 
 | `/api/settings` | `settings.ts` | per-user prefs stored on the Better Auth `user` row, incl. digest preferences; `POST /digest/send` mails one immediately |
 | `/api/keys` | `api-keys.ts` | workspace API keys for MCP/programmatic access — list/create/revoke. Session-only: a credential that can mint credentials must not be reachable from `/mcp` |
 | `/api/calendar` | `calendar.ts` | Multi-provider (Google, Microsoft): `GET /:provider/connect`, `GET /:provider/callback`, `DELETE /:provider`, `GET /status` (one row per provider), `GET /events` (merged read-through), `PATCH /auto-track`, `POST /convert` |
-| `/api/ai` | `ai.ts` | `POST /quick-entry` (NL→entry), `POST /summary` (AI report draft); rate-limited |
+| `/api/ai` | `ai.ts` | `POST /quick-entry` (NL→entry), `POST /summary` (AI report draft), `POST /status-update` (a project's week as a status update, `lib/status-update.ts`); rate-limited |
 | `/api/assistant` | `assistant.ts` | `GET /nudges`, `POST /track-event`, memory list/delete. **Chat is NOT here** — see the Assistant below |
 | `/api/integrations` | `integrations.ts` | Workfront/Dynamics adapters, `POST /push` (takes the client's IANA `timezone`; the route resolves each entry's work date with `lib/local-date.ts` before handing it to an adapter), SSRF-guarded (https only, public-host allow-list, redirects refused, upstream bodies never echoed), outbound rate limits |
 | `/api/admin` | `admin.ts` | `DELETE /users/:id` (site-admin user removal + orphan cleanup); list/ban/impersonate go through Better Auth's admin plugin client-side |
@@ -108,11 +108,17 @@ Drafts live in their **own table**, not behind a `status` column on `time_entrie
 
 Deliberately AI-free — pacing goes in front of a client, so it must be reproducible from the entries alone. Per active project: share of budget spent, burn per **working** day over a trailing 14-day window (calendar days understate the rate by ~30% and turn every real overrun into "on track"), working days left to `end_date`, and the projected total at that rate. One computation feeds three surfaces — `GET /api/projects/pacing`, the `budget_risk` assistant nudge, and the emailed digest — so they cannot disagree. A dormant project gets no verdict rather than a fabricated one.
 
+## Status updates (`lib/status-update.ts`)
+
+One project's week as paste-ready text, served by `POST /api/ai/status-update` (Projects → ⋯ → Status update) and the MCP `get_status_update` tool. The client sends its **local** week as UTC instants plus `timezoneOffsetMinutes`. The offset dates the heading and the "Next" window, because the worker never derives a local day itself. Everything except the opening section is deterministic, from one `db.batch` of four reads: time and meeting share from the week's completed entries (an entry with a `calendar_event_id` is a meeting), work grouped by case-insensitive description, tasks completed in the range, open tasks tracked against in the range, and open tasks due in the seven local days after it.
+
+In the `highlights` style, `runStatusHighlights` (`lib/ai.ts`) asks the model for 2–5 bullets inside a `promptSafe` data fence. It runs on the larger instruct model, since the text goes out under the user's name and the 8B one embellished. `parseHighlightBullets` keeps only well-formed bullets and **drops any that state a figure**: the update carries the computed time right above them, and a model's own arithmetic would disagree with it. If no bullet survives, or the call fails, the itemised work list stands in and the result says `source: "fallback"`. The route never returns a 502, so there is always something to copy. MCP always gets the itemised style, so the calling model writes its own prose over the same facts. No money appears in the output.
+
 ## MCP server (`mcp/server.ts`, `lib/api-keys.ts`)
 
 `/mcp` speaks Streamable HTTP via `createMcpHandler` from `@modelcontextprotocol/server` (MCP SDK v2) — a web-standard fetch handler, stateless, no Durable Object. It serves 2025-era clients and the 2026-07-28 revision from the same factory. A fresh `McpServer` is built per request, bound to the workspace resolved from the API key.
 
-- **Fourteen tools**, each a thin wrapper over the helpers the REST API already uses (report builder, pacing, draft pipeline, `lib/tasks.ts`), so a chat answer and a Reports page answer come from one implementation. Task tools: `list_tasks` (read), `create_task` / `complete_task` (write); `start_timer` takes an optional `taskId`.
+- **Fifteen tools**, each a thin wrapper over the helpers the REST API already uses (report builder, pacing, draft pipeline, `lib/tasks.ts`), so a chat answer and a Reports page answer come from one implementation. Task tools: `list_tasks` (read), `create_task` / `complete_task` (write); `start_timer` takes an optional `taskId`.
 - **No tool takes a workspace id** — it is fixed at construction, so nothing a model can invent reaches a tenant boundary.
 - **Write tools are registered only for a `read_write` key.** A read key isn't shown them at all; a tool a client can see but can never call is worse than one never advertised.
 - **Auth is a workspace API key** (`tt_live_…`), not a session bearer: only the SHA-256 is stored, the plaintext is shown once and is unrecoverable, and membership is re-verified against `member` on every call (a key outlives the session that minted it).

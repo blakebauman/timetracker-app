@@ -855,6 +855,33 @@ export const AiSummaryResultSchema = z.object({
   totalSeconds: z.number(),
 });
 
+// A paste-ready status update for one project over one week
+// (worker lib/status-update.ts). The range is the caller's LOCAL week as UTC
+// instants; the offset dates the heading and the "Next" tasks, because the
+// worker never derives a local day itself.
+export const StatusUpdateRequestSchema = z.object({
+  projectId: z.string().min(1).max(64),
+  since: IsoInstantSchema,
+  until: IsoInstantSchema,
+  timezoneOffsetMinutes: z.number().int().min(-900).max(900),
+  // "highlights": the model writes the opening bullets (never figures) and the
+  // itemised list stands in when it can't. "itemised": every line is a fact
+  // with its time, no model involved.
+  style: z.enum(["highlights", "itemised"]).default("highlights"),
+});
+
+export const StatusUpdateResultSchema = z.object({
+  text: z.string(),
+  // What wrote the opening section. "fallback" means highlights were asked for
+  // and the model couldn't deliver, so the dialog can say so.
+  source: z.enum(["ai", "itemised", "fallback"]),
+  projectName: z.string(),
+  totalSeconds: z.number(),
+  entryCount: z.number(),
+  completedCount: z.number(),
+  meetingCount: z.number(),
+});
+
 // ─── Assistant ────────────────────────────────────────────────────────
 
 // A proactive prompt computed server-side from calendar events, today's
@@ -964,6 +991,8 @@ export type AiQuickEntryRaw = z.infer<typeof AiQuickEntryRawSchema>;
 export type AiQuickEntryResult = z.infer<typeof AiQuickEntryResultSchema>;
 export type AiSummaryRequest = z.infer<typeof AiSummaryRequestSchema>;
 export type AiSummaryResult = z.infer<typeof AiSummaryResultSchema>;
+export type StatusUpdateRequest = z.infer<typeof StatusUpdateRequestSchema>;
+export type StatusUpdateResult = z.infer<typeof StatusUpdateResultSchema>;
 export type AssistantNudge = z.infer<typeof AssistantNudgeSchema>;
 export type AssistantMemory = z.infer<typeof AssistantMemorySchema>;
 export type AssistantTrackEventRequest = z.infer<typeof AssistantTrackEventRequestSchema>;

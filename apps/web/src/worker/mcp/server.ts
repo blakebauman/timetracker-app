@@ -26,6 +26,7 @@ import {
 } from "../db/queries";
 import { createTask, getTask, listTasks, updateTask, type TaskRecord } from "../lib/tasks";
 import { loadProjectPacing } from "../lib/pacing";
+import { buildStatusUpdate } from "../lib/status-update";
 import { generateDrafts, listDrafts } from "../lib/drafts";
 import type { ApiKeyScope } from "../lib/api-keys";
 
@@ -441,6 +442,34 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           endDate: p.endDate,
         }))
       );
+    }
+  );
+
+  server.registerTool(
+    "get_status_update",
+    {
+      title: "Draft a project status update",
+      description:
+        "A paste-ready status update for one project over a range of the user's local days (usually a week): time tracked, the work itemised with durations, tasks completed and in progress, meetings, and tasks due in the 7 days after the range. The same text the app's Status update dialog produces in its itemised style. Rewrite it in your own words if asked, but keep its figures.",
+      inputSchema: z.object({
+        projectId: z.string().describe("From list_projects"),
+        since: DateArg.describe("First local day of the range, YYYY-MM-DD"),
+        until: DateArg.describe("Last local day of the range (inclusive), YYYY-MM-DD"),
+        timezoneOffsetMinutes: TimezoneArg,
+      }),
+      annotations: READ_ONLY,
+    },
+    async ({ projectId, since, until, timezoneOffsetMinutes }) => {
+      const { sinceIso, untilIso } = rangeToIso(since, until, timezoneOffsetMinutes);
+      const result = await buildStatusUpdate(db, null, {
+        workspaceId,
+        projectId,
+        since: sinceIso,
+        until: untilIso,
+        offsetMinutes: timezoneOffsetMinutes,
+        style: "itemised",
+      });
+      return result ? text(result.text) : text("No project with that id in this workspace.");
     }
   );
 
