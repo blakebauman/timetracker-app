@@ -5,7 +5,7 @@
 //   data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"Paris"},"index":0}]}}],
 //          "tool_calls":[{"arguments":"Paris"}], ...}
 //
-// workers-ai-provider (3.3.1) reads the native `response` / `tool_calls` and
+// workers-ai-provider (3.3.1, still in 4.0.1) reads the native `response` / `tool_calls` and
 // then the `choices[0].delta`, and emits both — so every streamed token reached
 // the chat twice ("thethe quick quick brown brown fox fox"), and every tool
 // call's arguments were assembled twice into JSON that doesn't parse, so the

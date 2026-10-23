@@ -38,8 +38,8 @@ catalog:
   wrangler: 4.151.1
   "@cloudflare/vite-plugin": 1.64.0
   "@cloudflare/ai-chat": ^0.12.1
-  agents: ^0.28.1
-  workers-ai-provider: ^3.3.1
+  agents: ^0.30.0
+  workers-ai-provider: ^4.0.1
 
   # react
   react: 19.3.1
@@ -99,9 +99,9 @@ catalog:
   react-email: ^6.11.3
   "@react-email/ui": ^6.11.3
 
-  # ai — @cloudflare/ai-chat peers ai ^6, NOT v7
-  ai: ^6.0.300
-  "@ai-sdk/react": ^3.0.303
+  # ai v7 — workers-ai-provider 4 requires it; @cloudflare/ai-chat peers ^6 || ^7
+  ai: ^7.0.150
+  "@ai-sdk/react": ^4.0.154
 
 peerDependencyRules:
   allowedVersions:
