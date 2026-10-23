@@ -5,11 +5,12 @@ import {
   AssistantTrackEventRequestSchema,
   type AssistantTrackEventResult,
 } from "@timetracker/core/schemas";
-import { computeNudges } from "../lib/assistant";
+import { computeNudges, localDayBounds } from "../lib/assistant";
 import { inferEventProjects } from "../lib/ai";
 import { listMemories, deleteMemory, clearMemories } from "../lib/assistant-memory";
 import { broadcast } from "../db/queries";
 import { buildDayPlan, loadWorkingHours } from "../lib/day-plan";
+import { loadDayOff } from "../lib/days-off";
 
 // Clamp to sane UTC offsets so a bad client can't shift day-bound queries
 // arbitrarily far. Same JS getTimezoneOffset() convention as the AI routes.
@@ -24,7 +25,12 @@ export const assistantRouter = new Hono<{
   // Deterministic, cheap to poll — no AI involved.
   .get("/nudges", zValidator("query", NudgesQuerySchema), async (c) => {
     const { timezoneOffsetMinutes } = c.req.valid("query");
-    const nudges = await computeNudges(c.env, c.get("workspaceId"), timezoneOffsetMinutes);
+    const nudges = await computeNudges(
+      c.env,
+      c.get("workspaceId"),
+      c.get("userId"),
+      timezoneOffsetMinutes
+    );
     return c.json(nudges);
   })
   // "Plan my day", without the chat: the same deterministic proposal the
@@ -32,8 +38,14 @@ export const assistantRouter = new Hono<{
   // update per slot, which the client or the Assistant does with consent.
   .get("/plan-day", zValidator("query", NudgesQuerySchema), async (c) => {
     const { timezoneOffsetMinutes } = c.req.valid("query");
-    const hours = await loadWorkingHours(c.env.DB, c.get("userId"));
-    return c.json(await buildDayPlan(c.env, c.get("workspaceId"), timezoneOffsetMinutes, hours));
+    const { localDate } = localDayBounds(Date.now(), timezoneOffsetMinutes);
+    const [hours, dayOff] = await Promise.all([
+      loadWorkingHours(c.env.DB, c.get("userId")),
+      loadDayOff(c.env.DB, c.get("workspaceId"), c.get("userId"), localDate),
+    ]);
+    return c.json(
+      await buildDayPlan(c.env, c.get("workspaceId"), timezoneOffsetMinutes, hours, dayOff)
+    );
   })
   // One-click "Add to timesheet" from an untracked-meeting nudge. Server-side
   // so the entry can be pre-categorized via grounded AI project inference —

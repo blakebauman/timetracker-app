@@ -12,6 +12,7 @@ import { loadGroundingProjects, resolveGrounding, inferEventProjects } from "./a
 import { rememberFact, searchMemories } from "./assistant-memory";
 import { createTask, getTask, listTasks, updateTask } from "./tasks";
 import { buildDayPlan, type WorkingHours } from "./day-plan";
+import type { DayOffPortion } from "@timetracker/core/schemas";
 import { summarizeTime } from "./time-summary";
 import { workDescription } from "@timetracker/core/entry-text";
 import { promptSafe } from "./untrusted-text";
@@ -33,6 +34,8 @@ export interface AssistantToolContext {
    * workspace and doesn't know which member is typing. Default window if absent.
    */
   workday?: WorkingHours;
+  /** Which part of today the asking user has off, sent with the turn like `workday`. */
+  dayOff?: DayOffPortion;
   /** The browser's IANA zone, when sent — makes local→UTC right across DST. */
   timeZone?: string | null;
 }
@@ -452,10 +455,12 @@ export function buildAssistantTools(ctx: AssistantToolContext): ToolSet {
         "Propose a plan for the rest of today: fits the user's unscheduled tasks due today or overdue into their free time (inside the user's working hours from Settings, around calendar events and blocks already planned), most urgent first. Only PROPOSES — present the plan and, if the user agrees, call scheduleTasks with it.",
       inputSchema: z.object({}),
       execute: async () => {
-        const plan = await buildDayPlan(env, workspaceId, ctx.offsetMinutes, ctx.workday);
+        const plan = await buildDayPlan(env, workspaceId, ctx.offsetMinutes, ctx.workday, ctx.dayOff);
         return {
           date: plan.localDate,
-          workingHours: `${hhmm(plan.workday.start)}–${hhmm(plan.workday.end)}`,
+          workingHours:
+            plan.dayOff === "full" ? "none — the user has today off" : `${hhmm(plan.workday.start)}–${hhmm(plan.workday.end)}`,
+          dayOff: plan.dayOff,
           free: human(plan.freeMinutes * 60),
           freeMinutes: plan.freeMinutes,
           plan: plan.placed.map((p) => ({

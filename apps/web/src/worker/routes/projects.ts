@@ -3,7 +3,7 @@ import { zValidator } from "../lib/validate";
 import { CreateProjectSchema, UpdateProjectSchema } from "@timetracker/core/schemas";
 import { DISTINCT_COLORS, spreadColor } from "../lib/colors";
 import { runProjectColorAssignment } from "../lib/ai";
-import { loadProjectPacing } from "../lib/pacing";
+import { loadUserPacing } from "../lib/pacing";
 
 const PROJECT_SELECT = `
   SELECT p.*, c.name AS client_name,
@@ -60,7 +60,7 @@ function formatProject(row: Record<string, unknown>) {
 
 export const projectsRouter = new Hono<{
   Bindings: Env;
-  Variables: { workspaceId: string };
+  Variables: { workspaceId: string; userId: string };
 }>()
   .get("/", async (c) => {
     const workspaceId = c.get("workspaceId");
@@ -185,7 +185,7 @@ export const projectsRouter = new Hono<{
   // over the trailing window, and where that rate lands the project by its end
   // date. Declared before "/:id" so the literal path isn't read as a project id.
   .get("/pacing", async (c) => {
-    const pacing = await loadProjectPacing(c.env.DB, c.get("workspaceId"));
+    const pacing = await loadUserPacing(c.env.DB, c.get("workspaceId"), c.get("userId"));
     return c.json(pacing);
   })
   .get("/:id", async (c) => {

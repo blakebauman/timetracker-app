@@ -25,7 +25,7 @@ import {
   markTaskStarted,
 } from "../db/queries";
 import { createTask, getTask, listTasks, updateTask, type TaskRecord } from "../lib/tasks";
-import { loadProjectPacing } from "../lib/pacing";
+import { loadUserPacing } from "../lib/pacing";
 import { buildStatusUpdate } from "../lib/status-update";
 import { generateDrafts, listDrafts } from "../lib/drafts";
 import type { ApiKeyScope } from "../lib/api-keys";
@@ -425,7 +425,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
       annotations: READ_ONLY,
     },
     async () => {
-      const pacing = await loadProjectPacing(db, workspaceId);
+      const pacing = await loadUserPacing(db, workspaceId, ctx.userId);
       return json(
         pacing.map((p) => ({
           project: p.projectName,

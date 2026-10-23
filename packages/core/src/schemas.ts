@@ -641,6 +641,48 @@ export const TaskViewSchema = z.object({
   createdAt: z.string(),
 });
 
+// ─── Days off ─────────────────────────────────────────────────────────────────
+// A local day (never an instant) and which part of it is off: "am" means the
+// morning is off and the afternoon is worked.
+export const DayOffPortionSchema = z.enum(["full", "am", "pm"]);
+export type DayOffPortion = z.infer<typeof DayOffPortionSchema>;
+
+export const DayOffSchema = z.object({
+  id: z.string(),
+  date: LocalDateSchema,
+  portion: DayOffPortionSchema,
+  label: z.string(),
+});
+export type DayOff = z.infer<typeof DayOffSchema>;
+
+/** Longest range one request may add — a long leave, not an arbitrary-size write. */
+export const MAX_DAYS_OFF_RANGE = 92;
+
+/**
+ * Add a single day or an inclusive range. A range adds its weekdays only, and
+ * is always whole days: "the morning off" across a fortnight isn't a thing
+ * anyone books.
+ */
+export const CreateDaysOffSchema = z
+  .object({
+    from: LocalDateSchema,
+    to: LocalDateSchema.optional(),
+    portion: DayOffPortionSchema.default("full"),
+    label: z.string().trim().max(60).default(""),
+  })
+  .refine((d) => !d.to || d.to >= d.from, { message: "The range ends before it starts", path: ["to"] })
+  .refine(
+    (d) =>
+      !d.to ||
+      (Date.parse(`${d.to}T00:00:00Z`) - Date.parse(`${d.from}T00:00:00Z`)) / 86_400_000 < MAX_DAYS_OFF_RANGE,
+    { message: `At most ${MAX_DAYS_OFF_RANGE} days at once`, path: ["to"] }
+  )
+  .refine((d) => !d.to || d.to === d.from || d.portion === "full", {
+    message: "A half day is a single day",
+    path: ["portion"],
+  });
+export type CreateDaysOff = z.input<typeof CreateDaysOffSchema>;
+
 export const CreateSavedReportSchema = z.object({
   name: z.string().min(1).max(120),
   // Stored as JSON text as-is; a filter config is a few hundred bytes, so 16 KiB

@@ -1,4 +1,4 @@
-import type { CalendarOptions } from "@fullcalendar/react";
+import type { CalendarOptions, DayCellInfo, DayLaneInfo } from "@fullcalendar/react";
 import { cn } from "@/lib/utils";
 import type { CalendarEventExtendedProps } from "@/lib/calendarMapping";
 
@@ -25,6 +25,13 @@ const dayClass = (info: { isToday: boolean; isDisabled: boolean }) =>
     "border border-border",
     info.isDisabled ? "bg-foreground/3" : info.isToday && "bg-foreground/4"
   );
+
+/** A time-grid day column. Exported so the grid can add per-day classes (days off) on top. */
+export const dayLaneClass = (info: DayLaneInfo) =>
+  cn("tt-fc-lane", dayClass(info), info.isFuture && "tt-fc-future");
+
+/** A month-grid day cell, exported for the same reason. */
+export const dayCellClass = (info: DayCellInfo) => cn("tt-fc-day-cell", dayClass(info));
 
 const kindClass = (props: CalendarEventExtendedProps) => {
   if (props.gap) return "tt-event-gap";
@@ -72,7 +79,7 @@ export const calendarClassOptions: CalendarOptions = {
 
   views: {
     timeGrid: {
-      dayLaneClass: (info) => cn("tt-fc-lane", dayClass(info), info.isFuture && "tt-fc-future"),
+      dayLaneClass,
       dayLaneInnerClass: (info) => (info.isStack ? "m-1" : "mx-0.5"),
       slotLaneClass: (info) => cn("tt-fc-slot border border-border", info.isMinor && "border-dotted"),
 
@@ -101,7 +108,7 @@ export const calendarClassOptions: CalendarOptions = {
     },
 
     dayGrid: {
-      dayCellClass: (info) => cn("tt-fc-day-cell", dayClass(info)),
+      dayCellClass,
       dayCellTopClass: "flex flex-row justify-end",
       dayCellTopInnerClass: (info) =>
         cn("mx-1.5 my-1 whitespace-nowrap", info.isOther ? "text-muted-foreground" : "text-foreground"),

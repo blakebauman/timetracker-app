@@ -18,6 +18,7 @@ import { draftsRouter } from "./routes/drafts";
 import { reportsRouter } from "./routes/reports";
 import { savedReportsRouter } from "./routes/saved-reports";
 import { taskViewsRouter } from "./routes/task-views";
+import { daysOffRouter } from "./routes/days-off";
 import { plannerRouter } from "./routes/planner";
 import { settingsRouter } from "./routes/settings";
 import { integrationsRouter } from "./routes/integrations";
@@ -148,6 +149,7 @@ const app = new Hono<{ Bindings: Env }>()
   .route("/api/reports", reportsRouter)
   .route("/api/saved-reports", savedReportsRouter)
   .route("/api/task-views", taskViewsRouter)
+  .route("/api/days-off", daysOffRouter)
   .route("/api/planner", plannerRouter)
   .route("/api/settings", settingsRouter)
   .route("/api/integrations", integrationsRouter)

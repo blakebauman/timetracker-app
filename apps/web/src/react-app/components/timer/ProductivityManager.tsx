@@ -4,6 +4,7 @@ import { useTimerStore } from "@/stores/timerStore";
 import { useIdleDetection } from "@/hooks/useIdleDetection";
 import { useTrackingReminder } from "@/hooks/useTrackingReminder";
 import { usePomodoro } from "@/hooks/usePomodoro";
+import { useTodayOff } from "@/hooks/useDaysOff";
 import { notify } from "@/lib/notify";
 import { IdleDialog } from "./IdleDialog";
 
@@ -30,7 +31,10 @@ export function ProductivityManager() {
     if (!idleSince) notifiedFor.current = null;
   }, [idleSince]);
 
-  useTrackingReminder(p.reminderEnabled && !isRunning, p.reminderIntervalMinutes);
+  // "You're not tracking" is the right thing to say on a working day and the
+  // wrong one on a booked day off.
+  const offToday = useTodayOff() === "full";
+  useTrackingReminder(p.reminderEnabled && !isRunning && !offToday, p.reminderIntervalMinutes);
   usePomodoro(p.pomodoroEnabled && isRunning, p.pomodoroWorkMinutes, p.pomodoroBreakMinutes);
 
   // Remount per idle window so the dialog's live clock initializes fresh.

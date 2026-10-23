@@ -10,6 +10,9 @@ import type {
   CreatedApiKey,
   StatusUpdateRequest,
   StatusUpdateResult,
+  DayOff,
+  DayOffPortion,
+  CreateDaysOff,
 } from "@timetracker/core/schemas";
 import { BULK_ENTRY_IDS_MAX } from "@timetracker/core/limits";
 
@@ -21,6 +24,8 @@ export interface DayPlan {
   freeMinutes: number;
   /** The working hours the plan filled (Settings → Working hours). */
   workday: { start: number; end: number };
+  /** Set when part or all of today is off; `workday` is then the part that's worked. */
+  dayOff: DayOffPortion | null;
 }
 
 export type CalendarProviderId = "google" | "microsoft";
@@ -560,6 +565,14 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  },
+
+  // ─── Days off ─────────────────────────────────────────────────────────────
+  daysOff: {
+    list: (from: string) => request<DayOff[]>(`/days-off?from=${from}`),
+    create: (body: CreateDaysOff) =>
+      request<DayOff[]>("/days-off", { method: "POST", body: JSON.stringify(body) }),
+    delete: (id: string) => request<unknown>(`/days-off/${id}`, { method: "DELETE" }),
   },
 
   // ─── Saved reports ────────────────────────────────────────────────────────

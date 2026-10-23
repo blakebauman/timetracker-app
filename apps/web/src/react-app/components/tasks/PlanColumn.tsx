@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CalendarDays, ChevronLeft, ListChecks, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
-import type { Task } from "@timetracker/core/schemas";
+import type { DayOffPortion, Task } from "@timetracker/core/schemas";
 import { addLocalDays, compareLocalDates } from "@timetracker/core/task-recurrence";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +22,7 @@ import { PlanMyDay } from "./PlanMyDay";
 import { useAllTasks, useUpdateTask } from "@/hooks/useTasks";
 import { usePlanFlags } from "@/hooks/usePlanFlags";
 import { useDayRollover } from "@/hooks/useDayRollover";
+import { useDaysOffMap } from "@/hooks/useDaysOff";
 import { useUIStore } from "@/stores/uiStore";
 import {
   comparePlanned,
@@ -365,17 +366,26 @@ function PlanRow({ task, flag, draggable, dayDrag, move }: PlanRowProps) {
   );
 }
 
+const OFF_LABEL: Record<DayOffPortion, string> = {
+  full: "Day off",
+  am: "Morning off",
+  pm: "Afternoon off",
+};
+
 function SectionHeading({
   children,
   figure,
   tone,
   empty,
+  off,
 }: {
   children: React.ReactNode;
   figure?: React.ReactNode;
   tone?: "late";
   /** An empty day: the heading carries "Nothing due" instead of rows. */
   empty?: boolean;
+  /** Booked time off on this day (Settings → Time off). */
+  off?: DayOffPortion;
 }) {
   return (
     <h3
@@ -388,7 +398,11 @@ function SectionHeading({
     >
       <span>{children}</span>
       {figure !== undefined && <span className="font-mono tabular-nums">{figure}</span>}
-      {empty && <span className="font-normal">Nothing due</span>}
+      {off ? (
+        <span className="font-normal">{OFF_LABEL[off]}</span>
+      ) : (
+        empty && <span className="font-normal">Nothing due</span>
+      )}
     </h3>
   );
 }
@@ -401,6 +415,7 @@ function PlanBody({ draggable }: { draggable: boolean }) {
   const { data: tasks = [], isPending, isError } = useAllTasks();
   const flags = usePlanFlags(tasks);
   const sections = usePlanSections(tasks, today);
+  const daysOff = useDaysOffMap();
   const [showAllOverdue, setShowAllOverdue] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   useCalendarDraggable(listRef, draggable && !isPending);
@@ -515,7 +530,9 @@ function PlanBody({ draggable }: { draggable: boolean }) {
             )}
 
             <section aria-label="Today" {...dropOn(today)} className={dropWash(today)}>
-              <SectionHeading figure={sections.today.length || undefined}>Today</SectionHeading>
+              <SectionHeading figure={sections.today.length || undefined} off={daysOff.get(today)}>
+                Today
+              </SectionHeading>
               {sections.today.map(row)}
               {nothingToday && (
                 <p className="px-2 pt-1 pb-3 text-xs text-balance text-muted-foreground">
@@ -532,7 +549,9 @@ function PlanBody({ draggable }: { draggable: boolean }) {
                 {...dropOn(day)}
                 className={dropWash(day)}
               >
-                <SectionHeading empty={list.length === 0}>{dayHeading(day, today)}</SectionHeading>
+                <SectionHeading empty={list.length === 0} off={daysOff.get(day)}>
+                  {dayHeading(day, today)}
+                </SectionHeading>
                 {list.map(row)}
               </section>
             ))}

@@ -16,7 +16,8 @@ import {
 } from "../emails/daily-brief";
 import { loadTodayEvents } from "./assistant";
 import { describeDay, loadTaskPlan } from "./task-plan";
-import { atRiskProjects, loadProjectPacing } from "./pacing";
+import { atRiskProjects, loadUserPacing } from "./pacing";
+import { loadDayOff } from "./days-off";
 import { runBriefNarrative } from "./ai";
 import { forEachLimited, SWEEP_CONCURRENCY } from "./concurrency";
 
@@ -241,7 +242,7 @@ export async function buildDigest(
     )
       .bind(user.workspaceId, user.id, startLocalDate, endLocalDate)
       .first<{ n: number }>(),
-    loadProjectPacing(env.DB, user.workspaceId),
+    loadUserPacing(env.DB, user.workspaceId, user.id),
   ]);
 
   // The brief is read the morning after the day it covers: "today" is the day
@@ -388,7 +389,15 @@ export async function runDigests(env: Env, nowMs: number = Date.now()): Promise<
     };
 
     const due: DigestKind[] = [];
-    if (row.digest_daily && row.digest_daily_sent !== localDate) due.push("daily");
+    // The morning briefing is a plan for a working day; on a whole day off it
+    // stays home. (Not claimed: un-booking the day inside the hour still sends.)
+    if (
+      row.digest_daily &&
+      row.digest_daily_sent !== localDate &&
+      (await loadDayOff(env.DB, row.workspace_id, row.id, localDate)) !== "full"
+    ) {
+      due.push("daily");
+    }
     if (
       row.digest_weekly &&
       local.getUTCDay() === WEEKLY_SEND_WEEKDAY &&
