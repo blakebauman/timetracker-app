@@ -13,6 +13,7 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 - [Calendar sync & auto-track (Google + Outlook)](#calendar-sync--auto-track-google--outlook)
 - [The Assistant](#the-assistant)
 - [Budgets & pacing](#budgets--pacing)
+- [Time off](#time-off)
 - [Weekly status updates](#weekly-status-updates)
 - [Email digests](#email-digests)
 - [Ask your AI assistant (MCP)](#ask-your-ai-assistant-mcp)
@@ -108,6 +109,22 @@ Give a project a **time target** (Projects → edit → estimated hours) and opt
 The projection uses your burn rate per **working day** over the last two weeks. A project you haven't touched recently gets no verdict at all — it isn't on pace for anything, and guessing would just cry wolf.
 
 Projects that are over, or heading over, also show up as Assistant nudges and in your email digest.
+
+Booked [time off](#time-off) isn't counted as working days, on either side of the projection: a week of leave neither dilutes your recent burn rate nor pretends you'll be working through it.
+
+## Time off
+
+Book holidays, bank holidays and half days under **Settings → General → Time off**. Pick a day or a range (a range books its weekdays only), optionally a label, and for a single day whether it's the whole day, the morning or the afternoon. Booking a day again replaces it; a stretch of leave is listed, and removed, as one row.
+
+A day off changes what the app expects of you that day:
+
+- **Budget pacing** stops counting it as a working day — a half day counts half.
+- **Plan my day** plans nothing into a day off, and only the worked half of a half day (a morning off starts the plan at the midpoint of your working hours).
+- **Reminders go quiet**: the *Nothing tracked yet* nudge, meeting nudges, the overdue-tasks nudge and the not-tracking reminder don't fire on a whole day off, and the morning briefing isn't sent. A forgotten running timer, budget and deadline warnings still are — those are true whoever is at their desk.
+- **Draft day** proposes nothing for a whole day off; time you actually log on it is untouched.
+- The **plan column** marks the day (*Day off*, *Morning off*), and the **calendar** hatches its column.
+
+Days off are yours, not the workspace's: a teammate's leave doesn't change your pacing.
 
 ## Weekly status updates
 
@@ -361,7 +378,8 @@ Under **Settings → Account / Security / Danger zone**:
 | Appearance | Theme (light/dark/system), auto-assign colors + AI recolor | Theme: device · colors: account |
 | Keyboard shortcuts | Reference card | — |
 | Data export | All-entries CSV | — |
-| Preferences | Default billable (used when an entry has no project), 12/24h time, currency, week start, show weekends | Billable: device · rest: account |
+| Preferences | Default billable (used when an entry has no project), 12/24h time, currency, week start, show weekends, working hours | Billable: device · rest: account |
+| Time off | Days off, bank holidays, half days | Account (per workspace) |
 | Productivity | Notifications, idle detection, reminders, nudge alerts, pomodoro | Device |
 | Email digests | Morning briefing, weekly summary, send hour, send one now | Account |
 | Assistant memory | Review/delete assistant memories | Workspace |

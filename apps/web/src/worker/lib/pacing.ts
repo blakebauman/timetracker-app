@@ -7,6 +7,8 @@
 // the entries alone. The AI features (drafts, briefings) *read* pacing; they
 // never compute it.
 
+import { loadDaysOff, NO_DAYS_OFF, offWeight, type DaysOffMap } from "./days-off";
+
 /** Trailing window the burn rate is measured over. */
 export const BURN_WINDOW_DAYS = 14;
 
@@ -34,9 +36,9 @@ export interface PacingInput {
 export interface ProjectPacing extends PacingInput {
   /** 0–1+, null when there's no budget. Not clamped: 1.2 means 20% over. */
   percentUsed: number | null;
-  /** Mean seconds per *working* day over the trailing window. */
+  /** Mean seconds per *working* day over the trailing window (days off excluded). */
   burnPerWorkingDay: number;
-  /** Working days from today up to and including endDate. Null with no endDate. */
+  /** Working days from today up to and including endDate, less days off. Null with no endDate. */
   workingDaysRemaining: number | null;
   /** tracked + burn × workingDaysRemaining. Null when it can't be projected. */
   projectedSeconds: number | null;
@@ -48,15 +50,20 @@ export interface ProjectPacing extends PacingInput {
 /** At/over this share of the budget a project is worth a second look regardless of dates. */
 const AT_RISK_THRESHOLD = 0.85;
 
-/** Mon–Fri days in [from, to], inclusive of both ends. Negative ranges → 0. */
-export function countWorkingDays(from: Date, to: Date): number {
+/**
+ * Mon–Fri days in [from, to], inclusive of both ends, less days off (a half
+ * day counts half). Negative ranges → 0.
+ */
+export function countWorkingDays(from: Date, to: Date, daysOff: DaysOffMap = NO_DAYS_OFF): number {
   const start = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
   const end = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate());
   if (end < start) return 0;
   let count = 0;
   for (let d = start; d <= end; d += 86_400_000) {
     const weekday = new Date(d).getUTCDay();
-    if (weekday >= 1 && weekday <= 5) count++;
+    if (weekday >= 1 && weekday <= 5) {
+      count += 1 - offWeight(daysOff.get(new Date(d).toISOString().slice(0, 10)));
+    }
   }
   return count;
 }
@@ -66,9 +73,15 @@ export function countWorkingDays(from: Date, to: Date): number {
  *
  * `nowMs` is passed in rather than read from the clock so the same inputs always
  * produce the same output — this runs in a cron-driven digest as well as behind
- * a request, and both have to agree.
+ * a request, and both have to agree. The same goes for `daysOff`: a week of
+ * leave is a week nobody burns budget, so it comes out of both the burn
+ * window's denominator and the days remaining.
  */
-export function computePacing(input: PacingInput, nowMs: number): ProjectPacing {
+export function computePacing(
+  input: PacingInput,
+  nowMs: number,
+  daysOff: DaysOffMap = NO_DAYS_OFF
+): ProjectPacing {
   const { estimatedSeconds, trackedSeconds, recentSeconds, endDate } = input;
 
   // Working days, not calendar days: a 14-day window holds 10 of them, and a
@@ -76,12 +89,13 @@ export function computePacing(input: PacingInput, nowMs: number): ProjectPacing 
   // the rate by 30% and quietly turns every overrun projection into "on track".
   const windowWorkingDays = countWorkingDays(
     new Date(nowMs - (BURN_WINDOW_DAYS - 1) * 86_400_000),
-    new Date(nowMs)
+    new Date(nowMs),
+    daysOff
   );
   const burnPerWorkingDay = windowWorkingDays > 0 ? recentSeconds / windowWorkingDays : 0;
 
   const workingDaysRemaining = endDate
-    ? countWorkingDays(new Date(nowMs), new Date(`${endDate.slice(0, 10)}T00:00:00Z`))
+    ? countWorkingDays(new Date(nowMs), new Date(`${endDate.slice(0, 10)}T00:00:00Z`), daysOff)
     : null;
 
   if (!estimatedSeconds || estimatedSeconds <= 0) {
@@ -129,11 +143,15 @@ export function computePacing(input: PacingInput, nowMs: number): ProjectPacing 
  * Pacing for every active project in a workspace, budgeted or not, newest
  * activity first. One query: the trailing-window sum is a conditional aggregate
  * over the same join as the lifetime sum rather than a second pass.
+ *
+ * `daysOff` is the asking user's (see `loadUserPacing`): pacing is a workspace
+ * number, but whose leave shapes it is a question only the caller can answer.
  */
 export async function loadProjectPacing(
   db: D1Database,
   workspaceId: string,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
+  daysOff: DaysOffMap = NO_DAYS_OFF
 ): Promise<ProjectPacing[]> {
   const windowStart = new Date(nowMs - BURN_WINDOW_DAYS * 86_400_000).toISOString();
 
@@ -173,9 +191,26 @@ export async function loadProjectPacing(
         endDate: (row.end_date as string | null) ?? null,
         lastTracked: (row.last_tracked as string | null) ?? null,
       },
-      nowMs
+      nowMs,
+      daysOff
     );
   });
+}
+
+/**
+ * Pacing as one user sees it: the workspace's projects, with that user's days
+ * off taken out of the working-day counts. Every day off from the start of the
+ * burn window onward can matter (the days remaining run to each end date).
+ */
+export async function loadUserPacing(
+  db: D1Database,
+  workspaceId: string,
+  userId: string,
+  nowMs: number = Date.now()
+): Promise<ProjectPacing[]> {
+  const from = new Date(nowMs - BURN_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const daysOff = await loadDaysOff(db, workspaceId, userId, from);
+  return loadProjectPacing(db, workspaceId, nowMs, daysOff);
 }
 
 /** Budgeted projects that need attention, worst first. Used by nudges + digests. */

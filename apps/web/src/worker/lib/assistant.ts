@@ -4,10 +4,11 @@
 // running timer — no AI involved, so they're cheap to poll. Chat is the AI
 // half, grounded in the same facts (see routes/assistant.ts).
 
-import type { AssistantNudge } from "@timetracker/core/schemas";
+import type { AssistantNudge, DayOffPortion } from "@timetracker/core/schemas";
 import { fetchWorkspaceEvents } from "./calendar-connections";
 import type { ExternalEvent } from "./calendar-providers";
-import { atRiskProjects, loadProjectPacing, type ProjectPacing } from "./pacing";
+import { loadDayOff } from "./days-off";
+import { atRiskProjects, loadUserPacing, type ProjectPacing } from "./pacing";
 import { describeDay, loadTaskPlan, type TaskPlan } from "./task-plan";
 import { promptSafe } from "./untrusted-text";
 
@@ -146,12 +147,19 @@ export function buildNudges(
   facts: TodayFacts,
   events: ExternalEvent[],
   pacing: ProjectPacing[] = [],
-  plan: Pick<TaskPlan, "overdueIds" | "deadlines"> = { overdueIds: [], deadlines: [] }
+  plan: Pick<TaskPlan, "overdueIds" | "deadlines"> = { overdueIds: [], deadlines: [] },
+  dayOff?: DayOffPortion
 ): AssistantNudge[] {
   const nudges: AssistantNudge[] = [];
   const { localHour, localWeekday, localDate } = localDayBounds(nowMs, offsetMinutes);
 
-  const untracked = events.filter((e) => !facts.confirmedEventIds.has(e.calendarEventId));
+  // On a whole day off, the prompts to *work* go quiet — a meeting still on
+  // the calendar, an empty timesheet, a slipped due date. Facts that stay true
+  // whoever is at their desk (a forgotten timer, a budget, a deadline) don't.
+  const offAllDay = dayOff === "full";
+  const untracked = offAllDay
+    ? []
+    : events.filter((e) => !facts.confirmedEventIds.has(e.calendarEventId));
 
   for (const e of untracked) {
     const startMs = new Date(e.start).getTime();
@@ -204,12 +212,16 @@ export function buildNudges(
   }
 
   const isWeekday = localWeekday >= 1 && localWeekday <= 5;
+  // A morning off moves the start of the day past the reminder hour, so it
+  // waits for a day that started at the usual time.
   // Deliberately skipped on a workspace that has never tracked anything: the
   // first thing a new account saw was "Nothing tracked yet" plus a chatbot CTA,
   // before it had been shown how to start a timer. Let the list's own empty
   // state do the teaching; the nudge is for people with an established habit.
   if (
     isWeekday &&
+    dayOff !== "full" &&
+    dayOff !== "am" &&
     localHour >= NOTHING_TRACKED_HOUR &&
     facts.entryCount === 0 &&
     !facts.running &&
@@ -290,7 +302,7 @@ export function buildNudges(
   // it would be noise. A task a deadline nudge already names isn't counted
   // again: one late task used to arrive as "Deadline passed" *and* "A task is
   // overdue", two cards with the same button for the same fix.
-  const unnamed = plan.overdueIds.filter((id) => !named.has(id)).length;
+  const unnamed = offAllDay ? 0 : plan.overdueIds.filter((id) => !named.has(id)).length;
   if (unnamed > 0) {
     const others = plan.overdueIds.length > unnamed;
     nudges.push({
@@ -328,17 +340,19 @@ export function buildNudges(
 export async function computeNudges(
   env: Env,
   workspaceId: string,
+  userId: string,
   offsetMinutes: number
 ): Promise<AssistantNudge[]> {
   const nowMs = Date.now();
   const { dayStartIso, dayEndIso, localDate } = localDayBounds(nowMs, offsetMinutes);
-  const [facts, events, pacing, plan] = await Promise.all([
+  const [facts, events, pacing, plan, dayOff] = await Promise.all([
     loadTodayFacts(env.DB, workspaceId, dayStartIso, dayEndIso),
     loadTodayEvents(env, workspaceId, dayStartIso, dayEndIso),
-    loadProjectPacing(env.DB, workspaceId, nowMs),
+    loadUserPacing(env.DB, workspaceId, userId, nowMs),
     loadTaskPlan(env.DB, workspaceId, localDate, localDate),
+    loadDayOff(env.DB, workspaceId, userId, localDate),
   ]);
-  return buildNudges(nowMs, offsetMinutes, facts, events, pacing, plan);
+  return buildNudges(nowMs, offsetMinutes, facts, events, pacing, plan, dayOff);
 }
 
 /**
@@ -348,7 +362,8 @@ export async function computeNudges(
 export async function buildAssistantContext(
   env: Env,
   workspaceId: string,
-  offsetMinutes: number
+  offsetMinutes: number,
+  dayOff?: DayOffPortion
 ): Promise<string> {
   const nowMs = Date.now();
   const { dayStartIso, dayEndIso, localDate } = localDayBounds(nowMs, offsetMinutes);
@@ -424,8 +439,15 @@ export async function buildAssistantContext(
     ? `"${promptSafe(facts.running.description) || "(no description)"}" — started ${t(facts.running.start)}, running for ${formatDuration(nowMs - new Date(facts.running.start).getTime())}`
     : "(none)";
 
-  return `Local date: ${localDate}, local time now: ${nowLocal}.
+  const dayOffLine =
+    dayOff === "full"
+      ? "\nThe user has today off.\n"
+      : dayOff
+        ? `\nThe user has the ${dayOff === "am" ? "morning" : "afternoon"} off today.\n`
+        : "";
 
+  return `Local date: ${localDate}, local time now: ${nowLocal}.
+${dayOffLine}
 Running timer: ${runningLine}
 
 Today's completed time entries (start–stop | project | duration | billing | description):

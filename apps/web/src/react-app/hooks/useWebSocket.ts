@@ -252,6 +252,10 @@ export function useWebSocket() {
           if (!isOwnEcho) void queryClient.invalidateQueries({ queryKey: ["tasks"] });
           break;
         }
+        case "days_off:changed": {
+          if (!isOwnEcho) void queryClient.invalidateQueries({ queryKey: ["days-off"] });
+          break;
+        }
       }
     }
 

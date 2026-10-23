@@ -16,6 +16,7 @@ import {
   type UIMessage,
 } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
+import { DayOffPortionSchema } from "@timetracker/core/schemas";
 import { buildAssistantContext } from "../lib/assistant";
 import { buildAssistantTools } from "../lib/assistant-tools";
 import { recallMemories, buildMemoryBlock } from "../lib/assistant-memory";
@@ -69,9 +70,12 @@ export class ChatAgent extends AIChatAgent<Cloudflare.Env> {
     // The IANA zone makes local→UTC right on dates across a DST change; the
     // offset alone is only right on this side of one. Older clients omit it.
     const timeZone = isValidTimeZone(options?.body?.timeZone) ? options.body.timeZone : null;
+    // Whether the asking member has today off, from the client for the same
+    // reason as the working hours below: one agent serves the whole workspace.
+    const dayOff = DayOffPortionSchema.safeParse(options?.body?.dayOff).data;
 
     const [context, memories] = await Promise.all([
-      buildAssistantContext(this.env, workspaceId, offset),
+      buildAssistantContext(this.env, workspaceId, offset, dayOff),
       recallMemories(this.env.DB, workspaceId),
     ]);
     const memoryBlock = buildMemoryBlock(memories);
@@ -127,7 +131,7 @@ ${context}
       Number.isInteger(ws) && Number.isInteger(we) && ws >= 0 && we <= 1440 && we > ws
         ? { start: ws, end: we }
         : undefined;
-    const tools = buildAssistantTools({ env: this.env, workspaceId, offsetMinutes: offset, timeZone, workday });
+    const tools = buildAssistantTools({ env: this.env, workspaceId, offsetMinutes: offset, timeZone, workday, dayOff });
 
     // Clamp any oversized message before it reaches the model, so a single huge
     // paste can't inflate the prompt (and cost/CPU) unbounded.

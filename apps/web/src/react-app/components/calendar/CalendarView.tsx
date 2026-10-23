@@ -1,8 +1,11 @@
-import { forwardRef, useCallback, useState } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import FullCalendar, {
   type CalendarRef,
   type DateClickInfo,
   type DateSelectInfo,
+  type DayCellInfo,
+  type DayLaneInfo,
+  type ViewOptions,
   type DatesSetInfo,
   type DropInfo,
   type EventClickInfo,
@@ -15,7 +18,10 @@ import dayGridPlugin from "@fullcalendar/react/daygrid";
 import interactionPlugin from "@fullcalendar/react/interaction";
 import "@fullcalendar/react/skeleton.css";
 import { CalendarEventContent } from "./CalendarEventContent";
-import { calendarClassOptions } from "./calendarClasses";
+import { calendarClassOptions, dayCellClass, dayLaneClass } from "./calendarClasses";
+import { useDaysOffMap } from "@/hooks/useDaysOff";
+import { dateToLocalDate } from "@/lib/taskUtils";
+import { cn } from "@/lib/utils";
 
 // Option objects are module constants so FullCalendar doesn't re-diff a fresh
 // copy of each on every parent render.
@@ -108,6 +114,22 @@ export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
       (arg: DateSelectInfo) => onSelect(arg.start.toISOString(), arg.end.toISOString()),
       [onSelect]
     );
+    // Booked days off are hatched on the grid, so a week of leave reads as one
+    // at a glance rather than as five empty days that look like lost time.
+    const daysOff = useDaysOffMap();
+    const views = useMemo(() => {
+      if (daysOff.size === 0) return VIEWS;
+      const off = (date: Date) => {
+        const portion = daysOff.get(dateToLocalDate(date));
+        return portion && (portion === "full" ? "tt-fc-off" : "tt-fc-off tt-fc-off-half");
+      };
+      const { timeGrid, dayGrid } = calendarClassOptions.views as Record<string, ViewOptions>;
+      return {
+        ...VIEWS,
+        timeGrid: { ...timeGrid, dayLaneClass: (info: DayLaneInfo) => cn(dayLaneClass(info), off(info.date)) },
+        dayGrid: { ...dayGrid, dayCellClass: (info: DayCellInfo) => cn(dayCellClass(info), off(info.date)) },
+      };
+    }, [daysOff]);
     const handleDateClick = useCallback(
       (arg: DateClickInfo) => onDateClick(arg.date.toISOString()),
       [onDateClick]
@@ -121,7 +143,7 @@ export const CalendarView = forwardRef<CalendarRef, CalendarViewProps>(
           plugins={PLUGINS}
           initialView={initialView}
           initialDate={initialDate}
-          views={VIEWS}
+          views={views}
           headerToolbar={false}
           height="100%"
           timeZone="local"

@@ -136,3 +136,21 @@
 .tt-calendar .tt-event.tt-event-planned.tt-event-missed {
   border-color: color-mix(in oklab, var(--warning) 80%, transparent);
 }
+
+/* A booked day off: a faint hairline hatch over the column, so a week of leave
+   reads as leave rather than as five empty days of lost time. A half day
+   hatches lighter — part of it is still worked. */
+.tt-calendar .tt-fc-off {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--foreground) 7%, transparent) 0 1px,
+    transparent 1px 9px
+  );
+}
+.tt-calendar .tt-fc-off.tt-fc-off-half {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--foreground) 4%, transparent) 0 1px,
+    transparent 1px 9px
+  );
+}

@@ -42,7 +42,8 @@ import { useUIStore } from "@/stores/uiStore";
 import { useAssistantNudges, useTrackNudgeEvent } from "@/hooks/useAssistant";
 import { useCalendarStatus } from "@/hooks/useCalendarSync";
 import { useTimer } from "@/hooks/useTimer";
-import type { AssistantNudge, Settings } from "@timetracker/core/schemas";
+import type { AssistantNudge, DayOff, Settings } from "@timetracker/core/schemas";
+import { format } from "date-fns";
 import { SuggestionChips } from "./ai-elements/SuggestionChips";
 import { ToolCard } from "./ai-elements/ToolCard";
 import { AssistantMarkdown } from "./ai-elements/AssistantMarkdown";
@@ -338,13 +339,20 @@ export function AssistantPanel() {
     // with the zone, so "2pm" means 2pm here — across DST changes too.
     body: () => {
       // The agent is one per workspace and can't tell which member is typing,
-      // so their working hours (where planDay may place tasks) ride along.
+      // so their working hours (where planDay may place tasks) and whether
+      // they have today off ride along.
       const settings = queryClient.getQueryData<Settings>(["settings"]);
+      const today = format(new Date(), "yyyy-MM-dd");
+      const dayOff = queryClient
+        .getQueriesData<DayOff[]>({ queryKey: ["days-off"] })
+        .flatMap(([, rows]) => rows ?? [])
+        .find((d) => d.date === today)?.portion;
       return {
         timezoneOffsetMinutes: new Date().getTimezoneOffset(),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         workdayStartMinute: settings?.workdayStartMinute,
         workdayEndMinute: settings?.workdayEndMinute,
+        dayOff,
       };
     },
   });

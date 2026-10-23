@@ -95,11 +95,13 @@ export function PlanMyDay({ tasks }: { tasks: Task[] }) {
       <PopoverContent align="start" className="w-96">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-sm font-semibold">
-            {data && data.placed.length === 0 && data.unplaced.length === 0
-              ? "Nothing left to plan today"
-              : "The rest of today"}
+            {data?.dayOff === "full"
+              ? "You're off today"
+              : data && data.placed.length === 0 && data.unplaced.length === 0
+                ? "Nothing left to plan today"
+                : "The rest of today"}
           </h3>
-          {data && (
+          {data && data.dayOff !== "full" && (
             <span className="text-xs text-muted-foreground">
               <span className="font-mono tabular-nums text-foreground">
                 {formatDurationShort(data.freeMinutes * 60)}
@@ -143,6 +145,12 @@ export function PlanMyDay({ tasks }: { tasks: Task[] }) {
                 ))}
               </ol>
             )}
+            {data.dayOff === "full" && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Today is booked as a day off, so nothing is planned into it. Move
+                what's due to another day from the plan column.
+              </p>
+            )}
             {data.unplaced.length > 0 && (
               <div className="mt-3">
                 <p className="text-xs font-medium text-muted-foreground">Doesn't fit today</p>
@@ -158,7 +166,7 @@ export function PlanMyDay({ tasks }: { tasks: Task[] }) {
                 </ul>
               </div>
             )}
-            {data.placed.length === 0 && data.unplaced.length === 0 && (
+            {data.dayOff !== "full" && data.placed.length === 0 && data.unplaced.length === 0 && (
               <p className="mt-2 text-sm text-muted-foreground">
                 Every task due today already has a time, or there's nothing due.
               </p>
@@ -167,10 +175,17 @@ export function PlanMyDay({ tasks }: { tasks: Task[] }) {
                 stops at 17:30 for someone who works till 19:00 is only
                 legible if it says so. */}
             <p className="mt-3 text-xs text-muted-foreground">
-              Within your working hours,{" "}
-              <span className="font-mono tabular-nums">
-                {workdayLabel(data.workday.start, timeFormat)}–{workdayLabel(data.workday.end, timeFormat)}
-              </span>
+              {data.dayOff === "full" ? (
+                "Days off are under Settings → General"
+              ) : (
+                <>
+                  Within your working hours
+                  {data.dayOff && ` (${data.dayOff === "am" ? "morning" : "afternoon"} off)`},{" "}
+                  <span className="font-mono tabular-nums">
+                    {workdayLabel(data.workday.start, timeFormat)}–{workdayLabel(data.workday.end, timeFormat)}
+                  </span>
+                </>
+              )}
               {" · "}
               <Link
                 to="/settings"

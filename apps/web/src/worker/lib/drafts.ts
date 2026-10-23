@@ -19,6 +19,7 @@
 
 import type { DraftEntry } from "@timetracker/core/schemas";
 import { loadTodayEvents } from "./assistant";
+import { loadDayOff } from "./days-off";
 import {
   loadGroundingProjects,
   runDayDraftEnrichment,
@@ -259,9 +260,14 @@ export async function generateDrafts(
   const dayStartIso = new Date(dayStartMs).toISOString();
   const dayEndIso = new Date(dayEndMs).toISOString();
 
-  // Nothing that hasn't happened yet can be drafted.
+  // Nothing that hasn't happened yet can be drafted — and nothing on a whole
+  // day off is missing: weekday habits and that day's meetings are exactly the
+  // work that didn't happen. (Time actually logged on it is untouched.)
   const windowEnd = Math.min(dayEndMs, nowMs);
-  if (windowEnd <= dayStartMs) {
+  if (
+    windowEnd <= dayStartMs ||
+    (await loadDayOff(env.DB, workspaceId, userId, localDate)) === "full"
+  ) {
     return { drafts: await listDrafts(env.DB, workspaceId, userId, localDate), created: 0, enriched: false };
   }
 

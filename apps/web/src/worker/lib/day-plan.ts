@@ -10,7 +10,9 @@
  * offset; the worker runs in UTC and never decides what "9am" means.
  */
 import { compareLocalDates } from "@timetracker/core/task-recurrence";
+import type { DayOffPortion } from "@timetracker/core/schemas";
 import { loadTodayEvents } from "./assistant";
+import { workedHours } from "./days-off";
 import { listTasks, type TaskRecord } from "./tasks";
 
 /**
@@ -69,6 +71,8 @@ export interface DayPlan {
   freeMinutes: number;
   /** The working hours the plan filled, so a proposal can say what it assumed. */
   workday: WorkingHours;
+  /** Set when part or all of today is off; the workday above is already the part that's worked. */
+  dayOff: DayOffPortion | null;
 }
 
 /** Urgent first, then the nearest deadline, then the oldest due date. */
@@ -121,7 +125,7 @@ export function placeTasks(input: {
   tasks: PlanCandidate[];
   windowStart?: number;
   windowEnd?: number;
-}): DayPlan {
+}): Omit<DayPlan, "dayOff"> {
   const windowStart = input.windowStart ?? WORKDAY_START;
   const windowEnd = input.windowEnd ?? WORKDAY_END;
   const from = Math.max(windowStart, Math.ceil(input.nowMinute / GRID) * GRID);
@@ -167,7 +171,8 @@ export async function buildDayPlan(
   env: Env,
   workspaceId: string,
   offsetMinutes: number,
-  hours: WorkingHours = { start: WORKDAY_START, end: WORKDAY_END }
+  hours: WorkingHours = { start: WORKDAY_START, end: WORKDAY_END },
+  dayOff?: DayOffPortion
 ): Promise<DayPlan> {
   const nowMs = Date.now();
   const local = new Date(nowMs - offsetMinutes * 60_000);
@@ -214,12 +219,18 @@ export async function buildDayPlan(
       minutes: remainingMinutes(t),
     }));
 
-  return placeTasks({
-    localDate,
-    nowMinute,
-    busy,
-    tasks: candidates,
-    windowStart: hours.start,
-    windowEnd: hours.end,
-  });
+  // A whole day off is an empty window: nothing is placed, everything is
+  // reported as not fitting, and the caller can say why.
+  const worked = workedHours(hours, dayOff) ?? { start: hours.end, end: hours.end };
+  return {
+    ...placeTasks({
+      localDate,
+      nowMinute,
+      busy,
+      tasks: candidates,
+      windowStart: worked.start,
+      windowEnd: worked.end,
+    }),
+    dayOff: dayOff ?? null,
+  };
 }
