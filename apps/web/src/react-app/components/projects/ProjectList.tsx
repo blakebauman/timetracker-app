@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Search,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -28,6 +29,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ProjectForm } from "./ProjectForm";
 import { TaskList } from "./TaskList";
+import { StatusUpdateDialog } from "./StatusUpdateDialog";
 import {
   useAllProjects,
   useDeleteProject,
@@ -79,6 +81,7 @@ export function ProjectList() {
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const [editProject, setEditProject] = useState<Project | null>(null);
+  const [statusProject, setStatusProject] = useState<Project | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   // Two critiques flagged the same gap: at 30 projects this page was a scroll
@@ -379,6 +382,10 @@ export function ProjectList() {
                             <Edit2 className="mr-2 h-3.5 w-3.5" />
                             Edit
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setStatusProject(project)}>
+                            <FileText className="mr-2 h-3.5 w-3.5" />
+                            Status update
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
                               project.active
@@ -439,6 +446,9 @@ export function ProjectList() {
       {showCreate && <ProjectForm open onClose={() => setShowCreate(false)} />}
       {editProject && (
         <ProjectForm project={editProject} open onClose={() => setEditProject(null)} />
+      )}
+      {statusProject && (
+        <StatusUpdateDialog project={statusProject} onClose={() => setStatusProject(null)} />
       )}
     </Pane>
   );

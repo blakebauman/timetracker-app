@@ -13,6 +13,7 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 - [Calendar sync & auto-track (Google + Outlook)](#calendar-sync--auto-track-google--outlook)
 - [The Assistant](#the-assistant)
 - [Budgets & pacing](#budgets--pacing)
+- [Weekly status updates](#weekly-status-updates)
 - [Email digests](#email-digests)
 - [Ask your AI assistant (MCP)](#ask-your-ai-assistant-mcp)
 - [Reports & exports](#reports--exports)
@@ -107,6 +108,23 @@ Give a project a **time target** (Projects → edit → estimated hours) and opt
 The projection uses your burn rate per **working day** over the last two weeks. A project you haven't touched recently gets no verdict at all — it isn't on pace for anything, and guessing would just cry wolf.
 
 Projects that are over, or heading over, also show up as Assistant nudges and in your email digest.
+
+## Weekly status updates
+
+**Projects → ⋯ → Status update** drafts a status update for that project's week, ready to paste into an email or chat to whoever runs the engagement. It opens on this week; the arrows step back through earlier ones (your week start, from Settings).
+
+The text is built from the week itself:
+
+- a heading with the project, client and dates, and the time tracked (with how much of it was meetings)
+- **Highlights**: two to five bullets on the week's work, drafted by AI from your entry descriptions and tasks. They never state hours. The figures come from your entries, not from the model.
+- **Completed**: tasks on the project you finished that week
+- **In progress**: open tasks you tracked time against, with this week's time
+- **Meetings**: calendar-tracked entries
+- **Next**: open tasks due in the seven days after the week
+
+Choose **Itemised** for every piece of work listed with its time instead of the highlights. If the highlights can't be drafted, you get the itemised list and the dialog says so. Edit the text in place, then **Copy**. **Regenerate** drafts the highlights again. Amounts and rates never appear in an update.
+
+MCP clients get the itemised version through the `get_status_update` tool.
 
 ## Email digests
 

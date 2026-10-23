@@ -3,9 +3,12 @@ import { zValidator } from "../lib/validate";
 import {
   AiQuickEntryRequestSchema,
   AiSummaryRequestSchema,
+  StatusUpdateRequestSchema,
   type AiQuickEntryResult,
   type AiSummaryResult,
+  type StatusUpdateResult,
 } from "@timetracker/core/schemas";
+import { buildStatusUpdate } from "../lib/status-update";
 import {
   runQuickEntryParse,
   runSummaryGeneration,
@@ -111,4 +114,22 @@ export const aiRouter = new Hono<{
     }
 
     return c.json({ summary, entryCount: entries.length, totalSeconds } satisfies AiSummaryResult);
+  })
+  // A week's status update for one project. Never a 502: the model only writes
+  // the opening bullets, and the itemised facts stand in when it can't.
+  .post("/status-update", zValidator("json", StatusUpdateRequestSchema), async (c) => {
+    const { projectId, since, until, timezoneOffsetMinutes, style } = c.req.valid("json");
+    if (Date.parse(until) <= Date.parse(since)) {
+      return c.json({ error: "until must be after since" }, 400);
+    }
+    const result = await buildStatusUpdate(c.env.DB, c.env.AI, {
+      workspaceId: c.get("workspaceId"),
+      projectId,
+      since,
+      until,
+      offsetMinutes: timezoneOffsetMinutes,
+      style,
+    });
+    if (!result) return c.json({ error: "Not found" }, 404);
+    return c.json(result satisfies StatusUpdateResult);
   });

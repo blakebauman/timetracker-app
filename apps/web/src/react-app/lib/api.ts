@@ -8,6 +8,8 @@ import type {
   ApiKey,
   ApiKeyScope,
   CreatedApiKey,
+  StatusUpdateRequest,
+  StatusUpdateResult,
 } from "@timetracker/core/schemas";
 import { BULK_ENTRY_IDS_MAX } from "@timetracker/core/limits";
 
@@ -427,6 +429,8 @@ export const api = {
       request<unknown>("/ai/quick-entry", { method: "POST", body: JSON.stringify(body) }),
     summary: (body: Record<string, unknown>) =>
       request<unknown>("/ai/summary", { method: "POST", body: JSON.stringify(body) }),
+    statusUpdate: (body: StatusUpdateRequest) =>
+      request<StatusUpdateResult>("/ai/status-update", { method: "POST", body: JSON.stringify(body) }),
   },
 
   // ─── Assistant ─────────────────────────────────────────────────────

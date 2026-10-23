@@ -119,6 +119,7 @@ reach — 7 on a read key, 11 on read+write.
 | `get_time_summary` | read | Totals over a range, grouped by project/client/task/tag |
 | `list_time_entries` | read | Individual entries, optional description search |
 | `get_project_pacing` | read | Budget spent, burn rate, projected overrun |
+| `get_status_update` | read | One project's paste-ready status text over a range of local days (pass `timezoneOffsetMinutes`): time, work itemised, tasks completed/in progress, meetings, what's due next. The itemised style of the app's Status update dialog |
 | `get_running_timer` | read | What's running now, and for how long |
 | `list_drafts` | read | Proposals awaiting review, with why each was proposed |
 | `list_tasks` | read | Open, done or all tasks: due date, scheduled time, deadline, priority, estimate vs tracked, tags; `dueBy` for "what's due" |
