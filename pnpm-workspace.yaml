@@ -96,8 +96,8 @@ catalog:
   "@modelcontextprotocol/server": 2.3.1
   "@modelcontextprotocol/sdk": 1.32.1
   mimetext: ^3.0.28
-  react-email: ^6.9.0
-  "@react-email/ui": ^6.9.0
+  react-email: ^6.11.3
+  "@react-email/ui": ^6.11.3
 
   # ai — @cloudflare/ai-chat peers ai ^6, NOT v7
   ai: ^6.0.300
@@ -109,3 +109,22 @@ peerDependencyRules:
     # agents/mcp handler imports it, and this app serves /mcp with the SDK's
     # own createMcpHandler instead.
     agents>@modelcontextprotocol/server: 2.x
+
+# Security floors for transitive dependencies, each within its current major,
+# from open Dependabot alerts. Nearly all are dev tooling (the shadcn CLI,
+# miniflare, the react-email preview). Drop an entry once its parent
+# ships the patched version itself.
+overrides:
+  undici@>=7.0.0 <7.29.1: ^7.29.1
+  fast-uri@>=3.0.0 <3.1.7: ^3.1.7
+  qs@<6.16.0: ^6.16.0
+  ip-address@<10.7.1: ^10.7.1
+  browserslist@<4.28.7: ^4.28.7
+  postcss@<8.5.23: ^8.5.23
+  brace-expansion@>=4.0.0 <5.0.12: ^5.0.12
+  baseline-browser-mapping@<2.11.0: ^2.11.0
+  "@hono/node-server@<1.19.15": ^1.19.15
+  source-map-js@<1.2.2: ^1.2.2
+  sharp@<0.35.5: ^0.35.5
+  engine.io@>=6.6.0 <6.6.10: ^6.6.10
+  proxy-addr@<2.0.8: ^2.0.8
