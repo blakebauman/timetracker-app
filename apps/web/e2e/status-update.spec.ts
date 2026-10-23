@@ -145,7 +145,9 @@ test("the Projects page opens a week's status update and copies it", async ({ pa
 
   const dialog = page.getByRole("dialog", { name: "Status update" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("This week")).toBeVisible();
+  // Exact: the highlights draft is model text, and "This week" in a sentence
+  // matched the textarea as well as the period label.
+  await expect(dialog.getByText("This week", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Next week" })).toBeDisabled();
 
   await dialog.getByRole("radio", { name: "Itemised" }).click();
@@ -162,6 +164,6 @@ test("the Projects page opens a week's status update and copies it", async ({ pa
 
   // Last week has nothing tracked on this project, and says so.
   await dialog.getByRole("button", { name: "Previous week" }).click();
-  await expect(dialog.getByText("Last week")).toBeVisible();
+  await expect(dialog.getByText("Last week", { exact: true })).toBeVisible();
   await expect(text).toHaveValue(/No time tracked this week\./);
 });
