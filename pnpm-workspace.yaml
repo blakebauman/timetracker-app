@@ -15,37 +15,37 @@ allowBuilds:
 catalog:
   # build tooling
   typescript: 5.9.3
-  turbo: ^2.11.6
-  lefthook: ^2.1.16
-  "@commitlint/cli": ^21.2.3
-  "@commitlint/config-conventional": ^21.2.3
-  eslint: 10.11.0
+  turbo: ^2.11.9
+  lefthook: ^2.2.2
+  "@commitlint/cli": ^21.2.4
+  "@commitlint/config-conventional": ^21.2.4
+  eslint: 10.13.0
   jiti: ^2.7.0
   "@eslint/js": 10.0.1
   eslint-plugin-react-hooks: 7.1.1
   eslint-plugin-react-refresh: 0.5.7
   globals: 17.7.0
-  typescript-eslint: 8.71.0
+  typescript-eslint: 8.71.2
   shadcn: ^4.21.0
-  sharp: ^0.35.4
+  sharp: ^0.35.5
 
   # bundler / test runner
   vite: ^8.3.2
-  "@vitejs/plugin-react": 6.1.1
-  "@playwright/test": ^1.63.0
+  "@vitejs/plugin-react": 6.1.2
+  "@playwright/test": ^1.64.1
 
   # cloudflare
-  wrangler: 4.147.0
-  "@cloudflare/vite-plugin": 1.62.5
-  "@cloudflare/ai-chat": ^0.12.0
-  agents: ^0.24.0
+  wrangler: 4.151.1
+  "@cloudflare/vite-plugin": 1.64.0
+  "@cloudflare/ai-chat": ^0.12.1
+  agents: ^0.28.1
   workers-ai-provider: ^3.3.1
 
   # react
-  react: 19.2.7
-  react-dom: 19.2.7
-  "@types/react": 19.2.17
-  "@types/react-dom": 19.2.3
+  react: 19.3.1
+  react-dom: 19.3.1
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
   react-router-dom: ^7.18.4
 
   # node / misc types
@@ -55,7 +55,7 @@ catalog:
 
   # tailwind
   tailwindcss: ^4.3.3
-  "@tailwindcss/vite": ^4.3.2
+  "@tailwindcss/vite": ^4.3.3
   tw-animate-css: ^1.4.0
 
   # ui — shadcn radix-maia surface (umbrella radix-ui package)
@@ -81,12 +81,12 @@ catalog:
   zustand: ^5.0.14
 
   # tanstack
-  "@tanstack/react-query": ^5.101.2
+  "@tanstack/react-query": ^5.104.4
   "@tanstack/react-query-devtools": ^5.101.2
 
   # web / worker
-  hono: 4.13.8
-  "@hono/zod-validator": ^0.8.0
+  hono: 4.13.13
+  "@hono/zod-validator": ^0.9.1
   zod: ^4.4.3
   better-auth: ^1.7.6
   "@better-auth/passkey": ^1.7.6
@@ -94,10 +94,10 @@ catalog:
   # package's types from its core (the Assistant's ChatAgent), so v1 stays
   # installed at the exact version agents peers on.
   "@modelcontextprotocol/server": 2.3.1
-  "@modelcontextprotocol/sdk": 1.30.0
+  "@modelcontextprotocol/sdk": 1.32.1
   mimetext: ^3.0.28
-  react-email: ^6.9.0
-  "@react-email/ui": ^6.9.0
+  react-email: ^6.11.3
+  "@react-email/ui": ^6.11.3
 
   # ai — @cloudflare/ai-chat peers ai ^6, NOT v7
   ai: ^6.0.300
@@ -109,3 +109,22 @@ peerDependencyRules:
     # agents/mcp handler imports it, and this app serves /mcp with the SDK's
     # own createMcpHandler instead.
     agents>@modelcontextprotocol/server: 2.x
+
+# Security floors for transitive dependencies, each within its current major,
+# from open Dependabot alerts. Nearly all are dev tooling (the shadcn CLI,
+# miniflare, the react-email preview). Drop an entry once its parent
+# ships the patched version itself.
+overrides:
+  undici@>=7.0.0 <7.29.1: ^7.29.1
+  fast-uri@>=3.0.0 <3.1.7: ^3.1.7
+  qs@<6.16.0: ^6.16.0
+  ip-address@<10.7.1: ^10.7.1
+  browserslist@<4.28.7: ^4.28.7
+  postcss@<8.5.23: ^8.5.23
+  brace-expansion@>=4.0.0 <5.0.12: ^5.0.12
+  baseline-browser-mapping@<2.11.0: ^2.11.0
+  "@hono/node-server@<1.19.15": ^1.19.15
+  source-map-js@<1.2.2: ^1.2.2
+  sharp@<0.35.5: ^0.35.5
+  engine.io@>=6.6.0 <6.6.10: ^6.6.10
+  proxy-addr@<2.0.8: ^2.0.8
