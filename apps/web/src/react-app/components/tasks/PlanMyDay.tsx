@@ -6,8 +6,10 @@ import type { Task } from "@timetracker/core/schemas";
 import { api, type DayPlan } from "@/lib/api";
 import { useUpdateTask } from "@/hooks/useTasks";
 import { useUIStore } from "@/stores/uiStore";
-import { formatMinute } from "@/lib/taskUtils";
+import { formatMinute, workdayLabel } from "@/lib/taskUtils";
 import { formatDurationShort } from "@/lib/dateUtils";
+import { Link } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -161,6 +163,23 @@ export function PlanMyDay({ tasks }: { tasks: Task[] }) {
                 Every task due today already has a time, or there's nothing due.
               </p>
             )}
+            {/* What the plan assumed, and where to change it: a proposal that
+                stops at 17:30 for someone who works till 19:00 is only
+                legible if it says so. */}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Within your working hours,{" "}
+              <span className="font-mono tabular-nums">
+                {workdayLabel(data.workday.start, timeFormat)}–{workdayLabel(data.workday.end, timeFormat)}
+              </span>
+              {" · "}
+              <Link
+                to="/settings"
+                className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                onClick={() => setOpen(false)}
+              >
+                Change
+              </Link>
+            </p>
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
                 {data.placed.length > 0 ? "Not now" : "Close"}

@@ -207,8 +207,10 @@ on `start_timer`; Assistant `listTasks` / `createTask` / `completeTask` /
 `planDay` / `scheduleTasks` (writes approval-gated). The day plan is
 deterministic (`lib/day-plan.ts`) and exposed read-only at
 `GET /api/assistant/plan-day`. The "Plan my day" button shipped in the Timer's
-plan column, on the same endpoint without the chat. Still open: a per-user
-working-hours setting (the plan assumes 09:00–17:30).*
+plan column, on the same endpoint without the chat, and the plan fills each
+user's own working hours (Settings → Preferences; default 09:00–17:30). Still
+open: drafting's uncovered-time candidates still infer their window from the
+day's first activity rather than reading these hours.*
 
 ### Plan + actual workspace
 *Shipped: the plan stands beside the day in the Timer workspace (plan column,

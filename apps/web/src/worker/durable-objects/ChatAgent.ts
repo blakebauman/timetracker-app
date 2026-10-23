@@ -118,7 +118,16 @@ ${context}
     // dedupedAI: Workers AI streams every token in two formats and the provider
     // emits both — see lib/workers-ai-stream.ts.
     const workersai = createWorkersAI({ binding: dedupedAI(this.env.AI) });
-    const tools = buildAssistantTools({ env: this.env, workspaceId, offsetMinutes: offset, timeZone });
+    // The member's working hours, from the client's settings. Only ever
+    // narrows where planDay places tasks, so a bad value can't do harm; one
+    // that isn't a sane window falls back to the default.
+    const ws = Number(options?.body?.workdayStartMinute);
+    const we = Number(options?.body?.workdayEndMinute);
+    const workday =
+      Number.isInteger(ws) && Number.isInteger(we) && ws >= 0 && we <= 1440 && we > ws
+        ? { start: ws, end: we }
+        : undefined;
+    const tools = buildAssistantTools({ env: this.env, workspaceId, offsetMinutes: offset, timeZone, workday });
 
     // Clamp any oversized message before it reaches the model, so a single huge
     // paste can't inflate the prompt (and cost/CPU) unbounded.

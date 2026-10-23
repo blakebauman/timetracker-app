@@ -33,6 +33,7 @@ import { IntegrationsCard } from "@/components/integrations/IntegrationsCard";
 import { CalendarSyncCard } from "@/components/settings/CalendarSyncCard";
 import { ProductivityCard } from "@/components/settings/ProductivityCard";
 import { DigestCard } from "@/components/settings/DigestCard";
+import { WorkingHoursRow } from "@/components/settings/WorkingHoursRow";
 import { McpConnectorCard } from "@/components/settings/McpConnectorCard";
 import { AssistantMemoryCard } from "@/components/settings/AssistantMemoryCard";
 import { RecurringEntriesCard } from "@/components/settings/RecurringEntriesCard";
@@ -355,6 +356,10 @@ export function SettingsPage() {
                 onCheckedChange={handleShowWeekendsChange}
               />
             </div>
+
+            <Separator />
+
+            <WorkingHoursRow />
           </CardContent>
         </Card>
 

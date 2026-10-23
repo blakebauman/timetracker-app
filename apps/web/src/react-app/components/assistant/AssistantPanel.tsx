@@ -20,6 +20,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useAgent } from "agents/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAgentChat, getToolPartState } from "@cloudflare/ai-chat/react";
 import type { UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ import { useUIStore } from "@/stores/uiStore";
 import { useAssistantNudges, useTrackNudgeEvent } from "@/hooks/useAssistant";
 import { useCalendarStatus } from "@/hooks/useCalendarSync";
 import { useTimer } from "@/hooks/useTimer";
-import type { AssistantNudge } from "@timetracker/core/schemas";
+import type { AssistantNudge, Settings } from "@timetracker/core/schemas";
 import { SuggestionChips } from "./ai-elements/SuggestionChips";
 import { ToolCard } from "./ai-elements/ToolCard";
 import { AssistantMarkdown } from "./ai-elements/AssistantMarkdown";
@@ -314,6 +315,7 @@ export function AssistantPanel() {
   // One ChatAgent per workspace; the worker pins the instance to the caller's
   // workspace server-side, so a fixed name here is safe (see worker/index.ts).
   const agent = useAgent({ agent: "chat-agent", name: "assistant" });
+  const queryClient = useQueryClient();
   // The open handler flushes a message queued while the socket was down; it
   // reads the latest `send` through a ref because `send` needs `offline`.
   const flushQueuedRef = useRef<() => void>(() => {});
@@ -334,10 +336,17 @@ export function AssistantPanel() {
     // Sent per request; ChatAgent.onChatMessage reads options.body for local
     // time. The tools take local wall-clock times and the worker converts them
     // with the zone, so "2pm" means 2pm here — across DST changes too.
-    body: () => ({
-      timezoneOffsetMinutes: new Date().getTimezoneOffset(),
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    }),
+    body: () => {
+      // The agent is one per workspace and can't tell which member is typing,
+      // so their working hours (where planDay may place tasks) ride along.
+      const settings = queryClient.getQueryData<Settings>(["settings"]);
+      return {
+        timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        workdayStartMinute: settings?.workdayStartMinute,
+        workdayEndMinute: settings?.workdayEndMinute,
+      };
+    },
   });
 
   const busy = status === "submitted" || status === "streaming" || isStreaming;

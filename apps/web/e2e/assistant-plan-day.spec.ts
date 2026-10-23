@@ -87,3 +87,51 @@ test("a block today that has already passed is re-planned, not planned around", 
   expect(at("Ahead at 10")).toBeUndefined();
   expect(plan.freeMinutes).toBe(8 * 60 + 15 - 60);
 });
+
+test("the plan fills the user's own working hours", async ({ page }) => {
+  await signUp(page);
+  const origin = new URL(page.url()).origin;
+  const project = await (
+    await page.request.post("/api/projects", { data: { name: "ERP Migration", color: "#e11d48" }, headers: { origin } })
+  ).json();
+  const { offset, day } = nineOhFiveZone();
+  await page.request.post("/api/tasks", {
+    data: { projectId: project.id, name: "Late shift review", dueDate: day(0), estimatedSeconds: 3600 },
+    headers: { origin },
+  });
+
+  // A day that starts at 13:00: at 09:05 nothing is placed before it.
+  const patch = (data: Record<string, unknown>) =>
+    page.request.patch("/api/settings", { data, headers: { origin } });
+  expect((await patch({ workdayStartMinute: 13 * 60, workdayEndMinute: 20 * 60 })).ok()).toBeTruthy();
+  const plan = (await (await page.request.get(`/api/assistant/plan-day?timezoneOffsetMinutes=${offset}`)).json()) as Plan & {
+    workday: { start: number; end: number };
+  };
+  expect(plan.workday).toEqual({ start: 13 * 60, end: 20 * 60 });
+  expect(plan.placed[0]).toMatchObject({ name: "Late shift review", startMinute: 13 * 60 });
+  expect(plan.freeMinutes).toBe(7 * 60);
+
+  // A window that ends before it starts is refused, alone or as a pair.
+  expect((await patch({ workdayEndMinute: 12 * 60 })).status()).toBe(400);
+  expect((await patch({ workdayStartMinute: 10 * 60, workdayEndMinute: 9 * 60 })).status()).toBe(400);
+});
+
+test("working hours are set in Settings and named in the plan", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/settings");
+  await page.getByRole("combobox", { name: "Working hours start" }).click();
+  await page.getByRole("option", { name: "08:00" }).click();
+  await page.getByRole("combobox", { name: "Working hours end" }).click();
+  await page.getByRole("option", { name: "18:00" }).click();
+  await expect
+    .poll(async () => {
+      const s = await (await page.request.get("/api/settings")).json();
+      return [s.workdayStartMinute, s.workdayEndMinute];
+    })
+    .toEqual([8 * 60, 18 * 60]);
+
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto("/");
+  await page.getByRole("complementary", { name: "Today's plan" }).getByRole("button", { name: "Plan my day" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Within your working hours, 08:00–18:00 · Change");
+});
