@@ -25,6 +25,8 @@ const ALL_DAY_MS = 8 * 60 * 60 * 1000;
 const MAX_BUDGET_NUDGES = 2;
 // Same reasoning for deadlines: the two nearest, not a list.
 const MAX_DEADLINE_NUDGES = 2;
+// Local hour on a Friday after which an open week earns a "close the week" nudge.
+const CLOSE_WEEK_HOUR = 15;
 
 interface RunningEntry {
   id: string;
@@ -148,7 +150,9 @@ export function buildNudges(
   events: ExternalEvent[],
   pacing: ProjectPacing[] = [],
   plan: Pick<TaskPlan, "overdueIds" | "deadlines"> = { overdueIds: [], deadlines: [] },
-  dayOff?: DayOffPortion
+  dayOff?: DayOffPortion,
+  /** A week with tracked time that hasn't been closed, when it's the moment to say so. */
+  weekToClose?: { weekStart: string; which: "this" | "last" }
 ): AssistantNudge[] {
   const nudges: AssistantNudge[] = [];
   const { localHour, localWeekday, localDate } = localDayBounds(nowMs, offsetMinutes);
@@ -322,6 +326,19 @@ export function buildNudges(
     });
   }
 
+  if (weekToClose && !offAllDay) {
+    nudges.push({
+      id: `week_review:${weekToClose.weekStart}`,
+      kind: "week_review",
+      title: weekToClose.which === "this" ? "Close the week" : "Last week is still open",
+      body:
+        weekToClose.which === "this"
+          ? "Check this week's hours for short days, overlaps and missing projects before you submit them."
+          : "Last week's hours haven't been checked and closed yet.",
+      event: null,
+    });
+  }
+
   // Ended-meeting nudges are the most actionable — surface them first.
   const order: Record<AssistantNudge["kind"], number> = {
     meeting_now: 0,
@@ -331,7 +348,8 @@ export function buildNudges(
     deadline_risk: 4,
     nothing_tracked: 5,
     tasks_overdue: 6,
-    budget_risk: 7,
+    week_review: 7,
+    budget_risk: 8,
   };
   return nudges.sort((a, b) => order[a.kind] - order[b.kind]).slice(0, 12);
 }
@@ -345,14 +363,61 @@ export async function computeNudges(
 ): Promise<AssistantNudge[]> {
   const nowMs = Date.now();
   const { dayStartIso, dayEndIso, localDate } = localDayBounds(nowMs, offsetMinutes);
-  const [facts, events, pacing, plan, dayOff] = await Promise.all([
+  const [facts, events, pacing, plan, dayOff, weekToClose] = await Promise.all([
     loadTodayFacts(env.DB, workspaceId, dayStartIso, dayEndIso),
     loadTodayEvents(env, workspaceId, dayStartIso, dayEndIso),
     loadUserPacing(env.DB, workspaceId, userId, nowMs),
     loadTaskPlan(env.DB, workspaceId, localDate, localDate),
     loadDayOff(env.DB, workspaceId, userId, localDate),
+    loadWeekToClose(env.DB, workspaceId, userId, nowMs, offsetMinutes),
   ]);
-  return buildNudges(nowMs, offsetMinutes, facts, events, pacing, plan, dayOff);
+  return buildNudges(nowMs, offsetMinutes, facts, events, pacing, plan, dayOff, weekToClose);
+}
+
+/**
+ * The week worth a "close it" nudge right now, if any: this week from Friday
+ * afternoon, or last week on the Monday and Tuesday after, as long as it has
+ * time on it and hasn't been closed. Costs nothing on other days.
+ */
+async function loadWeekToClose(
+  db: D1Database,
+  workspaceId: string,
+  userId: string,
+  nowMs: number,
+  offsetMinutes: number
+): Promise<{ weekStart: string; which: "this" | "last" } | undefined> {
+  const { localHour, localWeekday, localDate } = localDayBounds(nowMs, offsetMinutes);
+  const which =
+    localWeekday === 5 && localHour >= CLOSE_WEEK_HOUR
+      ? "this"
+      : localWeekday === 1 || localWeekday === 2
+        ? "last"
+        : null;
+  if (!which) return undefined;
+
+  const pref = await db
+    .prepare(`SELECT week_start FROM "user" WHERE id = ?`)
+    .bind(userId)
+    .first<{ week_start: number | null }>();
+  const weekStartsOn = pref?.week_start ?? 1;
+  const shift = (date: string, days: number) =>
+    new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+  const thisWeek = shift(localDate, -((localWeekday - weekStartsOn + 7) % 7));
+  const weekStart = which === "this" ? thisWeek : shift(thisWeek, -7);
+
+  const startMs = Date.parse(`${weekStart}T00:00:00Z`) + offsetMinutes * 60_000;
+  const [tracked, closed] = await db.batch([
+    db
+      .prepare(
+        `SELECT 1 AS n FROM time_entries
+         WHERE workspace_id = ? AND stop IS NOT NULL AND start >= ? AND start < ? LIMIT 1`
+      )
+      .bind(workspaceId, new Date(startMs).toISOString(), new Date(startMs + 7 * 86_400_000).toISOString()),
+    db
+      .prepare(`SELECT 1 AS n FROM week_closures WHERE workspace_id = ? AND user_id = ? AND week_start = ?`)
+      .bind(workspaceId, userId, weekStart),
+  ]);
+  return tracked.results.length > 0 && closed.results.length === 0 ? { weekStart, which } : undefined;
 }
 
 /**

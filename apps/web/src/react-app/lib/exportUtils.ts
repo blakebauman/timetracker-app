@@ -69,6 +69,12 @@ export function exportToCSV(entries: ExportEntry[], filename = "time-entries"): 
   download(`${filename}.csv`, new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" }));
 }
 
+/** Any grid (header row first) as a CSV download, with the same formula-safe cells. */
+export function exportRowsToCSV(rows: (string | number)[][], filename: string): void {
+  const lines = rows.map((r) => r.map(csvCell).join(","));
+  download(`${filename}.csv`, new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" }));
+}
+
 // Real .xlsx (OOXML) via the dependency-free writer — opens in Excel/Sheets
 // without the format-mismatch warning the old HTML-table .xls trick produced.
 export function exportToExcel(entries: ExportEntry[], filename = "time-entries"): void {

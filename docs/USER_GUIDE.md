@@ -14,6 +14,7 @@ Everything you can do in [timetracker.run](https://timetracker.run), organized b
 - [The Assistant](#the-assistant)
 - [Budgets & pacing](#budgets--pacing)
 - [Time off](#time-off)
+- [Closing the week](#closing-the-week)
 - [Weekly status updates](#weekly-status-updates)
 - [Email digests](#email-digests)
 - [Ask your AI assistant (MCP)](#ask-your-ai-assistant-mcp)
@@ -125,6 +126,16 @@ A day off changes what the app expects of you that day:
 - The **plan column** marks the day (*Day off*, *Morning off*), and the **calendar** hatches its column.
 
 Days off are yours, not the workspace's: a teammate's leave doesn't change your pacing.
+
+## Closing the week
+
+Before a week's hours go into another system, **Close week** in the Timer header opens a pass over the week on screen (the arrows step to other weeks):
+
+- **Days** — each day's total, and anything worth a second look: a *short* day (under three quarters of your working hours, once the day is over), a *long* one (more than two hours over), time logged on a weekend or a booked day off, entries that *overlap* (time counted twice), time with *no project*, a timer still running, and drafts still waiting for review. Days off are taken into account.
+- **Hours by project** — each project's hours per day. **Copy table** puts them on the clipboard tab-separated (decimal hours), so a paste lands one value per cell in a spreadsheet or timesheet grid; **CSV** downloads the same.
+- **Close week** marks it submitted. Nothing is locked — but if any of that week's hours change afterwards (an edit, a calendar drag, auto-track, the Assistant), the review lists exactly which project and day moved and by how much, and the header button reads **Changed**. Re-submit those, then **Close again**. **Reopen** clears the mark.
+
+On Friday afternoon, and on the Monday and Tuesday after, the Assistant nudges you if a week with time on it hasn't been closed.
 
 ## Weekly status updates
 

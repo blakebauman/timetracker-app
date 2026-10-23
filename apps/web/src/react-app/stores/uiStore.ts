@@ -92,6 +92,14 @@ interface UIStore {
   openTaskLogTime: (id: string) => void;
   closeTaskLogTime: () => void;
   /**
+   * The week (its local start date) whose review is open. Raised from the
+   * Timer header and from the Assistant's week nudge and its toast, so the
+   * dialog is mounted once app-wide like the log-time sheet. Never persisted.
+   */
+  weekReviewStart: string | null;
+  openWeekReview: (weekStart: string) => void;
+  closeWeekReview: () => void;
+  /**
    * The plan column beside the Timer's list and grid. Persisted — it's a
    * workspace layout choice — under a new key, open by default: the column is
    * where the day's plan lives now, and the old rail's `false` default was
@@ -241,6 +249,9 @@ export const useUIStore = create<UIStore>()(
       logTimeTaskId: null,
       openTaskLogTime: (id) => set({ logTimeTaskId: id }),
       closeTaskLogTime: () => set({ logTimeTaskId: null }),
+      weekReviewStart: null,
+      openWeekReview: (weekStart) => set({ weekReviewStart: weekStart }),
+      closeWeekReview: () => set({ weekReviewStart: null }),
       planColumnOpen: true,
       setPlanColumnOpen: (v) => set({ planColumnOpen: v }),
       dismissedPlanFlags: [],

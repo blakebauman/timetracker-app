@@ -228,6 +228,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
       )) as TimeEntry[];
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["week-review"] });
       toast.success(
         `Copied ${completed.length} ${completed.length === 1 ? "entry" : "entries"} from last week`,
         {
@@ -237,6 +238,7 @@ export function TimesheetView({ weekStart }: TimesheetViewProps) {
               await Promise.all(created.map((c) => api.timeEntries.delete(c.id)));
               queryClient.invalidateQueries({ queryKey: ["time-entries"] });
               queryClient.invalidateQueries({ queryKey: ["reports"] });
+              queryClient.invalidateQueries({ queryKey: ["week-review"] });
             },
           },
         }

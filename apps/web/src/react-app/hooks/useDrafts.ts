@@ -157,6 +157,7 @@ export function useConfirmDrafts(localDate: string) {
       invalidateDay(queryClient, localDate);
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["week-review"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success(
         `${confirmed} ${confirmed === 1 ? "entry" : "entries"} added to your timesheet`

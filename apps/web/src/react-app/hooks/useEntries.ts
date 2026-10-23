@@ -223,6 +223,8 @@ export function invalidateEntryDerived(queryClient: QueryClient, suggestions = f
   queryClient.invalidateQueries({ queryKey: ["reports"] });
   queryClient.invalidateQueries({ queryKey: ["projects"] });
   queryClient.invalidateQueries({ queryKey: ["tasks"] });
+  // A closed week's "changed since" is a reading of these same entries.
+  queryClient.invalidateQueries({ queryKey: ["week-review"] });
   if (suggestions) queryClient.invalidateQueries({ queryKey: ["entry-suggestions"] });
 }
 

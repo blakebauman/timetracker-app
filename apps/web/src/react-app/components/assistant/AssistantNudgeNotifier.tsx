@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAssistantStore } from "@/stores/assistantStore";
+import { useUIStore } from "@/stores/uiStore";
 import { useAssistantNudges } from "@/hooks/useAssistant";
 import { useTimer } from "@/hooks/useTimer";
 import { notify } from "@/lib/notify";
@@ -72,7 +73,12 @@ export function AssistantNudgeNotifier() {
             ? { label: "Stop timer", onClick: () => stopTimerRef.current() }
             : n.kind === "deadline_risk" || n.kind === "tasks_overdue"
               ? { label: "Open tasks", onClick: () => navigate("/tasks", { state: { groupBy: "due" } }) }
-              : { label: "Open Assistant", onClick: () => setOpen(true) },
+              : n.kind === "week_review"
+                ? {
+                    label: "Review week",
+                    onClick: () => useUIStore.getState().openWeekReview(n.id.slice("week_review:".length)),
+                  }
+                : { label: "Open Assistant", onClick: () => setOpen(true) },
       });
       // The toast is invisible when the tab is backgrounded — that's exactly
       // when the OS-level notification earns its keep. No-op unless granted.

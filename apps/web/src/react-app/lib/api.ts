@@ -13,6 +13,7 @@ import type {
   DayOff,
   DayOffPortion,
   CreateDaysOff,
+  WeekReview,
 } from "@timetracker/core/schemas";
 import { BULK_ENTRY_IDS_MAX } from "@timetracker/core/limits";
 
@@ -565,6 +566,21 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  },
+
+  // ─── Closing a week ───────────────────────────────────────────────────────
+  weekReview: {
+    get: (weekStart: string, timezoneOffsetMinutes: number) =>
+      request<WeekReview>(
+        `/week-review?weekStart=${weekStart}&timezoneOffsetMinutes=${timezoneOffsetMinutes}`
+      ),
+    close: (weekStart: string, timezoneOffsetMinutes: number) =>
+      request<WeekReview>("/week-review/close", {
+        method: "POST",
+        body: JSON.stringify({ weekStart, timezoneOffsetMinutes }),
+      }),
+    reopen: (weekStart: string) =>
+      request<unknown>(`/week-review/close?weekStart=${weekStart}`, { method: "DELETE" }),
   },
 
   // ─── Days off ─────────────────────────────────────────────────────────────

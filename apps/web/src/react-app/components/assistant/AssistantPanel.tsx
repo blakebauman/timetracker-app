@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Flag,
   ListChecks,
+  CalendarCheck,
   X,
   CheckCircle2,
   Eraser,
@@ -65,6 +66,7 @@ const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
   budget_risk: TrendingUp,
   deadline_risk: Flag,
   tasks_overdue: ListChecks,
+  week_review: CalendarCheck,
 };
 
 /**
@@ -116,6 +118,7 @@ function useContextualSuggestions(): string[] {
 function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   const dismissNudge = useAssistantStore((s) => s.dismissNudge);
   const setAssistantOpen = useAssistantStore((s) => s.setOpen);
+  const openWeekReview = useUIStore((s) => s.openWeekReview);
   const navigate = useNavigate();
   const trackNudgeEvent = useTrackNudgeEvent();
   const { startTimer, stopTimer } = useTimer();
@@ -167,6 +170,20 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
               }}
             >
               Open tasks
+            </Button>
+          </div>
+        )}
+        {nudge.kind === "week_review" && (
+          <div className="mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                openWeekReview(nudge.id.slice("week_review:".length));
+                setAssistantOpen(false);
+              }}
+            >
+              Review week
             </Button>
           </div>
         )}

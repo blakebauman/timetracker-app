@@ -683,6 +683,75 @@ export const CreateDaysOffSchema = z
   });
 export type CreateDaysOff = z.input<typeof CreateDaysOffSchema>;
 
+// ─── Closing a week ───────────────────────────────────────────────────────────
+// The Friday pass over a week before its hours go into another system: what
+// looks off, the per-project-per-day hours to copy, and whether anything has
+// changed since the week was closed.
+
+export const WeekReviewQuerySchema = z.object({
+  /** The local day the week starts on. */
+  weekStart: LocalDateSchema,
+  timezoneOffsetMinutes: z.coerce.number().min(-14 * 60).max(14 * 60).default(0),
+});
+
+export const CloseWeekSchema = z.object({
+  weekStart: LocalDateSchema,
+  timezoneOffsetMinutes: z.number().min(-14 * 60).max(14 * 60).default(0),
+});
+
+export type WeekDayFlag =
+  | { kind: "short"; trackedSeconds: number; expectedSeconds: number }
+  | { kind: "long"; trackedSeconds: number; expectedSeconds: number }
+  | { kind: "off_day_work"; trackedSeconds: number }
+  | { kind: "overlap"; seconds: number; count: number }
+  | { kind: "no_project"; seconds: number; count: number }
+  | { kind: "running" }
+  | { kind: "drafts"; count: number };
+
+export interface WeekReviewDay {
+  date: string;
+  trackedSeconds: number;
+  /** Working hours for the day less any time off; 0 on weekends and whole days off. */
+  expectedSeconds: number;
+  dayOff: DayOffPortion | null;
+  /** False for days still ahead (and today until working hours end): nothing to flag yet. */
+  settled: boolean;
+  flags: WeekDayFlag[];
+}
+
+export interface WeekReviewRow {
+  /** Null for time with no project. */
+  projectId: string | null;
+  name: string;
+  color: string | null;
+  clientName: string | null;
+  /** Seconds per day, aligned with `days`. */
+  perDay: number[];
+  totalSeconds: number;
+}
+
+export interface WeekChange {
+  projectId: string | null;
+  name: string;
+  date: string;
+  beforeSeconds: number;
+  afterSeconds: number;
+}
+
+export interface WeekReview {
+  weekStart: string;
+  days: WeekReviewDay[];
+  rows: WeekReviewRow[];
+  totalSeconds: number;
+  expectedSeconds: number;
+  closure: {
+    closedAt: string;
+    totalSeconds: number;
+    /** Cells whose hours differ from what was closed — what to re-submit. */
+    changes: WeekChange[];
+  } | null;
+}
+
 export const CreateSavedReportSchema = z.object({
   name: z.string().min(1).max(120),
   // Stored as JSON text as-is; a filter config is a few hundred bytes, so 16 KiB
@@ -940,6 +1009,7 @@ export const AssistantNudgeSchema = z.object({
     "budget_risk", // a budgeted project is over, or on pace to overrun
     "tasks_overdue", // open tasks whose due day has passed (one nudge, counted)
     "deadline_risk", // a task's deadline has passed or is close, with it still open
+    "week_review", // the week (Fri pm) or last week (Mon/Tue) has time on it and isn't closed
   ]),
   title: z.string(),
   body: z.string(),

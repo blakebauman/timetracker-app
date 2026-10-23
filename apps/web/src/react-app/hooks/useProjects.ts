@@ -114,6 +114,7 @@ export function useRecolorProjects() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["week-review"] });
       toast.success(
         recolored > 0
           ? `Recolored ${recolored} ${recolored === 1 ? "project" : "projects"}${usedAI ? " with AI" : ""}`

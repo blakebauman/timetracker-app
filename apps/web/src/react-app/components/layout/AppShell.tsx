@@ -30,6 +30,9 @@ const AssistantPanel = lazyWithReload(() =>
 
 // Mounted once, here, because the toast that opens it fires from the Tasks page,
 // the Timer rail and the timer's own stop handler.
+const WeekReviewDialog = lazyWithReload(() =>
+  import("@/components/week/WeekReviewDialog").then((m) => ({ default: m.WeekReviewDialog }))
+);
 const LogTaskTimeSheet = lazyWithReload(() =>
   import("@/components/tasks/LogTaskTimeSheet").then((m) => ({ default: m.LogTaskTimeSheet }))
 );
@@ -55,6 +58,7 @@ export function AppShell() {
   const quickAddOpen = useUIStore((s) => s.quickAddOpen);
   const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
   const logTimeTaskId = useUIStore((s) => s.logTimeTaskId);
+  const weekReviewStart = useUIStore((s) => s.weekReviewStart);
   const assistantOpen = useAssistantStore((s) => s.open);
   // On a phone the timer bar spans the whole bottom edge, so a bottom toast
   // lands on it; toasts drop in from the top there instead.
@@ -165,6 +169,11 @@ export function AppShell() {
       <AssistantNudgeNotifier />
       <TaskReminderNotifier />
       <AiQuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
+      {weekReviewStart && (
+        <Suspense fallback={null}>
+          <WeekReviewDialog />
+        </Suspense>
+      )}
       {logTimeTaskId && (
         <Suspense fallback={null}>
           <LogTaskTimeSheet />

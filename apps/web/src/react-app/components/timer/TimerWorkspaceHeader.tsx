@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TimerViewSwitcher } from "./TimerViewSwitcher";
 import { DraftDayButton } from "@/components/drafts/DraftDayButton";
+import { CloseWeekButton } from "@/components/week/CloseWeekButton";
+import { startOfWeek } from "date-fns";
+import { dateToLocalDate } from "@/lib/taskUtils";
 import { CalendarViewOptions } from "./CalendarViewOptions";
 import { VIEW_LABELS } from "./calendarViewLabels";
 import { ListRangePicker } from "./ListRangePicker";
@@ -256,6 +259,10 @@ export function TimerWorkspaceHeader({
             pending={draftPending}
             pendingCount={draftCount}
           />
+
+          {/* The week the view shows — or, in the list view's free range, the
+              week of its start. */}
+          <CloseWeekButton weekStart={dateToLocalDate(startOfWeek(since, { weekStartsOn: wso }))} />
 
           <TimerViewSwitcher view={view} onChange={onViewChange} allowSplit={allowSplit} />
 

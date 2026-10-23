@@ -18,6 +18,11 @@ interface DatePickerProps {
   onSelect: (date: Date) => void
   /** Shown when `value` is null. */
   placeholder?: string
+  /**
+   * The field's name ("Due date", "Deadline"), leading the accessible name.
+   * Two pickers in one form were both announced as "Date: …".
+   */
+  name?: string
   className?: string
 }
 
@@ -28,6 +33,7 @@ export function DatePicker({
   value,
   onSelect,
   placeholder = "Pick a date",
+  name,
   className,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
@@ -42,7 +48,11 @@ export function DatePicker({
           // The visible text is the value, not the field's purpose. Without this
           // a screen reader announces only "July 20th" with no hint it's a date
           // control, and tests have to locate it by "the button with a year".
-          aria-label={label ? `Date: ${label}` : `Date: not set`}
+          // A named field carries its visible text in the name (WCAG 2.5.3), so
+          // "No due date" on screen is "Due date: No due date" to a reader.
+          aria-label={
+            name ? `${name}: ${label ?? placeholder}` : label ? `Date: ${label}` : `Date: not set`
+          }
           className={cn(
             "w-full justify-start gap-2 font-normal",
             !label && "text-muted-foreground",

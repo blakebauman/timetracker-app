@@ -46,6 +46,7 @@ export function useTrackNudgeEvent() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["week-review"] });
       queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
       queryClient.invalidateQueries({ queryKey: ["assistant-nudges"] });
       toast.success(
