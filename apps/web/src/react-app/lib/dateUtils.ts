@@ -71,6 +71,11 @@ export function parseTimeInput(str: string): number | null {
     );
   }
 
+  // 1.5h — the task capture line's `~1.5h` grammar, so an estimate that works
+  // there isn't rejected when the same task is edited in the dialog.
+  const decimalHours = s.match(/^(\d+(?:\.\d+)?)\s*h$/);
+  if (decimalHours) return Math.round(parseFloat(decimalHours[1]) * 3600);
+
   // Plain number → treat as minutes
   if (/^\d+$/.test(s)) return parseInt(s) * 60;
 

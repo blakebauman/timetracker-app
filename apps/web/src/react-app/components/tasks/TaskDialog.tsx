@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -25,6 +26,7 @@ import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
 import { parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import { dayLabel } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
+import { SEGMENT, SEGMENT_ACTIVE, SEGMENT_INACTIVE, SEGMENT_TRACK } from "@/components/ui/segmented-control";
 import { parseRecurRule } from "@timetracker/core/task-recurrence";
 import {
   PRIORITIES,
@@ -101,6 +103,8 @@ export function TaskDialog({
   const [priority, setPriority] = useState(task?.priority ?? 4);
   const [repeat, setRepeat] = useState(repeatValue(task?.recurRule ?? null));
   const [weekDays, setWeekDays] = useState<number[]>(ruleDays(task?.recurRule ?? null));
+  /** A dismiss (Escape, the scrim) was caught with unsaved changes. */
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
   // The dialog stays mounted between openings; reseed every time it *opens*.
   // Keying the reseed on the task id alone froze the create form's defaults at
@@ -122,7 +126,37 @@ export function TaskDialog({
     setPriority(task?.priority ?? 4);
     setRepeat(repeatValue(task?.recurRule ?? null));
     setWeekDays(ruleDays(task?.recurRule ?? null));
+    setConfirmingDiscard(false);
   }
+
+  // What the form held when it opened, to tell an edit from a glance.
+  const seeded = JSON.stringify([
+    task?.name ?? "",
+    task?.description ?? "",
+    task?.projectId ?? defaultProjectId,
+    formatTimeInput(task?.estimatedSeconds ?? null),
+    task?.dueDate ?? defaultDueDate,
+    minuteToTimeInput(task?.scheduledMinute ?? null),
+    task?.deadlineDate ?? null,
+    task?.tags ?? [],
+    task?.priority ?? 4,
+    repeatValue(task?.recurRule ?? null),
+    ruleDays(task?.recurRule ?? null),
+  ]);
+  const dirty =
+    JSON.stringify([
+      name,
+      description,
+      projectId,
+      estimate,
+      dueDate,
+      time,
+      deadline,
+      tags,
+      priority,
+      repeat,
+      weekDays,
+    ]) !== seeded;
 
   const reset = () => {
     setName("");
@@ -136,6 +170,7 @@ export function TaskDialog({
     setPriority(4);
     setRepeat("none");
     setWeekDays([]);
+    setConfirmingDiscard(false);
   };
 
   /** The day a weekly/monthly repeat hangs off: the due date, else today. */
@@ -176,11 +211,24 @@ export function TaskDialog({
     onClose();
   };
 
+  /**
+   * Escape and a click on the scrim are easy to do by accident; a form with
+   * notes and a repeat in it is not easy to fill twice. Cancel is deliberate
+   * and discards straight away.
+   */
+  const requestDismiss = () => {
+    if (dirty && !pending) setConfirmingDiscard(true);
+    else if (!pending) handleClose();
+  };
+
   const pending = createTask.isPending || updateTask.isPending;
-  const canSubmit = name.trim().length > 0 && !!projectId && !pending;
+  // An estimate that doesn't parse used to save as *no* estimate — on an edit,
+  // quietly erasing the one that was there.
+  const estimateInvalid = estimate.trim().length > 0 && parseTimeInput(estimate.trim()) === null;
+  const canSubmit = name.trim().length > 0 && !!projectId && !estimateInvalid && !pending;
 
   const handleSubmit = () => {
-    if (!projectId || !name.trim()) return;
+    if (!canSubmit || !projectId) return;
     const parsed = estimate.trim() ? parseTimeInput(estimate.trim()) : null;
     const fields = {
       name: name.trim(),
@@ -209,8 +257,10 @@ export function TaskDialog({
   const isSubtask = Boolean(task?.parentId);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(o) => !o && requestDismiss()}>
+      {/* dvh: on a phone the keyboard shrinks the visible viewport, and 85vh
+          put the footer behind it. */}
+      <DialogContent className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
           <DialogDescription>
@@ -228,7 +278,7 @@ export function TaskDialog({
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && canSubmit && handleSubmit()}
+              onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleSubmit()}
               placeholder="What needs doing?"
             />
           </div>
@@ -263,9 +313,16 @@ export function TaskDialog({
                 id="task-estimate"
                 value={estimate}
                 onChange={(e) => setEstimate(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && canSubmit && handleSubmit()}
+                onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleSubmit()}
                 placeholder="e.g. 1h 30m"
+                aria-invalid={estimateInvalid || undefined}
+                aria-describedby={estimateInvalid ? "task-estimate-error" : undefined}
               />
+              {estimateInvalid && (
+                <p id="task-estimate-error" className="text-xs text-destructive">
+                  Use a duration like 1h 30m, 90m or 1.5h.
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -296,6 +353,7 @@ export function TaskDialog({
                   value={dueDate ? localDateToDate(dueDate) : null}
                   onSelect={(d) => setDueDate(dateToLocalDate(d))}
                   placeholder="No due date"
+                  name="Due date"
                 />
               </div>
               {/* A time turns the due date into a block on the calendar, for
@@ -339,6 +397,7 @@ export function TaskDialog({
                   value={deadline ? localDateToDate(deadline) : null}
                   onSelect={(d) => setDeadline(dateToLocalDate(d))}
                   placeholder="No deadline"
+                  name="Deadline"
                 />
               </div>
               {deadline && (
@@ -378,7 +437,11 @@ export function TaskDialog({
                 </SelectContent>
               </Select>
               {repeat === "weekly" && (
-                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Repeat on">
+                // The segmented track, read as seven toggles rather than one
+                // choice: the selected days are recessed ink pills, not red
+                // fills — red is the Add button's. overflow-visible so each
+                // day's coarse-pointer hit area isn't clipped by the track.
+                <div className={cn(SEGMENT_TRACK, "flex w-full overflow-visible")} role="group" aria-label="Repeat on">
                   {DAY_ORDER.map((d) => (
                     <button
                       key={d}
@@ -387,10 +450,9 @@ export function TaskDialog({
                       aria-label={dayLabel(d, true)}
                       onClick={() => toggleWeekDay(d)}
                       className={cn(
-                        "h-8 w-11 rounded-full border text-xs font-medium transition-colors duration-fast ease-out-quart",
-                        weekDays.includes(d)
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
+                        SEGMENT,
+                        "relative min-w-0 flex-1 shrink justify-center px-1 text-xs pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-['']",
+                        weekDays.includes(d) ? SEGMENT_ACTIVE : SEGMENT_INACTIVE
                       )}
                     >
                       {dayLabel(d)}
@@ -409,14 +471,31 @@ export function TaskDialog({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {editing ? "Save changes" : "Add task"}
-          </Button>
-        </DialogFooter>
+        {confirmingDiscard ? (
+          // In the footer, not a second dialog: the question is about this form,
+          // and the form stays in view while it's asked.
+          <DialogFooter className="items-center">
+            <p role="alert" className="mr-auto text-sm text-muted-foreground">
+              {editing ? "Discard your changes?" : "Discard this task?"}
+            </p>
+            <Button variant="ghost" autoFocus onClick={() => setConfirmingDiscard(false)}>
+              Keep editing
+            </Button>
+            <Button variant="destructive" onClick={handleClose}>
+              Discard
+            </Button>
+          </DialogFooter>
+        ) : (
+          <DialogFooter>
+            <Button variant="ghost" onClick={handleClose} disabled={pending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!canSubmit} aria-busy={pending || undefined}>
+              {pending && <Spinner />}
+              {editing ? "Save changes" : "Add task"}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
