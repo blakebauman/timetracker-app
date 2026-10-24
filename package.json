@@ -28,7 +28,8 @@
 		"seed:demo": "node scripts/seed-feature-demo.mjs",
 		"generate-icons": "node scripts/generate-icons.mjs",
 		"check:bundle": "node scripts/check-bundle-size.mjs",
-    "backup:d1": "node scripts/backup-d1.mjs"
+    "backup:d1": "node scripts/backup-d1.mjs",
+		"check:claude": "node .claude/scripts/validate-toolkit.mjs"
 	},
 	"devDependencies": {
 		"@commitlint/cli": "catalog:",
