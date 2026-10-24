@@ -1,40 +1,21 @@
 ---
 name: db
-description: Query the local Cloudflare D1 dev database (SQLite) to inspect data, debug issues, or verify schema state. Accepts an optional SQL query as argument.
-allowed-tools: Bash(sqlite3 *) Bash(ls *)
-argument-hint: "<SQL query or table name>"
+description: Query the LOCAL D1 dev database (SQLite) for this checkout to inspect data, debug a query, or confirm schema and migration state. Accepts a SQL query or a table name. Use for "what's in the local db", "show me the tasks table", "is migration N applied locally". Never touches production — for that, see the prod-check skill.
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/context.sh) Bash(sqlite3 *)
+argument-hint: "<SQL query | table name>"
 ---
 
-Query the local Cloudflare D1 dev database. Query/target: `$ARGUMENTS`
+# Local D1
 
-## Dev database location
-
-```!
-ls /Users/blake/Projects/timetracker-app/apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v metadata || echo "NOT FOUND — run 'pnpm dev' first to initialise the local DB"
-```
-
-## Schema snapshot
+Target: `$ARGUMENTS`
 
 ```!
-DBFILE=$(ls /Users/blake/Projects/timetracker-app/apps/web/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite 2>/dev/null | grep -v metadata | head -1); [ -n "$DBFILE" ] && sqlite3 "$DBFILE" ".tables" || true
+${CLAUDE_SKILL_DIR}/scripts/context.sh
 ```
 
-## Key tables
-
-| Table | Notable columns |
-|---|---|
-| `user` | `id, name, email, createdAt` (camelCase — Better Auth) |
-| `account` | `accountId, password` |
-| `workspaces` | `id, name, userId` |
-| `clients` | `id, name, workspace_id` |
-| `projects` | `id, name, color, client_id, workspace_id` |
-| `tasks` | `id, name, project_id, workspace_id, estimated_minutes` |
-| `time_entries` | `id, description, start_time, end_time, duration, project_id, task_id, workspace_id` |
-| `tags` | `id, name, workspace_id` |
-
-## Instructions
-
-- If an argument was provided, run that SQL query (or `SELECT * FROM <table> LIMIT 20` if it's just a table name).
-- If no argument, ask the user what they want to inspect.
-- All app tables are scoped by `workspace_id` — always include it in WHERE clauses unless doing a full dump.
-- Use `sqlite3 "<path>" ".schema <table>"` to inspect column definitions.
+- A table name means run `sqlite3 "$DB" ".schema <table>"`, then `SELECT * FROM <table> LIMIT 20`.
+- A query: run it as given with `sqlite3 -header -column "$DB" "<query>"`. Run read queries freely. **Ask before any write** (`INSERT`/`UPDATE`/`DELETE`/DDL), since the local DB holds the dev logins.
+- No argument: ask what to inspect.
+- App tables are snake_case and scoped by `workspace_id`, so filter on it unless you're doing a deliberate full dump. Better Auth tables (`user`, `session`, `account`, `member`, `organization`, …) are camelCase. The workspace row is in `workspaces`.
+- If the newest migration file isn't in the applied list, apply it with `cd apps/web && npx wrangler d1 migrations apply time-tracker --local`.
+- Dev seed data lives in `apps/web/seeds/dev-seed.sql`, applied `--local` only.

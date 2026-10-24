@@ -39,6 +39,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      # Skills, subagents and hooks under .claude/: Claude Code ignores a
+      # misspelled frontmatter key or a missing hook script without a word.
+      - run: pnpm check:claude
 
   typecheck:
     name: Typecheck

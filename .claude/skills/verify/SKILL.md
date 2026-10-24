@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Runtime verification recipe for the time-tracker SPA — drive the real browser via Playwright, seed data through the authenticated API, and screenshot the surface.
+description: Runtime verification recipe for the time-tracker SPA — drive the real browser with a throwaway Playwright spec, seed data through the authenticated API, and screenshot the surface. Use to confirm a UI or API change actually works in the running app (not just that it typechecks), before committing, or when asked to "verify", "check it in the browser" or "screenshot it".
 ---
 
 # Verifying the time-tracker app
@@ -17,32 +17,50 @@ Playwright lives in the `apps/web` workspace (`apps/web/playwright.config.ts`) a
 `pnpm --filter @timetracker/web exec playwright …` from the repo root (there is no
 root Playwright binary); a throwaway config goes at `apps/web/playwright.verify.config.ts`.
 
-Write a **throwaway driver spec** in `apps/web/e2e/_verify_*.spec.ts`, run just it, then
-delete it:
+Write a **throwaway driver spec** in `apps/web/e2e/zz-verify-*.spec.ts`, run just it, then
+delete it (`rm` is aliased to `rm -i` here and hangs a Bash call — use `/bin/rm -f`):
 
 ```bash
-pnpm --filter @timetracker/web exec playwright test _verify_myflow --reporter=list
-rm apps/web/e2e/_verify_myflow.spec.ts
+pnpm --filter @timetracker/web exec playwright test zz-verify-myflow --reporter=list
+/bin/rm -f apps/web/e2e/zz-verify-myflow.spec.ts
 ```
 
+Screenshots and scratchpad paths belong **only** in these throwaway files — a committed
+spec that writes one fails on CI with ENOENT (a hook flags it).
+
+**Check the port first:** `lsof -nP -iTCP:5173 -sTCP:LISTEN`. Another Vite app often holds
+5173 and `reuseExistingServer` will silently drive it (every test times out at `signUp`).
+For non-WebSocket checks, run `pnpm dev --port <N> --strictPort` yourself and give a
+throwaway `apps/web/playwright.verify.config.ts` only a `baseURL`. WebSocket/cross-tab and
+calendar OAuth need 5173 — ask before freeing it.
+
 Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
-**desktop sidebar is visible** (below `md` it's replaced by a mobile top bar).
+**navigation rail** (`aside[aria-label="Navigation rail"]`) is visible; below `md` it's
+a top strip with an `Open navigation menu` sheet.
 
 ## Auth + seeding
 
 - `signUp(page)` from `apps/web/e2e/auth.ts` creates a fresh account/workspace and lands
   on `/`. Each call is isolated — entries never collide.
 - The project/task pickers have **no inline create**. Seed via the authenticated
-  API using the page's cookie jar:
+  API using the page's cookie jar — **writes need an explicit Origin header** (CSRF):
   ```ts
-  await page.request.post("/api/projects", { data: { name: "Alpha", color: "#e11d48" } });
+  const origin = new URL(page.url()).origin;
+  const res = await page.request.post("/api/projects", {
+    headers: { origin },
+    data: { name: "Alpha", color: "#e11d48" },
+  });
+  expect(res.ok(), `${res.status()} ${await res.text()}`).toBeTruthy();
   ```
-  (`color` must match `/^#[0-9a-f]{6}$/i`.)
+  (`color` must match `/^#[0-9a-f]{6}$/i`.) Entries are `/api/time_entries` (underscore);
+  updating one is `PUT /:id` — a PATCH returns a bare 404 that looks like a missing row.
 
 ## Driving specifics (selectors that work)
 
 - Description input: `getByPlaceholder("What are you working on?")`.
-- Start/Stop: `getByRole("button", { name: "Start" | "Stop" })`.
+- Start/Stop: `getByRole("button", { name: "Start timer" | "Stop timer", exact: true })` —
+  without `exact` "Stop" also matches an entry whose description contains it. Discard is
+  `Discard timer` then the confirm's `Discard`. The dock is `header[aria-label="Timer controls"]`.
 - **Project/Task/Tag picker triggers** are named: `getByRole("button", { name: /^Project:/ })`
   when one is selected, `"Select project"` when not (same shape for task and tags).
   Picker options are cmdk items: `getByRole("option", { name: /Alpha/ })`.
@@ -52,9 +70,9 @@ Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
 - The **running entry appears as an editable row** in the Today list. Edit its
   project via: row hover → `getByRole("button", { name: "Entry actions" })` →
   `getByRole("menuitem", { name: "Edit" })` → dialog picker → `Save changes`.
-- Sidebar collapse/expand: `getByRole("button", { name: "Collapse sidebar" | "Expand sidebar" })`.
-- Sidebar running-timer elapsed text is `aside span.font-mono` (expanded only;
-  collapsed shows a dot with `aria-label={/Timer running/}`).
+- Rail destinations are links named by route (`getByRole("link", { name: "Tasks" })`);
+  Assistant, `Search and commands` and the account menu sit at the foot. The rail has no
+  collapse state.
 
 ## Flows worth driving
 
@@ -64,7 +82,7 @@ Default viewport (Desktop Chrome, 1280×720) is ≥ the `md` breakpoint, so the
 - **Running-entry ↔ bar project/description sync:** edits from the list row must
   reflect in the timer bar, and `elapsed` must not reset (same-id merge).
 
-## Calendar (FullCalendar) — /calendar
+## Calendar (FullCalendar) — a Timer view (`/calendar` redirects to `/`)
 
 - **FullCalendar 7 has no stable `.fc-*` class names** (they're minified). Select
   on the unstyled `tt-fc-*` hooks `components/calendar/calendarClasses.ts` adds:
