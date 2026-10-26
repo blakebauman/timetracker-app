@@ -75,7 +75,7 @@ catalog:
   "@fontsource-variable/geist": ^5.2.9
   "@fontsource-variable/geist-mono": ^5.2.8
   "@fullcalendar/react": ^7.1.1
-  temporal-polyfill: ^1.0.5
+  temporal-polyfill: ^1.0.6
   qrcode: ^1.5.4
   idb: ^8.0.3
   zustand: ^5.0.14
