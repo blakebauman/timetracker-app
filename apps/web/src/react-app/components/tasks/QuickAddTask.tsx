@@ -175,7 +175,9 @@ export function QuickAddTask({
           className="h-6 border-0 bg-transparent px-0 py-0 text-base shadow-none focus-visible:ring-0 md:text-sm dark:bg-transparent"
         />
         {showPicker && !stacked && (
-          <ProjectPicker value={projectId} onChange={setProjectId} className="shrink-0" />
+          // Compact: with nothing chosen it's a folder icon, not the words "No
+          // project" sitting in the line like a second field to fill in.
+          <ProjectPicker value={projectId} onChange={setProjectId} compact className="shrink-0" />
         )}
         {pending ? (
           <Spinner size="sm" className="text-muted-foreground" label="Adding task" />

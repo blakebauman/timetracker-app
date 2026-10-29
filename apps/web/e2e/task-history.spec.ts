@@ -38,13 +38,13 @@ test("finished tasks group by week with tracked time against estimates", async (
   }
 
   await page.goto("/tasks");
-  const tab = page.getByRole("tab", { name: "History, 2 done this week" });
+  const tab = page.getByRole("tab", { name: "History" });
   await expect(tab).toBeVisible();
   await tab.click();
 
   await expect(page.getByRole("heading", { name: "This week" })).toBeVisible();
   // 3h tracked in total; 3h against the 2h that was estimated = 150%.
-  await expect(page.getByText("3h tracked · 150% of estimates")).toBeVisible();
+  await expect(page.getByText("3h tracked · 150% of estimate")).toBeVisible();
   await expect(page.getByText("Data mapping review")).toBeVisible();
   await expect(page.getByText("Kick-off deck")).toBeVisible();
   await expect(page.getByText("Still open")).toBeHidden();

@@ -56,9 +56,8 @@ test("`by …` in quick-add sets a deadline, shown on the row", async ({ page })
   await expect
     .poll(async () => (await all()).find((t) => t.name === "Quarterly report")?.deadlineDate)
     .toBe(localDate(2));
-  // Two days out is inside the warning horizon.
-  await expect(page.getByLabel(/^Deadline /).first()).toBeVisible();
-  await expect(page.getByText(/^by /).first()).toBeVisible();
+  // Two days out is inside the warning horizon, so the row says so.
+  await expect(page.getByText(/^Deadline /).first()).toBeVisible();
 });
 
 test("the dialog sets and clears a deadline", async ({ page }) => {

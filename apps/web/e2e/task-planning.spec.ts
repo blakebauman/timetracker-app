@@ -208,8 +208,12 @@ test("a task carries notes, editable through the task dialog", async ({ page }) 
   await expect(dialog).not.toBeVisible();
   await page.waitForTimeout(1000);
 
-  // Notes render as a second line on the row.
-  await expect(page.getByText("Check the August credit note before sending.")).toBeVisible();
+  // Notes belong to the task, not the resting row: they're kept off the list
+  // and come back when the name opens the task again.
+  await expect(page.getByText("Check the August credit note before sending.")).toHaveCount(0);
+  await page.getByRole("button", { name: "Reconcile Q3 invoices", exact: true }).click();
+  await expect(dialog.getByLabel("Notes")).toHaveValue("Check the August credit note before sending.");
+  await page.keyboard.press("Escape");
 
   const tasks = await (await page.request.get("/api/tasks")).json();
   expect(tasks[0].description).toBe("Check the August credit note before sending.");

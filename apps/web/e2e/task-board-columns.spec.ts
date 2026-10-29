@@ -34,8 +34,9 @@ const column = (page: import("@playwright/test").Page, name: string) =>
   page.getByRole("region", { name });
 
 const card = (page: import("@playwright/test").Page, name: string) =>
+  // By its name, not its start button: a done card has no start button.
   page
-    .getByRole("button", { name: `Start timer for ${name}` })
+    .getByRole("button", { name, exact: true })
     .locator("xpath=ancestor::*[@draggable='true'][1]");
 
 test("time logged against a task moves it to In progress on its own", async ({ page }) => {
@@ -53,7 +54,7 @@ test("time logged against a task moves it to In progress on its own", async ({ p
   });
 
   await page.goto("/tasks");
-  await page.getByRole("tab", { name: "Board, 1 in progress" }).click();
+  await page.getByRole("tab", { name: "Board" }).click();
   await expect(column(page, "In progress").getByText("Data mapping review")).toBeVisible();
   await expect(column(page, "To do").getByText("Draft cutover runbook")).toBeVisible();
 });

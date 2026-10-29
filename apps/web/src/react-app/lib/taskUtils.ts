@@ -9,20 +9,16 @@ import type { Task } from "@timetracker/core/schemas";
 // ─── Priority ────────────────────────────────────────────────────────────────
 
 /**
- * Only P1 and P2 carry colour.
+ * Only P1 and P2 are marked at all: a small filled flag after the task name.
  *
- * Priority renders as a tint on the done-toggle's ring — the element already at
- * the row's leading edge, which is both where the eye lands and the one spot
- * that isn't a `border-left` accent stripe (a named ban in DESIGN.md §8).
- * Letting all four levels colour it would put a saturated marker on every row
- * and spend the One Accent Rule on decoration; P3 and P4 stay neutral, and P4
- * is the default, so most rows show nothing at all.
+ * Priority used to tint the done toggle's ring, which put a red edge on every
+ * urgent row and made the checkbox mean two things. P3 and P4 show nothing —
+ * P4 is the default, so most rows carry no marker — and the flag is the only
+ * place priority appears on a row.
  */
-export const PRIORITY_RING: Record<number, string> = {
-  1: "border-destructive text-destructive",
-  2: "border-warning text-warning",
-  3: "border-muted-foreground/60",
-  4: "border-muted-foreground/40",
+export const PRIORITY_FLAG: Record<number, string> = {
+  1: "text-destructive",
+  2: "text-warning-ink",
 };
 
 export const PRIORITY_LABEL: Record<number, string> = {
