@@ -206,15 +206,17 @@ The line under the field shows what it understood before you commit it. Anything
 
 **Tags.** Tasks use the same tags as time entries: one list, one set of colours. Add them with `@tag` when you capture, or in the task dialog. Any time you track or log against a task picks up the task's tags automatically, on top of any you add to the entry yourself, so reports by tag include task work without extra effort. A repeating task keeps its tags.
 
-**What a task row shows.** A row is a to-do: the checkbox, the name, its day and ▷. A flag beside the name marks **Urgent** (red) and **High** (amber) priority. A second line appears only when there's something to act on: the time you've tracked against the estimate, or a deadline that's two days away or less. Everything else (notes, tags, repeat, the estimate itself, a distant deadline) is in the task: **click its name to open it**. A task with subtasks shows how many are done (**1/3**); click that to open the checklist.
+**What a task row shows.** A row is a to-do: the checkbox, the name, its day and ▷. Each project's tasks sit together in one panel. A flag beside the name marks **Urgent** (red) and **High** (amber) priority. A second line appears only when there's something to act on: the time you've tracked against the estimate, or a deadline that's two days away or less. Everything else (notes, tags, repeat, the estimate itself, a distant deadline) is in the task: **click its name to open it**. A task with subtasks shows how many are done (**1/3**); click that to open the checklist.
 
-**Ticking off.** A finished task leaves the **All** list (Undo in the toast brings it back). Find it under **History**, or choose **View → Show → Open and done** to keep finished tasks in the list.
+**Ticking off.** A finished task leaves the **All** list (Undo in the toast brings it back). Its group keeps a quiet **1 done** line under it — click it to see that group's finished tasks in place. A finished task shows the day you finished it ("Done yesterday") where its due date was. They're also under **History**, or choose **View → Show → Open and done** to keep every finished task in the list. A task that's past its due date says how late it is ("2 days late") instead of showing the date.
+
+**Adding to a project.** The **+** beside a project's name on the All tab opens a capture line at the foot of that group, already filed under it.
 
 **Filters and saved views.** On the **All** tab, **View** holds how the list is shaped: grouping, sort, and filters by status, project, tag, priority and due date. To keep a combination, choose **Save current view…** at the top of the same popover and give it a name. It remembers the search text, filters, grouping and sort. Pick it again any time from that list, and the View button shows its name while it's the view on screen. Saved views are yours alone.
 
 **Finding a task.** Type part of a task's name or notes into the command palette (⌘K / Ctrl+K) and it appears under **Tasks**; choosing it starts a timer on it. On the **All** tab, the search icon opens a field that narrows the list by name and notes; a matching subtask brings its parent with it, opened.
 
-**From the keyboard.** On the Tasks page, **J** / **K** move between tasks (then **↓** / **↑** work too). On the highlighted task: **X** completes or reopens it, **E** opens it, **1**–**4** set priority, **S** starts or stops a timer on it, and **Delete** removes it (with Undo). **Q** jumps to the add-task line, and **Alt+Shift+T** gets you there from any page. **?** lists every shortcut.
+**From the keyboard.** On the Tasks page, **J** / **K** move between tasks (then **↓** / **↑** work too). On the highlighted task: **X** completes or reopens it, **E** opens it, **1**–**4** set priority, **S** starts or stops a timer on it, and **Delete** removes it (with Undo). **Q** jumps to the add-task line, and **Alt+Shift+T** gets you there from any page. **?** lists every shortcut. The main ones are also listed under the task list.
 
 **Turning a task into time.** Four ways, all of them one gesture:
 
@@ -225,7 +227,7 @@ The line under the field shows what it understood before you commit it. Anything
 
 **Notes.** A task can carry free-text notes — context, links, acceptance criteria, anything that isn't the name. They're in the task dialog, kept off the list so it stays scannable. Notes belong to the *task* and are never copied onto a time entry, so internal detail can't end up on an invoice line.
 
-**Editing.** Click a task's name to open it (rename it there), or its due-date chip to re-date it. In the Plan column, drag a task onto another day's heading (every day of the coming week is listed, empty ones too), or use the calendar icon on its row to pick a day — that one works from the keyboard and on touch too. Either way there's an **Undo**. The name (or **⋯ → Edit task…**) opens the full form — name, notes, project, estimate, due date, priority and repeat — which is the same form used to create one.
+**Editing.** Click a task's name to open it (rename it there), or its due-date chip to re-date it. In the Plan column, drag a task onto another day's heading (every day of the coming week is listed, empty ones too), or use the calendar icon on its row to pick a day — that one works from the keyboard and on touch too. Either way there's an **Undo**. The name (or **⋯ → Edit task…**) opens the full form; deadline, tags and repeat sit behind **More details** until a task has them — name, notes, project, estimate, due date, priority and repeat — which is the same form used to create one.
 
 **Undo.** Ticking a task off and deleting one both show a toast with **Undo**. Deleting doesn't ask first; the task is only really removed when the toast closes, so Undo brings it back exactly as it was, with its time still linked. Undoing a repeating task's completion also removes the next occurrence it had just created.
 

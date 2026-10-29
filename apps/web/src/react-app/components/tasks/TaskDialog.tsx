@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -105,6 +106,8 @@ export function TaskDialog({
   const [weekDays, setWeekDays] = useState<number[]>(ruleDays(task?.recurRule ?? null));
   /** A dismiss (Escape, the scrim) was caught with unsaved changes. */
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  /** Deadline, tags and repeat, revealed by "More details". */
+  const [showMore, setShowMore] = useState(false);
 
   // The dialog stays mounted between openings; reseed every time it *opens*.
   // Keying the reseed on the task id alone froze the create form's defaults at
@@ -127,6 +130,7 @@ export function TaskDialog({
     setRepeat(repeatValue(task?.recurRule ?? null));
     setWeekDays(ruleDays(task?.recurRule ?? null));
     setConfirmingDiscard(false);
+    setShowMore(false);
   }
 
   // What the form held when it opened, to tell an edit from a glance.
@@ -255,6 +259,12 @@ export function TaskDialog({
   // A subtask belongs to its parent's project and can't repeat on its own — the
   // server enforces both, so the form must not offer either.
   const isSubtask = Boolean(task?.parentId);
+  // Judged on what the task held when it opened, not on the live form: clearing
+  // a deadline must not make its field vanish from under the pointer.
+  const hadDeadline = Boolean(task?.deadlineDate);
+  const hadTags = (task?.tags.length ?? 0) > 0;
+  const hadRepeat = !isSubtask && Boolean(task?.recurRule);
+  const moreHidden = !showMore && !(hadDeadline && hadTags && (hadRepeat || isSubtask));
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && requestDismiss()}>
@@ -263,10 +273,10 @@ export function TaskDialog({
       <DialogContent className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
-          <DialogDescription>
-            {editing
-              ? "Notes stay with the task — they're never copied onto a time entry."
-              : "Tasks belong to a project. Everything else is optional."}
+          {/* Kept for assistive tech; on screen the form speaks for itself, and
+              the one note that matters sits under the Notes field. */}
+          <DialogDescription className="sr-only">
+            {editing ? "Edit this task's details." : "Tasks belong to a project. Everything else is optional."}
           </DialogDescription>
         </DialogHeader>
 
@@ -294,14 +304,20 @@ export function TaskDialog({
               placeholder="Context, links, acceptance criteria — anything that isn't the name."
               rows={3}
               className="resize-y"
+              aria-describedby="task-notes-hint"
             />
+            <p id="task-notes-hint" className="text-xs text-muted-foreground">
+              Kept with the task — never copied onto a time entry.
+            </p>
           </div>
 
           {!isSubtask && (
             <div className="space-y-1.5">
               <Label>Project</Label>
               <div>
-                <ProjectPicker value={projectId} onChange={setProjectId} className="border" />
+                {/* `field`: the same filled well as every other input here; the
+                    ghost chip read as a link sitting in a form. */}
+                <ProjectPicker value={projectId} onChange={setProjectId} field />
               </div>
             </div>
           )}
@@ -386,6 +402,12 @@ export function TaskDialog({
             </div>
           </div>
 
+          {/* The rarer fields wait behind one control until they're wanted —
+              opening a task to read its notes shouldn't mean reading ten
+              fields. Any that already hold a value show regardless, so
+              nothing set is ever hidden. */}
+          {(showMore || hadDeadline) && (
+            <>
           {/* When it must be done, as opposed to when it's planned. Kept apart
               from the due date because the two drift: you plan the report for
               Monday because it's owed on Friday. */}
@@ -414,6 +436,11 @@ export function TaskDialog({
             </div>
           </div>
 
+            </>
+          )}
+
+          {(showMore || hadTags) && (
+            <>
           {/* The workspace's one tag vocabulary. An entry logged against
               this task inherits these. */}
           <div className="space-y-1.5">
@@ -421,7 +448,10 @@ export function TaskDialog({
             <TagPicker value={tags} onChange={setTags} field />
           </div>
 
-          {!isSubtask && (
+            </>
+          )}
+
+          {!isSubtask && (showMore || hadRepeat) && (
             <div className="space-y-1.5">
               <Label>Repeat</Label>
               <Select value={repeat} onValueChange={handleRepeatChange}>
@@ -469,6 +499,25 @@ export function TaskDialog({
               )}
             </div>
           )}
+          {moreHidden && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="-ml-2 gap-1 text-muted-foreground"
+              onClick={() => setShowMore(true)}
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+              More details
+              <span className="text-muted-foreground">
+                ·{" "}
+                {[!hadDeadline && "deadline", !hadTags && "tags", !hadRepeat && !isSubtask && "repeat"]
+                  .filter(Boolean)
+                  .join(", ")}
+              </span>
+            </Button>
+          )}
+
         </div>
 
         {confirmingDiscard ? (
