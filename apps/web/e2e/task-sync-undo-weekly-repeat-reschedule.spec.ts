@@ -82,7 +82,7 @@ test("undoing a repeating task's completion leaves no second occurrence", async 
   await mk({ name: "Weekly status report", dueDate: localDate(0), recurRule: "daily" });
   await page.goto("/tasks");
 
-  await page.getByRole("button", { name: "Mark task done" }).first().click();
+  await page.getByRole("checkbox", { name: /^Done: / }).first().click();
   await page.getByRole("button", { name: "Undo" }).click();
 
   await expect
@@ -101,6 +101,7 @@ test("a weekly repeat can fall on several days", async ({ page }) => {
   await page.getByRole("button", { name: "More actions for Stand-up notes" }).click();
   await page.getByRole("menuitem", { name: "Edit task…" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit task" });
+  await dialog.getByRole("button", { name: /^More details/ }).click();
   await dialog.getByRole("combobox", { name: "Repeat" }).click();
   await page.getByRole("option", { name: "Weekly on…" }).click();
 

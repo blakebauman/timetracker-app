@@ -157,6 +157,11 @@ export function TaskRow({
   const running = runningEntry?.taskId === task.id;
 
   const tone = dueTone(task.dueDate);
+  // Overdue in words, not only in red: "2 days late" reads the same to a
+  // screen reader and to anyone who can't tell the red from the ink.
+  const lateDays =
+    tone === "overdue" && task.dueDate ? -daysBetweenLocal(todayLocalDate(), task.dueDate) : 0;
+  const lateLabel = lateDays === 1 ? "1 day late" : lateDays > 1 ? `${lateDays} days late` : null;
   const timeFormat = useUIStore((s) => s.timeFormat);
   // "Friday" or "Friday 14:00" — a scheduled time rides on the day chip.
   const dueLabel = task.dueDate
@@ -209,28 +214,40 @@ export function TaskRow({
     </Button>
   );
 
+  /**
+   * Ticking off is the verb this list is for, and it was the smallest target on
+   * the row: a 16px box beside a 32px start button. The box stays 16px; the
+   * button around it is 32px (44px on a coarse pointer), pulled back with a
+   * negative margin so the row's layout doesn't move. A checkbox, announced as
+   * one, named by the task — priority is the flag's to announce, not this.
+   */
   const doneToggle = (
     <button
+      type="button"
+      role="checkbox"
+      aria-checked={!task.active}
       onClick={() => completeTask(task, task.active)}
-      // The flag beside the name is visual; the accessible name carries the
-      // priority too, so it survives a screen reader and colour blindness alike.
-      aria-label={`${task.active ? "Mark task done" : "Mark task not done"}${
-        task.priority < 4 ? ` — priority ${PRIORITY_LABEL[task.priority]}` : ""
-      }`}
-      aria-pressed={!task.active}
-      title={task.priority < 4 ? `Priority: ${PRIORITY_LABEL[task.priority]}` : undefined}
+      aria-label={`Done: ${task.name}`}
+      title={task.active ? "Mark done" : "Mark not done"}
       className={cn(
-        "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart",
-        FOCUS_RING,
-        // Ink, not the brand red: ticking a task off is the end of it, not an
-        // event to signal. Priority moved to a flag beside the name, so the
-        // ring is the same quiet edge on every row.
-        !task.active
-          ? "border-muted-foreground bg-muted-foreground text-background"
-          : "border-muted-foreground/50 hover:border-foreground"
+        "group/check -m-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full pointer-coarse:-m-3.5 pointer-coarse:h-11 pointer-coarse:w-11",
+        FOCUS_RING
       )}
     >
-      {!task.active && <Check className="h-2.5 w-2.5" />}
+      <span
+        aria-hidden
+        className={cn(
+          "flex h-4 w-4 items-center justify-center rounded border transition-colors duration-fast ease-out-quart",
+          // Ink, not the brand red: ticking a task off is the end of it, not an
+          // event to signal. Priority is a flag beside the name, so the box is
+          // the same quiet edge on every row.
+          !task.active
+            ? "border-muted-foreground bg-muted-foreground text-background"
+            : "border-muted-foreground/50 group-hover/check:border-foreground"
+        )}
+      >
+        {!task.active && <Check className="h-2.5 w-2.5" />}
+      </span>
     </button>
   );
 
@@ -280,9 +297,17 @@ export function TaskRow({
     task.deadlineDate && task.active && !nested
       ? daysBetweenLocal(todayLocalDate(), task.deadlineDate)
       : null;
-  const deadlineAtRisk = deadlineDays !== null && deadlineDays <= DEADLINE_RISK_DAYS;
+  // One alarm per row: once the due date itself has passed, "late" already
+  // says the task needs doing now, and a deadline line under it was a second
+  // and third red mark about the same fact.
+  const deadlineAtRisk =
+    deadlineDays !== null && deadlineDays <= DEADLINE_RISK_DAYS && !lateLabel;
   const tracked = task.trackedSeconds + elapsed;
-  const showTracking = task.active && (tracked > 0 || running);
+  // A finished task keeps its figure: in History it's the record of what the
+  // work cost against what was planned.
+  const showTracking = tracked > 0 || running;
+  const overBy =
+    task.estimatedSeconds && tracked > task.estimatedSeconds ? tracked - task.estimatedSeconds : 0;
   const flagged = task.active && task.priority <= 2;
 
   // The resting row is a to-do: done toggle, name, due day, start. Everything
@@ -299,7 +324,7 @@ export function TaskRow({
       {...{ [TASK_ROW_ATTR]: task.id }}
       tabIndex={-1}
       className={cn(
-        "group flex items-center gap-2 px-3 py-2.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
+        "group flex items-center gap-2 px-3 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
         // Inset: the card clips its rows to its corners, so an outer ring is cut off.
         "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
         nested && "pl-9",
@@ -321,20 +346,20 @@ export function TaskRow({
               type="button"
               title="Open task"
               onClick={() => onEdit(task)}
+              // Two lines before it truncates: on a phone the controls take
+              // half the row, and one line left "Draft cutove…".
+              aria-haspopup="dialog"
               className={cn(
-                "min-w-0 truncate rounded-sm text-left text-sm",
+                "min-w-0 line-clamp-2 rounded-sm text-left text-sm break-words",
                 FOCUS_RING,
-                !task.active && "text-muted-foreground line-through"
+                !task.active && "text-muted-foreground"
               )}
             >
               {task.name}
             </button>
           ) : (
             <span
-              className={cn(
-                "min-w-0 truncate text-sm",
-                !task.active && "text-muted-foreground line-through"
-              )}
+              className={cn("min-w-0 line-clamp-2 text-sm break-words", !task.active && "text-muted-foreground")}
             >
               {task.name}
             </span>
@@ -389,7 +414,11 @@ export function TaskRow({
                       room, when the bar gives way before the figure does. */}
                   <Progress
                     value={Math.min(100, Math.round((tracked / task.estimatedSeconds) * 100))}
-                    className="h-1 w-20 min-w-4 shrink"
+                    className={cn(
+                      "h-1 w-20 min-w-4 shrink",
+                      // Past the estimate the fill is no longer "progress".
+                      overBy > 0 && "[&>[data-slot=progress-indicator]]:bg-warning"
+                    )}
                     aria-hidden
                   />
                   <SpentFigure
@@ -403,6 +432,11 @@ export function TaskRow({
                   {formatDurationShort(tracked)} tracked
                 </span>
               ))}
+            {overBy > 0 && (
+              <span className="shrink-0 whitespace-nowrap text-xs text-warning-ink">
+                Over estimate by {formatDurationShort(overBy)}
+              </span>
+            )}
             {deadlineAtRisk && (
               <span
                 className={cn(
@@ -423,7 +457,12 @@ export function TaskRow({
         <Popover open={dueOpen} onOpenChange={setDueOpen}>
           <PopoverTrigger asChild>
             <button
-              aria-label={dueLabel ? `Due ${dueLabel} — change` : "Set due date"}
+              title={lateLabel && dueLabel ? `Due ${dueLabel}` : undefined}
+              aria-label={
+                dueLabel
+                  ? `Due ${dueLabel}${lateLabel ? `, ${lateLabel}` : ""} — change`
+                  : "Set due date"
+              }
               className={cn(
                 "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
                 FOCUS_RING,
@@ -432,7 +471,9 @@ export function TaskRow({
                   : "tt-reveal text-muted-foreground hover:text-foreground"
               )}
             >
-              {dueLabel ?? <CalendarDays className="h-3.5 w-3.5" />}
+              {/* A late task's chip says how late, which is the news; the date
+                  itself is in the tooltip and the accessible name. */}
+              {lateLabel ?? dueLabel ?? <CalendarDays className="h-3.5 w-3.5" />}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">

@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { BELOW_SM, useMediaQuery } from "@/hooks/useMediaQuery";
 import { Plus, CornerDownLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -45,12 +46,16 @@ export function QuickAddTask({
   defaultDueDate = null,
   parentId = null,
   autoFocus = false,
-  placeholder = "Add a task — try “draft report fri p1 ~2h”",
+  placeholder,
   onDone,
   stacked = false,
   className,
 }: QuickAddTaskProps) {
   const createTask = useCreateTask();
+  // The token hint doesn't fit a phone's line; cut to "draft report f" it
+  // taught nothing. The echo under the field still shows what was understood.
+  const phone = useMediaQuery(BELOW_SM);
+  const hint = placeholder ?? (phone ? "Add a task" : "Add a task — try “draft report fri p1 ~2h”");
   const { data: projects = [] } = useProjects();
   const [value, setValue] = useState("");
   const [projectId, setProjectId] = useState<string | null>(defaultProjectId);
@@ -166,7 +171,7 @@ export function QuickAddTask({
               if (!value.trim()) onDone?.();
             }
           }}
-          placeholder={placeholder}
+          placeholder={hint}
           aria-label={parentId ? "Add a subtask" : "Add a task"}
           aria-describedby={cn(hasEcho && echoId, needsProject && statusId) || undefined}
           aria-invalid={refused && needsProject ? true : undefined}

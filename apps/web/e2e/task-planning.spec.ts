@@ -89,7 +89,7 @@ test("completing a repeating task creates the next occurrence", async ({ page })
 
   await page.goto("/tasks");
   await page.waitForTimeout(1000);
-  await page.getByRole("button", { name: "Mark task done" }).first().click();
+  await page.getByRole("checkbox", { name: /^Done: / }).first().click();
   await page.waitForTimeout(1500);
 
   const tasks = await (await page.request.get("/api/tasks?includeInactive=true")).json();
