@@ -57,7 +57,13 @@ test("@tags in quick-add join existing tags by name, ignoring case", async ({ pa
     .toEqual(["client-call", "discovery"]);
   const tags = (await (await page.request.get("/api/tags")).json()) as { name: string }[];
   expect(tags.map((t) => t.name).sort()).toEqual(["client-call", "discovery"]);
-  await expect(page.getByText("client-call", { exact: true })).toBeVisible();
+  // Tags live in the task, not on the resting row: the name opens it.
+  await page.getByRole("button", { name: "Map vendor tables", exact: true }).click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Edit task" })
+      .getByRole("button", { name: "Tags: client-call, discovery" })
+  ).toBeVisible();
 });
 
 test("an entry started from a task inherits its tags", async ({ page }) => {

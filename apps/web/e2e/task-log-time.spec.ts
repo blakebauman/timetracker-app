@@ -77,8 +77,7 @@ test("a task with no estimate is still convertible, with blank times", async ({ 
   await sheet.getByRole("button", { name: "Add entry" }).click();
   await expect(sheet).not.toBeVisible();
 
-  await page.waitForTimeout(1200);
-  await expect(
-    page.getByRole("button", { name: "Mark task not done" }).first()
-  ).toBeVisible();
+  // Done, so it leaves the open list.
+  await expect(page.getByRole("button", { name: "Data mapping", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cutover plan", exact: true })).toBeVisible();
 });

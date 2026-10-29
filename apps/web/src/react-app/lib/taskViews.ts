@@ -4,8 +4,10 @@ import type { TaskViewConfig } from "@timetracker/core/schemas";
 /** The part of a view's config the filter popover edits. */
 export type TaskFilterValues = Pick<TaskViewConfig, "status" | "projectId" | "tag" | "maxPriority" | "due">;
 
+// Open tasks only by default: a to-do list's reward is the ticked item leaving.
+// Finished work is History's, and "Open and done" is one choice away.
 export const NO_FILTERS: TaskFilterValues = {
-  status: "all",
+  status: "active",
   projectId: null,
   tag: null,
   maxPriority: null,
@@ -14,7 +16,7 @@ export const NO_FILTERS: TaskFilterValues = {
 
 export function activeFilterCount(f: TaskFilterValues): number {
   return (
-    (f.status !== "all" ? 1 : 0) +
+    (f.status !== NO_FILTERS.status ? 1 : 0) +
     (f.projectId ? 1 : 0) +
     (f.tag ? 1 : 0) +
     (f.maxPriority ? 1 : 0) +

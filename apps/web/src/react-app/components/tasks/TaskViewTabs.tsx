@@ -13,14 +13,6 @@ import {
  */
 export type TaskView = "all" | "board" | "history";
 
-export interface TaskViewCounts {
-  all: number;
-  /** What's in progress — the one number a board is opened to check. */
-  board: number;
-  /** Finished this week. */
-  history: number;
-}
-
 const VIEWS: { value: TaskView; label: string }[] = [
   { value: "all", label: "All" },
   { value: "board", label: "Board" },
@@ -29,15 +21,16 @@ const VIEWS: { value: TaskView; label: string }[] = [
 
 interface TaskViewTabsProps {
   view: TaskView;
-  counts: TaskViewCounts;
+  /** Open top-level tasks. The only tab with a count: it's the size of the list. */
+  allCount: number;
   onChange: (view: TaskView) => void;
 }
 
 /**
  * The Tasks page's primary navigation: a `tablist` (roving tabindex, arrow
- * keys) drawn as the shared segment track, carrying counts.
+ * keys) drawn as the shared segment track.
  */
-export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
+export function TaskViewTabs({ view, allCount, onChange }: TaskViewTabsProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   const focusTab = (index: number) => {
@@ -74,7 +67,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
     >
       {VIEWS.map(({ value, label }) => {
         const active = value === view;
-        const count = counts[value];
+        const count = value === "all" ? allCount : 0;
         return (
           <button
             key={value}
@@ -83,15 +76,7 @@ export function TaskViewTabs({ view, counts, onChange }: TaskViewTabsProps) {
             data-value={value}
             aria-selected={active}
             tabIndex={active ? 0 : -1}
-            aria-label={
-              count > 0
-                ? value === "board"
-                  ? `${label}, ${count} in progress`
-                  : value === "history"
-                    ? `${label}, ${count} done this week`
-                  : `${label}, ${count} task${count === 1 ? "" : "s"}`
-                : label
-            }
+            aria-label={count > 0 ? `${label}, ${count} task${count === 1 ? "" : "s"}` : label}
             onClick={() => onChange(value)}
             className={cn(SEGMENT, "gap-1.5", active ? SEGMENT_ACTIVE : SEGMENT_INACTIVE)}
           >

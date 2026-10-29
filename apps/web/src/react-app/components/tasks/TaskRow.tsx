@@ -16,7 +16,6 @@ import {
   CircleDot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { SpentFigure } from "@/components/ui/spent-figure";
 import { LazyCalendar } from "@/components/ui/lazy-calendar";
@@ -33,26 +32,24 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ProjectBadge } from "@/components/ProjectBadge";
+import { ColorDot } from "@/components/ColorDot";
 import { useUpdateTask, useCompleteTask } from "@/hooks/useTasks";
-import { useTagColors } from "@/hooks/useProjects";
-import { Badge } from "@/components/ui/badge";
 import { TASK_ROW_ATTR } from "@/hooks/useTaskListKeys";
 import { useTimer } from "@/hooks/useTimer";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
-import { formatDurationShort, formatSeconds, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
+import { formatDurationShort, formatSeconds } from "@/lib/dateUtils";
 import {
   PRIORITIES,
   PRIORITY_LABEL,
-  PRIORITY_RING,
+  PRIORITY_FLAG,
   dateToLocalDate,
   dueTone,
   formatDueDate,
   formatMinute,
   localDateToDate,
 } from "@/lib/taskUtils";
-import { daysBetweenLocal, describeRecurRule, todayLocalDate } from "@timetracker/core/task-recurrence";
+import { daysBetweenLocal, todayLocalDate } from "@timetracker/core/task-recurrence";
 import { cn } from "@/lib/utils";
 import type { Task } from "@timetracker/core/schemas";
 
@@ -63,6 +60,16 @@ const RECUR_OPTIONS = [
   { value: "weekly", label: "Weekly on this day" },
   { value: "monthly", label: "Monthly on this date" },
 ];
+
+/** How close a deadline has to be before the row mentions it at all. */
+const DEADLINE_RISK_DAYS = 2;
+
+/** "Deadline passed" / "Deadline today" / "Deadline tomorrow" / "Deadline Friday". */
+function deadlinePhrase(deadlineDate: string, days: number) {
+  if (days < 0) return "Deadline passed";
+  const day = formatDueDate(deadlineDate);
+  return `Deadline ${days <= 1 ? day.toLowerCase() : day}`;
+}
 
 const DUE_TONE_CLASS: Record<string, string> = {
   overdue: "text-destructive",
@@ -145,51 +152,18 @@ export function TaskRow({
   const elapsed = useTimerStore((s) => (s.runningEntry?.taskId === task.id ? s.elapsed : 0));
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
 
-  const [editingName, setEditingName] = useState(false);
-  const [name, setName] = useState(task.name);
-  const [editingTime, setEditingTime] = useState(false);
-  const [estimate, setEstimate] = useState("");
   const [dueOpen, setDueOpen] = useState(false);
 
   const running = runningEntry?.taskId === task.id;
 
-  const saveName = () => {
-    const trimmed = name.trim();
-    if (trimmed && trimmed !== task.name) updateTask.mutate({ id: task.id, data: { name: trimmed } });
-    else setName(task.name);
-    setEditingName(false);
-  };
-
-  const startEditTime = () => {
-    setEstimate(formatTimeInput(task.estimatedSeconds));
-    setEditingTime(true);
-  };
-
-  const saveEstimate = () => {
-    const trimmed = estimate.trim();
-    if (trimmed === "") {
-      updateTask.mutate({ id: task.id, data: { estimatedSeconds: null } });
-    } else {
-      const parsed = parseTimeInput(trimmed);
-      if (parsed !== null) updateTask.mutate({ id: task.id, data: { estimatedSeconds: parsed } });
-    }
-    setEditingTime(false);
-  };
-
-  const progress = task.estimatedSeconds
-    ? Math.min(100, Math.round((task.trackedSeconds / task.estimatedSeconds) * 100))
-    : null;
-
   const tone = dueTone(task.dueDate);
   const timeFormat = useUIStore((s) => s.timeFormat);
-  const tagColor = useTagColors();
   // "Friday" or "Friday 14:00" — a scheduled time rides on the day chip.
   const dueLabel = task.dueDate
     ? `${formatDueDate(task.dueDate)}${
         task.scheduledMinute !== null ? ` ${formatMinute(task.scheduledMinute, timeFormat)}` : ""
       }`
     : null;
-  const repeats = describeRecurRule(task.recurRule);
   const hasChildren = task.subtaskTotal > 0;
 
   /**
@@ -202,7 +176,7 @@ export function TaskRow({
    * becomes a Stop disc with the running-dot treatment on the one row that is
    * actually running.
    */
-  const startControl = running ? (
+  const startControl = !task.active ? null : running ? (
     <Button
       variant="ghost"
       size={dense ? "icon-xs" : "icon-sm"}
@@ -222,7 +196,6 @@ export function TaskRow({
       size={dense ? "icon-xs" : "icon-sm"}
       aria-label={`Start timer for ${task.name}`}
       title="Start a timer on this task"
-      disabled={!task.active}
       onClick={() =>
         startTimer({
           description: task.name,
@@ -239,9 +212,8 @@ export function TaskRow({
   const doneToggle = (
     <button
       onClick={() => completeTask(task, task.active)}
-      // Priority was colour-only (the ring) plus a pointer-only title; the
-      // accessible name carries it too, so it survives a screen reader and
-      // colour blindness alike.
+      // The flag beside the name is visual; the accessible name carries the
+      // priority too, so it survives a screen reader and colour blindness alike.
       aria-label={`${task.active ? "Mark task done" : "Mark task not done"}${
         task.priority < 4 ? ` — priority ${PRIORITY_LABEL[task.priority]}` : ""
       }`}
@@ -250,9 +222,12 @@ export function TaskRow({
       className={cn(
         "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-fast ease-out-quart",
         FOCUS_RING,
+        // Ink, not the brand red: ticking a task off is the end of it, not an
+        // event to signal. Priority moved to a flag beside the name, so the
+        // ring is the same quiet edge on every row.
         !task.active
-          ? "border-primary bg-primary text-primary-foreground"
-          : cn(PRIORITY_RING[task.priority] ?? PRIORITY_RING[4], "hover:border-primary")
+          ? "border-muted-foreground bg-muted-foreground text-background"
+          : "border-muted-foreground/50 hover:border-foreground"
       )}
     >
       {!task.active && <Check className="h-2.5 w-2.5" />}
@@ -294,21 +269,28 @@ export function TaskRow({
   // A subtask is due when its parent is: the dated views select on the parent's
   // date and re-attach children, so a date set on a subtask is never read. The
   // row doesn't offer to set one; an existing date still shows so nothing is
-  // hidden from the user who set it through the form.
-  const showDue = Boolean(task.dueDate) || !nested;
-  const showProjectBadge = showProject && !nested && Boolean(task.projectName);
-  const showSubtaskCount = hasChildren && !nested;
-  // A deadline is a commitment, so it stays visible on done rows too — until
-  // the task is done, then there's nothing left to warn about.
-  const deadlineDays = task.deadlineDate && task.active ? daysBetweenLocal(todayLocalDate(), task.deadlineDate) : null;
-  const showDeadline = deadlineDays !== null && !nested;
-  const showTags = task.tags.length > 0;
-  const hasMeta =
-    showDue || showProjectBadge || showSubtaskCount || Boolean(repeats) || showDeadline || showTags;
+  // hidden from the user who set it through the form. A finished task has no
+  // due date left to keep: "Yesterday" in overdue red on a ticked row was an
+  // alarm about work that was already done.
+  const showDue = task.active && (Boolean(task.dueDate) || !nested);
+  const showProjectDot = showProject && !nested && Boolean(task.projectName);
+  // Only a deadline that is close or gone earns a place on the row; a distant
+  // one is a fact about the plan, and the dialog keeps it.
+  const deadlineDays =
+    task.deadlineDate && task.active && !nested
+      ? daysBetweenLocal(todayLocalDate(), task.deadlineDate)
+      : null;
+  const deadlineAtRisk = deadlineDays !== null && deadlineDays <= DEADLINE_RISK_DAYS;
+  const tracked = task.trackedSeconds + elapsed;
+  const showTracking = task.active && (tracked > 0 || running);
+  const flagged = task.active && task.priority <= 2;
 
-  // Laid out by its own width, not the viewport's: the same row sits full-width
-  // in a list and in a ~370px board column on a wide screen, and a viewport
-  // breakpoint gave the column the one-line layout — names cut to "D…".
+  // The resting row is a to-do: done toggle, name, due day, start. Everything
+  // else the task carries — notes, tags, repeat, estimate, a distant deadline —
+  // lives in the dialog the name opens. The line under the name appears only
+  // when there is something to say *now*: time is being spent against it, or
+  // its deadline is close. An empty "0m / 2h" bar on every row said nothing and
+  // said it on every row.
   return (
     <div className="@container">
     <div
@@ -317,12 +299,7 @@ export function TaskRow({
       {...{ [TASK_ROW_ATTR]: task.id }}
       tabIndex={-1}
       className={cn(
-        // `flex-wrap`: below `@xl` (36rem of row — roughly where the old
-        // viewport `sm` put a phone's list row) the metadata drops to its own
-        // line under the name. Otherwise the due chip, project pill and actions
-        // claimed the row first and the name — the one thing a row exists to
-        // say — was left with two or three characters.
-        "group flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
+        "group flex items-center gap-2 px-3 py-2.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
         // Inset: the card clips its rows to its corners, so an outer ring is cut off.
         "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
         nested && "pl-9",
@@ -334,248 +311,173 @@ export function TaskRow({
     >
       {doneToggle}
 
-      {/* Disclosure sits between the toggle and the name so the subtask rows
-          below line up under the name, not under the checkbox. */}
-      {!nested && hasChildren && (
-        <button
-          onClick={onToggleExpanded}
-          aria-expanded={expanded}
-          aria-label={expanded ? "Hide subtasks" : "Show subtasks"}
-          className={cn(
-            "-ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground",
-            FOCUS_RING
-          )}
-        >
-          <ChevronRight
-            className={cn(
-              "h-3.5 w-3.5 transition-transform duration-fast ease-out-quart",
-              expanded && "rotate-90"
-            )}
-          />
-        </button>
-      )}
-
-      {/* Name / edit + estimate */}
       <div className="min-w-0 flex-1">
-        {editingName ? (
-          <Input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={saveName}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") saveName();
-              if (e.key === "Escape") {
-                setName(task.name);
-                setEditingName(false);
-              }
-            }}
-            className="h-6 py-0 text-sm"
-          />
-        ) : (
-          // Click-to-rename: the fast path for a typo, so the dialog is only for
-          // the things that actually need a form.
-          <button
-            type="button"
-            title="Click to rename"
-            aria-label={`Rename ${task.name}`}
-            onClick={() => {
-              setName(task.name);
-              setEditingName(true);
-            }}
-            className={cn(
-              "block max-w-full truncate rounded-sm text-left text-sm",
-              FOCUS_RING,
-              !task.active && "text-muted-foreground line-through"
-            )}
-          >
-            {task.name}
-          </button>
-        )}
+        <div className="flex min-w-0 items-center gap-1.5">
+          {onEdit ? (
+            // The name opens the task, the way a to-do list does. It used to
+            // rename in place, which left the details two steps away behind ⋯
+            // and turned a click meant to look into a click that edits.
+            <button
+              type="button"
+              title="Open task"
+              onClick={() => onEdit(task)}
+              className={cn(
+                "min-w-0 truncate rounded-sm text-left text-sm",
+                FOCUS_RING,
+                !task.active && "text-muted-foreground line-through"
+              )}
+            >
+              {task.name}
+            </button>
+          ) : (
+            <span
+              className={cn(
+                "min-w-0 truncate text-sm",
+                !task.active && "text-muted-foreground line-through"
+              )}
+            >
+              {task.name}
+            </span>
+          )}
 
-        {/* Notes sit under the name, clamped to one line: enough to recognise
-            what the task is about, never enough to turn the list into prose.
-            The full text is in the dialog and in the tooltip. */}
-        {task.description && (
-          <p className="mt-0.5 line-clamp-1 text-micro text-muted-foreground" title={task.description}>
-            {task.description}
-          </p>
-        )}
-
-        {editingTime ? (
-          <div className="mt-0.5">
-            <Input
-              autoFocus
-              value={estimate}
-              onChange={(e) => setEstimate(e.target.value)}
-              onBlur={saveEstimate}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveEstimate();
-                if (e.key === "Escape") setEditingTime(false);
-              }}
-              placeholder="e.g. 1h 30m"
-              title="Estimated time — e.g. 1h 30m, 1:30, 90m"
-              className="h-5 w-28 py-0 text-micro"
+          {flagged && (
+            <Flag
+              className={cn("h-3 w-3 shrink-0 fill-current", PRIORITY_FLAG[task.priority])}
+              role="img"
+              aria-label={`${PRIORITY_LABEL[task.priority]} priority`}
             />
+          )}
+
+          {/* One control for the checklist: how far along it is, and the way
+              to open it. Collapsed by default — a card is one task until you
+              ask to see its parts. */}
+          {!nested && hasChildren && (
+            <button
+              type="button"
+              onClick={onToggleExpanded}
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Hide" : "Show"} subtasks, ${task.subtaskDone} of ${task.subtaskTotal} done`}
+              className={cn(
+                "flex shrink-0 items-center gap-0.5 rounded-full px-1 text-xs tabular-nums text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-muted hover:text-foreground",
+                FOCUS_RING
+              )}
+            >
+              <ChevronRight
+                className={cn(
+                  "h-3 w-3 transition-transform duration-fast ease-out-quart",
+                  expanded && "rotate-90"
+                )}
+                aria-hidden
+              />
+              {task.subtaskDone}/{task.subtaskTotal}
+            </button>
+          )}
+        </div>
+
+        {(showTracking || deadlineAtRisk) && (
+          // Wraps rather than squeezes: in a narrow board column the deadline
+          // drops under the bar instead of breaking "1h 30m / 2h" in half.
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+            {showTracking &&
+              (task.estimatedSeconds ? (
+                <span
+                  className="flex min-w-0 items-center gap-1.5"
+                  title={`${formatDurationShort(tracked)} of a ${formatDurationShort(task.estimatedSeconds)} estimate`}
+                >
+                  {/* Fixed width, so the bars line up down the list whatever the
+                      figure beside them says — until a narrow card needs the
+                      room, when the bar gives way before the figure does. */}
+                  <Progress
+                    value={Math.min(100, Math.round((tracked / task.estimatedSeconds) * 100))}
+                    className="h-1 w-20 min-w-4 shrink"
+                    aria-hidden
+                  />
+                  <SpentFigure
+                    spent={formatDurationShort(tracked)}
+                    of={formatDurationShort(task.estimatedSeconds)}
+                    className="shrink-0 whitespace-nowrap"
+                  />
+                </span>
+              ) : (
+                <span className="whitespace-nowrap font-mono text-micro tabular-nums text-muted-foreground">
+                  {formatDurationShort(tracked)} tracked
+                </span>
+              ))}
+            {deadlineAtRisk && (
+              <span
+                className={cn(
+                  "shrink-0 whitespace-nowrap text-xs",
+                  deadlineDays! < 0 ? "text-destructive" : "text-warning-ink"
+                )}
+              >
+                {deadlinePhrase(task.deadlineDate!, deadlineDays!)}
+              </span>
+            )}
           </div>
-        ) : progress !== null ? (
-          <button
-            className={cn(
-              "mt-0.5 flex w-full max-w-xs items-center gap-1.5 rounded-sm transition-opacity duration-fast ease-out-quart hover:opacity-70",
-              FOCUS_RING
-            )}
-            aria-label={`Edit estimate — ${formatDurationShort(task.trackedSeconds)} of ${formatDurationShort(task.estimatedSeconds!)}`}
-            onClick={startEditTime}
-          >
-            <Progress value={progress} className="h-1 flex-1" aria-hidden />
-            <SpentFigure
-              spent={formatDurationShort(task.trackedSeconds)}
-              of={formatDurationShort(task.estimatedSeconds!)}
-            />
-          </button>
-        ) : task.trackedSeconds > 0 ? (
-          <button
-            // gap-1.5, not gap-1: the trailing space in the text node is swallowed
-            // at the flex-item boundary, so the dashed underline started hard
-            // against the "·" and read tighter than the spaces around it.
-            className={cn(
-              "mt-0.5 flex items-center gap-1.5 rounded-sm text-micro text-muted-foreground transition-opacity duration-fast ease-out-quart hover:opacity-70",
-              FOCUS_RING
-            )}
-            onClick={startEditTime}
-          >
-            <span>{formatDurationShort(task.trackedSeconds)} tracked ·</span>
-            <span className="underline decoration-dashed">add estimate</span>
-          </button>
-        ) : (
-          <button
-            // `block`: a bare <button> is inline-block, so this ran onto the same
-            // line as the task name ("Data mappingadd estimate"). The other two
-            // states are flex and already drop below; mt-0.5 shows this meant to.
-            //
-            // `tt-reveal`, not a group-hover colour: the reveal is gated on hover
-            // *capability*, so a touch device sees the affordance instead of a
-            // permanently transparent button, and when it does show it reads at
-            // the full muted ink rather than a half-opacity of it.
-            className={cn(
-              "tt-reveal mt-0.5 block rounded-sm text-micro text-muted-foreground",
-              FOCUS_RING
-            )}
-            onClick={startEditTime}
-          >
-            add estimate
-          </button>
         )}
       </div>
 
-      {/* ─── Metadata ──────────────────────────────────────────────────────── */}
-
-      {/* One group below `@xl` (its own full-width line, indented under the
-          name), dissolved into the row above it with `contents` so the wide
-          layout is byte-for-byte what it was. */}
-      {hasMeta && (
-        <div className="order-last flex min-w-0 basis-full items-center gap-2 pl-6 @xl:contents">
-          {/* Same chip as an entry row's tags: one vocabulary, one look. */}
-          {task.tags.map((tag) => (
-            <Badge
-              key={tag}
-              variant="outline"
-              className="h-4 shrink-0 gap-1 px-1 py-0 text-micro font-normal"
-            >
-              <span
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: tagColor(tag) }}
-              />
-              {tag}
-            </Badge>
-          ))}
-          {showDeadline && (
-            <span
+      {/* The due chip is the control, not a label beside one — clicking the date
+          is how you change the date. */}
+      {showDue && (
+        <Popover open={dueOpen} onOpenChange={setDueOpen}>
+          <PopoverTrigger asChild>
+            <button
+              aria-label={dueLabel ? `Due ${dueLabel} — change` : "Set due date"}
               className={cn(
-                "flex shrink-0 items-center gap-1 text-micro",
-                deadlineDays! < 0
-                  ? "text-destructive"
-                  : deadlineDays! <= 2
-                    ? "text-warning-ink"
-                    : "text-muted-foreground"
+                "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
+                FOCUS_RING,
+                task.dueDate
+                  ? DUE_TONE_CLASS[tone ?? "later"]
+                  : "tt-reveal text-muted-foreground hover:text-foreground"
               )}
-              title={deadlineDays! < 0 ? "Deadline passed" : "Deadline"}
-              aria-label={`Deadline ${formatDueDate(task.deadlineDate!)}`}
             >
-              <Flag className="h-3 w-3" aria-hidden />
-              by {formatDueDate(task.deadlineDate!)}
-            </span>
-          )}
-          {showSubtaskCount && (
-            <span
-              className="shrink-0 text-micro tabular-nums text-muted-foreground"
-              title={`${task.subtaskDone} of ${task.subtaskTotal} subtasks done`}
-            >
-              {task.subtaskDone}/{task.subtaskTotal}
-            </span>
-          )}
-
-          {repeats && (
-            <Repeat
-              className="h-3 w-3 shrink-0 text-muted-foreground"
-              role="img"
-              aria-label={repeats}
+              {dueLabel ?? <CalendarDays className="h-3.5 w-3.5" />}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <LazyCalendar
+              mode="single"
+              selected={task.dueDate ? localDateToDate(task.dueDate) : undefined}
+              onSelect={(date) => {
+                updateTask.mutate({
+                  id: task.id,
+                  data: { dueDate: date ? dateToLocalDate(date) : null },
+                });
+                setDueOpen(false);
+              }}
             />
-          )}
-
-          {/* The due chip is the control, not a label beside one — clicking the date
-              is how you change the date. */}
-          {showDue && (
-            <Popover open={dueOpen} onOpenChange={setDueOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  aria-label={dueLabel ? `Due ${dueLabel} — change` : "Set due date"}
-                  className={cn(
-                    "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
-                    FOCUS_RING,
-                    task.dueDate
-                      ? DUE_TONE_CLASS[tone ?? "later"]
-                      : "tt-reveal text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {dueLabel ?? <CalendarDays className="h-3.5 w-3.5" />}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <LazyCalendar
-                  mode="single"
-                  selected={task.dueDate ? localDateToDate(task.dueDate) : undefined}
-                  onSelect={(date) => {
-                    updateTask.mutate({
-                      id: task.id,
-                      data: { dueDate: date ? dateToLocalDate(date) : null },
-                    });
+            {task.dueDate && (
+              <div className="border-t p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    updateTask.mutate({ id: task.id, data: { dueDate: null } });
                     setDueOpen(false);
                   }}
-                />
-                {task.dueDate && (
-                  <div className="border-t p-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        updateTask.mutate({ id: task.id, data: { dueDate: null } });
-                        setDueOpen(false);
-                      }}
-                    >
-                      Clear due date
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-          )}
+                >
+                  Clear due date
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+      )}
 
-          {showProjectBadge && (
-            <ProjectBadge name={task.projectName!} color={task.projectColor} />
-          )}
-        </div>
+      {/* Where the list isn't already grouped by project (Board, other
+          groupings), the swatch says which client it is; the name is a hover
+          away. A full pill per card cost the title its width. */}
+      {showProjectDot && (
+        <span
+          role="img"
+          aria-label={`Project: ${task.projectName}`}
+          title={task.projectName!}
+          className="flex shrink-0 items-center"
+        >
+          <ColorDot color={task.projectColor} className="h-2 w-2" />
+        </span>
       )}
 
       {/* ─── Actions ───────────────────────────────────────────────────────── */}

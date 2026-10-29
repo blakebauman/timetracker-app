@@ -1,15 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Plus, ListChecks, Search, SearchX, AlertTriangle } from "lucide-react";
+import { Plus, ListChecks, Search, SearchX, AlertTriangle, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,14 +14,13 @@ import { TaskDialog } from "./TaskDialog";
 import { TaskViewTabs, type TaskView } from "./TaskViewTabs";
 import { useAllTasks, useCompleteTask, useDeleteTask, useUpdateTask } from "@/hooks/useTasks";
 import { useTaskListKeys } from "@/hooks/useTaskListKeys";
-import { TaskFilterPopover, TaskViewPicker } from "./TaskFilters";
+import { TaskViewPopover, TaskViewPicker, type TaskGroupBy, type TaskSortBy } from "./TaskFilters";
 import {
   NO_FILTERS,
   activeFilterCount,
   useActiveTaskView,
   type TaskFilterValues,
 } from "@/lib/taskViews";
-import { BELOW_SM, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/stores/uiStore";
 import { formatDurationShort, localDayKey } from "@/lib/dateUtils";
 import {
@@ -50,8 +42,8 @@ import { cn } from "@/lib/utils";
 import type { Task } from "@timetracker/core/schemas";
 
 type StatusFilter = "all" | "active" | "done";
-type GroupBy = "project" | "status" | "due" | "none";
-type SortBy = "name" | "estimate" | "tracked" | "recent" | "plan";
+type GroupBy = TaskGroupBy;
+type SortBy = TaskSortBy;
 /** The board's columns. Derived from `active` + `startedAt`, never stored as one field. */
 type Stage = "todo" | "doing" | "done";
 
@@ -68,7 +60,7 @@ interface Section {
   reorderable?: boolean;
   /** Board columns: dropping a card here moves it to this stage. */
   stage?: Stage;
-  /** History weeks: "5 done · 12h tracked · 110% of estimates", right-aligned. */
+  /** History weeks: "12h tracked · 110% of estimate", right-aligned. */
   summary?: string;
 }
 
@@ -77,6 +69,7 @@ const HISTORY_WEEKS = 8;
 
 const SORTERS: Record<SortBy, (a: Task, b: Task) => number> = {
   plan: comparePlanned,
+  priority: (a, b) => a.priority - b.priority || comparePlanned(a, b),
   name: (a, b) => a.name.localeCompare(b.name),
   estimate: (a, b) => (b.estimatedSeconds ?? 0) - (a.estimatedSeconds ?? 0),
   tracked: (a, b) => b.trackedSeconds - a.trackedSeconds,
@@ -109,14 +102,16 @@ export function TaskBoardList() {
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  /** Subtask checklists start closed: a card is one task until you open it. */
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  /** Search is an icon until it's wanted; it stays open while it holds a query. */
+  const [searchOpen, setSearchOpen] = useState(false);
   const [subtaskParent, setSubtaskParent] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   /** The row a drag is currently over; the insertion line is drawn above it. */
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   /** Board: the column a drag is over, which changes stage on drop. */
   const [dragOverStage, setDragOverStage] = useState<Stage | null>(null);
-  const phone = useMediaQuery(BELOW_SM);
   const currentView = { query, groupBy, sortBy, ...filters };
   const activeView = useActiveTaskView(activeViewId, currentView);
 
@@ -196,14 +191,20 @@ export function TaskBoardList() {
                   : `Week of ${formatDueHeading(week, today).replace(/^[^·]*· /, "")}`,
             nodes,
             trackedSeconds: tracked,
-            summary: [
-              tracked > 0 ? `${formatDurationShort(tracked)} tracked` : "nothing tracked",
-              // Only over tasks that had an estimate — an unestimated task says
-              // nothing about how good the estimates were.
-              estimate > 0 ? `${Math.round((trackedOnEstimated / estimate) * 100)}% of estimates` : null,
-            ]
-              .filter(Boolean)
-              .join(" · "),
+            // Only over tasks that had an estimate — an unestimated task says
+            // nothing about how good the estimates were. With nothing tracked
+            // there is no ratio to report, only the fact.
+            summary:
+              tracked === 0
+                ? "No time tracked"
+                : [
+                    `${formatDurationShort(tracked)} tracked`,
+                    estimate > 0
+                      ? `${Math.round((trackedOnEstimated / estimate) * 100)}% of estimate`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
           };
         });
     }
@@ -365,22 +366,11 @@ export function TaskBoardList() {
   // at all gets the first-run state there.
   const isEmpty = view === "board" ? !hasAnyTask : sections.every((s) => s.nodes.length === 0);
 
-  // Counts are of *top-level* tasks. A subtask rides its parent's row, so
-  // counting them would make "All 3" disagree with the three rows underneath.
-  const counts = useMemo(() => {
-    const top = tasks.filter((t) => !t.parentId && t.active);
-    return {
-      all: top.length,
-      board: top.filter((t) => t.startedAt).length,
-      history: tasks.filter(
-        (t) =>
-          !t.parentId &&
-          !t.active &&
-          t.completedAt &&
-          compareLocalDates(localDayKey(t.completedAt), thisWeekStart) >= 0
-      ).length,
-    };
-  }, [tasks, thisWeekStart]);
+  // Of *top-level* open tasks: a subtask rides its parent's row, so counting
+  // them would make "All 3" disagree with the three rows underneath. Board and
+  // History carry no count — the board's was its in-progress number, which
+  // read as "one task on the board" over a board of ten.
+  const allCount = useMemo(() => tasks.filter((t) => !t.parentId && t.active).length, [tasks]);
 
   /** Commit a drag: one row's `sort_order` becomes the midpoint of its new neighbours. */
   const handleDrop = (ordered: Task[], toIndex: number) => {
@@ -422,8 +412,8 @@ export function TaskBoardList() {
     }
   };
 
-  const toggleCollapsed = (id: string) =>
-    setCollapsed((prev) => {
+  const toggleExpanded = (id: string) =>
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -475,20 +465,20 @@ export function TaskBoardList() {
           description={
             status === "all"
               ? "No task name or note contains that text."
-              : `Searching ${status === "done" ? "done" : "active"} tasks only.`
+              : `Searching ${status === "done" ? "done" : "open"} tasks only.`
           }
           className="py-24"
           action={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setQuery("");
-                setStatus("all");
-              }}
-            >
-              Clear search
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setQuery("")}>
+                Clear search
+              </Button>
+              {status !== "all" && (
+                <Button size="sm" variant="ghost" onClick={() => setStatus("all")}>
+                  Include {status === "done" ? "open" : "done"} tasks
+                </Button>
+              )}
+            </div>
           }
         />
       ) : (
@@ -496,8 +486,8 @@ export function TaskBoardList() {
           icon={SearchX}
           title="No tasks match these filters"
           description={
-            activeFilterCount(filters) === 1 && status !== "all"
-              ? `Showing ${status === "done" ? "done" : "open"} tasks only.`
+            activeFilterCount(filters) === 1 && status === "done"
+              ? "Showing done tasks only."
               : "Nothing passes every filter at once."
           }
           className="py-24"
@@ -512,7 +502,9 @@ export function TaskBoardList() {
   }
 
   const renderNode = (node: TaskNode, ordered: Task[], index: number, section: Section) => {
-    const open = !collapsed.has(node.task.id);
+    // A search opens every checklist: a subtask that matched is the reason its
+    // parent is on screen, so it can't be folded away under it.
+    const open = expandedIds.has(node.task.id) || (view === "all" && !!query.trim());
     const dragging = dragId === node.task.id;
     // A drop lands *before* this row, so the line is drawn above the row under
     // the pointer — and not above the row being dragged, where it would promise
@@ -575,16 +567,12 @@ export function TaskBoardList() {
             task={node.task}
             showProject={groupBy !== "project" || view !== "all"}
             expanded={open}
-            onToggleExpanded={() => toggleCollapsed(node.task.id)}
+            onToggleExpanded={() => toggleExpanded(node.task.id)}
             onRequestDelete={deleteTask}
             onEdit={setEditTarget}
             onLogTime={(t) => openTaskLogTime(t.id)}
             onAddSubtask={(t) => {
-              setCollapsed((prev) => {
-                const next = new Set(prev);
-                next.delete(t.id);
-                return next;
-              });
+              setExpandedIds((prev) => new Set(prev).add(t.id));
               setSubtaskParent(t.id);
             }}
             dragHandlers={dragHandlers}
@@ -626,18 +614,14 @@ export function TaskBoardList() {
           6px under every sibling page's, in the one collection page that also
           centred itself in a 768px column. */}
       <CollectionHeader title="Tasks">
-        <TaskViewTabs view={view} counts={counts} onChange={setView} />
+        <TaskViewTabs view={view} allCount={allCount} onChange={setView} />
 
-        {/* Grouping and status only mean anything in All — Today and Upcoming
-            *are* a grouping, and stacking a second one on top reads as two
-            controls fighting over the same list.
-            The rule separates navigation from filtering: without it the view
-            switcher read as a fourth dropdown in a row of four, and the one
-            control that changes *what page you are on* looked exactly as
-            important as the one that changes the sort. */}
+        {/* Looking and shaping only mean anything in All — Board and History
+            *are* a shape. Search is the one thing reached for mid-task, so it
+            keeps a button of its own; everything else is behind View. */}
         {view === "all" && (
           <>
-              <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+            {searchOpen || query ? (
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -645,76 +629,82 @@ export function TaskBoardList() {
                 />
                 <Input
                   type="search"
+                  autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setQuery("");
+                      setSearchOpen(false);
+                    }
+                  }}
+                  onBlur={() => !query && setSearchOpen(false)}
                   placeholder="Search tasks"
                   aria-label="Search tasks"
-                  className="h-8 w-40 pl-8 text-sm"
+                  className="h-8 w-40 pr-8 pl-8 text-sm sm:w-48"
                 />
-              </div>
-              <TaskFilterPopover
-                value={filters}
-                onChange={setFilters}
-                viewName={activeView?.name ?? null}
-                viewSlot={
-    <TaskViewPicker
-                    current={currentView}
-                    activeViewId={activeViewId}
-                    onApply={(id, config) => {
-                      setActiveViewId(id);
-                      if (!config) return;
-                      setQuery(config.query);
-                      setGroupBy(config.groupBy);
-                      setSortBy(config.sortBy);
-                      setFilters({
-                        status: config.status,
-                        projectId: config.projectId,
-                        tag: config.tag,
-                        maxPriority: config.maxPriority,
-                        due: config.due,
-                      });
+                {query && (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Close search"
+                    title="Clear and close search"
+                    onClick={() => {
+                      setQuery("");
+                      setSearchOpen(false);
                     }}
-                  />
-                }
-              />
-
-              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-                <SelectTrigger size="sm" className="w-36" aria-label="Group by">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="project">Group: Project</SelectItem>
-                  <SelectItem value="due">Group: Due date</SelectItem>
-                  <SelectItem value="status">Group: Status</SelectItem>
-                  <SelectItem value="none">Group: None</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-                {/* w-40: "Sort: Plan order" clipped to "Sort: Plan orde" at the
-                    width its two siblings share. */}
-                <SelectTrigger size="sm" className="w-40" aria-label="Sort by">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="plan">Sort: Plan order</SelectItem>
-                  <SelectItem value="recent">Sort: Recent</SelectItem>
-                  <SelectItem value="name">Sort: Name</SelectItem>
-                  <SelectItem value="estimate">Sort: Estimate</SelectItem>
-                  <SelectItem value="tracked">Sort: Tracked</SelectItem>
-                </SelectContent>
-              </Select>
-
+                    className="absolute top-1/2 right-1 -translate-y-1/2"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Search"
+                title="Search tasks"
+                onClick={() => setSearchOpen(true)}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            )}
+            <TaskViewPopover
+              value={filters}
+              onChange={setFilters}
+              groupBy={groupBy}
+              onGroupByChange={setGroupBy}
+              sortBy={sortBy}
+              onSortByChange={setSortBy}
+              viewName={activeView?.name ?? null}
+              viewSlot={
+                <TaskViewPicker
+                  current={currentView}
+                  activeViewId={activeViewId}
+                  onApply={(id, config) => {
+                    setActiveViewId(id);
+                    if (!config) return;
+                    setQuery(config.query);
+                    setGroupBy(config.groupBy);
+                    setSortBy(config.sortBy);
+                    setFilters({
+                      status: config.status,
+                      projectId: config.projectId,
+                      tag: config.tag,
+                      maxPriority: config.maxPriority,
+                      due: config.due,
+                    });
+                  }}
+                />
+              }
+            />
           </>
         )}
-
-        {hasAnyTask && (
-          <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add task
-          </Button>
-        )}
+        {/* No "Add task" button: the capture line under this header is the one
+            way in, and Q focuses it. A second, louder button that opened a
+            dialog for the same job was the first thing on the page to compete
+            with the list. */}
       </CollectionHeader>
 
       <PaneScroll>
@@ -739,9 +729,6 @@ export function TaskBoardList() {
                 className="mb-4"
                 defaultDueDate={null}
                 placeholder={undefined}
-                // On a phone the inline project picker left the field a third of
-                // the row; stacked, the line is the line.
-                stacked={phone}
               />
             )}
 
@@ -775,6 +762,9 @@ export function TaskBoardList() {
                         // Same wash-as-outline as Upcoming's days: lighting a
                         // column up must not move anything under the pointer.
                         "min-w-0 rounded-container transition-colors duration-fast ease-out-quart",
+                        // Stacked on a phone, what you're doing now comes first
+                        // rather than under every card still waiting.
+                        stage === "doing" && "max-md:order-first",
                         dragOverStage === stage && "bg-muted outline-8 outline-solid outline-muted"
                       )}
                     >

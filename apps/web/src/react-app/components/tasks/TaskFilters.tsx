@@ -3,6 +3,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Kbd } from "@/components/ui/kbd";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -33,19 +34,34 @@ import type { Project, TaskViewConfig } from "@timetracker/core/schemas";
 
 const ANY = "__any";
 
+export type TaskGroupBy = TaskViewConfig["groupBy"];
+export type TaskSortBy = TaskViewConfig["sortBy"];
+
 /**
- * The All tab's narrowing controls — status, project, tag, priority, due —
- * behind one button with a count, because the header already carries search,
- * grouping and sort, and five selects beside them pushed it onto a second row.
+ * Everything that shapes the All tab — saved view, grouping, sort, and the
+ * status / project / tag / priority / due filters — behind one button.
+ *
+ * The header used to carry search, Filter, Group and Sort side by side: four
+ * controls about *how to look at* the list, all at the same weight as the list
+ * itself, before a single task. They are set once and left, so they live one
+ * click away and the header keeps only where you are and what you're looking for.
  */
-export function TaskFilterPopover({
+export function TaskViewPopover({
   value,
   onChange,
+  groupBy,
+  onGroupByChange,
+  sortBy,
+  onSortByChange,
   viewName = null,
   viewSlot,
 }: {
   value: TaskFilterValues;
   onChange: (next: TaskFilterValues) => void;
+  groupBy: TaskGroupBy;
+  onGroupByChange: (next: TaskGroupBy) => void;
+  sortBy: TaskSortBy;
+  onSortByChange: (next: TaskSortBy) => void;
   /** The saved view on screen, if any — the button wears its name. */
   viewName?: string | null;
   /** The saved-views picker, rendered at the top of the popover. */
@@ -64,7 +80,11 @@ export function TaskFilterPopover({
           size="sm"
           className="gap-1.5"
           aria-label={
-            viewName ? `Filters, view: ${viewName}` : count ? `Filters, ${count} active` : "Filters"
+            viewName
+              ? `View: ${viewName}`
+              : count
+                ? `View, ${count} filter${count === 1 ? "" : "s"} active`
+                : "View"
           }
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -72,28 +92,62 @@ export function TaskFilterPopover({
             <span className="max-w-32 truncate">{viewName}</span>
           ) : (
             <>
-              Filter
+              View
               {count > 0 && <span className="tabular-nums text-muted-foreground">{count}</span>}
             </>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 space-y-3">
+      <PopoverContent align="end" className="w-72 space-y-3">
         {viewSlot && (
-          <div className="space-y-1.5 border-b pb-3">
+          <div className="space-y-1.5">
             <Label>Saved view</Label>
             {viewSlot}
           </div>
         )}
+        <div className="grid grid-cols-2 gap-2 border-b pb-3">
+          <div className="space-y-1.5">
+            <Label>Group</Label>
+            <Select value={groupBy} onValueChange={(v) => onGroupByChange(v as TaskGroupBy)}>
+              <SelectTrigger size="sm" className="w-full" aria-label="Group by">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="project">Project</SelectItem>
+                <SelectItem value="due">Due date</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Sort</Label>
+            <Select value={sortBy} onValueChange={(v) => onSortByChange(v as TaskSortBy)}>
+              <SelectTrigger size="sm" className="w-full" aria-label="Sort by">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {/* "plan" is due date, then priority, then your drag order —
+                    named for what the reader sees, not for the comparator. */}
+                <SelectItem value="plan">Due date</SelectItem>
+                <SelectItem value="priority">Priority</SelectItem>
+                <SelectItem value="recent">Newest</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="estimate">Estimate</SelectItem>
+                <SelectItem value="tracked">Time tracked</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="space-y-1.5">
-          <Label>Status</Label>
+          <Label>Show</Label>
           <Select value={value.status} onValueChange={(v) => set({ status: v as TaskFilterValues["status"] })}>
             <SelectTrigger size="sm" className="w-full" aria-label="Filter by status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Open and done</SelectItem>
               <SelectItem value="active">Open</SelectItem>
+              <SelectItem value="all">Open and done</SelectItem>
               <SelectItem value="done">Done</SelectItem>
             </SelectContent>
           </Select>
@@ -167,6 +221,11 @@ export function TaskFilterPopover({
             Clear filters
           </Button>
         )}
+        {/* The list's keyboard model was invisible anywhere on the page. This
+            is where someone tuning how they work the list will look. */}
+        <p className="border-t pt-3 text-xs text-muted-foreground">
+          <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> done · <Kbd>E</Kbd> open · <Kbd>Q</Kbd> add
+        </p>
       </PopoverContent>
     </Popover>
   );

@@ -621,7 +621,7 @@ export const TaskViewConfigSchema = z.object({
   query: z.string().max(200).default(""),
   status: z.enum(["all", "active", "done"]).default("all"),
   groupBy: z.enum(["project", "status", "due", "none"]).default("project"),
-  sortBy: z.enum(["name", "estimate", "tracked", "recent", "plan"]).default("plan"),
+  sortBy: z.enum(["name", "estimate", "tracked", "recent", "plan", "priority"]).default("plan"),
   projectId: z.string().max(64).nullable().default(null),
   tag: z.string().max(100).nullable().default(null),
   /** Show tasks at this priority *or higher* (1 = urgent only). Null = any. */

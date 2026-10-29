@@ -6,7 +6,9 @@ import { signUp } from "./auth";
  *
  * The shared component shipped with a `bg-primary/20` track, which made an
  * *empty* bar read as a full one — `0m / 1h` rendered a full-width red channel,
- * the same shape as a task that had burnt its whole estimate. This asserts the
+ * the same shape as a task that had burnt its whole estimate. A task row now
+ * draws its bar only once time is tracked, so the check runs on a quarter-spent
+ * estimate: the unfilled three quarters must still read as track. This asserts the
  * two colours stay distinguishable, in both themes, because the regression is
  * invisible to typecheck and lint and costs nothing to reintroduce.
  */
@@ -18,7 +20,7 @@ function localDate(offset = 0) {
 }
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`an untracked estimate does not render as a full bar (${scheme})`, async ({ page }) => {
+  test(`a part-spent estimate does not render as a full bar (${scheme})`, async ({ page }) => {
     await signUp(page);
     const origin = new URL(page.url()).origin;
     const project = await (
@@ -27,15 +29,28 @@ for (const scheme of ["light", "dark"] as const) {
         headers: { origin },
       })
     ).json();
-    await page.request.post("/api/tasks", {
+    const task = await (
+      await page.request.post("/api/tasks", {
+        data: {
+          name: "Barely started",
+          projectId: project.id,
+          estimatedSeconds: 3600,
+          dueDate: localDate(0),
+        },
+        headers: { origin },
+      })
+    ).json();
+    const res = await page.request.post("/api/time_entries", {
       data: {
-        name: "Not started",
+        description: "Barely started",
         projectId: project.id,
-        estimatedSeconds: 3600,
-        dueDate: localDate(0),
+        taskId: task.id,
+        start: new Date(Date.now() - 30 * 60e3).toISOString(),
+        stop: new Date(Date.now() - 15 * 60e3).toISOString(),
       },
       headers: { origin },
     });
+    expect(res.ok(), await res.text()).toBe(true);
 
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto("/tasks");

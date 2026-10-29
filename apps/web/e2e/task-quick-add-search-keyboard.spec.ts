@@ -111,6 +111,7 @@ test("All's search keeps a matching subtask's parent, and clears", async ({ page
   await page.goto("/tasks");
   await page.getByRole("tab", { name: /All/ }).click();
 
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("searchbox", { name: "Search tasks" }).fill("vendor");
   await expect(page.getByText("Data mapping review")).toBeVisible();
   await expect(page.getByText("Vendor master")).toBeVisible();

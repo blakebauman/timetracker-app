@@ -35,7 +35,7 @@ test("filters narrow the All tab by tag, priority and due date", async ({ page }
   await page.goto("/tasks");
   await page.getByRole("tab", { name: /All/ }).click();
 
-  await page.getByRole("button", { name: "Filters" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("combobox", { name: "Filter by priority" }).click();
   await page.getByRole("option", { name: /High and above/ }).click();
   await expect(row(page, "Map vendor tables")).toBeVisible();
@@ -45,7 +45,7 @@ test("filters narrow the All tab by tag, priority and due date", async ({ page }
   await page.getByRole("combobox", { name: "Filter by tag" }).click();
   await page.getByRole("option", { name: "discovery" }).click();
   await expect(row(page, "Cutover plan")).toBeHidden();
-  await expect(page.getByRole("button", { name: "Filters, 2 active" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View, 2 filters active" })).toBeVisible();
 
   await page.getByRole("button", { name: "Clear filters" }).click();
   await page.getByRole("combobox", { name: "Filter by due date" }).click();
@@ -60,21 +60,22 @@ test("a saved view comes back after a reload and can be deleted", async ({ page 
   await page.goto("/tasks");
   await page.getByRole("tab", { name: /All/ }).click();
 
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("searchbox", { name: "Search tasks" }).fill("plan");
-  await page.getByRole("button", { name: "Filters" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("combobox", { name: "Filter by priority" }).click();
   await page.getByRole("option", { name: /High and above/ }).click();
   await page.getByRole("combobox", { name: "Saved view" }).click();
   await page.getByRole("option", { name: "Save current view…" }).click();
   await page.getByRole("textbox", { name: "View name" }).fill("Urgent planning");
   await page.getByRole("button", { name: "Save view" }).click();
-  await expect(page.getByRole("button", { name: "Filters, view: Urgent planning" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View: Urgent planning" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   await page.reload();
   await page.getByRole("tab", { name: /All/ }).click();
   await expect(row(page, "Stakeholder sign-off")).toBeVisible();
-  await page.getByRole("button", { name: "Filters" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("combobox", { name: "Saved view" }).click();
   await page.getByRole("option", { name: "Urgent planning" }).click();
   await expect(page.getByRole("searchbox", { name: "Search tasks" })).toHaveValue("plan");
