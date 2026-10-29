@@ -62,6 +62,10 @@ interface Section {
   stage?: Stage;
   /** History weeks: "12h tracked · 110% of estimate", right-aligned. */
   summary?: string;
+  /** All, open-only: finished top-level tasks in this group, kept out of the list. */
+  doneCount?: number;
+  /** The project a "+" on this group files new tasks under. */
+  projectId?: string;
 }
 
 /** How many weeks of finished work History shows; older is under All → Done. */
@@ -104,6 +108,10 @@ export function TaskBoardList() {
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   /** Subtask checklists start closed: a card is one task until you open it. */
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  /** Groups whose finished tasks are showing, from their "n done" line. */
+  const [doneShownIn, setDoneShownIn] = useState<Set<string>>(new Set());
+  /** The group a "+" opened a capture line in. */
+  const [addingTo, setAddingTo] = useState<string | null>(null);
   /** Search is an icon until it's wanted; it stays open while it holds a query. */
   const [searchOpen, setSearchOpen] = useState(false);
   const [subtaskParent, setSubtaskParent] = useState<string | null>(null);
@@ -294,15 +302,23 @@ export function TaskBoardList() {
     // or filter hiding rows between them, that lands somewhere unseen.
     const narrowed = !!q || activeFilterCount(filters) > 0;
 
-    const filtered = tasks.filter(
-      (t) =>
-        inQuery(t) &&
-        passesFilters(t) &&
-        (status === "all" ? true : status === "active" ? t.active : !t.active)
-    );
+    // Status judges the top-level task, like the other filters: a ticked
+    // subtask is part of an open checklist and stays in it ("1/3" with the
+    // done one showing), not filtered out from under its parent.
+    const statusOk = (t: Task) => (status === "all" ? true : status === "active" ? t.active : !t.active);
+    const filtered = tasks.filter((t) => inQuery(t) && passesFilters(t));
+    /** A group's rows: what passes status, plus its done tasks once revealed. */
+    const visible = (bucket: Task[], key: string) =>
+      bucket.filter((t) => {
+        const owner = t.parentId ? byId.get(t.parentId) : t;
+        if (!owner) return false;
+        return statusOk(owner) || (status === "active" && !owner.active && doneShownIn.has(key));
+      });
+    const hiddenDone = (bucket: Task[]) =>
+      status === "active" ? bucket.filter((t) => !t.parentId && !t.active).length : 0;
 
     if (groupBy === "none") {
-      const nodes = nest(filtered, compare);
+      const nodes = nest(visible(filtered, "all"), compare);
       return nodes.length
         ? [
             {
@@ -311,6 +327,7 @@ export function TaskBoardList() {
               trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
               nodes,
               reorderable: sortBy === "plan" && !narrowed,
+              doneCount: hiddenDone(filtered),
             },
           ]
         : [];
@@ -343,12 +360,14 @@ export function TaskBoardList() {
     }
 
     const entries = [...map.entries()].map(([key, b]) => {
-      const nodes = nest(b.tasks, compare);
+      const nodes = nest(visible(b.tasks, key), compare);
       return {
         key,
         label: b.label,
         color: b.color,
         nodes,
+        doneCount: hiddenDone(b.tasks),
+        projectId: groupBy === "project" && key !== "none" ? key : undefined,
         trackedSeconds: nodes.reduce((sum, n) => sum + nodeSeconds(n), 0),
         // Ordering is only the user's own inside a project; in any other
         // grouping a drag would be rewriting a sequence the group doesn't own.
@@ -356,11 +375,14 @@ export function TaskBoardList() {
       };
     });
 
+    // A group whose tasks are all finished has nothing open to show; it goes
+    // with them, the same way a ticked row does.
+    const live = entries.filter((e) => e.nodes.length > 0);
     // Due groups sort chronologically ("No due date" last); everything else by name.
     return groupBy === "due"
-      ? entries.sort((a, b) => (a.key === "none" ? 1 : b.key === "none" ? -1 : a.key.localeCompare(b.key)))
-      : entries.sort((a, b) => a.label.localeCompare(b.label));
-  }, [tasks, view, status, groupBy, sortBy, today, query, filters, thisWeekStart, weekStartOf]);
+      ? live.sort((a, b) => (a.key === "none" ? 1 : b.key === "none" ? -1 : a.key.localeCompare(b.key)))
+      : live.sort((a, b) => a.label.localeCompare(b.label));
+  }, [tasks, view, status, groupBy, sortBy, today, query, filters, thisWeekStart, weekStartOf, doneShownIn]);
 
   // A board with empty columns is still a board; only a workspace with no tasks
   // at all gets the first-run state there.
@@ -457,6 +479,22 @@ export function TaskBoardList() {
           }
         />
       );
+    } else if (view === "all" && !query.trim() && activeFilterCount(filters) === 0) {
+      // Open-only by default, so an empty list with tasks in the workspace is
+      // a finished list — a result, not a filter that matched nothing.
+      empty = (
+        <EmptyState
+          icon={ListChecks}
+          title="Nothing left open"
+          description="Every task is done. Finished work is in History."
+          className="py-24"
+          action={
+            <Button size="sm" variant="outline" onClick={() => setStatus("all")}>
+              Show done tasks
+            </Button>
+          }
+        />
+      );
     } else {
       empty = query.trim() ? (
         <EmptyState
@@ -501,7 +539,19 @@ export function TaskBoardList() {
     }
   }
 
-  const renderNode = (node: TaskNode, ordered: Task[], index: number, section: Section) => {
+  /**
+   * `grouped`: the row sits inside its group's one card, divided from its
+   * neighbours by a hairline, rather than being a card of its own. A stack of
+   * separate cards read as a feed; a to-do list reads as one column of lines.
+   * Board cards stay cards — moving them is the point of the board.
+   */
+  const renderNode = (
+    node: TaskNode,
+    ordered: Task[],
+    index: number,
+    section: Section,
+    grouped = false
+  ) => {
     // A search opens every checklist: a subtask that matched is the reason its
     // parent is on screen, so it can't be folded away under it.
     const open = expandedIds.has(node.task.id) || (view === "all" && !!query.trim());
@@ -552,14 +602,19 @@ export function TaskBoardList() {
         {dropTarget && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-3 -top-[5px] h-0.5 rounded-full bg-foreground"
+            className={cn(
+              "pointer-events-none absolute inset-x-3 z-sticky h-0.5 rounded-full bg-foreground",
+              grouped ? "-top-px" : "-top-[5px]"
+            )}
           />
         )}
         <div
           className={cn(
-            // The card wakes its *edge* on hover, like every other row card
-            // (The Hairline Rule); the wash inside belongs to the rows it groups.
-            "overflow-hidden rounded-container border bg-card transition-[border-color,opacity] duration-fast ease-out-quart hover:border-border-strong",
+            grouped
+              ? "transition-opacity duration-fast ease-out-quart"
+              : // The card wakes its *edge* on hover, like every other row card
+                // (The Hairline Rule); the wash inside belongs to the rows it groups.
+                "overflow-hidden rounded-container border bg-card transition-[border-color,opacity] duration-fast ease-out-quart hover:border-border-strong",
             dragging && "opacity-50"
           )}
         >
@@ -735,7 +790,9 @@ export function TaskBoardList() {
             {empty ?? (view === "board" ? (
               // Columns side by side from md up; stacked on a phone, where
               // cards move through the ⋯ menu (HTML drag doesn't exist on touch).
-              <div className="grid items-start gap-4 md:grid-cols-3">
+              // Done is a record, not a workspace: it gets less of the width,
+              // and the two columns you work in get more.
+              <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]">
                 {sections.map((section) => {
                   const stage = section.stage!;
                   const ordered = section.nodes.map((n) => n.task);
@@ -773,9 +830,15 @@ export function TaskBoardList() {
                         <span className="text-xs tabular-nums text-muted-foreground">
                           {section.nodes.length}
                         </span>
+                        {stage === "done" && (
+                          <span className="text-xs text-muted-foreground">· last {BOARD_DONE_DAYS} days</span>
+                        )}
                         {section.trackedSeconds > 0 && (
-                          <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
-                            {formatDurationShort(section.trackedSeconds)}
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            <span className="font-mono tabular-nums">
+                              {formatDurationShort(section.trackedSeconds)}
+                            </span>{" "}
+                            tracked
                           </span>
                         )}
                       </div>
@@ -799,6 +862,7 @@ export function TaskBoardList() {
               <div className="space-y-6">
                 {sections.map((section) => {
                   const ordered = section.nodes.map((n) => n.task);
+                  const doneShown = doneShownIn.has(section.key);
                   return (
                     <div key={section.key}>
                       <div className="mb-1 flex items-center gap-2 px-2">
@@ -806,35 +870,80 @@ export function TaskBoardList() {
                         {/* Sentence case at Label weight. Uppercase + tracking on every group
                             heading is the eyebrow pattern PRODUCT.md and DESIGN.md §8 both
                             reject by name; the ColorDot and count already do the work. */}
-                        {/* Not tinted, even for the overdue group. Inside that
-                            section every row's due date is already red, so the
-                            heading made one fact red twice — and a section
-                            heading is a heading, not a state indicator. The word
-                            "Overdue" carries it. */}
                         <h2 className="text-xs font-medium text-muted-foreground">
                           {section.label}
                         </h2>
-                        {/* Full muted ink: at 70% the count measured under 3:1
-                            on the ground, and the tabs' counts beside it don't
-                            fade. The heading's weight is what ranks them. */}
                         <span className="text-xs tabular-nums text-muted-foreground">
-                          {section.nodes.length || "Nothing due"}
+                          {/* Open tasks: revealing the done ones doesn't
+                              change how much is left. */}
+                          {view === "all"
+                            ? section.nodes.filter((n) => n.task.active).length
+                            : section.nodes.length}
                         </span>
+                        {/* Files the new task under this group's project, so it
+                            lands where you were looking rather than in a group
+                            you'd have to scroll to. */}
+                        {section.projectId && view === "all" && (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Add a task to ${section.label}`}
+                            title={`Add a task to ${section.label}`}
+                            onClick={() => setAddingTo(section.key)}
+                            className="text-muted-foreground"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        )}
                         {section.summary ? (
                           <span className="ml-auto text-xs tabular-nums text-muted-foreground">
                             {section.summary}
                           </span>
                         ) : (
                           section.trackedSeconds > 0 && (
-                            <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
-                              {formatDurationShort(section.trackedSeconds)}
+                            <span className="ml-auto text-xs text-muted-foreground">
+                              <span className="font-mono tabular-nums">
+                                {formatDurationShort(section.trackedSeconds)}
+                              </span>{" "}
+                              tracked
                             </span>
                           )
                         )}
                       </div>
-                      <div className="space-y-2">
-                        {section.nodes.map((node, i) => renderNode(node, ordered, i, section))}
+                      <div className="overflow-hidden rounded-container border bg-card divide-y">
+                        {section.nodes.map((node, i) => renderNode(node, ordered, i, section, true))}
+                        {addingTo === section.key && section.projectId && (
+                          <div className="px-3 py-1.5">
+                            <QuickAddTask
+                              autoFocus
+                              defaultProjectId={section.projectId}
+                              defaultDueDate={null}
+                              placeholder={`Add to ${section.label}`}
+                              onDone={() => setAddingTo(null)}
+                            />
+                          </div>
+                        )}
                       </div>
+                      {/* Ticked tasks leave the list; this is the trace they
+                          leave, and the way back to them without leaving the
+                          group you're in. */}
+                      {(section.doneCount ?? 0) > 0 && (
+                        <button
+                          type="button"
+                          aria-expanded={doneShown}
+                          onClick={() =>
+                            setDoneShownIn((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(section.key)) next.delete(section.key);
+                              else next.add(section.key);
+                              return next;
+                            })
+                          }
+                          className="mt-1 rounded-full px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        >
+                          {doneShown ? `Hide ${section.doneCount} done` : `${section.doneCount} done`}
+                        </button>
+                      )}
                     </div>
                   );
                 })}

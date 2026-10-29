@@ -310,7 +310,10 @@ function PlanRow({ task, flag, draggable, dayDrag, move }: PlanRowProps) {
       <span className="flex min-w-0 items-center gap-1.5 text-micro text-muted-foreground">
         <ColorDot color={task.projectColor} className="h-1.5 w-1.5" />
         <span className="min-w-0 flex-1 truncate">{task.projectName}</span>
-        {task.estimatedSeconds ? (
+        {/* Same rule as the Tasks list: "0m / 45m" on every row before anything
+            is tracked says nothing, on every row. The figure appears once time
+            is spent against it. */}
+        {task.estimatedSeconds && task.trackedSeconds > 0 ? (
           <SpentFigure
             spent={formatDurationShort(task.trackedSeconds)}
             of={formatDurationShort(task.estimatedSeconds)}

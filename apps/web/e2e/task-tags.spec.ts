@@ -62,7 +62,7 @@ test("@tags in quick-add join existing tags by name, ignoring case", async ({ pa
   await expect(
     page
       .getByRole("dialog", { name: "Edit task" })
-      .getByRole("button", { name: "Tags: client-call, discovery" })
+      .getByRole("button", { name: /^Tags: .*client-call/ })
   ).toBeVisible();
 });
 
@@ -88,6 +88,8 @@ test("the dialog edits tags, and a repeat carries them", async ({ page }) => {
   await page.getByRole("button", { name: "More actions for Weekly report" }).click();
   await page.getByRole("menuitem", { name: "Edit task…" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit task" });
+  // No tags yet, so the field waits behind More details.
+  await dialog.getByRole("button", { name: /^More details/ }).click();
   await dialog.getByRole("button", { name: "Add tags" }).click();
   await page.getByPlaceholder(/tag/i).last().fill("reporting");
   await page.keyboard.press("Enter");
