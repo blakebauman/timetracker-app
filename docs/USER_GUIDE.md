@@ -208,7 +208,7 @@ The line under the field shows what it understood before you commit it. Anything
 
 **What a task row shows.** A row is a to-do: the checkbox, the name, its day and ▷. Each project's tasks sit together in one panel. A flag beside the name marks **Urgent** (red) and **High** (amber) priority. A second line appears only when there's something to act on: the time you've tracked against the estimate, or a deadline that's two days away or less. Everything else (notes, tags, repeat, the estimate itself, a distant deadline) is in the task: **click its name to open it**. A task with subtasks shows how many are done (**1/3**); click that to open the checklist.
 
-**Ticking off.** A finished task leaves the **All** list (Undo in the toast brings it back). Its group keeps a quiet **1 done** line under it — click it to see that group's finished tasks in place. They're also under **History**, or choose **View → Show → Open and done** to keep every finished task in the list. A task that's past its due date says how late it is ("2 days late") instead of showing the date.
+**Ticking off.** A finished task leaves the **All** list (Undo in the toast brings it back). Its group keeps a quiet **1 done** line under it — click it to see that group's finished tasks in place. A finished task shows the day you finished it ("Done yesterday") where its due date was. They're also under **History**, or choose **View → Show → Open and done** to keep every finished task in the list. A task that's past its due date says how late it is ("2 days late") instead of showing the date.
 
 **Adding to a project.** The **+** beside a project's name on the All tab opens a capture line at the foot of that group, already filed under it.
 
@@ -216,7 +216,7 @@ The line under the field shows what it understood before you commit it. Anything
 
 **Finding a task.** Type part of a task's name or notes into the command palette (⌘K / Ctrl+K) and it appears under **Tasks**; choosing it starts a timer on it. On the **All** tab, the search icon opens a field that narrows the list by name and notes; a matching subtask brings its parent with it, opened.
 
-**From the keyboard.** On the Tasks page, **J** / **K** move between tasks (then **↓** / **↑** work too). On the highlighted task: **X** completes or reopens it, **E** opens it, **1**–**4** set priority, **S** starts or stops a timer on it, and **Delete** removes it (with Undo). **Q** jumps to the add-task line, and **Alt+Shift+T** gets you there from any page. **?** lists every shortcut.
+**From the keyboard.** On the Tasks page, **J** / **K** move between tasks (then **↓** / **↑** work too). On the highlighted task: **X** completes or reopens it, **E** opens it, **1**–**4** set priority, **S** starts or stops a timer on it, and **Delete** removes it (with Undo). **Q** jumps to the add-task line, and **Alt+Shift+T** gets you there from any page. **?** lists every shortcut. The main ones are also listed under the task list.
 
 **Turning a task into time.** Four ways, all of them one gesture:
 

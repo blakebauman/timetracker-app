@@ -59,11 +59,13 @@ export function DatePicker({
             className
           )}
         >
-          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
           {/* One date vocabulary app-wide — "PPP" ("July 20th, 2026") was a third
               style alongside the header's "Jul 14 – 20" and the day groups'
               "Saturday, Jul 18". */}
-          {label ?? placeholder}
+          {/* Truncates rather than spills: beside a time field on a phone the
+              trigger is narrower than the full date. */}
+          <span className="min-w-0 truncate">{label ?? placeholder}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

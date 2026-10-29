@@ -38,7 +38,7 @@ import { TASK_ROW_ATTR } from "@/hooks/useTaskListKeys";
 import { useTimer } from "@/hooks/useTimer";
 import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
-import { formatDurationShort, formatSeconds } from "@/lib/dateUtils";
+import { formatDurationShort, formatSeconds, localDayKey } from "@/lib/dateUtils";
 import {
   PRIORITIES,
   PRIORITY_LABEL,
@@ -169,6 +169,12 @@ export function TaskRow({
         task.scheduledMinute !== null ? ` ${formatMinute(task.scheduledMinute, timeFormat)}` : ""
       }`
     : null;
+  // A finished task's date is when it was finished: "Done yesterday" is what
+  // History and a revealed "n done" are read for.
+  const doneLabel =
+    !task.active && task.completedAt
+      ? `Done ${formatDueDate(localDayKey(task.completedAt)).replace(/^(Today|Yesterday)$/, (w) => w.toLowerCase())}`
+      : null;
   const hasChildren = task.subtaskTotal > 0;
 
   /**
@@ -324,7 +330,11 @@ export function TaskRow({
       {...{ [TASK_ROW_ATTR]: task.id }}
       tabIndex={-1}
       className={cn(
-        "group flex items-center gap-2 px-3 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
+        // A narrow card (a board column at laptop widths) can't hold the name
+        // and its date on one line — the name lost to "Sen…" — so below 20rem
+        // the date drops under the name. Wider, it's the one-line row.
+        "group grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-0.5 @xs:flex",
+        "px-3 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
         // Inset: the card clips its rows to its corners, so an outer ring is cut off.
         "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
         nested && "pl-9",
@@ -465,10 +475,13 @@ export function TaskRow({
               }
               className={cn(
                 "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
+                "col-start-2 row-start-2 -ml-1.5 justify-self-start @xs:ml-0",
                 FOCUS_RING,
                 task.dueDate
                   ? DUE_TONE_CLASS[tone ?? "later"]
-                  : "tt-reveal text-muted-foreground hover:text-foreground"
+                  // Undated, the chip is a hover-revealed "set a date"; under
+                  // the name it would hold an empty line open on every card.
+                  : "tt-reveal text-muted-foreground hover:text-foreground @max-xs:hidden"
               )}
             >
               {/* A late task's chip says how late, which is the news; the date
@@ -507,6 +520,12 @@ export function TaskRow({
         </Popover>
       )}
 
+      {doneLabel && !nested && (
+        <span className="col-start-2 row-start-2 shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+          {doneLabel}
+        </span>
+      )}
+
       {/* Where the list isn't already grouped by project (Board, other
           groupings), the swatch says which client it is; the name is a hover
           away. A full pill per card cost the title its width. */}
@@ -515,14 +534,14 @@ export function TaskRow({
           role="img"
           aria-label={`Project: ${task.projectName}`}
           title={task.projectName!}
-          className="flex shrink-0 items-center"
+          className="col-start-3 row-start-1 flex shrink-0 items-center"
         >
           <ColorDot color={task.projectColor} className="h-2 w-2" />
         </span>
       )}
 
       {/* ─── Actions ───────────────────────────────────────────────────────── */}
-      <div className="flex shrink-0 items-center gap-0.5">
+      <div className="col-start-4 row-start-1 flex shrink-0 items-center gap-0.5">
         <div className="tt-reveal flex items-center gap-0.5">
           {/* Hidden on a phone: the menu carries "Log time" too, and on a touch
               device (where the reveal is always on) the extra 24px came straight

@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Plus, ListChecks, Search, SearchX, AlertTriangle, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { CollectionHeader } from "@/components/layout/CollectionHeader";
 import { Pane, PaneScroll } from "@/components/layout/Pane";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -947,6 +948,14 @@ export function TaskBoardList() {
                     </div>
                   );
                 })}
+                {/* The list's keyboard model, where someone working the list
+                    will see it — it was only inside View. Not on touch,
+                    where there's no keyboard to use it with. */}
+                {view === "all" && (
+                  <p className="hidden text-center text-xs text-muted-foreground pointer-fine:block">
+                    <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> done · <Kbd>E</Kbd> open · <Kbd>Q</Kbd> add
+                  </p>
+                )}
               </div>
             ))}
           </>

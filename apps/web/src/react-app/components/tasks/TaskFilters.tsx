@@ -3,7 +3,6 @@ import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Kbd } from "@/components/ui/kbd";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -221,11 +220,6 @@ export function TaskViewPopover({
             Clear filters
           </Button>
         )}
-        {/* The list's keyboard model was invisible anywhere on the page. This
-            is where someone tuning how they work the list will look. */}
-        <p className="border-t pt-3 text-xs text-muted-foreground">
-          <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> done · <Kbd>E</Kbd> open · <Kbd>Q</Kbd> add
-        </p>
       </PopoverContent>
     </Popover>
   );
