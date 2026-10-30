@@ -315,11 +315,21 @@ export function TaskBoardList() {
         if (!owner) return false;
         return statusOk(owner) || (status === "active" && !owner.active && doneShownIn.has(key));
       });
+    /**
+     * Revealed done tasks go *after* the open ones, just above the "Hide n
+     * done" line that revealed them. Sorted in with the plan, a task finished
+     * yesterday landed at the top of the group — 170px from the click, pushing
+     * every open row down.
+     */
+    const openFirst = (nodes: TaskNode[]) =>
+      status === "active"
+        ? [...nodes.filter((n) => n.task.active), ...nodes.filter((n) => !n.task.active)]
+        : nodes;
     const hiddenDone = (bucket: Task[]) =>
       status === "active" ? bucket.filter((t) => !t.parentId && !t.active).length : 0;
 
     if (groupBy === "none") {
-      const nodes = nest(visible(filtered, "all"), compare);
+      const nodes = openFirst(nest(visible(filtered, "all"), compare));
       return nodes.length
         ? [
             {
@@ -361,7 +371,7 @@ export function TaskBoardList() {
     }
 
     const entries = [...map.entries()].map(([key, b]) => {
-      const nodes = nest(visible(b.tasks, key), compare);
+      const nodes = openFirst(nest(visible(b.tasks, key), compare));
       return {
         key,
         label: b.label,
@@ -860,7 +870,9 @@ export function TaskBoardList() {
                 })}
               </div>
             ) : (
-              <div className="space-y-6">
+              // History has no capture line above it, and its first week
+              // heading sat 8px under the pane header.
+              <div className={cn("space-y-6", view === "history" && "pt-3")}>
                 {sections.map((section) => {
                   const ordered = section.nodes.map((n) => n.task);
                   const doneShown = doneShownIn.has(section.key);
@@ -953,7 +965,8 @@ export function TaskBoardList() {
                     where there's no keyboard to use it with. */}
                 {view === "all" && (
                   <p className="hidden text-center text-xs text-muted-foreground pointer-fine:block">
-                    <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> done · <Kbd>E</Kbd> open · <Kbd>Q</Kbd> add
+                    <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> done · <Kbd>S</Kbd> start · <Kbd>E</Kbd> open ·{" "}
+                    <Kbd>1</Kbd>–<Kbd>4</Kbd> priority · <Kbd>Del</Kbd> delete · <Kbd>Q</Kbd> add
                   </p>
                 )}
               </div>

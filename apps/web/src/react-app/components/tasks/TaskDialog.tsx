@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/select";
 import { ProjectPicker } from "@/components/entries/ProjectPicker";
 import { TagPicker } from "@/components/entries/TagPicker";
-import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
-import { parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
+import { useCompleteTask, useCreateTask, useUpdateTask } from "@/hooks/useTasks";
+import { formatDurationShort, localDayKey, parseTimeInput, formatTimeInput } from "@/lib/dateUtils";
 import { dayLabel } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import { SEGMENT, SEGMENT_ACTIVE, SEGMENT_INACTIVE, SEGMENT_TRACK } from "@/components/ui/segmented-control";
@@ -33,6 +33,7 @@ import {
   PRIORITIES,
   PRIORITY_LABEL,
   dateToLocalDate,
+  formatDueDate,
   localDateToDate,
   minuteToTimeInput,
   timeInputToMinute,
@@ -90,6 +91,7 @@ export function TaskDialog({
 }: TaskDialogProps) {
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+  const completeTask = useCompleteTask();
   const editing = Boolean(task);
 
   const [name, setName] = useState(task?.name ?? "");
@@ -266,13 +268,40 @@ export function TaskDialog({
   const hadRepeat = !isSubtask && Boolean(task?.recurRule);
   const moreHidden = !showMore && !(hadDeadline && hadTags && (hadRepeat || isSubtask));
 
+  // What the task has already been, which the fields can't say: when it was
+  // finished, and what it has cost so far. A done task opened to a blank-ish
+  // "Edit task" form with no sign it was done, and no way back from it.
+  const done = Boolean(task && !task.active);
+  const doneDay = task?.completedAt
+    ? formatDueDate(localDayKey(task.completedAt)).replace(/^(Today|Yesterday)$/, (w) => w.toLowerCase())
+    : null;
+  const trackedLine =
+    task && task.trackedSeconds > 0
+      ? `${formatDurationShort(task.trackedSeconds)} tracked${
+          task.estimatedSeconds ? ` of ${formatDurationShort(task.estimatedSeconds)}` : ""
+        }`
+      : null;
+  const status = [done ? (doneDay ? `Done ${doneDay}` : "Done") : null, trackedLine].filter(Boolean).join(" · ");
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && requestDismiss()}>
       {/* dvh: on a phone the keyboard shrinks the visible viewport, and 85vh
           put the footer behind it. */}
-      <DialogContent className="max-h-[85dvh] overflow-y-auto">
+      <DialogContent
+        className="max-h-[85dvh] overflow-y-auto"
+        // Opening a task on a phone is usually to read it; focusing the name
+        // raised the keyboard over the form and scrolled a long name to its
+        // end. Focus lands on the dialog instead; a tap on the name edits it.
+        onOpenAutoFocus={(e) => {
+          if (editing && window.matchMedia("(pointer: coarse)").matches) {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement | null)?.focus();
+          }
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
+          <DialogTitle>{editing ? (done ? "Done task" : "Edit task") : "New task"}</DialogTitle>
+          {status && <p className="text-sm text-muted-foreground">{status}</p>}
           {/* Kept for assistive tech; on screen the form speaks for itself, and
               the one note that matters sits under the Notes field. */}
           <DialogDescription className="sr-only">
@@ -285,7 +314,6 @@ export function TaskDialog({
             <Label htmlFor="task-name">Name</Label>
             <Input
               id="task-name"
-              autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleSubmit()}
@@ -535,7 +563,22 @@ export function TaskDialog({
             </Button>
           </DialogFooter>
         ) : (
-          <DialogFooter>
+          // Sticky: with "More details" open on a short screen, Save scrolled
+          // out of the dialog.
+          <DialogFooter className="sticky -bottom-6 -mx-6 -mb-6 bg-popover px-6 pt-3 pb-6">
+            {done && task && (
+              <Button
+                variant="ghost"
+                className="sm:mr-auto"
+                disabled={pending}
+                onClick={() => {
+                  completeTask(task, false);
+                  handleClose();
+                }}
+              >
+                Mark not done
+              </Button>
+            )}
             <Button variant="ghost" onClick={handleClose} disabled={pending}>
               Cancel
             </Button>

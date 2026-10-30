@@ -49,7 +49,12 @@ import {
   formatMinute,
   localDateToDate,
 } from "@/lib/taskUtils";
-import { daysBetweenLocal, todayLocalDate } from "@timetracker/core/task-recurrence";
+import {
+  addLocalDays,
+  daysBetweenLocal,
+  localWeekday,
+  todayLocalDate,
+} from "@timetracker/core/task-recurrence";
 import { cn } from "@/lib/utils";
 import type { Task } from "@timetracker/core/schemas";
 
@@ -316,6 +321,33 @@ export function TaskRow({
     task.estimatedSeconds && tracked > task.estimatedSeconds ? tracked - task.estimatedSeconds : 0;
   const flagged = task.active && task.priority <= 2;
 
+  const subtaskDisclosure = (className: string) => (
+    <button
+      type="button"
+      onClick={onToggleExpanded}
+      aria-expanded={expanded}
+      aria-label={`${expanded ? "Hide" : "Show"} subtasks, ${task.subtaskDone} of ${task.subtaskTotal} done`}
+      className={cn(
+        "flex shrink-0 items-center gap-0.5 rounded-full px-1 text-xs tabular-nums text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-muted hover:text-foreground",
+        FOCUS_RING,
+        className
+      )}
+    >
+      <ChevronRight
+        className={cn("h-3 w-3 transition-transform duration-fast ease-out-quart", expanded && "rotate-90")}
+        aria-hidden
+      />
+      {task.subtaskDone}/{task.subtaskTotal}
+    </button>
+  );
+
+  /** Re-date from the menu: the three days a triage actually moves things to. */
+  const nextMonday = (() => {
+    const today = todayLocalDate();
+    return addLocalDays(today, ((8 - localWeekday(today)) % 7) || 7);
+  })();
+  const setDue = (dueDate: string | null) => updateTask.mutate({ id: task.id, data: { dueDate } });
+
   // The resting row is a to-do: done toggle, name, due day, start. Everything
   // else the task carries — notes, tags, repeat, estimate, a distant deadline —
   // lives in the dialog the name opens. The line under the name appears only
@@ -330,10 +362,13 @@ export function TaskRow({
       {...{ [TASK_ROW_ATTR]: task.id }}
       tabIndex={-1}
       className={cn(
-        // A narrow card (a board column at laptop widths) can't hold the name
-        // and its date on one line — the name lost to "Sen…" — so below 20rem
-        // the date drops under the name. Wider, it's the one-line row.
-        "group grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-0.5 @xs:flex",
+        // A narrow row — a phone, or a board column at laptop widths — can't
+        // hold the name and its metadata on one line: on a phone the flag,
+        // "0/3", "2 days late", ⋯ and start left the name ~80px ("Draft the /
+        // brand…"). Below 24rem the name keeps line 1 with only the toggle and
+        // the actions; the date and the checklist count take a muted line 2,
+        // and time spent or a near deadline a line 3. Wider, it's one line.
+        "group grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-0.5 @sm:flex",
         "px-3 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
         // Inset: the card clips its rows to its corners, so an outer ring is cut off.
         "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
@@ -346,8 +381,8 @@ export function TaskRow({
     >
       {doneToggle}
 
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5">
+      <div className="min-w-0 flex-1 @max-sm:contents">
+        <div className="col-start-2 row-start-1 flex min-w-0 items-center gap-1.5">
           {onEdit ? (
             // The name opens the task, the way a to-do list does. It used to
             // rename in place, which left the details two steps away behind ⋯
@@ -377,7 +412,7 @@ export function TaskRow({
 
           {flagged && (
             <Flag
-              className={cn("h-3 w-3 shrink-0 fill-current", PRIORITY_FLAG[task.priority])}
+              className={cn("h-3 w-3 shrink-0", PRIORITY_FLAG[task.priority])}
               role="img"
               aria-label={`${PRIORITY_LABEL[task.priority]} priority`}
             />
@@ -385,34 +420,14 @@ export function TaskRow({
 
           {/* One control for the checklist: how far along it is, and the way
               to open it. Collapsed by default — a card is one task until you
-              ask to see its parts. */}
-          {!nested && hasChildren && (
-            <button
-              type="button"
-              onClick={onToggleExpanded}
-              aria-expanded={expanded}
-              aria-label={`${expanded ? "Hide" : "Show"} subtasks, ${task.subtaskDone} of ${task.subtaskTotal} done`}
-              className={cn(
-                "flex shrink-0 items-center gap-0.5 rounded-full px-1 text-xs tabular-nums text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-muted hover:text-foreground",
-                FOCUS_RING
-              )}
-            >
-              <ChevronRight
-                className={cn(
-                  "h-3 w-3 transition-transform duration-fast ease-out-quart",
-                  expanded && "rotate-90"
-                )}
-                aria-hidden
-              />
-              {task.subtaskDone}/{task.subtaskTotal}
-            </button>
-          )}
+              ask to see its parts. On a narrow row it moves to line 2. */}
+          {!nested && hasChildren && subtaskDisclosure("@max-sm:hidden")}
         </div>
 
         {(showTracking || deadlineAtRisk) && (
           // Wraps rather than squeezes: in a narrow board column the deadline
           // drops under the bar instead of breaking "1h 30m / 2h" in half.
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+          <div className="col-start-2 row-start-3 mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 @max-sm:mt-0">
             {showTracking &&
               (task.estimatedSeconds ? (
                 <span
@@ -461,6 +476,9 @@ export function TaskRow({
         )}
       </div>
 
+      {/* Line 2 on a narrow row; on a wide one the wrapper dissolves and its
+          children sit in the row's own line. */}
+      <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-2 empty:hidden @sm:contents">
       {/* The due chip is the control, not a label beside one — clicking the date
           is how you change the date. */}
       {showDue && (
@@ -475,13 +493,19 @@ export function TaskRow({
               }
               className={cn(
                 "shrink-0 rounded-full px-1.5 text-xs transition-colors duration-fast ease-out-quart hover:bg-muted",
-                "col-start-2 row-start-2 -ml-1.5 justify-self-start @xs:ml-0",
+                "-ml-1.5 @sm:ml-0",
                 FOCUS_RING,
                 task.dueDate
-                  ? DUE_TONE_CLASS[tone ?? "later"]
-                  // Undated, the chip is a hover-revealed "set a date"; under
-                  // the name it would hold an empty line open on every card.
-                  : "tt-reveal text-muted-foreground hover:text-foreground @max-xs:hidden"
+                  // A dotted underline: the date is the reschedule control,
+                  // and "2 days late" in plain text didn't look like one.
+                  ? cn(
+                      DUE_TONE_CLASS[tone ?? "later"],
+                      "underline decoration-muted-foreground/50 decoration-dotted underline-offset-[3px]"
+                    )
+                  // Undated, the chip is a hover-revealed "set a date". On a
+                  // narrow row (a phone, where reveals are always on) it was a
+                  // calendar icon on every undated row; ⋯ → Due date does it.
+                  : "tt-reveal text-muted-foreground hover:text-foreground @max-sm:hidden"
               )}
             >
               {/* A late task's chip says how late, which is the news; the date
@@ -520,11 +544,12 @@ export function TaskRow({
         </Popover>
       )}
 
+      {!nested && hasChildren && subtaskDisclosure("@sm:hidden")}
+
       {doneLabel && !nested && (
-        <span className="col-start-2 row-start-2 shrink-0 whitespace-nowrap text-xs text-muted-foreground">
-          {doneLabel}
-        </span>
+        <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{doneLabel}</span>
       )}
+      </div>
 
       {/* Where the list isn't already grouped by project (Board, other
           groupings), the swatch says which client it is; the name is a hover
@@ -569,6 +594,31 @@ export function TaskRow({
                   <Pencil className="h-3.5 w-3.5" />
                   Edit task…
                 </DropdownMenuItem>
+              )}
+
+              {!nested && task.active && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Due date
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onSelect={() => setDue(todayLocalDate())}>Today</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setDue(addLocalDays(todayLocalDate(), 1))}>
+                      Tomorrow
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setDue(nextMonday)}>
+                      Next week
+                      <span className="ml-auto text-xs text-muted-foreground">{formatDueDate(nextMonday)}</span>
+                    </DropdownMenuItem>
+                    {task.dueDate && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => setDue(null)}>No due date</DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               )}
 
               <DropdownMenuSub>

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAssistantStore } from "@/stores/assistantStore";
 import { useAssistantNudges } from "@/hooks/useAssistant";
@@ -25,6 +25,11 @@ export function AssistantNudgeNotifier() {
   const markSeen = useAssistantStore((s) => s.markSeen);
   const setOpen = useAssistantStore((s) => s.setOpen);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // A task nudge's whole action is "Open tasks". On the Tasks page that's a
+  // button to where you already are, and the toast landed over the list it
+  // was pointing at — whose rows already say "2 days late".
+  const onTasks = pathname.startsWith("/tasks");
 
   // A toast outlives the render that created it, so its action must not close
   // over `stopTimer`. The running entry is restored asynchronously on mount, so
@@ -55,7 +60,8 @@ export function AssistantNudgeNotifier() {
     const fresh = nudges.filter((n) => !(n.id in seen));
     if (!fresh.length) return;
 
-    for (const n of fresh.slice(0, MAX_TOASTS_PER_BATCH)) {
+    const isTaskNudge = (kind: string) => kind === "deadline_risk" || kind === "tasks_overdue";
+    for (const n of fresh.filter((f) => !(onTasks && isTaskNudge(f.kind))).slice(0, MAX_TOASTS_PER_BATCH)) {
       // Keyed by nudge id so a re-render can't duplicate a live toast. Longer
       // than the default duration — these are actionable, not just FYIs.
       toast(n.title, {
@@ -70,7 +76,7 @@ export function AssistantNudgeNotifier() {
         action:
           n.kind === "long_timer"
             ? { label: "Stop timer", onClick: () => stopTimerRef.current() }
-            : n.kind === "deadline_risk" || n.kind === "tasks_overdue"
+            : isTaskNudge(n.kind)
               ? { label: "Open tasks", onClick: () => navigate("/tasks", { state: { groupBy: "due" } }) }
               : { label: "Open Assistant", onClick: () => setOpen(true) },
       });
@@ -78,10 +84,11 @@ export function AssistantNudgeNotifier() {
       // when the OS-level notification earns its keep. No-op unless granted.
       if (document.hidden) notify(n.title, n.body);
     }
-    // Mark the whole batch (even beyond the toast cap) so a backlog doesn't
-    // drip-feed three more toasts on every later poll.
+    // Mark the whole batch (even beyond the toast cap, and the task nudges
+    // held back on the Tasks page) so a backlog doesn't drip-feed three more
+    // toasts on every later poll. The rail badge still counts them.
     markSeen(fresh.map((n) => n.id));
-  }, [nudges, alertsEnabled, open, seen, markSeen, setOpen, navigate]);
+  }, [nudges, alertsEnabled, open, seen, markSeen, setOpen, navigate, onTasks]);
 
   return null;
 }
