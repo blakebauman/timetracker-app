@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import { api, isQueuedOffline, mutationErrorMessage } from "@/lib/api";
 import { useUIStore } from "@/stores/uiStore";
-import { formatDueDate } from "@/lib/taskUtils";
+import { formatDueDate, formatDueSpoken } from "@/lib/taskUtils";
 import {
   describeRecurRule,
   nextOccurrence,
@@ -97,7 +97,27 @@ export function useCreateTask() {
     onSuccess: (task) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] }); // updates trackedSeconds
-      toast.success(`Task "${task.name}" created`);
+      // Where it went, not just that it went: a new row lands at the foot of
+      // its group, often below the fold, and "Task created" didn't say which
+      // group. The row flashes as it arrives, and Undo takes it straight back
+      // — a capture line is where a mistyped task is most likely to be made.
+      useUIStore.getState().flashTask(task.id);
+      const where = [
+        task.projectName ? `to ${task.projectName}` : null,
+        task.dueDate ? `due ${formatDueSpoken(task.dueDate)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      toast.success(`Added “${task.name}”${where ? ` ${where}` : ""}`, {
+        action: {
+          label: "Undo",
+          onClick: () =>
+            api.tasks
+              .delete(task.id)
+              .then(() => queryClient.invalidateQueries({ queryKey: ["tasks"] }))
+              .catch((err) => toast.error(mutationErrorMessage(err, "Failed to undo"))),
+        },
+      });
     },
     onError: (err) =>
       isQueuedOffline(err)

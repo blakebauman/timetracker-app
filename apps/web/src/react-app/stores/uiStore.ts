@@ -65,6 +65,14 @@ interface UIStore {
   // Transient: the entry row to flash-highlight (e.g. the one just stopped so the
   // eye can track where it landed in the list). Never persisted.
   highlightedEntryId: string | null;
+  /** Transient: the task row to flash — the one just captured. Never persisted. */
+  highlightedTaskId: string | null;
+  /**
+   * The project the last captured task was filed under. The capture line
+   * starts on it, so a run of tasks for one client is one choice, not one per
+   * line — and the choice survives a reload.
+   */
+  lastTaskProjectId: string | null;
   /**
    * The entry a timer most recently stopped into. Sorted to the top of its day
    * group so it's findable immediately, unlike `highlightedEntryId` which
@@ -129,10 +137,13 @@ interface UIStore {
   setQuickAddOpen: (v: boolean) => void;
   openQuickAdd: () => void;
   flashEntry: (id: string) => void;
+  flashTask: (id: string) => void;
+  setLastTaskProjectId: (id: string | null) => void;
 }
 
 // Holds the auto-clear timer for the row highlight so a rapid second stop resets
 // the countdown instead of clearing the first one's flash mid-animation.
+let taskFlashTimeout: ReturnType<typeof setTimeout> | undefined;
 let flashTimeout: ReturnType<typeof setTimeout> | undefined;
 
 // Zoom bounds for the calendar time-grid slot height (px), stepped by the
@@ -175,6 +186,8 @@ export const useUIStore = create<UIStore>()(
       discardConfirmOpen: false,
       quickAddOpen: false,
       highlightedEntryId: null,
+      highlightedTaskId: null,
+      lastTaskProjectId: null,
       pinnedEntryId: null,
       editEntryId: null,
 
@@ -250,6 +263,15 @@ export const useUIStore = create<UIStore>()(
             ? s
             : { dismissedPlanFlags: [...s.dismissedPlanFlags, key].slice(-200) }
         ),
+      setLastTaskProjectId: (id) => set({ lastTaskProjectId: id }),
+      flashTask: (id) => {
+        clearTimeout(taskFlashTimeout);
+        set({ highlightedTaskId: id });
+        // Same reasoning as flashEntry below: outlast the keyframe, and under
+        // reduced motion there is no keyframe to outlast.
+        const stilled = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        taskFlashTimeout = setTimeout(() => set({ highlightedTaskId: null }), stilled ? 300 : 1800);
+      },
       flashEntry: (id) => {
         clearTimeout(flashTimeout);
         set({ highlightedEntryId: id, pinnedEntryId: id });
@@ -291,6 +313,7 @@ export const useUIStore = create<UIStore>()(
         showGaps: s.showGaps,
         autoAssignColors: s.autoAssignColors,
         productivity: s.productivity,
+        lastTaskProjectId: s.lastTaskProjectId,
       }),
     }
   )

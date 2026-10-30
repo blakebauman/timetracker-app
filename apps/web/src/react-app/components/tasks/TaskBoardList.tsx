@@ -663,6 +663,10 @@ export function TaskBoardList() {
               <QuickAddTask
                 autoFocus
                 parentId={node.task.id}
+                // A subtask belongs to its parent's project; without it the
+                // line had nothing to file under once there were two projects.
+                defaultProjectId={node.task.projectId}
+                lockProject
                 placeholder="Add a subtask"
                 onDone={() => setSubtaskParent(null)}
               />
@@ -903,7 +907,8 @@ export function TaskBoardList() {
                             aria-label={`Add a task to ${section.label}`}
                             title={`Add a task to ${section.label}`}
                             onClick={() => setAddingTo(section.key)}
-                            className="text-muted-foreground"
+                            // 24px in the heading, a 44px reach on touch.
+                            className="relative text-muted-foreground pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5 pointer-coarse:after:content-['']"
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -930,6 +935,8 @@ export function TaskBoardList() {
                             <QuickAddTask
                               autoFocus
                               defaultProjectId={section.projectId}
+                              lockProject
+                              label={`Add a task to ${section.label}`}
                               defaultDueDate={null}
                               placeholder={`Add to ${section.label}`}
                               onDone={() => setAddingTo(null)}

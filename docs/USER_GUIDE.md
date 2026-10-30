@@ -204,6 +204,8 @@ Today and the week ahead live in the **Plan** column on the Timer, beside the ti
 
 The line under the field shows what it understood before you commit it. Anything it doesn't recognise stays in the name — "every 2 weeks" isn't a repeat the app can store yet, so it's left as text rather than quietly approximated.
 
+The **?** at the end of the field lists these tokens. A task needs a project: the field starts on the one your last task went to, and if you pick a different one the cursor goes straight back to the text so Enter adds the task. A group's **+** files under that group's project, so it has no picker. If Enter can't add the line (no project yet, or only tokens and no name) the line under the field says why. Once a task is added, its row flashes where it landed, and **Undo** in the confirmation takes it back.
+
 **Tags.** Tasks use the same tags as time entries: one list, one set of colours. Add them with `@tag` when you capture, or in the task dialog. Any time you track or log against a task picks up the task's tags automatically, on top of any you add to the entry yourself, so reports by tag include task work without extra effort. A repeating task keeps its tags.
 
 **What a task row shows.** A row is a to-do: the checkbox, the name, its day and ▷. Each project's tasks sit together in one panel. A flag beside the name marks **Urgent** (red) and **High** (amber) priority. A second line appears only when there's something to act on: the time you've tracked against the estimate, or a deadline that's two days away or less. Everything else (notes, tags, repeat, the estimate itself, a distant deadline) is in the task: **click its name to open it**. A task with subtasks shows how many are done (**1/3**); click that to open the checklist.

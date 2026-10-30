@@ -41,6 +41,22 @@ interface ProjectPickerProps {
   attention?: string;
   /** Classes for the selected project's name (its truncation width). */
   nameClassName?: string;
+  /**
+   * Leave "No project" out of the list — for hosts where it can't be saved
+   * (a task always belongs to one), so it isn't offered and then refused.
+   */
+  hideNone?: boolean;
+  /**
+   * Shown beside the folder icon when nothing is chosen and nothing is wrong
+   * yet — a neutral "Add project" before `attention` turns it into a warning.
+   */
+  emptyLabel?: React.ReactNode;
+  /**
+   * Where focus goes when the list closes. Radix returns it to the chip; a
+   * capture line wants it back in its text field so Enter submits the task
+   * rather than reopening this list.
+   */
+  onCloseAutoFocus?: (e: Event) => void;
   /** Custom trigger element (single child, receives the popover ref). */
   children?: React.ReactNode;
 }
@@ -54,6 +70,9 @@ export function ProjectPicker({
   field = false,
   attention,
   nameClassName,
+  hideNone = false,
+  emptyLabel,
+  onCloseAutoFocus,
 }: ProjectPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -140,14 +159,14 @@ export function ProjectPicker({
               <FolderOpen className="h-3.5 w-3.5" />
               {/* The warning says itself in words, not only in a dashed edge
                   and a tooltip a touch screen never shows. */}
-              {attention ? <span>Add project</span> : !compact && <span>No project</span>}
+              {attention ? <span>Add project</span> : emptyLabel ?? (!compact && <span>No project</span>)}
             </>
           )}
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-0" align="start">
+      <PopoverContent className="w-56 p-0" align="start" onCloseAutoFocus={onCloseAutoFocus}>
         <Command shouldFilter>
           <CommandInput
             placeholder={
@@ -173,6 +192,7 @@ export function ProjectPicker({
               )}
             </CommandEmpty>
             <CommandGroup>
+              {!hideNone && (
               <CommandItem
                 value="no-project"
                 keywords={["no project"]}
@@ -182,6 +202,7 @@ export function ProjectPicker({
                 <span className="text-muted-foreground">No project</span>
                 {!value && <Check className="ml-auto h-3.5 w-3.5" />}
               </CommandItem>
+              )}
               {projects.map((project) => (
                 <CommandItem
                   key={project.id}
