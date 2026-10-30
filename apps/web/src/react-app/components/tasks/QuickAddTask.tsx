@@ -14,6 +14,10 @@ import { describeRecurRule } from "@timetracker/core/task-recurrence";
 import { cn } from "@/lib/utils";
 import type { Project } from "@timetracker/core/schemas";
 
+/** "today" / "tomorrow" in a sentence; a weekday or "6 Nov" keeps its capitals. */
+const relativeDay = (date: string) =>
+  formatDueDate(date).replace(/^(Today|Tomorrow|Yesterday)$/, (w) => w.toLowerCase());
+
 interface QuickAddTaskProps {
   /** Preselected project — the group being added into, or the last one used. */
   defaultProjectId?: string | null;
@@ -182,7 +186,15 @@ export function QuickAddTask({
         {showPicker && !stacked && (
           // Compact: with nothing chosen it's a folder icon, not the words "No
           // project" sitting in the line like a second field to fill in.
-          <ProjectPicker value={projectId} onChange={setProjectId} compact className="shrink-0" />
+          // Once there's a name to file, the icon says what it's waiting for —
+          // "Add project" in warning ink — before Enter is refused, not after.
+          <ProjectPicker
+            value={projectId}
+            onChange={setProjectId}
+            compact
+            attention={needsProject ? "Tasks belong to a project" : undefined}
+            className="shrink-0"
+          />
         )}
         {pending ? (
           <Spinner size="sm" className="text-muted-foreground" label="Adding task" />
@@ -201,15 +213,16 @@ export function QuickAddTask({
           is echoed too. It describes the field rather than announcing itself:
           a live region here would read out every keystroke. */}
       {hasEcho && (
-        <p id={echoId} className="px-3 text-micro text-muted-foreground">
+        // Label size, not micro: it's the most useful feedback on the page.
+        <p id={echoId} className="px-3 text-xs text-muted-foreground">
           {[
             `“${parsed.name}”`,
             parsed.dueDate
-              ? `due ${formatDueDate(parsed.dueDate).toLowerCase()}${
+              ? `due ${relativeDay(parsed.dueDate)}${
                   parsed.scheduledMinute !== null ? ` at ${formatMinute(parsed.scheduledMinute, timeFormat)}` : ""
                 }`
               : null,
-            parsed.deadlineDate ? `deadline ${formatDueDate(parsed.deadlineDate).toLowerCase()}` : null,
+            parsed.deadlineDate ? `deadline ${relativeDay(parsed.deadlineDate)}` : null,
             parsed.priority ? `priority ${PRIORITY_LABEL[parsed.priority].toLowerCase()}` : null,
             parsed.estimatedSeconds ? `estimate ${formatDurationShort(parsed.estimatedSeconds)}` : null,
             recurRule ? describeRecurRule(recurRule)?.toLowerCase() : null,

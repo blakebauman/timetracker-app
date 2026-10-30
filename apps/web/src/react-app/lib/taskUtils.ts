@@ -9,16 +9,17 @@ import type { Task } from "@timetracker/core/schemas";
 // ─── Priority ────────────────────────────────────────────────────────────────
 
 /**
- * Only P1 and P2 are marked at all: a small filled flag after the task name.
+ * Only P1 and P2 are marked at all: a small flag after the task name, in ink.
  *
- * Priority used to tint the done toggle's ring, which put a red edge on every
- * urgent row and made the checkbox mean two things. P3 and P4 show nothing —
- * P4 is the default, so most rows carry no marker — and the flag is the only
- * place priority appears on a row.
+ * P1 is filled, P2 an outline — told apart by shape, not hue. The flags were
+ * red and orange, which put the brand red on every urgent row and, beside a
+ * "Deadline tomorrow" or "2 days late", two warning colours on one row. Hue on
+ * a row is kept for the one alarm it may carry. P3 and P4 show nothing — P4 is
+ * the default, so most rows carry no marker.
  */
 export const PRIORITY_FLAG: Record<number, string> = {
-  1: "text-destructive",
-  2: "text-warning-ink",
+  1: "fill-current text-foreground",
+  2: "text-muted-foreground",
 };
 
 export const PRIORITY_LABEL: Record<number, string> = {

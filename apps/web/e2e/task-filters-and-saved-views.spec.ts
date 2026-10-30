@@ -30,26 +30,34 @@ async function seed(page: import("@playwright/test").Page) {
 const row = (page: import("@playwright/test").Page, name: string) =>
   page.getByRole("button", { name: `Start timer for ${name}` });
 
+/** Filters are added one at a time from the View popover's "Filter" menu. */
+async function addFilter(page: import("@playwright/test").Page, kind: string, option: string | RegExp) {
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("menuitem", { name: kind }).click();
+  await page.getByRole("menuitemradio", { name: option }).click();
+}
+
 test("filters narrow the All tab by tag, priority and due date", async ({ page }) => {
   await seed(page);
   await page.goto("/tasks");
   await page.getByRole("tab", { name: /All/ }).click();
 
   await page.getByRole("button", { name: "View", exact: true }).click();
-  await page.getByRole("combobox", { name: "Filter by priority" }).click();
-  await page.getByRole("option", { name: /High and above/ }).click();
+  await addFilter(page, "Priority", /High and above/);
   await expect(row(page, "Map vendor tables")).toBeVisible();
   await expect(row(page, "Cutover plan")).toBeVisible();
   await expect(row(page, "Stakeholder sign-off")).toBeHidden();
 
-  await page.getByRole("combobox", { name: "Filter by tag" }).click();
-  await page.getByRole("option", { name: "discovery" }).click();
+  await addFilter(page, "Tag", "discovery");
   await expect(row(page, "Cutover plan")).toBeHidden();
   await expect(page.getByRole("button", { name: "View, 2 filters active" })).toBeVisible();
 
+  // A set filter is a chip, and the chip is how it comes off.
+  await page.getByRole("button", { name: "Remove filter: #discovery" }).click();
+  await expect(row(page, "Cutover plan")).toBeVisible();
+
   await page.getByRole("button", { name: "Clear filters" }).click();
-  await page.getByRole("combobox", { name: "Filter by due date" }).click();
-  await page.getByRole("option", { name: "Overdue" }).click();
+  await addFilter(page, "Due", "Overdue");
   await expect(row(page, "Slipped task")).toBeVisible();
   await expect(row(page, "Map vendor tables")).toBeHidden();
 });
@@ -63,10 +71,8 @@ test("a saved view comes back after a reload and can be deleted", async ({ page 
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("searchbox", { name: "Search tasks" }).fill("plan");
   await page.getByRole("button", { name: "View", exact: true }).click();
-  await page.getByRole("combobox", { name: "Filter by priority" }).click();
-  await page.getByRole("option", { name: /High and above/ }).click();
-  await page.getByRole("combobox", { name: "Saved view" }).click();
-  await page.getByRole("option", { name: "Save current view…" }).click();
+  await addFilter(page, "Priority", /High and above/);
+  await page.getByRole("button", { name: "Save current view…" }).click();
   await page.getByRole("textbox", { name: "View name" }).fill("Urgent planning");
   await page.getByRole("button", { name: "Save view" }).click();
   await expect(page.getByRole("button", { name: "View: Urgent planning" })).toBeVisible();
@@ -76,14 +82,14 @@ test("a saved view comes back after a reload and can be deleted", async ({ page 
   await page.getByRole("tab", { name: /All/ }).click();
   await expect(row(page, "Stakeholder sign-off")).toBeVisible();
   await page.getByRole("button", { name: "View", exact: true }).click();
-  await page.getByRole("combobox", { name: "Saved view" }).click();
-  await page.getByRole("option", { name: "Urgent planning" }).click();
+  await page.getByRole("button", { name: "Urgent planning" }).click();
   await expect(page.getByRole("searchbox", { name: "Search tasks" })).toHaveValue("plan");
   await expect(row(page, "Cutover plan")).toBeVisible();
   await expect(row(page, "Stakeholder sign-off")).toBeHidden();
 
-  await page.getByRole("combobox", { name: "Saved view" }).click();
-  await page.getByRole("option", { name: "Delete “Urgent planning”" }).click();
+  // Applying a view closes the popover; deleting it is back inside.
+  await page.getByRole("button", { name: "View: Urgent planning" }).click();
+  await page.getByRole("button", { name: "Delete saved view Urgent planning" }).click();
   await expect
     .poll(async () => (await (await page.request.get("/api/task-views")).json()).length)
     .toBe(0);

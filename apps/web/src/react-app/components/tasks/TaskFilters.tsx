@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { Check, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Popover as PopoverPrimitive } from "radix-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -16,10 +16,21 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
+import { cn } from "@/lib/utils";
 import { useProjects, useTags } from "@/hooks/useProjects";
 import { useCreateTaskView, useDeleteTaskView, useTaskViews } from "@/hooks/useTasks";
 import {
@@ -31,20 +42,60 @@ import {
 import { PRIORITY_LABEL } from "@/lib/taskUtils";
 import type { Project, TaskViewConfig } from "@timetracker/core/schemas";
 
-const ANY = "__any";
-
 export type TaskGroupBy = TaskViewConfig["groupBy"];
 export type TaskSortBy = TaskViewConfig["sortBy"];
 
 /**
- * Everything that shapes the All tab — saved view, grouping, sort, and the
+ * Everything that shapes the All tab — saved views, grouping, sort, and the
  * status / project / tag / priority / due filters — behind one button.
  *
  * The header used to carry search, Filter, Group and Sort side by side: four
  * controls about *how to look at* the list, all at the same weight as the list
  * itself, before a single task. They are set once and left, so they live one
  * click away and the header keeps only where you are and what you're looking for.
+ *
+ * Inside, filters are **added**, not laid out: a column of eight labelled
+ * selects, seven of them reading "Any …", was a settings form for a list that
+ * is usually unfiltered. What's set shows as a chip; "Filter" adds one more.
  */
+const PRIORITY_FILTER_LABEL: Record<number, string> = {
+  1: `${PRIORITY_LABEL[1]} only`,
+  2: `${PRIORITY_LABEL[2]} and above`,
+  3: `${PRIORITY_LABEL[3]} and above`,
+};
+
+const DUE_FILTER_LABEL: Record<Exclude<TaskFilterValues["due"], "any">, string> = {
+  overdue: "Overdue",
+  today: "Due today",
+  week: "Next 7 days",
+  none: "No due date",
+};
+
+const STATUS_OPTIONS: SegmentedOption<TaskFilterValues["status"]>[] = [
+  { value: "active", label: "Open" },
+  { value: "all", label: "All" },
+  { value: "done", label: "Done" },
+];
+
+/** A set filter, and the one way to take it off. */
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex h-7 max-w-full items-center gap-0.5 rounded-full border bg-background pr-0.5 pl-2.5 text-xs">
+      <span className="truncate">{label}</span>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        aria-label={`Remove filter: ${label}`}
+        title="Remove filter"
+        onClick={onRemove}
+        className="text-muted-foreground"
+      >
+        <X className="h-3 w-3" />
+      </Button>
+    </span>
+  );
+}
+
 export function TaskViewPopover({
   value,
   onChange,
@@ -63,13 +114,33 @@ export function TaskViewPopover({
   onSortByChange: (next: TaskSortBy) => void;
   /** The saved view on screen, if any — the button wears its name. */
   viewName?: string | null;
-  /** The saved-views picker, rendered at the top of the popover. */
+  /** The saved views, listed at the foot of the popover. */
   viewSlot?: ReactNode;
 }) {
   const { data: projects = [] } = useProjects();
   const { data: tags = [] } = useTags();
   const count = activeFilterCount(value);
   const set = (patch: Partial<TaskFilterValues>) => onChange({ ...value, ...patch });
+  const projectName = projects.find((p: Project) => p.id === value.projectId)?.name;
+
+  const chips = [
+    value.projectId && {
+      key: "project",
+      label: projectName ?? "Project",
+      remove: () => set({ projectId: null }),
+    },
+    value.tag && { key: "tag", label: `#${value.tag}`, remove: () => set({ tag: null }) },
+    value.maxPriority && {
+      key: "priority",
+      label: PRIORITY_FILTER_LABEL[value.maxPriority],
+      remove: () => set({ maxPriority: null }),
+    },
+    value.due !== "any" && {
+      key: "due",
+      label: DUE_FILTER_LABEL[value.due],
+      remove: () => set({ due: "any" }),
+    },
+  ].filter(Boolean) as { key: string; label: string; remove: () => void }[];
 
   return (
     <Popover>
@@ -97,137 +168,139 @@ export function TaskViewPopover({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 space-y-3">
-        {viewSlot && (
-          <div className="space-y-1.5">
-            <Label>Saved view</Label>
-            {viewSlot}
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-2 border-b pb-3">
-          <div className="space-y-1.5">
-            <Label>Group</Label>
-            <Select value={groupBy} onValueChange={(v) => onGroupByChange(v as TaskGroupBy)}>
-              <SelectTrigger size="sm" className="w-full" aria-label="Group by">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="project">Project</SelectItem>
-                <SelectItem value="due">Due date</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
-                <SelectItem value="none">None</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Sort</Label>
-            <Select value={sortBy} onValueChange={(v) => onSortByChange(v as TaskSortBy)}>
-              <SelectTrigger size="sm" className="w-full" aria-label="Sort by">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {/* "plan" is due date, then priority, then your drag order —
-                    named for what the reader sees, not for the comparator. */}
-                <SelectItem value="plan">Due date</SelectItem>
-                <SelectItem value="priority">Priority</SelectItem>
-                <SelectItem value="recent">Newest</SelectItem>
-                <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="estimate">Estimate</SelectItem>
-                <SelectItem value="tracked">Time tracked</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Show</Label>
-          <Select value={value.status} onValueChange={(v) => set({ status: v as TaskFilterValues["status"] })}>
-            <SelectTrigger size="sm" className="w-full" aria-label="Filter by status">
+      <PopoverContent align="end" className="w-88 space-y-3">
+        <SegmentedControl
+          label="Show tasks"
+          value={value.status}
+          options={STATUS_OPTIONS}
+          onChange={(status) => set({ status })}
+          className="w-full [&>button]:flex-1 [&>button]:justify-center"
+        />
+
+        {/* One line, read as a sentence: "Group by project, sort by due date". */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Group</span>
+          <Select value={groupBy} onValueChange={(v) => onGroupByChange(v as TaskGroupBy)}>
+            <SelectTrigger size="sm" className="min-w-0 flex-1" aria-label="Group by">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="active">Open</SelectItem>
-              <SelectItem value="all">Open and done</SelectItem>
-              <SelectItem value="done">Done</SelectItem>
+              <SelectItem value="project">Project</SelectItem>
+              <SelectItem value="due">Due date</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+              <SelectItem value="none">None</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Project</Label>
-          <Select value={value.projectId ?? ANY} onValueChange={(v) => set({ projectId: v === ANY ? null : v })}>
-            <SelectTrigger size="sm" className="w-full" aria-label="Filter by project">
+          <span>Sort</span>
+          <Select value={sortBy} onValueChange={(v) => onSortByChange(v as TaskSortBy)}>
+            <SelectTrigger size="sm" className="min-w-0 flex-1" aria-label="Sort by">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any project</SelectItem>
-              {projects.map((p: Project) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              {/* "plan" is due date, then priority, then your drag order —
+                  named for what the reader sees, not for the comparator. */}
+              <SelectItem value="plan">Due date</SelectItem>
+              <SelectItem value="priority">Priority</SelectItem>
+              <SelectItem value="recent">Newest</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="estimate">Estimate</SelectItem>
+              <SelectItem value="tracked">Time tracked</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1.5">
-          <Label>Tag</Label>
-          <Select value={value.tag ?? ANY} onValueChange={(v) => set({ tag: v === ANY ? null : v })}>
-            <SelectTrigger size="sm" className="w-full" aria-label="Filter by tag">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>Any tag</SelectItem>
-              {tags.map((t) => (
-                <SelectItem key={t.id} value={t.name}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div className="flex flex-wrap items-center gap-1.5 border-t pt-3">
+          {chips.map((c) => (
+            <FilterChip key={c.key} label={c.label} onRemove={c.remove} />
+          ))}
+          {chips.length < 4 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 gap-1 px-2.5 text-xs text-muted-foreground">
+                  <Plus className="h-3 w-3" />
+                  Filter
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-44">
+                {!value.projectId && projects.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Project</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+                      <DropdownMenuRadioGroup value="" onValueChange={(v) => set({ projectId: v })}>
+                        {projects.map((p: Project) => (
+                          <DropdownMenuRadioItem key={p.id} value={p.id}>
+                            {p.name}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                {!value.tag && tags.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Tag</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+                      <DropdownMenuRadioGroup value="" onValueChange={(v) => set({ tag: v })}>
+                        {tags.map((t) => (
+                          <DropdownMenuRadioItem key={t.id} value={t.name}>
+                            {t.name}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                {!value.maxPriority && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Priority</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuRadioGroup value="" onValueChange={(v) => set({ maxPriority: Number(v) })}>
+                        {[1, 2, 3].map((p) => (
+                          <DropdownMenuRadioItem key={p} value={String(p)}>
+                            {PRIORITY_FILTER_LABEL[p]}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                {value.due === "any" && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Due</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuRadioGroup
+                        value=""
+                        onValueChange={(v) => set({ due: v as TaskFilterValues["due"] })}
+                      >
+                        {(Object.keys(DUE_FILTER_LABEL) as (keyof typeof DUE_FILTER_LABEL)[]).map((d) => (
+                          <DropdownMenuRadioItem key={d} value={d}>
+                            {DUE_FILTER_LABEL[d]}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {count > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 px-2.5 text-xs text-muted-foreground"
+              onClick={() => onChange(NO_FILTERS)}
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
-        <div className="space-y-1.5">
-          <Label>Priority</Label>
-          <Select
-            value={value.maxPriority ? String(value.maxPriority) : ANY}
-            onValueChange={(v) => set({ maxPriority: v === ANY ? null : Number(v) })}
-          >
-            <SelectTrigger size="sm" className="w-full" aria-label="Filter by priority">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>Any priority</SelectItem>
-              <SelectItem value="1">{PRIORITY_LABEL[1]} only</SelectItem>
-              <SelectItem value="2">{PRIORITY_LABEL[2]} and above</SelectItem>
-              <SelectItem value="3">{PRIORITY_LABEL[3]} and above</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Due</Label>
-          <Select value={value.due} onValueChange={(v) => set({ due: v as TaskFilterValues["due"] })}>
-            <SelectTrigger size="sm" className="w-full" aria-label="Filter by due date">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="any">Any time</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="week">Next 7 days</SelectItem>
-              <SelectItem value="none">No due date</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {count > 0 && (
-          <Button variant="ghost" size="sm" className="w-full" onClick={() => onChange(NO_FILTERS)}>
-            Clear filters
-          </Button>
-        )}
+
+        {viewSlot && <div className="border-t pt-2">{viewSlot}</div>}
       </PopoverContent>
     </Popover>
   );
 }
-
-const SAVE = "__save";
-const DELETE = "__delete";
-const NONE = "__none";
 
 /**
  * Saved views: pick one to apply its whole configuration; save the current one
@@ -252,25 +325,6 @@ export function TaskViewPicker({
   // view and the picker stops claiming that view is showing.
   const active = useActiveTaskView(activeViewId, current);
 
-  const onValueChange = (v: string) => {
-    if (v === SAVE) {
-      setName("");
-      setNaming(true);
-      return;
-    }
-    if (v === DELETE && active) {
-      deleteView.mutate(active.id);
-      onApply(null, null);
-      return;
-    }
-    if (v === NONE) {
-      onApply(null, null);
-      return;
-    }
-    const view = views.find((x) => x.id === v);
-    if (view) onApply(view.id, view.config);
-  };
-
   const save = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -287,22 +341,61 @@ export function TaskViewPicker({
 
   return (
     <>
-      <Select value={active?.id ?? NONE} onValueChange={onValueChange}>
-        <SelectTrigger size="sm" className="w-full" aria-label="Saved view">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={NONE}>None</SelectItem>
-          {views.map((v) => (
-            <SelectItem key={v.id} value={v.id}>
-              {v.name}
-            </SelectItem>
-          ))}
-          <SelectSeparator />
-          <SelectItem value={SAVE}>Save current view…</SelectItem>
-          {active && <SelectItem value={DELETE}>Delete “{active.name}”</SelectItem>}
-        </SelectContent>
-      </Select>
+      {/* A short list, not a select defaulting to "None": the views you keep
+          are a handful, and seeing them is half of remembering to use them. */}
+      <ul className="space-y-0.5" aria-label="Saved views">
+        {views.map((v) => {
+          const on = active?.id === v.id;
+          return (
+            <li key={v.id} className="flex items-center gap-1">
+              {/* Picking a view is the whole errand, so it closes the popover —
+                  always, not only when the view's search text pulls focus to
+                  the search field and closes it as a side effect. */}
+              <PopoverPrimitive.Close asChild>
+              <button
+                type="button"
+                aria-pressed={on}
+                onClick={() => (on ? onApply(null, null) : onApply(v.id, v.config))}
+                className={cn(
+                  "flex min-w-0 flex-1 items-center gap-2 rounded-full px-2.5 py-1 text-left text-sm transition-colors duration-fast ease-out-quart hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                  on ? "font-medium text-foreground" : "text-muted-foreground"
+                )}
+              >
+                <Check className={cn("h-3.5 w-3.5 shrink-0", !on && "invisible")} aria-hidden />
+                <span className="truncate">{v.name}</span>
+              </button>
+              </PopoverPrimitive.Close>
+              {on && (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Delete saved view ${v.name}`}
+                  title="Delete this saved view"
+                  onClick={() => {
+                    deleteView.mutate(v.id);
+                    onApply(null, null);
+                  }}
+                  className="text-muted-foreground"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 w-full justify-start gap-2 px-2.5 text-xs text-muted-foreground"
+        onClick={() => {
+          setName("");
+          setNaming(true);
+        }}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Save current view…
+      </Button>
 
       <Dialog open={naming} onOpenChange={setNaming}>
         <DialogContent className="sm:max-w-sm">
