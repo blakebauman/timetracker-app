@@ -65,6 +65,19 @@ export function formatDueDate(dueDate: string, today = todayLocalDate()): string
   return `${d} ${MONTHS[m - 1]}${y === thisYear ? "" : ` ${y}`}`;
 }
 
+/**
+ * A due day as it reads inside a sentence — "due today", "due Fri 6 Nov".
+ * Relative words for the next two days; otherwise the weekday *and* the date:
+ * "fri" typed on a Friday is next week's, and a bare "6 Nov" left you to work
+ * out that it was the right one.
+ */
+export function formatDueSpoken(dueDate: string, today = todayLocalDate()): string {
+  const rel = formatDueDate(dueDate, today);
+  if (/^(Today|Tomorrow|Yesterday)$/.test(rel)) return rel.toLowerCase();
+  const heading = formatDueHeading(dueDate, today);
+  return heading.includes(" · ") ? heading.split(" · ")[1] : heading;
+}
+
 /** Heading for one day of the Upcoming list — "Today · Mon 3 Mar". */
 export function formatDueHeading(dueDate: string, today = todayLocalDate()): string {
   const [, m, d] = dueDate.split("-").map(Number);

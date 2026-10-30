@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Trash2,
   Check,
@@ -156,6 +156,13 @@ export function TaskRow({
   // Only the running task's row ticks; the rest read a constant 0.
   const elapsed = useTimerStore((s) => (s.runningEntry?.taskId === task.id ? s.elapsed : 0));
   const openTaskLogTime = useUIStore((s) => s.openTaskLogTime);
+  // Just captured: the row flashes and scrolls into view, so "Added …" in the
+  // toast has a place on the page to point at.
+  const justAdded = useUIStore((s) => s.highlightedTaskId === task.id);
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (justAdded) rowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [justAdded]);
 
   const [dueOpen, setDueOpen] = useState(false);
 
@@ -267,8 +274,10 @@ export function TaskRow({
   if (dense) {
     return (
       <div
+        ref={rowRef}
         className={cn(
           "group rounded-md px-2 py-1.5 transition-colors duration-fast ease-out-quart hover:bg-muted/40",
+          justAdded && "animate-stopped",
           dragging && "opacity-50"
         )}
         {...dragHandlers}
@@ -357,6 +366,7 @@ export function TaskRow({
   return (
     <div className="@container">
     <div
+      ref={rowRef}
       // The list's keyboard cursor (useTaskListKeys): focusable by script, not
       // by Tab — Tab still walks the controls inside, as it always did.
       {...{ [TASK_ROW_ATTR]: task.id }}
@@ -374,6 +384,7 @@ export function TaskRow({
         "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
         nested && "pl-9",
         running && "bg-primary/5",
+        justAdded && "animate-stopped",
         dragging && "opacity-50",
         dragHandlers?.draggable && "cursor-grab active:cursor-grabbing"
       )}

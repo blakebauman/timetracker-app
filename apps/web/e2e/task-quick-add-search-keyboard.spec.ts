@@ -179,3 +179,40 @@ test("? opens the shortcut reference, which lists the task keys", async ({ page 
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("Complete or reopen the task")).toBeVisible();
 });
+
+test("the capture line keeps its flow: pick a project, Enter adds, the project is remembered", async ({ page }) => {
+  await signUp(page);
+  const origin = new URL(page.url()).origin;
+  for (const name of ["Alpha Retainer", "Beta Audit"]) {
+    await page.request.post("/api/projects", { data: { name, color: "#2563eb" }, headers: { origin } });
+  }
+  await page.request.post("/api/tasks", {
+    data: { name: "Seed task", projectId: (await (await page.request.get("/api/projects")).json())[0].id },
+    headers: { origin },
+  });
+  await page.goto("/tasks");
+  const field = page.getByRole("textbox", { name: "Add a task", exact: true });
+
+  // A line of tokens only is refused with a reason, not silently.
+  await field.fill("tomorrow p1");
+  await field.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Add a name" })).toBeVisible();
+
+  // No warning until Enter is refused; then it says what's missing.
+  await field.fill("Write scope note");
+  await expect(page.getByText("Choose a project to add this task.")).toBeHidden();
+  await field.press("Enter");
+  await expect(page.getByText("Choose a project to add this task.")).toBeVisible();
+
+  // Picking a project hands focus back to the field, so Enter submits.
+  await page.getByRole("button", { name: "Add project" }).click();
+  await page.getByRole("option", { name: "Beta Audit" }).click();
+  await expect(field).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Added “Write scope note” to Beta Audit/)).toBeVisible();
+  await expect(field).toHaveValue("");
+
+  // The next visit starts on the project the last task went to.
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Project: Beta Audit" }).first()).toBeVisible();
+});
