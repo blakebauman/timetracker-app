@@ -87,7 +87,7 @@ catalog:
   # web / worker
   hono: 4.13.13
   "@hono/zod-validator": ^0.9.1
-  zod: ^4.4.3
+  zod: ^4.6.6
   better-auth: ^1.7.6
   "@better-auth/passkey": ^1.7.6
   # The /mcp server is on the v2 package. `agents` still imports the v1
