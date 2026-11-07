@@ -1,41 +1,34 @@
 ---
 name: migrate
-description: Create the next D1 database migration file following project conventions, then output apply commands for local and remote.
-allowed-tools: Glob Bash(ls apps/web/migrations/) Write
-argument-hint: "<description of schema change>"
+description: Create the next numbered Cloudflare D1 migration in apps/web/migrations following this repo's conventions (workspace scoping, snake_case, IF NOT EXISTS, a why-comment header), apply it locally, and spell out the remote sequence. Use when a change needs a new table, column or index. Never edits a migration that already shipped.
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/next.sh) Bash(cd apps/web && npx wrangler d1 migrations apply time-tracker --local) Write
+argument-hint: "<description of the schema change>"
 ---
 
-Create a new Cloudflare D1 migration. Arguments: `$ARGUMENTS`
+# New D1 migration
 
-## Existing migrations
-
-```!
-ls /Users/blake/Projects/timetracker-app/apps/web/migrations/ 2>/dev/null | sort
-```
-
-## Steps
-
-1. Find the next sequence number from the list above (e.g. if `0006_...` is last, use `0007`).
-2. Create `apps/web/migrations/<next_number>_<descriptive_snake_case_name>.sql` (wrangler resolves `migrations_dir` relative to `apps/web/wrangler.jsonc`).
-3. If no argument was given, ask the user what schema change they need before writing.
-
-## Conventions
+Change: `$ARGUMENTS` (if empty, ask what the schema change is before writing anything).
 
 ```!
-cat /Users/blake/Projects/timetracker-app/.claude/skills/migrate/scripts/conventions.sh | bash
+${CLAUDE_SKILL_DIR}/scripts/next.sh
 ```
 
-- **snake_case** column names for all app tables (Better Auth tables use camelCase — don't touch those)
-- Every app table must have `workspace_id TEXT NOT NULL REFERENCES workspaces(id)`
-- Primary keys: `id TEXT PRIMARY KEY` (app layer generates nanoid)
-- Timestamps: `created_at TEXT NOT NULL DEFAULT (datetime('now'))`, `updated_at TEXT NOT NULL DEFAULT (datetime('now'))`
+## Write `apps/web/migrations/<NEXT>_<snake_case_name>.sql`
 
-## After writing the file
+- **Header comment first:** what the table or column is *for* and any non-obvious decision, like the style reference above. This is where the data model gets documented.
+- `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`. Prefer additive changes. SQLite `ALTER TABLE … ADD COLUMN` can't add `NOT NULL` without a default.
+- `id TEXT PRIMARY KEY`. The worker generates it with `crypto.randomUUID()`.
+- Every app table has `workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE`. Per-user rows also have `user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE` (Better Auth's table is quoted `"user"`, with camelCase columns).
+- Columns are snake_case. Timestamps use `TEXT NOT NULL DEFAULT (datetime('now'))`. Local days are `TEXT` `YYYY-MM-DD` and times of day are `INTEGER` minutes after local midnight, never UTC instants for something the user means locally.
+- Add indexes for the query that will read the table, leading with `workspace_id`. Uniqueness that the app relies on for idempotency belongs in a `UNIQUE INDEX`.
+- **Never** seed or demo data (that goes in `apps/web/seeds/dev-seed.sql`, local only). **Never** edit a migration already on `main` (a hook blocks it). Write a new one.
 
-```bash
-# Apply locally (wrangler runs from apps/web)
-cd apps/web && npx wrangler d1 migrations apply DB --local
+## Then
 
-# Apply to production
-cd apps/web && npx wrangler d1 migrations apply DB --remote
-```
+1. Apply locally: `cd apps/web && npx wrangler d1 migrations apply time-tracker --local`.
+2. Update the code that reads it, and `packages/core/src/schemas.ts` if the API shape changes.
+3. Tell the user the remote sequence, which runs **after the PR merges and before the deploy** of code that reads the new columns:
+   ```bash
+   pnpm backup:d1
+   cd apps/web && npx wrangler d1 migrations apply time-tracker --remote
+   ```

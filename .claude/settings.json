@@ -1,21 +1,57 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./backups/**)",
+      "Read(./apps/web/.dev.vars)",
+      "Read(./apps/web/.dev.vars.*)",
+      "Read(./apps/extension/.keys/*.pem)"
+    ]
+  },
   "hooks": {
-    "PostToolUse": [
+    "SessionStart": [
       {
-        "matcher": "Write",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/migration-reminder.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
+            "timeout": 10
           }
         ]
       },
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/lint-ts.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-files.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit.sh",
+            "timeout": 60,
+            "statusMessage": "Linting and checking the edit"
           }
         ]
       }
