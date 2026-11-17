@@ -42,8 +42,8 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       {/* Day header — a plain heading row that acts as the collapse trigger.
-          No fill of its own: the entries below are the cards, and a tinted
-          band above a stack of cards read as a second, heavier card. */}
+          No fill of its own: the day's card is below it, and a tinted band
+          above the card read as a second, heavier card. */}
       <CollapsibleTrigger className="group/day flex w-full items-center justify-between rounded-md py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
         <div className="flex items-center gap-2">
           <ChevronDown
@@ -57,7 +57,9 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
         <DayTotal dateKey={dateKey} totalSeconds={totalSeconds} />
       </CollapsibleTrigger>
 
-      <CollapsibleContent className="space-y-2">
+      {/* One card per day with hairline rows, as the task list groups its
+          rows: a card per entry drew a border around every line of the day. */}
+      <CollapsibleContent className="overflow-hidden rounded-container border bg-card">
         {/* Keyed by `anchorId`, never `key` — see DescriptionGroup.anchorId.
             `key` is built from the description and project the row edits inline,
             so keying by it made every rename look like a delete-and-recreate. */}
@@ -66,6 +68,7 @@ export function EntryGroup({ dateKey, label, groups, totalSeconds, selectedIds, 
             <EntryRow
               key={group.anchorId}
               entry={group.entries[0]}
+              nested
               isSelected={selectedIds?.has(group.entries[0].id)}
               onToggleSelect={onToggleSelect}
             />

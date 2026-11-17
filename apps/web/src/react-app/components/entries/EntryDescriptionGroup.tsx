@@ -24,7 +24,6 @@ import { toCreatePayload } from "@/lib/entryUtils";
 import { useSavedFlash } from "@/hooks/useSavedFlash";
 import { SavedTick } from "./SavedTick";
 import { cn } from "@/lib/utils";
-import { ColorDot } from "@/components/ColorDot";
 import { ProjectBadge } from "@/components/ProjectBadge";
 import type { DescriptionGroup } from "@/hooks/useEntries";
 
@@ -98,11 +97,11 @@ export function EntryDescriptionGroup({
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      // The group is one card; its occurrences sit inside it below a hairline.
-      // overflow-hidden so a selected child's tint stops at the rounded corner.
+      // A section of its day's card, below a hairline like a single entry; its
+      // occurrences sit in a recessed well beneath its header row.
       className={cn(
-        "animate-fade-up overflow-hidden rounded-container border bg-card transition-[border-color,background-color] duration-fast ease-out-quart hover:border-border-strong",
-        someSelected && "border-primary/50 bg-primary/5"
+        "animate-fade-up border-t transition-[background-color] duration-fast ease-out-quart first:border-t-0",
+        someSelected && "bg-primary/5"
       )}
     >
       <div className="group flex items-center gap-3 px-4 py-2.5">
@@ -139,9 +138,6 @@ export function EntryDescriptionGroup({
             )}
           </button>
         )}
-
-        {/* Project color dot */}
-        <ColorDot color={group.projectColor} className="h-3 w-3" />
 
         {/* Description + project */}
         <CollapsibleTrigger className="min-w-0 flex-1 text-left">
@@ -248,7 +244,7 @@ export function EntryDescriptionGroup({
       </div>
 
       <CollapsibleContent>
-        <div className="border-t">
+        <div className="border-t bg-background/50">
           {group.entries.map((entry) => (
             <EntryRow
               key={entry.id}

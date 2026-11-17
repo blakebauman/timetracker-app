@@ -49,6 +49,13 @@ function dayHeading(day: string, today: string): string {
   return `${WEEKDAY[new Date(y, m - 1, d).getDay()]} ${d} ${MONTH[m - 1]}`;
 }
 
+/** An empty day in the "Nothing due" line: "Tomorrow", else "Wed 18". */
+function dayChip(day: string, today: string): string {
+  if (day === addLocalDays(today, 1)) return "Tomorrow";
+  const [y, m, d] = day.split("-").map(Number);
+  return `${WEEKDAY[new Date(y, m - 1, d).getDay()].slice(0, 3)} ${d}`;
+}
+
 /** How far ahead "Upcoming" looks. A week: past that, it's the Tasks page's job. */
 const UPCOMING_DAYS = 7;
 /** Overdue folds behind a count past this, so a backlog can't bury today. */
@@ -103,8 +110,8 @@ function usePlanSections(tasks: Task[], today: string): PlanSections {
     return {
       overdue,
       today: todays,
-      // Every day of the week, empty ones too: the week reads as a week, and
-      // an empty day is still somewhere to move a task to.
+      // Every day of the week, empty ones too: an empty day is still somewhere
+      // to move a task to (PlanBody draws the empty ones as one line of chips).
       upcoming: Array.from({ length: UPCOMING_DAYS }, (_, i) => {
         const day = addLocalDays(today, i + 1);
         return { day, tasks: byDay.get(day) ?? [] };
@@ -466,6 +473,9 @@ function PlanBody({ draggable }: { draggable: boolean }) {
   const overdueShown = showAllOverdue ? sections.overdue : sections.overdue.slice(0, OVERDUE_VISIBLE);
   const hidden = sections.overdue.length - overdueShown.length;
   const nothingToday = sections.overdue.length === 0 && sections.today.length === 0;
+  const freeDays = sections.upcoming
+    .filter(({ day, tasks: list }) => list.length === 0 && !daysOff.get(day))
+    .map(({ day }) => day);
   const row = (t: Task) => (
     <PlanRow
       key={t.id}
@@ -545,26 +555,53 @@ function PlanBody({ draggable }: { draggable: boolean }) {
               )}
             </section>
 
-            {sections.upcoming.map(({ day, tasks: list }) => (
-              <section
-                key={day}
-                aria-label={dayHeading(day, today)}
-                {...dropOn(day)}
-                className={dropWash(day)}
-              >
-                <SectionHeading empty={list.length === 0} off={daysOff.get(day)}>
-                  {dayHeading(day, today)}
-                </SectionHeading>
-                {list.map(row)}
-              </section>
-            ))}
+            {sections.upcoming
+              .filter(({ day, tasks: list }) => list.length > 0 || daysOff.get(day))
+              .map(({ day, tasks: list }) => (
+                <section
+                  key={day}
+                  aria-label={dayHeading(day, today)}
+                  {...dropOn(day)}
+                  className={dropWash(day)}
+                >
+                  <SectionHeading empty={list.length === 0} off={daysOff.get(day)}>
+                    {dayHeading(day, today)}
+                  </SectionHeading>
+                  {list.map(row)}
+                </section>
+              ))}
+
+            {/* The empty days share one line instead of a heading each: five
+                "Nothing due" headings were half the column. Each chip is still
+                a drop target, and the line stands at rest — revealing empty
+                days on dragstart reflowed the list under the pointer. */}
+            {freeDays.length > 0 && (
+              <div className="flex flex-wrap items-baseline gap-1 px-2 pt-3 pb-1 text-xs text-muted-foreground">
+                <span className="mr-1 font-medium">Nothing due</span>
+                {freeDays.map((day) => (
+                  <span
+                    key={day}
+                    {...dropOn(day)}
+                    data-free-day={day}
+                    aria-label={dayHeading(day, today)}
+                    className={cn(
+                      dropWash(day),
+                      "rounded-full px-1.5 py-0.5",
+                      daysDrop && dragId && "outline-1 outline-dashed outline-border-strong"
+                    )}
+                  >
+                    {dayChip(day, today)}
+                  </span>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
 
       <div className="border-t p-2">
         <QuickAddTask
-          stacked
+          narrow
           defaultDueDate={today}
           placeholder="Add a task for today"
         />
@@ -637,7 +674,7 @@ export function PlanColumn({ draggable }: { draggable: boolean }) {
 
 /**
  * The same plan where the column can't stand: below lg, and beside the dense
- * grids (Split, Timesheet, Planner) that a third column would crush. A header
+ * grid (Timesheet, in either mode) that a third column would crush. A header
  * button opens it as a left sheet; there is no grid to drag onto from a sheet.
  */
 export function PlanSheetButton() {

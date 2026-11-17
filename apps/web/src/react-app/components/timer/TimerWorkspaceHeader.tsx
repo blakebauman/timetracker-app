@@ -1,15 +1,6 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Sparkles,
-  ArrowRight,
-  ChevronDown,
-} from "lucide-react";
-import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Plus, Sparkles, ChevronDown, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaneActions, PaneHeader, PaneTitle } from "@/components/layout/Pane";
-import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -22,7 +13,8 @@ import { DraftDayButton } from "@/components/drafts/DraftDayButton";
 import { CalendarViewOptions } from "./CalendarViewOptions";
 import { VIEW_LABELS } from "./calendarViewLabels";
 import { ListRangePicker } from "./ListRangePicker";
-import type { TimerView } from "@/stores/uiStore";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import type { TimerView, TimesheetMode } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
 import {
   formatPeriodLabel,
@@ -32,23 +24,16 @@ import {
   type ListRangeKey,
 } from "@/lib/dateUtils";
 
-export interface LoggedSegment {
-  projectId: string | null;
-  projectName: string | null;
-  color: string;
-  seconds: number;
-}
-
 interface TimerWorkspaceHeaderProps {
   since: Date;
   until: Date;
   /** Seconds logged in the period, or null when the range could not be loaded. */
   totalSeconds: number | null;
-  segments: LoggedSegment[];
   view: TimerView;
   onViewChange: (view: TimerView) => void;
-  /** Split needs two columns; below lg the tab is withdrawn entirely. */
-  allowSplit: boolean;
+  /** Timesheet only: whether its cells hold tracked time or the plan. */
+  timesheetMode: TimesheetMode;
+  onTimesheetModeChange: (mode: TimesheetMode) => void;
   onPrev: () => void;
   onNext: () => void;
   /** What one press of prev/next moves by, for the label and the a11y name. */
@@ -61,9 +46,11 @@ interface TimerWorkspaceHeaderProps {
   /** Draft the visible day's missing entries, then open review. */
   onDraftDay: () => void;
   draftPending: boolean;
-  /** Drafts already waiting on the visible period — turns the button into "Review N". */
+  /** Drafts already waiting on the visible period — shows "Review N" in the header. */
   draftCount: number;
-  // Calendar sub-controls — only rendered for calendar/split views.
+  /** The day drafting acts on, as the menu names it ("today", "Mon 16 Nov"). */
+  draftDayLabel: string;
+  // Calendar sub-controls — only rendered for the calendar view.
   calendarView: CalendarViewType;
   /** What the user picked; the pane may be rendering something narrower. */
   requestedCalendarView: CalendarViewType;
@@ -84,17 +71,17 @@ interface TimerWorkspaceHeaderProps {
   planControl?: React.ReactNode;
 }
 
-// Shared header for the unified Timer tab: period navigation, the "logged this
-// period" bar, the 4-view switcher, and (for calendar/split) the day-count +
-// zoom controls.
+// Shared header for the unified Timer tab: the period and its total, period
+// navigation, the 3-view switcher, and the per-view controls (calendar options,
+// the timesheet's Logged/Plan mode).
 export function TimerWorkspaceHeader({
   since,
   until,
   totalSeconds,
-  segments,
   view,
   onViewChange,
-  allowSplit,
+  timesheetMode,
+  onTimesheetModeChange,
   onPrev,
   onNext,
   periodNoun,
@@ -105,6 +92,7 @@ export function TimerWorkspaceHeader({
   onDraftDay,
   draftPending,
   draftCount,
+  draftDayLabel,
   calendarView,
   requestedCalendarView,
   onCalendarViewChange,
@@ -121,7 +109,7 @@ export function TimerWorkspaceHeader({
   onListRangeChange,
   planControl,
 }: TimerWorkspaceHeaderProps) {
-  const showCalendarControls = view === "calendar" || view === "split";
+  const showCalendarControls = view === "calendar";
   // A single-day grid has no week number to stamp on its label.
   const isDayView = calendarView === "timeGridDay";
   // The list view scopes by an explicit range instead of stepping week-by-week,
@@ -134,8 +122,8 @@ export function TimerWorkspaceHeader({
   const periodSummary = summarizePeriod(since, until, wso);
   const now = new Date();
   const periodIncludesToday = now >= since && now <= until;
-  // The pane can be too narrow for the view the user asked for (Split halves it
-  // at 1280, phones force a single day). CalendarViewOptions explains this, but
+  // The pane can be too narrow for the view the user asked for (the plan column
+  // narrows it, phones force a single day). CalendarViewOptions explains this, but
   // only once you open it — so the header total silently changes from a week to
   // a day with nothing on screen saying why. Say it where the number changed.
   const densityReduced = showCalendarControls && calendarView !== requestedCalendarView;
@@ -143,15 +131,30 @@ export function TimerWorkspaceHeader({
   return (
     // The Timer's header floats over its body like every other pane's: the
     // period is the page's name (24px bold), the stepper and Today sit beside
-    // it, and the view controls right-align. The "Logged" strip is the second
-    // row of the same header, so the entry list fades out beneath it too.
-    <PaneHeader className="pb-3">
+    // it with the period's total, and the view controls right-align.
+    <PaneHeader>
       <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2">
         <PaneTitle className="tabular-nums">
           {isListView
             ? formatListRangeLabel(listRangeKey, since, until, wso)
             : formatPeriodLabel(since, until, { weekStamp: !isDayView })}
         </PaneTitle>
+        {/* The period's total sits beside the period's name. It used to be a
+            second header row with a project-coloured proportion bar, which
+            repeated the dock's day ribbon, the list's day totals and the
+            timesheet's Total column; the breakdown lives in Reports. A failed
+            range fetch reads as a dash, never as 0m. */}
+        <span
+          className="font-mono text-sm font-semibold tabular-nums"
+          aria-label={
+            totalSeconds === null
+              ? `Couldn't load what was logged ${periodSummary}`
+              : `Logged ${periodSummary}: ${formatDurationShort(totalSeconds)}`
+          }
+          title={`Logged ${periodSummary}`}
+        >
+          {totalSeconds === null ? "—" : formatDurationShort(totalSeconds)}
+        </span>
         <div className="flex items-center gap-1.5">
           {isListView ? (
             <ListRangePicker
@@ -251,20 +254,31 @@ export function TimerWorkspaceHeader({
             />
           )}
 
-          <DraftDayButton
-            onClick={onDraftDay}
-            pending={draftPending}
-            pendingCount={draftCount}
-          />
+          {/* Drafting starts from the Add menu; the header only speaks up
+              while drafting runs or proposals are waiting to be reviewed. */}
+          {(draftPending || draftCount > 0) && (
+            <DraftDayButton
+              onClick={onDraftDay}
+              pending={draftPending}
+              pendingCount={draftCount}
+            />
+          )}
+          {view === "timesheet" && (
+            <SegmentedControl
+              label="Timesheet shows"
+              value={timesheetMode}
+              onChange={onTimesheetModeChange}
+              options={[
+                { value: "logged", label: "Logged" },
+                { value: "planned", label: "Plan" },
+              ]}
+            />
+          )}
+          <TimerViewSwitcher view={view} onChange={onViewChange} />
 
-          <TimerViewSwitcher view={view} onChange={onViewChange} allowSplit={allowSplit} />
-
-          {/* Split control: Add entry stays a single click (it's the primary
-              action here); AI quick-add moves behind the caret rather than
-              sitting at equal weight beside it. */}
           {/* Split control, as one pill: Add entry is the primary action here
-              and stays a single click; AI quick-add sits behind the caret. The
-              pill is the header's one red element. */}
+              and stays a single click; drafting the day and AI quick-add sit
+              behind the caret. The pill is the header's one red element. */}
           <div className="flex items-center overflow-hidden rounded-full bg-primary text-primary-foreground">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -293,6 +307,10 @@ export function TimerWorkspaceHeader({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={onDraftDay} disabled={draftPending}>
+                  <Wand2 className="mr-2 h-3.5 w-3.5" />
+                  Draft {draftDayLabel}
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onAiQuickAdd}>
                   <Sparkles className="mr-2 h-3.5 w-3.5" />
                   Quick add…
@@ -303,83 +321,6 @@ export function TimerWorkspaceHeader({
         </PaneActions>
       </div>
 
-      {/* Logged-this-period strip: the second row of the floating header. */}
-      <div className="flex w-full items-center gap-3">
-        {/* Name the period the number covers. "Logged" alone meant a different
-            span in each view, so the total appeared to contradict itself when
-            you switched tabs. */}
-        <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
-          Logged <span className="text-foreground">{periodSummary}</span>
-        </span>
-        {/* At 0m the bar was a full-width empty grey track — a chart of nothing.
-            Collapse to a hairline rule so the row keeps its rhythm without
-            implying there's a value to read. */}
-        {/* A proportion bar, not a progress bar: the segments are projects and
-            they always sum to the full width, so there is no unfilled remainder
-            to misread as "not done yet".
-            
-            It was, however, mute. The breakdown lived entirely in per-segment
-            hover tooltips inside non-focusable divs, so a screen-reader user
-            got a decorative strip and nothing else. One label carries the same
-            sentence the tooltips do. */}
-        <div
-          role="img"
-          aria-label={
-            totalSeconds === null
-              ? `Couldn't load what was logged ${periodSummary}`
-              : totalSeconds > 0
-              ? `Logged ${periodSummary}: ${formatDurationShort(totalSeconds)}. ` +
-                segments
-                  .map(
-                    (seg) =>
-                      `${seg.projectName ?? "No project"} ${formatDurationShort(seg.seconds)}, ` +
-                      `${Math.round((seg.seconds / totalSeconds) * 100)}%`
-                  )
-                  .join("; ")
-              : `Nothing logged ${periodSummary}`
-          }
-          className={cn(
-            "flex flex-1 overflow-hidden rounded-full bg-muted transition-all duration-fast ease-out-quart",
-            totalSeconds !== null && totalSeconds > 0 ? "h-2" : "h-px"
-          )}
-        >
-          {totalSeconds !== null &&
-            totalSeconds > 0 &&
-            segments.map((seg) => (
-              <Tooltip key={seg.projectId ?? "none"}>
-                <TooltipTrigger asChild>
-                  <div
-                    aria-hidden
-                    className="h-full first:rounded-l-full last:rounded-r-full"
-                    style={{
-                      width: `${(seg.seconds / totalSeconds) * 100}%`,
-                      backgroundColor: seg.color,
-                    }}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  {seg.projectName ?? "No project"}
-                  <span className="ml-1.5 text-background/60">
-                    {formatDurationShort(seg.seconds)} ·{" "}
-                    {Math.round((seg.seconds / totalSeconds) * 100)}%
-                  </span>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-        </div>
-        {/* A failed range fetch used to read "0m" here while the body showed
-            the error — two panes, one lying. Unknown is a dash. */}
-        <span className="font-mono text-xs font-semibold tabular-nums">
-          {totalSeconds === null ? "—" : formatDurationShort(totalSeconds)}
-        </span>
-        <Link
-          to="/reports"
-          className="relative flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors duration-fast ease-out-quart before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] hover:text-foreground"
-        >
-          View reports
-          <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
     </PaneHeader>
   );
 }

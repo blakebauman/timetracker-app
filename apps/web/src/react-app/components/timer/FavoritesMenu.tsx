@@ -1,4 +1,5 @@
-import { Star, Plus, X, Play } from "lucide-react";
+import { useMemo } from "react";
+import { Star, Plus, X, Play, ListStart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,7 +14,12 @@ import { ColorDot } from "@/components/ColorDot";
 import { useFavorites, useCreateFavorite, useDeleteFavorite } from "@/hooks/useFavorites";
 import { useTimer } from "@/hooks/useTimer";
 import { cn } from "@/lib/utils";
-import type { Favorite } from "@timetracker/core/schemas";
+import type { Favorite, Task } from "@timetracker/core/schemas";
+import { useAllTasks } from "@/hooks/useTasks";
+import { useDayRollover } from "@/hooks/useDayRollover";
+import { useUIStore } from "@/stores/uiStore";
+import { formatMinute } from "@/lib/taskUtils";
+import { pickNextTask } from "@/lib/planState";
 
 interface FavoritesMenuProps {
   // The current draft in the timer bar, offered as "save current as favorite".
@@ -24,12 +30,26 @@ interface FavoritesMenuProps {
     tags?: string[];
     billable?: boolean;
   };
+  /** Starts the plan's next task (offered as "Next up" above the presets). */
+  onStartTask?: (task: Task) => void;
 }
 
-// Star dropdown in the timer bar: one-click start from a saved preset, plus
-// "save current as favorite". Mirrors Toggl's Favorites.
-export function FavoritesMenu({ current }: FavoritesMenuProps) {
+// Star dropdown in the timer bar: the ways to start something you meant to
+// do — the plan's next task, then saved presets — plus "save current as
+// favorite". "Next up" used to be its own icon beside this one; two icons that
+// both answer "start something planned" read as one too many, and its glyph
+// couldn't be read without its tooltip. Continue stays separate: it is the
+// one-click "what was I doing".
+export function FavoritesMenu({ current, onStartTask }: FavoritesMenuProps) {
   const { data: favorites = [] } = useFavorites();
+  const { data: tasks } = useAllTasks();
+  const today = useDayRollover();
+  const timeFormat = useUIStore((s) => s.timeFormat);
+  // Absent when the plan has nothing for today: an empty slot beats a guess.
+  const next = useMemo(
+    () => (onStartTask && tasks ? pickNextTask(tasks, today) : null),
+    [onStartTask, tasks, today]
+  );
   const createFavorite = useCreateFavorite();
   const deleteFavorite = useDeleteFavorite();
   const { startTimer } = useTimer();
@@ -80,9 +100,11 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
               // the accessible name rather than carried by hue.
               className="text-muted-foreground hover:text-foreground"
               aria-label={
-                favorites.length > 0
-                  ? `Favorites — ${favorites.length} saved`
-                  : "Favorites"
+                [
+                  "Favorites",
+                  favorites.length > 0 ? ` — ${favorites.length} saved` : "",
+                  next ? `, next up: ${next.name}` : "",
+                ].join("")
               }
             >
               <Star className={cn("h-4 w-4", favorites.length > 0 && "fill-current")} />
@@ -92,6 +114,26 @@ export function FavoritesMenu({ current }: FavoritesMenuProps) {
         <TooltipContent>Favorites</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-72">
+        {next && onStartTask && (
+          <>
+            <DropdownMenuLabel>Next up</DropdownMenuLabel>
+            <DropdownMenuItem
+              className="flex items-center gap-2"
+              onSelect={() => onStartTask(next)}
+              aria-label={`Start next task "${next.name}"${next.projectName ? ` on ${next.projectName}` : ""}`}
+            >
+              <ListStart className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {next.projectColor && <ColorDot color={next.projectColor} />}
+              <span className="min-w-0 flex-1 truncate">{next.name}</span>
+              {next.scheduledMinute !== null && next.dueDate === today && (
+                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                  {formatMinute(next.scheduledMinute, timeFormat)}
+                </span>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuLabel>Favorites</DropdownMenuLabel>
         <DropdownMenuSeparator />
 

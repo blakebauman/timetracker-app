@@ -32,7 +32,6 @@ import { useTimerStore } from "@/stores/timerStore";
 import { useSavedFlash } from "@/hooks/useSavedFlash";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SavedTick } from "./SavedTick";
-import { ColorDot } from "@/components/ColorDot";
 import { ProjectBadge } from "@/components/ProjectBadge";
 import type { TimeEntry } from "@timetracker/core/schemas";
 
@@ -221,9 +220,10 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = f
       <div
         className={cn(
           "group flex items-center gap-3 px-4 py-2.5 transition-[color,background-color,border-color] duration-fast ease-out-quart",
-          // A card on the rack, or a hairline row inside a group's card. The
-          // hover is the edge waking up, not a fill — the fill is reserved for
-          // selection and the just-stopped flash.
+          // A hairline row inside its day's card (or a repeated description's),
+          // or — outside a day — a card of its own. The hover is a faint wash;
+          // the stronger fill is reserved for selection and the just-stopped
+          // flash.
           nested
             ? "border-t first:border-t-0 hover:bg-muted/40"
             : "rounded-container border bg-card hover:border-border-strong",
@@ -260,9 +260,8 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = f
           </button>
         )}
 
-        {/* Project color dot */}
-        <ColorDot color={entry.projectColor} className="h-3 w-3" />
-
+        {/* No colour dot: the project badge under the description carries the
+            project's colour and its name, so a dot beside it said it twice. */}
         {/* Description */}
         <div className="relative min-w-0 flex-1">
           <SavedTick saved={savedDesc.saved} className="-right-3" />

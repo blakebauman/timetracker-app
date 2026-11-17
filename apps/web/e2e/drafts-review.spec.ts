@@ -56,7 +56,8 @@ test("drafts: an uncovered gap becomes a proposal, reviewed and confirmed", asyn
   expect(body.drafts.length).toBeGreaterThan(0);
   expect(body.drafts.some((d) => d.source === "gap")).toBeTruthy();
 
-  // The header button flips from "Draft day" to "Review N" once proposals exist.
+  // Drafting starts from the Add menu; the header shows "Review N" only once
+  // proposals exist.
   await page.reload();
   const reviewButton = page.getByRole("button", { name: /Review \d+/ });
   await expect(reviewButton).toBeVisible();

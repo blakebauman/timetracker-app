@@ -53,19 +53,15 @@ Entries support **description, project, task, tags, billable flag**, and inline 
 
 ## The Timer workspace (views)
 
-The Timer tab hosts five interchangeable views behind one shared header (date navigation, weekends toggle, zoom):
+The Timer tab hosts three interchangeable views behind one shared header. The header names the period with its logged total beside it (`Nov 16 – 22 · W47  8h 30m`), steps between periods, and holds the view switcher and **Add** (its ▾ menu also offers **Draft today** and **Quick add…**).
 
-- **List** — entries grouped by day, with day totals.
+- **List** — entries grouped by day, one card per day with the day's total.
 - **Calendar** — a Toggl-style FullCalendar grid (week / 5-day / day / month). Real entries render as colored blocks; unconfirmed Google Calendar events show as dashed "ghosts"; **untracked gaps** between entries show as clickable "Track hh:mm–hh:mm" blocks (toggle with the gaps switch).
-- **Split** — calendar + list side by side (large screens).
-- **Timesheet** — the weekly hours grid.
-- **Planner** — plan your week ahead of time (see below).
+- **Timesheet** — the weekly hours grid. Its **Logged / Plan** switch in the header flips the same grid between tracked time and your week's plan (see below).
 
-A **"Logged" bar** in the header shows the day's total with per-project colored segments.
+## Planning your week
 
-## Project Planner
-
-The **Planner** view (Timer tab, last icon in the view switcher) is a weekly grid like the Timesheet, but its cells hold **planned hours** instead of tracked time — your personal allocation per project (and optional task) per day. Plans are **per user**: teammates in the same workspace each keep their own.
+Switch the **Timesheet** to **Plan** and the grid's cells hold **planned hours** instead of tracked time — your personal allocation per project (and optional task) per day. Plans are **per user**: teammates in the same workspace each keep their own.
 
 - **Enter a plan** by clicking a cell and typing a duration (`4h`, `1:30`, `90m` — a bare number means minutes). Clearing a cell removes the plan.
 - **Plan vs. actual**: each cell shows your planned hours with the time you actually tracked beneath. Tracked time turns **amber when it exceeds the plan**. Rows appear for anything planned *or* tracked that week, so unplanned work is visible too. Totals per day, per row, and for the week show both numbers.
@@ -77,7 +73,7 @@ The **Planner** view (Timer tab, last icon in the view switcher) is a weekly gri
 
 Instead of reconstructing a day from memory, let the app propose it and confirm what's right.
 
-Hit **Draft day** in the Timer header. The app looks at what it already knows about that day and proposes the entries that are missing:
+Open the **▾** beside **Add** in the Timer header and choose **Draft today** (or the first day of the period you're viewing, when today isn't in it). The app looks at what it already knows about that day and proposes the entries that are missing:
 
 - **Calendar events that ended without being tracked** — the meeting happened, it isn't on your timesheet.
 - **Uncovered stretches** between the things you did track, inside your own working window (not the hours before you started).
@@ -87,7 +83,7 @@ Hit **Draft day** in the Timer header. The app looks at what it already knows ab
 
 Proposals appear on the calendar as dashed, project-tinted blocks. **They are not tracked time.** Nothing reaches a report, an invoice, or a project total until you confirm it.
 
-Click **Review** (or any dashed block) to step through them one card at a time. On each card you can:
+While proposals are waiting, a **Review N** button appears in the Timer header. Click it (or any dashed block) to step through them one card at a time. On each card you can:
 
 - **Keep** it as it is
 - **Reassign** it to a different project, or toggle billable
@@ -241,13 +237,13 @@ The **?** at the end of the field lists these tokens. A task needs a project: th
 
 **Scheduling a time.** Give a task a time of day, with a time token when you capture it, the **Time** field in the task dialog, or by dropping it on a future calendar slot, and it appears on the Timer's calendar as a *planned* block. The block is dotted and nearly hollow, in the project's colour, and as long as the task's estimate (half an hour without one). It's the plan, so it never counts toward any total, and it sits beside whatever you actually tracked in that slot. Drag the block to move the task, stretch it to change the estimate, click it to open the task, or click its ▷ to start the timer. When a block's time arrives you get a toast with **Start timer** (and a browser notification if the tab is in the background). That's controlled by **Nudges and reminders** under Settings → Productivity. A repeating task keeps its time on every occurrence, and clearing a task's due date clears its time too.
 
-**The plan beside the day.** On wider screens the Timer's list and calendar views have a **Plan** column on the left: what's overdue, today's tasks (scheduled ones first, in time order), and the week ahead, each with its project and how much of its estimate you've used, plus how much estimate is left today. Start a task from its ▷, tick it off, add one at the foot, or in the calendar view drag it onto the grid. Fold the column to a slim strip with the control in its header; it remembers. In Split, Timesheet and Planner, and on narrow screens, the **Plan** button in the header opens the same list as a sheet. Its dot means something in the plan needs attention. The calendar opens at 08:00 in the morning and an hour before now once the day is under way, so the rest of today's plan is on screen when you switch to it.
+**The plan beside the day.** On wider screens the Timer's list and calendar views have a **Plan** column on the left: what's overdue, today's tasks (scheduled ones first, in time order), and the week ahead, each with its project and how much of its estimate you've used, plus how much estimate is left today. Days with nothing due share one **Nothing due** line of day chips rather than a heading each. Start a task from its ▷, tick it off, add one at the foot (the project picker sits inside the line), drag it onto another day or day chip, or in the calendar view drag it onto the grid. While the column is open, an overdue task doesn't also raise a toast: the column already says so. Fold the column to a slim strip with the control in its header; it remembers. In the Timesheet, and on narrow screens, the **Plan** button in the header opens the same list as a sheet. Its dot means something in the plan needs attention. The calendar opens at 08:00 in the morning and an hour before now once the day is under way, so the rest of today's plan is on screen when you switch to it.
 
 **When the day passes the plan.** A scheduled block whose time has ended with nothing tracked against the task says **Not started**, in the column and on the block itself. A task that has run past its estimate says **Over estimate by …**. Both stay until you act: start or log the task, move the block, or dismiss the note with its ✕. Moving the block or changing the estimate gives the new plan a fresh chance to be flagged.
 
 **Plan my day.** The button at the top of the plan fits today's unscheduled tasks (due today or overdue) into the rest of your working day, around meetings and anything already scheduled. It's the same plan the Assistant makes, without the chat. It shows the times and anything that doesn't fit, and nothing changes until you press **Schedule**. The toast has an **Undo**. Your working day is 09:00–17:30 until you change it under **Settings → Preferences → Working hours**; the proposal names the hours it used, with a link there.
 
-**Next up.** While no timer is running, the list icon beside **Continue** in the timer bar starts the next task on your plan: the scheduled block that's on now or starts soonest, or otherwise the first of today's tasks. Hover it to see which task. A task is never required; you can always just type what you're working on.
+**Next up.** While no timer is running, the ☆ **Favorites** menu in the timer bar opens with **Next up**: the next task on your plan — the scheduled block that's on now or starts soonest, or otherwise the first of today's tasks. Pick it to start it. A task is never required; you can always just type what you're working on.
 
 ## Favorites & recurring entries
 
