@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { CalendarDays, CalendarRange, Columns2, List, Table2 } from "lucide-react";
+import { CalendarDays, List, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TimerView } from "@/stores/uiStore";
 import { TIMER_PANEL_ID, timerTabId } from "./timerTabs";
@@ -12,28 +12,20 @@ import {
 
 const VIEWS: { value: TimerView; label: string; icon: typeof List }[] = [
   { value: "calendar", label: "Calendar", icon: CalendarDays },
-  { value: "split", label: "Split", icon: Columns2 },
   { value: "list", label: "List", icon: List },
   { value: "timesheet", label: "Timesheet", icon: Table2 },
-  { value: "planner", label: "Planner", icon: CalendarRange },
 ];
 
 interface TimerViewSwitcherProps {
   view: TimerView;
   onChange: (view: TimerView) => void;
-  /** Split needs two columns. Below lg it's withdrawn rather than shown broken. */
-  allowSplit?: boolean;
 }
 
 // Icon-only segment track that swaps between the views the Timer tab hosts.
 // Full tab pattern: a single tab stop with roving tabindex plus arrow/Home/End.
-export function TimerViewSwitcher({
-  view,
-  onChange,
-  allowSplit = true,
-}: TimerViewSwitcherProps) {
+export function TimerViewSwitcher({ view, onChange }: TimerViewSwitcherProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const views = allowSplit ? VIEWS : VIEWS.filter((v) => v.value !== "split");
+  const views = VIEWS;
 
   const focusTab = (index: number) => {
     const next = views[(index + views.length) % views.length];

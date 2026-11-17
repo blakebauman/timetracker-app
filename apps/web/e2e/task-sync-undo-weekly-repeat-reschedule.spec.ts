@@ -130,14 +130,14 @@ test("dragging a task onto another day in the plan column re-dates it", async ({
   const plan = page.getByRole("complementary", { name: "Today's plan" });
   await expect(plan.getByText("Cutover plan")).toBeVisible();
 
-  // Today, then each day ahead; an empty day is still a heading, so there is
-  // somewhere to drop onto. No overdue section, so the third day out is nth(3).
-  const target = plan.locator("section").nth(3);
+  // Days with tasks are sections; the empty ones share one "Nothing due" line
+  // of day chips, each still a drop target. Drop on the third day out.
+  const target = plan.locator(`[data-free-day="${localDate(3)}"]`);
   const label = await target.getAttribute("aria-label");
   await plan
     .getByRole("button", { name: "Start timer for Cutover plan" })
     .locator("xpath=ancestor::*[@draggable='true'][1]")
-    .dragTo(target.getByRole("heading"), { timeout: 8000 });
+    .dragTo(target, { timeout: 8000 });
 
   await expect
     .poll(async () => (await list()).find((t) => t.name === "Cutover plan")?.dueDate)

@@ -17,7 +17,6 @@ import { EntryList } from "@/components/entries/EntryList";
 import { TimerWorkspaceHeader } from "@/components/timer/TimerWorkspaceHeader";
 import { TIMER_PANEL_ID, timerTabId } from "@/components/timer/timerTabs";
 import { AddEntryDialog } from "@/components/entries/AddEntryDialog";
-import { DEFAULT_PROJECT_COLOR } from "@/components/ColorDot";
 import { useEntriesRange } from "@/hooks/useEntries";
 import { useDraftRange, useGenerateDrafts } from "@/hooks/useDrafts";
 import { resolveListRange } from "@/lib/dateUtils";
@@ -31,7 +30,6 @@ import { useElementWidth } from "@/hooks/useElementWidth";
 import { resolveCalendarDensity } from "@/lib/calendarDensity";
 import type { TimerView } from "@/stores/uiStore";
 import type { CalendarViewType } from "@/components/calendar/CalendarView";
-import type { LoggedSegment } from "@/components/timer/TimerWorkspaceHeader";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -89,11 +87,13 @@ function BodyFallback() {
 }
 
 // The unified Timer tab: owns the navigable week + active view, renders the
-// shared header, and swaps the body between list / calendar / split / timesheet
-// / planner.
+// shared header, and swaps the body between list / calendar / timesheet (whose
+// cells hold either tracked time or the week's plan).
 export function TimerWorkspace() {
   const view = useUIStore((s) => s.timerView);
   const setView = useUIStore((s) => s.setTimerView);
+  const timesheetMode = useUIStore((s) => s.timesheetMode);
+  const setTimesheetMode = useUIStore((s) => s.setTimesheetMode);
   const calendarView = useUIStore((s) => s.calendarView) as CalendarViewType;
   const setCalendarView = useUIStore((s) => s.setCalendarView);
   const slotHeight = useUIStore((s) => s.calendarSlotHeight);
@@ -110,22 +110,19 @@ export function TimerWorkspace() {
   const setListRange = useUIStore((s) => s.setListRange);
   const wso = weekStart as 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-  // Split cannot work in one column: below lg it collapsed to a bare row of
-  // day-number headers with no grid body, orphaned above the list.
   const belowLg = useMediaQuery(BELOW_LG);
   const belowMd = useMediaQuery(BELOW_MD);
 
-  const effectiveView: TimerView = view === "split" && belowLg ? "list" : view;
-  const isCalendarish = effectiveView === "calendar" || effectiveView === "split";
-  // The plan stands beside the list and the calendar from lg up. Split already
-  // halves the pane, and the timesheet and planner are dense grids a third
-  // column would crush; there, and below lg, the plan opens as a sheet from
-  // the header instead, so it is one click away in every view.
+  const effectiveView: TimerView = view;
+  const isCalendarish = effectiveView === "calendar";
+  // The plan stands beside the list and the calendar from lg up. The timesheet
+  // is a dense grid a third column would crush; there, and below lg, the plan
+  // opens as a sheet from the header instead, so it is one click away in every
+  // view.
   const planStands = !belowLg && (effectiveView === "list" || effectiveView === "calendar");
 
-  // Grid density comes from the calendar pane's own width, not the viewport.
-  // Split halves the pane while leaving the viewport untouched, so a
-  // viewport-based rule left Split at 1280 rendering 50px columns. See
+  // Grid density comes from the calendar pane's own width, not the viewport:
+  // the plan column narrows the pane while leaving the viewport untouched. See
   // resolveCalendarDensity. Until the first measurement lands, fall back to a
   // viewport guess so the first paint isn't chosen from a width of nothing.
   const { ref: calendarPaneRef, width: paneWidth } = useElementWidth<HTMLDivElement>();
@@ -153,8 +150,7 @@ export function TimerWorkspace() {
   const anchor = anchorOverride ?? today;
 
   // The list view scopes by the user's chosen range (persisted); every other
-  // view — including the list pane *inside* split, which must stay aligned with
-  // the calendar beside it — scopes by the navigable week/month.
+  // view scopes by the navigable week/month.
   const isListView = effectiveView === "list";
   const { since, until } = useMemo(() => {
     if (isListView) {
@@ -241,11 +237,11 @@ export function TimerWorkspace() {
    * dates and the header total (38h 30m → 6h 30m) with nothing to mark it — the
    * single most corrosive defect for someone about to put that number on an
    * invoice. Now the period follows the user in both directions, so in the common
-   * case the two views agree.
+   * case the views agree.
    *
    * A grid period is usually narrower than the list range, so leaving the list
    * has to choose *which* part of it to land on. Prefer the one containing today
-   * — a list showing this week opens Split on today, not on Monday, and "All
+   * — a list showing this week opens the calendar on today, not on Monday, and "All
    * dates" opens on this week rather than on the epoch. Only when the range is
    * entirely in the past (or future) does the grid fall back to its first day.
    *
@@ -281,38 +277,19 @@ export function TimerWorkspace() {
     setView(next);
   };
 
-  // Week entries drive the "Logged" bar. Shares the ["time-entries", since, until]
-  // query key with the body views, so this is deduped, not a second fetch.
+  // Period entries drive the header's total. Shares the ["time-entries",
+  // since, until] query key with the body views, so this is deduped, not a
+  // second fetch.
   const { data: entries = [], isError: entriesError } = useEntriesRange(
     since.toISOString(),
     until.toISOString()
   );
-  const { periodSeconds, segments } = useMemo(() => {
-    const byProject = new Map<string | null, LoggedSegment>();
-    let total = 0;
-    for (const e of entries) {
-      const secs = e.duration ?? 0;
-      if (secs <= 0) continue;
-      total += secs;
-      const seg = byProject.get(e.projectId);
-      if (seg) seg.seconds += secs;
-      else
-        byProject.set(e.projectId, {
-          projectId: e.projectId,
-          projectName: e.projectName,
-          color: e.projectColor ?? DEFAULT_PROJECT_COLOR,
-          seconds: secs,
-        });
-    }
-    return {
-      periodSeconds: total,
-      segments: [...byProject.values()].sort((a, b) => b.seconds - a.seconds),
-    };
-  }, [entries]);
+  const periodSeconds = useMemo(
+    () => entries.reduce((sum, e) => sum + Math.max(0, e.duration ?? 0), 0),
+    [entries]
+  );
 
-  // In split the entry list sits beside the grid and explains an empty period
-  // itself, so the grid's own overlay would just say it twice.
-  const calendarFor = (view: TimerView) => (
+  const calendar = (
     <CalendarBody
       periodStart={since}
       calendarView={effectiveCalendarView}
@@ -320,7 +297,7 @@ export function TimerWorkspace() {
       weekStartsOn={weekStart}
       showWeekends={showWeekends}
       showGaps={showGaps}
-      showEmptyState={view !== "split"}
+      showEmptyState
       onReviewDay={openReview}
       // Only the standing plan column drags onto the grid — the sheet has no
       // grid beside it — so the grid shouldn't claim to accept a drop otherwise.
@@ -336,37 +313,23 @@ export function TimerWorkspace() {
     body = (
       <Suspense fallback={<BodyFallback />}>
         <div ref={calendarPaneRef} className="flex min-h-0 flex-1 flex-col">
-          {calendarFor("calendar")}
+          {calendar}
         </div>
       </Suspense>
     );
   else if (effectiveView === "timesheet")
     body = (
       <Suspense fallback={<BodyFallback />}>
-        <TimesheetView weekStart={since} />
-      </Suspense>
-    );
-  else if (effectiveView === "planner")
-    body = (
-      <Suspense fallback={<BodyFallback />}>
-        <PlannerView weekStart={since} />
-      </Suspense>
-    );
-  else if (effectiveView === "split")
-    // Only reachable at lg and up — below that `effectiveView` is already "list".
-    body = (
-      <Suspense fallback={<BodyFallback />}>
-        <div className="grid min-h-0 flex-1 grid-cols-1 divide-x lg:grid-cols-2">
-          <div ref={calendarPaneRef} className="flex min-h-0 flex-col">
-            {calendarFor("split")}
-          </div>
-          <div className="flex min-h-0 flex-col overflow-y-auto px-4 pb-4">{list}</div>
-        </div>
+        {timesheetMode === "planned" ? (
+          <PlannerView weekStart={since} />
+        ) : (
+          <TimesheetView weekStart={since} />
+        )}
       </Suspense>
     );
   else if (planStands)
-    // Beside the column the list scrolls in its own region, as it does in
-    // Split: scrolling the whole pane would carry the plan away with it.
+    // Beside the column the list scrolls in its own region: scrolling the
+    // whole pane would carry the plan away with it.
     body = <div className="flex min-h-0 flex-col overflow-y-auto pr-4 pb-4">{list}</div>;
   else body = list;
 
@@ -396,10 +359,10 @@ export function TimerWorkspace() {
         since={since}
         until={until}
         totalSeconds={entriesError && entries.length === 0 ? null : periodSeconds}
-        segments={segments}
         view={effectiveView}
         onViewChange={changeView}
-        allowSplit={!belowLg}
+        timesheetMode={timesheetMode}
+        onTimesheetModeChange={setTimesheetMode}
         onPrev={() => step(-1)}
         onNext={() => step(1)}
         periodNoun={isMonthView ? "month" : isDayView ? "day" : "week"}
@@ -410,6 +373,11 @@ export function TimerWorkspace() {
         onDraftDay={handleDraftDay}
         draftPending={generateDrafts.isPending}
         draftCount={periodDrafts.length}
+        draftDayLabel={
+          reviewDate === format(today, "yyyy-MM-dd")
+            ? "today"
+            : format(parseISO(reviewDate), "EEE d MMM")
+        }
         calendarView={effectiveCalendarView}
         requestedCalendarView={calendarView}
         onCalendarViewChange={setCalendarView}

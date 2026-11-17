@@ -144,7 +144,9 @@ test("the idle timer offers the next planned task", async ({ page }) => {
   await page.goto("/");
 
   const bar = page.locator('header[aria-label="Timer controls"]');
-  await bar.getByRole("button", { name: 'Start next task "Reconcile GL extract" on ERP Migration' }).click();
+  // "Next up" heads the Favorites menu: one place for "start something planned".
+  await bar.getByRole("button", { name: /^Favorites.*next up: Reconcile GL extract/ }).click();
+  await page.getByRole("menuitem", { name: 'Start next task "Reconcile GL extract" on ERP Migration' }).click();
   await expect(page.getByRole("button", { name: "Stop timer", exact: true })).toBeVisible();
   await expect
     .poll(async () => {

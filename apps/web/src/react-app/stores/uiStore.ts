@@ -7,8 +7,14 @@ type RoundMode = "off" | "nearest" | "up" | "down";
 /** What the Reports daily chart stacks a day by. */
 export type DailyStack = "billable" | "project";
 
-// The four interchangeable views hosted by the unified Timer tab.
-export type TimerView = "calendar" | "split" | "list" | "timesheet" | "planner";
+// The three interchangeable views hosted by the unified Timer tab. Split
+// (calendar + list) and Planner were retired: Split repeated two views that
+// each stand alone, and Planner is the timesheet grid holding the plan, so it
+// is a mode of Timesheet (`timesheetMode`) rather than a view of its own.
+export type TimerView = "calendar" | "list" | "timesheet";
+
+/** What the Timesheet grid's cells hold: tracked time, or the week's plan. */
+export type TimesheetMode = "logged" | "planned";
 
 // Device-local productivity preferences (idle detection, tracking reminders,
 // pomodoro). Kept client-side since they're per-device behaviors.
@@ -41,6 +47,7 @@ interface UIStore {
   /** Reports → daily chart: stack each day by billable share or by project. */
   reportDailyStack: DailyStack;
   timerView: TimerView;
+  timesheetMode: TimesheetMode;
   calendarView: string;
   calendarSlotHeight: number;
   // Date scope for the Timer *list* view. The calendar/timesheet views navigate
@@ -121,6 +128,7 @@ interface UIStore {
   setRounding: (mode: RoundMode, minutes: number) => void;
   setReportDailyStack: (v: DailyStack) => void;
   setTimerView: (v: TimerView) => void;
+  setTimesheetMode: (v: TimesheetMode) => void;
   setCalendarView: (v: string) => void;
   setCalendarSlotHeight: (v: number) => void;
   setListRange: (key: ListRangeKey, since?: string | null, until?: string | null) => void;
@@ -163,6 +171,7 @@ export const useUIStore = create<UIStore>()(
       roundMinutes: Number(localStorage.getItem("pref_roundMinutes")) || 15,
       reportDailyStack: "project",
       timerView: "list",
+      timesheetMode: "logged",
       calendarView: "timeGridWeek",
       calendarSlotHeight: CALENDAR_SLOT_HEIGHT_DEFAULT,
       // "This week" — a discrete billing period, matching what the calendar and
@@ -207,6 +216,7 @@ export const useUIStore = create<UIStore>()(
         localStorage.setItem("pref_roundMinutes", String(minutes));
       },
       setTimerView: (v) => set({ timerView: v }),
+      setTimesheetMode: (v) => set({ timesheetMode: v }),
       setCalendarView: (v) => set({ calendarView: v }),
       setCalendarSlotHeight: (v) =>
         set({
@@ -303,6 +313,7 @@ export const useUIStore = create<UIStore>()(
         roundMinutes: s.roundMinutes,
         reportDailyStack: s.reportDailyStack,
         timerView: s.timerView,
+        timesheetMode: s.timesheetMode,
         calendarView: s.calendarView,
         calendarSlotHeight: s.calendarSlotHeight,
         listRangeKey: s.listRangeKey,
@@ -315,6 +326,18 @@ export const useUIStore = create<UIStore>()(
         productivity: s.productivity,
         lastTaskProjectId: s.lastTaskProjectId,
       }),
+      // A view retired since it was saved lands on its nearest survivor rather
+      // than on a switcher with nothing selected.
+      merge: (persisted, current) => {
+        const p = { ...(persisted as Partial<UIStore>) };
+        const saved = p.timerView as string | undefined;
+        if (saved === "split") p.timerView = "calendar";
+        if (saved === "planner") {
+          p.timerView = "timesheet";
+          p.timesheetMode = "planned";
+        }
+        return { ...current, ...p };
+      },
     }
   )
 );

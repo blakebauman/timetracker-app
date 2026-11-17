@@ -4,10 +4,11 @@ import { signUp } from "./auth";
 /**
  * Calendar grid density regression guard.
  *
- * Split halves the calendar pane while leaving the viewport untouched, so a
- * viewport-based responsive rule left Split rendering seven 65px columns at
- * 1280 — a 230px event label in 46px, gap blocks reading "Tr…". Density is now
- * derived from the pane's own measured width (see lib/calendarDensity.ts).
+ * The plan column narrows the calendar pane while leaving the viewport
+ * untouched (as the retired Split view once halved it), so a viewport-based
+ * responsive rule rendered seven columns too narrow for a label — a 230px event
+ * label in 46px, gap blocks reading "Tr…". Density is derived from the pane's
+ * own measured width (see lib/calendarDensity.ts).
  *
  * Asserts the pane never renders columns too narrow to carry a label, in the
  * layout that caused the defect.
@@ -39,12 +40,13 @@ test("calendar density follows the pane, not the viewport", async ({ page }) => 
   expect(full.count).toBe(7);
   expect(full.width).toBeGreaterThanOrEqual(MIN_LEGIBLE_COLUMN);
 
-  // Same viewport, half the pane: must reduce rather than squeeze.
-  await page.getByRole("tab", { name: "Split", exact: true }).click();
+  // At lg the plan column still stands beside the grid and leaves the pane a
+  // fraction of the viewport: must reduce rather than squeeze.
+  await page.setViewportSize({ width: 1024, height: 720 });
   await page.waitForTimeout(1200);
-  const split = await columnMetrics(page);
-  expect(split.count).toBeLessThan(7);
-  expect(split.width).toBeGreaterThanOrEqual(MIN_LEGIBLE_COLUMN);
+  const narrowed = await columnMetrics(page);
+  expect(narrowed.count).toBeLessThan(7);
+  expect(narrowed.width).toBeGreaterThanOrEqual(MIN_LEGIBLE_COLUMN);
 
   // The reduction is explained rather than silently contradicting the picker.
   await page.getByRole("button", { name: "View options" }).click();

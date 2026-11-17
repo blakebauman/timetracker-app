@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAssistantStore } from "@/stores/assistantStore";
+import { useUIStore } from "@/stores/uiStore";
+import { useMediaQuery, BELOW_LG } from "@/hooks/useMediaQuery";
 import { useAssistantNudges } from "@/hooks/useAssistant";
 import { useTimer } from "@/hooks/useTimer";
 import { notify } from "@/lib/notify";
@@ -29,7 +31,16 @@ export function AssistantNudgeNotifier() {
   // A task nudge's whole action is "Open tasks". On the Tasks page that's a
   // button to where you already are, and the toast landed over the list it
   // was pointing at — whose rows already say "2 days late".
-  const onTasks = pathname.startsWith("/tasks");
+  // The Timer's standing plan column is the same case: its Overdue section
+  // and deadline lines are already on screen. Decided from the same inputs
+  // TimerWorkspace uses (lg and up, list or calendar, column open) rather than
+  // from the column mounting: it loads lazily, after the first nudge poll.
+  const planColumnOpen = useUIStore((s) => s.planColumnOpen);
+  const timerView = useUIStore((s) => s.timerView);
+  const belowLg = useMediaQuery(BELOW_LG);
+  const planOnScreen =
+    pathname === "/" && planColumnOpen && !belowLg && timerView !== "timesheet";
+  const holdTaskNudges = pathname.startsWith("/tasks") || planOnScreen;
 
   // A toast outlives the render that created it, so its action must not close
   // over `stopTimer`. The running entry is restored asynchronously on mount, so
@@ -61,7 +72,7 @@ export function AssistantNudgeNotifier() {
     if (!fresh.length) return;
 
     const isTaskNudge = (kind: string) => kind === "deadline_risk" || kind === "tasks_overdue";
-    for (const n of fresh.filter((f) => !(onTasks && isTaskNudge(f.kind))).slice(0, MAX_TOASTS_PER_BATCH)) {
+    for (const n of fresh.filter((f) => !(holdTaskNudges && isTaskNudge(f.kind))).slice(0, MAX_TOASTS_PER_BATCH)) {
       // Keyed by nudge id so a re-render can't duplicate a live toast. Longer
       // than the default duration — these are actionable, not just FYIs.
       toast(n.title, {
@@ -85,10 +96,10 @@ export function AssistantNudgeNotifier() {
       if (document.hidden) notify(n.title, n.body);
     }
     // Mark the whole batch (even beyond the toast cap, and the task nudges
-    // held back on the Tasks page) so a backlog doesn't drip-feed three more
+    // held back on the Tasks page or beside the plan column) so a backlog doesn't drip-feed three more
     // toasts on every later poll. The rail badge still counts them.
     markSeen(fresh.map((n) => n.id));
-  }, [nudges, alertsEnabled, open, seen, markSeen, setOpen, navigate, onTasks]);
+  }, [nudges, alertsEnabled, open, seen, markSeen, setOpen, navigate, holdTaskNudges]);
 
   return null;
 }

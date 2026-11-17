@@ -16,7 +16,6 @@ import { CalendarCreateDialog } from "@/components/calendar/CalendarCreateDialog
 import { TimerControl, TransportDisc } from "./TimerControl";
 import { FavoritesMenu } from "./FavoritesMenu";
 import { ResumeLastButton } from "./ResumeLastButton";
-import { NextTaskButton } from "./NextTaskButton";
 import { DescriptionAutocomplete } from "./DescriptionAutocomplete";
 import { DayRibbon } from "./DayRibbon";
 import { useTodayTrace, type TodayTrace } from "@/hooks/useTodayTrace";
@@ -697,12 +696,6 @@ export function TimerBar() {
                   row, where it squeezed the placeholder at laptop widths. */}
               <span className="ml-auto flex shrink-0 items-center gap-1">
                 {!description.trim() && <KeepRunningPill />}
-                <NextTaskButton
-                  onStart={(t) => {
-                    rememberFocus();
-                    startTimer({ description: t.name, projectId: t.projectId, taskId: t.id });
-                  }}
-                />
                 <ResumeLastButton
                   onResume={(s) => {
                     rememberFocus();
@@ -715,7 +708,13 @@ export function TimerBar() {
                     });
                   }}
                 />
-                <FavoritesMenu current={{ description, projectId, taskId, tags, billable }} />
+                <FavoritesMenu
+                  current={{ description, projectId, taskId, tags, billable }}
+                  onStartTask={(t) => {
+                    rememberFocus();
+                    startTimer({ description: t.name, projectId: t.projectId, taskId: t.id });
+                  }}
+                />
               </span>
             </div>
 

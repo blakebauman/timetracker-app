@@ -84,8 +84,9 @@ interface QuickAddTaskProps {
   /** Accessible name; defaults to "Add a task". Q targets the field with the default. */
   label?: string;
   onDone?: () => void;
-  /** Put the project chip on its own line — for narrow hosts like the rail. */
-  stacked?: boolean;
+  /** A narrow host (the Timer's plan column): the chip's name truncates sooner
+   *  so it shares the line instead of taking a second one. */
+  narrow?: boolean;
   className?: string;
 }
 
@@ -111,7 +112,7 @@ export function QuickAddTask({
   placeholder,
   label,
   onDone,
-  stacked = false,
+  narrow = false,
   className,
 }: QuickAddTaskProps) {
   const createTask = useCreateTask();
@@ -256,7 +257,7 @@ export function QuickAddTask({
       hideNone
       attention={warn ? "Tasks belong to a project" : undefined}
       emptyLabel={needsProject ? <span className="max-sm:sr-only">Add project</span> : undefined}
-      nameClassName="max-sm:max-w-20"
+      nameClassName={narrow ? "max-w-24" : "max-sm:max-w-20"}
       onCloseAutoFocus={(e) => {
         e.preventDefault();
         inputRef.current?.focus();
@@ -338,12 +339,10 @@ export function QuickAddTask({
         ) : (
           canSubmit && <CornerDownLeft className="pointer-events-none h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
         )}
-        {!stacked && picker}
+        {picker}
         {/* Once, on the page's own line — not on every group's and subtask's. */}
-        {!stacked && !phone && !parentId && !lockProject && <TokenHelp />}
+        {!narrow && !phone && !parentId && !lockProject && <TokenHelp />}
       </div>
-
-      {stacked && picker && <div className="flex px-1">{picker}</div>}
 
       {/* Echo what the tokens were understood as, before Enter commits them.
           A parser that silently eats "fri" is worse than no parser — and since
