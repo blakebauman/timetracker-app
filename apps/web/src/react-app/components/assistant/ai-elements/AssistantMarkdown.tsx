@@ -1,10 +1,41 @@
 import { Fragment, memo } from "react";
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockContent,
+  CodeBlockCopyButton,
+  CodeBlockLine,
+} from "@/components/ui/code-block";
+import { useHighlightedCode } from "@/hooks/use-highlighted-code";
 
 // Deliberately tiny markdown renderer — the assistant runs on Llama, which emits plain
-// prose with the occasional list or **bold**. This avoids pulling in streamdown
-// + shiki (heavy). Handles paragraphs, bullet lists, inline bold, inline `code`,
+// prose with the occasional list or **bold**, so a full markdown pipeline would be
+// weight for nothing. Handles paragraphs, bullet lists, inline bold, inline `code`,
 // and ``` fences — rare, but Llama does write one when asked, and unhandled the
-// backticks rendered as literal lines around the text. No highlighting.
+// backticks rendered as literal lines around the text. A fence is an AI Elements
+// CodeBlock: shiki loads (core + the one grammar) only the first time a fence
+// with a known language appears, and until then the lines render plain.
+
+/**
+ * One ``` fence. Scrolls rather than wraps — a code line's breaks are its
+ * meaning — and the scroll region is in the tab order (CodeBlockContent's
+ * tabIndex) because one a keyboard can't reach hides whatever is past its edge.
+ */
+function CodeFence({ code, language }: { code: string; language: string }) {
+  const lines = useHighlightedCode(code, language || "text");
+  return (
+    <CodeBlock size="sm" className="border-border bg-background dark:bg-background">
+      <CodeBlockActions>
+        <CodeBlockCopyButton value={code} title="Copy code" />
+      </CodeBlockActions>
+      <CodeBlockContent className="max-h-72">
+        {lines.map((line, i) => (
+          <CodeBlockLine key={i}>{line}</CodeBlockLine>
+        ))}
+      </CodeBlockContent>
+    </CodeBlock>
+  );
+}
 
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -57,20 +88,10 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({ text }: { tex
   // Lines inside an open fence. A fence still open when the text ends (mid-
   // stream) renders as a block anyway, so the reply doesn't jump on its close.
   let code: string[] | null = null;
+  let language = "";
   const flushCode = (key: string) => {
     if (code === null) return;
-    blocks.push(
-      // Scrolls rather than wraps: a code line's breaks are its meaning. In the
-      // tab order (and ringed) because a scroll region a keyboard can't reach
-      // hides whatever is past its edge.
-      <pre
-        key={key}
-        tabIndex={0}
-        className="overflow-x-auto rounded-md border bg-background px-3 py-2 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-      >
-        <code>{code.join("\n")}</code>
-      </pre>
-    );
+    blocks.push(<CodeFence key={key} code={code.join("\n")} language={language} />);
     code = null;
   };
 
@@ -80,6 +101,7 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({ text }: { tex
       if (code === null) {
         flushBullets(`ul-${idx}`);
         code = [];
+        language = trimmed.slice(3).trim().split(/\s/)[0] ?? "";
       } else {
         flushCode(`pre-${idx}`);
       }

@@ -4,8 +4,8 @@ import { toast } from "sonner";
 import type { UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
 
-// Hover-revealed actions under an assistant message (fold.run chat/message-actions,
-// trimmed to what applies here: copy the reply and regenerate the last turn).
+// The actions in an assistant turn's MessageFooter (AI Elements' Message):
+// copy the reply and regenerate the last turn, revealed on hover/focus.
 export function MessageActions({
   message,
   canRegenerate,
@@ -36,7 +36,7 @@ export function MessageActions({
   };
 
   return (
-    <div className="tt-reveal flex items-center gap-0.5 pl-1.5">
+    <div className="tt-reveal -ml-1.5 flex items-center gap-0.5">
       <Button
         variant="ghost"
         size="icon-xs"

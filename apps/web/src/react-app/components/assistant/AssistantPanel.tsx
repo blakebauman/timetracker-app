@@ -44,17 +44,24 @@ import { useCalendarStatus } from "@/hooks/useCalendarSync";
 import { useTimer } from "@/hooks/useTimer";
 import type { AssistantNudge, DayOff, Settings } from "@timetracker/core/schemas";
 import { format } from "date-fns";
+import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Message, MessageContent, MessageFooter } from "@/components/ui/message";
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from "@/components/ui/message-scroller";
+import { Trace, TraceIcon, TraceLine, TraceTitle } from "@/components/ui/trace";
 import { SuggestionChips } from "./ai-elements/SuggestionChips";
 import { ToolCard } from "./ai-elements/ToolCard";
 import { AssistantMarkdown } from "./ai-elements/AssistantMarkdown";
 import { MessageActions } from "./ai-elements/MessageActions";
 import { useAgentConnection, useSlowReply } from "./useAgentConnection";
 import { PromptInput } from "./ai-elements/PromptInput";
-import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from "./ai-elements/Conversation";
 
 const NUDGE_ICONS: Record<AssistantNudge["kind"], typeof CalendarClock> = {
   untracked_meeting: CalendarClock,
@@ -148,66 +155,61 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
     dismissNudge(nudge.id);
   };
 
-  return (
-    <div className="flex items-start gap-2.5 rounded-container border bg-card p-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{nudge.title}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{nudge.body}</p>
-        {/* Task nudges point at the list that fixes them; the panel closes
-            so the list isn't hidden behind it. */}
-        {(nudge.kind === "deadline_risk" || nudge.kind === "tasks_overdue") && (
-          <div className="mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                navigate("/tasks", { state: { groupBy: "due" } });
-                setAssistantOpen(false);
-              }}
-            >
-              Open tasks
-            </Button>
-          </div>
-        )}
-        {(nudge.kind === "untracked_meeting" ||
-          nudge.kind === "meeting_now" ||
-          nudge.kind === "long_timer") && (
-          <div className="mt-2">
-            {nudge.kind === "untracked_meeting" ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={trackEvent}
-                disabled={trackNudgeEvent.isPending}
-              >
-                {trackNudgeEvent.isPending ? "Adding…" : "Add to timesheet"}
-              </Button>
-            ) : nudge.kind === "long_timer" ? (
-              <Button variant="outline" size="sm" onClick={stopFromNudge}>
-                Stop timer
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" onClick={startFromEvent}>
-                Start timer
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+  const action =
+    nudge.kind === "deadline_risk" || nudge.kind === "tasks_overdue" ? (
+      // Task nudges point at the list that fixes them; the panel closes so the
+      // list isn't hidden behind it.
       <Button
-        variant="ghost"
-        size="icon-xs"
-        className="shrink-0 text-muted-foreground"
-        onClick={() => dismissNudge(nudge.id)}
-        // Named for its nudge: two "Dismiss nudge" buttons in a screen
-        // reader's list couldn't be told apart.
-        aria-label={`Dismiss: ${nudge.title}`}
-        title="Dismiss"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          navigate("/tasks", { state: { groupBy: "due" } });
+          setAssistantOpen(false);
+        }}
       >
-        <X className="h-3.5 w-3.5" />
+        Open tasks
       </Button>
-    </div>
+    ) : nudge.kind === "untracked_meeting" ? (
+      <Button variant="outline" size="sm" onClick={trackEvent} disabled={trackNudgeEvent.isPending}>
+        {trackNudgeEvent.isPending ? "Adding…" : "Add to timesheet"}
+      </Button>
+    ) : nudge.kind === "long_timer" ? (
+      <Button variant="outline" size="sm" onClick={stopFromNudge}>
+        Stop timer
+      </Button>
+    ) : nudge.kind === "meeting_now" ? (
+      <Button variant="outline" size="sm" onClick={startFromEvent}>
+        Start timer
+      </Button>
+    ) : null;
+
+  // An Item, like the Assistant's own result rows and approvals: one row
+  // grammar for everything in the panel that isn't the conversation's prose.
+  return (
+    <Item variant="outline" size="sm" className="flex-nowrap items-start gap-2.5 rounded-container bg-card p-3">
+      <ItemMedia className="pt-0.5">
+        <Icon className="size-4 text-muted-foreground" />
+      </ItemMedia>
+      <ItemContent className="min-w-0 gap-0.5">
+        <ItemTitle className="line-clamp-none w-full">{nudge.title}</ItemTitle>
+        <ItemDescription className="line-clamp-none text-xs">{nudge.body}</ItemDescription>
+        {action && <div className="mt-1.5">{action}</div>}
+      </ItemContent>
+      <ItemActions className="-mt-0.5 -mr-1 self-start">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="text-muted-foreground"
+          onClick={() => dismissNudge(nudge.id)}
+          // Named for its nudge: two "Dismiss nudge" buttons in a screen
+          // reader's list couldn't be told apart.
+          aria-label={`Dismiss: ${nudge.title}`}
+          title="Dismiss"
+        >
+          <X />
+        </Button>
+      </ItemActions>
+    </Item>
   );
 }
 
@@ -226,45 +228,99 @@ function textOf(m: UIMessage): string {
 const MessageItem = memo(function MessageItem({
   message: m,
   canRegenerate,
+  streaming,
   onApprove,
   onRegenerate,
 }: {
   message: UIMessage;
   canRegenerate: boolean;
+  /** This is the turn being written right now. */
+  streaming: boolean;
   onApprove: (id: string, approved: boolean) => void;
   onRegenerate: () => void;
 }) {
-  // Two bubbles, one grammar: the user's turn is recessed on the muted step,
-  // the Assistant's is a card on the rack. Neither carries the brand red —
-  // that's for the Send disc.
+  // AI Elements' Message: the user's turn is a muted Bubble at the end of the
+  // line, recessed with a hairline; the Assistant's turn is unbubbled prose on
+  // the sheet, so a reply carrying rows and a day plan gets the panel's whole
+  // measure. Neither carries the brand red — that's for the Send disc.
   if (m.role === "user") {
     return (
-      <div className="ml-8 rounded-container border bg-muted px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere">
-        {m.parts.map((part, i) => (part.type === "text" ? <span key={i}>{part.text}</span> : null))}
-      </div>
+      <Message align="end">
+        <MessageContent>
+          <Bubble align="end" variant="muted" className="max-w-[85%]">
+            <BubbleContent className="rounded-container border-border px-3 py-2 whitespace-pre-wrap wrap-anywhere">
+              {textOf(m)}
+            </BubbleContent>
+          </Bubble>
+        </MessageContent>
+      </Message>
     );
   }
-  // Copy / Regenerate hang under the card rather than inside it: hover-revealed
-  // inside, they left an empty band at the foot of every reply that read as
-  // stray padding.
   return (
-    <div className="group mr-4 space-y-1">
-      <div className="flex gap-2 rounded-container border bg-card px-3 py-2.5">
-        <Sparkles className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 flex-1 space-y-2">
-          {m.parts.map((part, i) => {
-            if (part.type === "text") return <AssistantMarkdown key={i} text={part.text} />;
-            if (typeof part.type === "string" && part.type.startsWith("tool-")) {
-              return <ToolCard key={i} part={part} onApprove={onApprove} />;
-            }
-            return null;
-          })}
-        </div>
-      </div>
-      <MessageActions message={m} canRegenerate={canRegenerate} onRegenerate={onRegenerate} />
-    </div>
+    // `group` drives the footer's tt-reveal (the primitive's group is named).
+    <Message className="group">
+      <MessageContent className="gap-3">
+        {groupParts(m.parts).map((group, gi) =>
+          group.kind === "text" ? (
+            <AssistantMarkdown key={gi} text={group.text} />
+          ) : group.kind === "approval" ? (
+            <ToolCard key={gi} part={group.part} live={streaming} onApprove={onApprove} />
+          ) : (
+            // A run of tool calls is one trace: the steps the Assistant took.
+            <Trace key={gi} className="gap-2.5">
+              {group.parts.map((part, i) => (
+                <ToolCard key={i} part={part} live={streaming} onApprove={onApprove} />
+              ))}
+            </Trace>
+          )
+        )}
+        {/* Copy / Regenerate sit in the footer, under the reply: they follow
+            the prose rather than a card edge, and are revealed on hover or
+            focus of the turn (always shown under a touch pointer). */}
+        {textOf(m) && (
+          // Pulled up into the turn's gap: the footer is hidden until hover
+          // on a fine pointer, and at full height it left a dead band under
+          // every reply.
+          <MessageFooter className="-mt-2 -mb-2 px-0">
+            <MessageActions message={m} canRegenerate={canRegenerate} onRegenerate={onRegenerate} />
+          </MessageFooter>
+        )}
+      </MessageContent>
+    </Message>
   );
 });
+
+type Part = UIMessage["parts"][number];
+type PartGroup =
+  | { kind: "text"; text: string }
+  | { kind: "steps"; parts: Part[] }
+  | { kind: "approval"; part: Part };
+
+const isToolPart = (p: Part) => typeof p.type === "string" && p.type.startsWith("tool-");
+
+/**
+ * The reply in reading order: text, runs of tool calls (one Trace each), and
+ * approvals — which break a run, because a question for the person sits
+ * outside the trace of what the Assistant did (AI Elements' Confirmation).
+ */
+function groupParts(parts: Part[]): PartGroup[] {
+  const groups: PartGroup[] = [];
+  for (const p of parts) {
+    if (p.type === "text") {
+      if (p.text.trim()) groups.push({ kind: "text", text: p.text });
+    } else if (isToolPart(p)) {
+      // Asking for the person's OK: a question, not a step, so outside the trace.
+      if (getToolPartState(p) === "waiting-approval") {
+        groups.push({ kind: "approval", part: p });
+      } else {
+        const last = groups[groups.length - 1];
+        if (last?.kind === "steps") last.parts.push(p);
+        else groups.push({ kind: "steps", parts: [p] });
+      }
+    }
+  }
+  return groups;
+}
 
 /**
  * Right-side sheet hosting the Assistant: what needs your attention, then the
@@ -558,140 +614,177 @@ export function AssistantPanel() {
           <SheetDescription className="col-span-2">Watches your calendar, timesheet and plan.</SheetDescription>
         </SheetHeader>
 
-        <Conversation className="min-h-0 flex-1" aria-live="off">
-          <ConversationContent className="p-4">
-            {/* What needs your attention */}
-            <section aria-label="Needs your attention" className="space-y-2">
-              {nudgesLoading ? (
-                <Skeleton className="h-16 w-full" />
-              ) : nudgesError ? (
-                // "All caught up" on a failed fetch would be the one thing
-                // the Assistant must never say; name the problem instead.
-                <div className="flex items-center gap-2.5 rounded-container border bg-card p-3 text-sm text-muted-foreground">
-                  <AlertCircle className="size-4 shrink-0" />
-                  <span className="flex-1">Couldn't check your calendar and timesheet.</span>
-                  <Button variant="outline" size="xs" onClick={() => refetchNudges()}>
-                    Retry
-                  </Button>
-                </div>
-              ) : nudges.length === 0 ? (
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle2 className="size-4 shrink-0 text-success" />
-                  All caught up — nothing needs your attention right now.
-                </p>
-              ) : (
-                <>
-                  {hasConversation && (
-                    <button
-                      type="button"
-                      onClick={() => setNudgesExpanded(!nudgesOpen)}
-                      aria-expanded={nudgesOpen}
-                      className="relative flex w-full items-center gap-2 rounded-full px-1 py-1 text-left pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-[''] text-xs font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                    >
-                      <ChevronDown
-                        className={cn(
-                          "size-3.5 transition-transform duration-fast ease-out-quart",
-                          !nudgesOpen && "-rotate-90"
+        {/* Follows the end while you're at it. Off (the default), the opening
+            position was taken before the tool rows had their data and the
+            fence its highlighting, and the newest turn — with an approval
+            waiting in it — was left below the fold as they grew. Scrolling up
+            to read still holds your place; the person's question stays the
+            scroll anchor (MessageScrollerItem below). */}
+        <MessageScrollerProvider autoScroll>
+          <MessageScroller className="min-h-0 flex-1">
+            <MessageScrollerViewport aria-label="Conversation with the Assistant">
+              {/* Live announcements are off: the content is a log, and a log
+                  reads every streamed token out. The finished turn is
+                  announced once by the status line below the scroller. */}
+              <MessageScrollerContent aria-live="off" aria-busy={busy} className="gap-6 p-4">
+                {/* What needs your attention */}
+                <MessageScrollerItem>
+                  <section aria-label="Needs your attention" className="flex flex-col gap-2">
+                    {nudgesLoading ? (
+                      <Skeleton className="h-16 w-full" />
+                    ) : nudgesError ? (
+                      // "All caught up" on a failed fetch would be the one thing
+                      // the Assistant must never say; name the problem instead.
+                      <Item variant="outline" size="sm" className="flex-nowrap gap-2.5 rounded-container bg-card p-3">
+                        <ItemMedia>
+                          <AlertCircle className="size-4 text-muted-foreground" />
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemDescription className="text-sm">Couldn't check your calendar and timesheet.</ItemDescription>
+                        </ItemContent>
+                        <ItemActions>
+                          <Button variant="outline" size="xs" onClick={() => refetchNudges()}>
+                            Retry
+                          </Button>
+                        </ItemActions>
+                      </Item>
+                    ) : nudges.length === 0 ? (
+                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <CheckCircle2 className="size-4 shrink-0 text-success" />
+                        All caught up — nothing needs your attention right now.
+                      </p>
+                    ) : (
+                      <>
+                        {hasConversation && (
+                          <button
+                            type="button"
+                            onClick={() => setNudgesExpanded(!nudgesOpen)}
+                            aria-expanded={nudgesOpen}
+                            className="relative flex w-full items-center gap-2 rounded-full px-1 py-1 text-left pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-[''] text-xs font-medium text-muted-foreground transition-colors duration-fast ease-out-quart hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "size-3.5 transition-transform duration-fast ease-out-quart",
+                                !nudgesOpen && "-rotate-90"
+                              )}
+                            />
+                            {nudges.length === 1
+                              ? "1 thing needs your attention"
+                              : `${nudges.length} things need your attention`}
+                          </button>
                         )}
-                      />
-                      {nudges.length === 1
-                        ? "1 thing needs your attention"
-                        : `${nudges.length} things need your attention`}
-                    </button>
-                  )}
-                  {nudgesOpen && nudges.map((n) => <NudgeCard key={n.id} nudge={n} />)}
-                </>
-              )}
-            </section>
+                        {nudgesOpen && nudges.map((n) => <NudgeCard key={n.id} nudge={n} />)}
+                      </>
+                    )}
+                  </section>
+                </MessageScrollerItem>
 
-            {/* Conversation */}
-            <div className="mt-5 space-y-3">
-              {!hasConversation && (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Ask about your time, or have me log it, start and stop timers, add and tick off
-                    tasks, or plan your day. Anything that changes your timesheet or plan waits for
-                    your OK.
-                  </p>
-                  <SuggestionChips
-                    suggestions={suggestions}
-                    onSelect={send}
-                    disabled={busy}
-                  />
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
-                    {/* The structured, review-before-save entry form. */}
-                    <Button
-                      variant="link"
-                      size="xs"
-                      className="h-auto px-0 text-muted-foreground hover:text-foreground"
-                      onClick={logTime}
-                    >
-                      <Clock /> Log time with the form
-                    </Button>
-                    <Button
-                      variant="link"
-                      size="xs"
-                      className="h-auto px-0 text-muted-foreground hover:text-foreground"
-                      onClick={openMemory}
-                    >
-                      <Brain /> What I remember
-                    </Button>
-                  </div>
-                </div>
-              )}
+                {!hasConversation && (
+                  <MessageScrollerItem>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        Ask about your time, or have me log it, start and stop timers, add and tick off
+                        tasks, or plan your day. Anything that changes your timesheet or plan waits for
+                        your OK.
+                      </p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {/* The structured, review-before-save entry form. */}
+                        <Button
+                          variant="link"
+                          size="xs"
+                          className="h-auto px-0 text-muted-foreground hover:text-foreground"
+                          onClick={logTime}
+                        >
+                          <Clock /> Log time with the form
+                        </Button>
+                        <Button
+                          variant="link"
+                          size="xs"
+                          className="h-auto px-0 text-muted-foreground hover:text-foreground"
+                          onClick={openMemory}
+                        >
+                          <Brain /> What I remember
+                        </Button>
+                      </div>
+                    </div>
+                  </MessageScrollerItem>
+                )}
 
-              {messages.map((m) => (
-                <MessageItem
-                  key={m.id}
-                  message={m}
-                  canRegenerate={m.id === lastAssistantId && !busy}
-                  onApprove={approve}
-                  onRegenerate={regenerateLast}
-                />
-              ))}
-
-              {showThinking &&
-                (stuck ? (
-                  <div
-                    role="status"
-                    className="mr-4 flex items-center gap-2.5 rounded-container border bg-card px-3 py-2 text-sm"
-                  >
-                    <AlertCircle className="size-4 shrink-0 text-warning" />
-                    <span className="flex-1">No reply yet.</span>
-                    <Button variant="outline" size="xs" onClick={retryStuck} disabled={offline}>
-                      Try again
-                    </Button>
-                  </div>
-                ) : (
-                  <div
-                    role="status"
-                    className="mr-4 flex items-center gap-2 rounded-container border bg-card px-3 py-2.5 text-sm text-muted-foreground"
-                  >
-                    <Spinner size="sm" />
-                    <span>Thinking…</span>
-                  </div>
+                {/* The person's turn is the scroll anchor: a new question
+                    settles near the top and the reply streams in under it,
+                    instead of the thread chasing every token to the bottom. */}
+                {messages.map((m) => (
+                  <MessageScrollerItem key={m.id} messageId={m.id} scrollAnchor={m.role === "user"}>
+                    <MessageItem
+                      message={m}
+                      canRegenerate={m.id === lastAssistantId && !busy}
+                      streaming={busy && m.id === tail?.id}
+                      onApprove={approve}
+                      onRegenerate={regenerateLast}
+                    />
+                  </MessageScrollerItem>
                 ))}
 
-              {failed && (
-                // A failed turn used to end in silence — the spinner just went
-                // away. Say so, and offer the same retry the message menu has.
-                <div className="mr-4 flex items-center gap-2.5 rounded-container border border-destructive/40 bg-card px-3 py-2 text-sm">
-                  <AlertCircle className="size-4 shrink-0 text-destructive" />
-                  <span className="flex-1">That didn't go through.</span>
-                  <Button variant="outline" size="xs" onClick={() => regenerate()} disabled={offline}>
-                    Try again
-                  </Button>
-                </div>
-              )}
-            </div>
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
+                {(showThinking || failed) && (
+                  <MessageScrollerItem>
+                    {failed ? (
+                      // A failed turn used to end in silence — the spinner just
+                      // went away. Say so, and offer the same retry the message
+                      // menu has.
+                      <Item variant="outline" size="sm" className="flex-nowrap gap-2.5 rounded-container border-destructive/40 bg-card px-3 py-2">
+                        <ItemMedia>
+                          <AlertCircle className="size-4 text-destructive" />
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemTitle className="font-normal">That didn't go through.</ItemTitle>
+                        </ItemContent>
+                        <ItemActions>
+                          <Button variant="outline" size="xs" onClick={() => regenerate()} disabled={offline}>
+                            Try again
+                          </Button>
+                        </ItemActions>
+                      </Item>
+                    ) : stuck ? (
+                      <Item role="status" variant="outline" size="sm" className="flex-nowrap gap-2.5 rounded-container bg-card px-3 py-2">
+                        <ItemMedia>
+                          <AlertCircle className="size-4 text-warning" />
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemTitle className="font-normal">No reply yet.</ItemTitle>
+                        </ItemContent>
+                        <ItemActions>
+                          <Button variant="outline" size="xs" onClick={retryStuck} disabled={offline}>
+                            Try again
+                          </Button>
+                        </ItemActions>
+                      </Item>
+                    ) : (
+                      // The model streams no reasoning parts, so "Thinking" is
+                      // the one running step it has: a trace line, shimmering.
+                      <Trace role="status">
+                        <TraceLine status="running">
+                          <TraceIcon>
+                            <Sparkles />
+                          </TraceIcon>
+                          <TraceTitle>Thinking…</TraceTitle>
+                        </TraceLine>
+                      </Trace>
+                    )}
+                  </MessageScrollerItem>
+                )}
+              </MessageScrollerContent>
+            </MessageScrollerViewport>
+            <MessageScrollerButton aria-label="Scroll to latest" title="Scroll to latest" />
+          </MessageScroller>
+        </MessageScrollerProvider>
         <p role="status" className="sr-only">
           {announcement}
         </p>
 
-        <div className="space-y-2 p-3">
+        <div className="flex flex-col gap-2 p-3">
+          {!hasConversation && (
+            <SuggestionChips suggestions={suggestions} onSelect={send} disabled={busy} />
+          )}
           {(connection.showProblem || queued) && (
             // Says what still works: the nudges come over plain HTTP, so they
             // keep updating while the chat socket is down.

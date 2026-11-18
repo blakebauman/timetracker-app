@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 
 /**
- * Horizontal row of tappable prompt suggestions (fold.run ai-elements/suggestion,
- * trimmed to our Button + theme). Shown on an empty conversation to prime the Assistant.
+ * AI Elements' Suggestion: a prompt you send without typing. One row above the
+ * composer that scrolls sideways when it doesn't fit — `scroll-fade-x` fades the
+ * edge with more to show, `shrink-0` keeps each label on one line — so the
+ * suggestions sit where the answer to "what can I ask?" is needed, at the field.
  */
 export function SuggestionChips({
   suggestions,
@@ -14,16 +16,19 @@ export function SuggestionChips({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div
+      role="group"
+      aria-label="Suggestions"
+      // The negative inline margin lets the row bleed to the sheet's edge, so
+      // the fade reads as "more this way" rather than a clipped chip.
+      className="-mx-3 flex scroll-fade-x gap-2 overflow-x-auto overscroll-x-contain px-3"
+    >
       {suggestions.map((s) => (
         <Button
           key={s}
           variant="outline"
           size="sm"
-          // h-auto so a long suggestion wraps; min-h-8 keeps it a real target,
-          // and the sm size's coarse-pointer hit area takes it to 44px under a
-          // thumb (it was 26px).
-          className="h-auto min-h-8 rounded-full py-1.5 text-xs font-normal text-muted-foreground"
+          className="shrink-0 font-normal text-muted-foreground hover:text-foreground"
           disabled={disabled}
           onClick={() => onSelect(s)}
         >

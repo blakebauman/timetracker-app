@@ -70,7 +70,9 @@ catalog:
   react-day-picker: ^10.0.1
   recharts: ^3.10.1
   react-hotkeys-hook: ^5.3.3
-  use-stick-to-bottom: ^1.1.6
+  # AI Elements (shadcn): message-scroller runtime + code-block highlighting
+  "@shadcn/react": ^0.3.1
+  shiki: ^4.6.0
   date-fns: ^4.4.0
   "@fontsource-variable/geist": ^5.2.9
   "@fontsource-variable/geist-mono": ^5.2.8

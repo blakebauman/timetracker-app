@@ -28,7 +28,20 @@ import {
 import type { TimeEntry } from "@timetracker/core/schemas";
 import { workDescription } from "@timetracker/core/entry-text";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemMedia,
+} from "@/components/ui/item";
+import {
+  TraceCollapsible,
+  TraceCollapsibleContent,
+  TraceCollapsibleTrigger,
+  TraceIcon,
+  TraceLine,
+  TraceTitle,
+} from "@/components/ui/trace";
 import { useProjects } from "@/hooks/useProjects";
 import { useAllTasks } from "@/hooks/useTasks";
 import { useUIStore } from "@/stores/uiStore";
@@ -46,22 +59,30 @@ type TimeFormat = "24h" | "12h";
 // Humanized labels + icons for the Assistant's tools (part.type is `tool-<name>`).
 // Every tool in worker/lib/assistant-tools.ts has an entry: a tool missing here
 // rendered as its camelCase name ("planDay") with an empty card.
-const TOOLS: Record<string, { label: string; icon: typeof Play }> = {
-  startTimer: { label: "Start timer", icon: Play },
-  stopTimer: { label: "Stop timer", icon: Square },
-  logTimeEntry: { label: "Log time", icon: Clock },
-  trackMeeting: { label: "Track meeting", icon: CalendarClock },
-  getTimeSummary: { label: "Time summary", icon: BarChart3 },
-  listProjects: { label: "Projects", icon: ListTree },
-  deleteEntry: { label: "Delete entry", icon: Trash2 },
-  rememberPreference: { label: "Remember", icon: Brain },
-  searchMemory: { label: "Recall", icon: Search },
-  listTasks: { label: "Tasks", icon: ListChecks },
-  createTask: { label: "Add task", icon: ListPlus },
-  completeTask: { label: "Tick off task", icon: CircleCheck },
-  planDay: { label: "Plan the day", icon: CalendarRange },
-  scheduleTasks: { label: "Schedule tasks", icon: CalendarPlus },
+//
+// Each call is one step on the reply's trace (AI Elements' Tool): `doing` while
+// it runs, `done` once it has, and the result rows inside the step's disclosure.
+// A step whose rows *are* the answer — a receipt for a write, the numbers, the
+// plan — opens with them showing; a lookup the Assistant only read on the way
+// to its answer (`folded`) stays one line until you ask to see it.
+const TOOLS: Record<string, { label: string; doing: string; done: string; icon: typeof Play; folded?: boolean }> = {
+  startTimer: { label: "Start timer", doing: "Starting a timer", done: "Started a timer", icon: Play },
+  stopTimer: { label: "Stop timer", doing: "Stopping the timer", done: "Stopped the timer", icon: Square },
+  logTimeEntry: { label: "Log time", doing: "Logging time", done: "Logged time", icon: Clock },
+  trackMeeting: { label: "Track meeting", doing: "Adding the meeting", done: "Added the meeting", icon: CalendarClock },
+  getTimeSummary: { label: "Time summary", doing: "Adding up your time", done: "Added up your time", icon: BarChart3 },
+  listProjects: { label: "Projects", doing: "Looking up projects", done: "Looked up projects", icon: ListTree, folded: true },
+  deleteEntry: { label: "Delete entry", doing: "Deleting the entry", done: "Deleted the entry", icon: Trash2 },
+  rememberPreference: { label: "Remember", doing: "Saving that", done: "Remembered that", icon: Brain },
+  searchMemory: { label: "Recall", doing: "Checking what I remember", done: "Checked what I remember", icon: Search, folded: true },
+  listTasks: { label: "Tasks", doing: "Looking at your tasks", done: "Looked at your tasks", icon: ListChecks },
+  createTask: { label: "Add task", doing: "Adding the task", done: "Added a task", icon: ListPlus },
+  completeTask: { label: "Tick off task", doing: "Ticking it off", done: "Ticked off a task", icon: CircleCheck },
+  planDay: { label: "Plan the day", doing: "Planning your day", done: "Planned your day", icon: CalendarRange },
+  scheduleTasks: { label: "Schedule tasks", doing: "Scheduling tasks", done: "Scheduled tasks", icon: CalendarPlus },
 };
+const UNKNOWN_TOOL = { label: "Done", doing: "Working", done: "Done", icon: Wrench, folded: false };
+
 
 function toolNameOf(part: ToolPart): string {
   return typeof part.type === "string" && part.type.startsWith("tool-")
@@ -133,11 +154,11 @@ type ToolContext = ReturnType<typeof useToolContext>;
 const TASK_TOOLS = new Set(["completeTask", "scheduleTasks", "planDay", "listTasks"]);
 
 // ---------------------------------------------------------------------------
-// Layout primitives. A result is drawn as a row on the rack — the same
-// hairline and mono figure as an entry row — rather than a tinted status chip:
-// the thing the Assistant just logged should look like the thing it logged.
-// It sits inside the Assistant's card, so it is recessed onto the ground the
-// way an input is, not a second card stacked on the first.
+// Layout primitives. A result is drawn as a row on the rack — an AI Elements
+// Item with the same hairline and mono figure as an entry row — rather than a
+// tinted status chip: the thing the Assistant just logged should look like the
+// thing it logged. It sits on the sheet inside its step's trace, recessed onto
+// the ground the way an input is.
 // ---------------------------------------------------------------------------
 
 type Tone = "done" | "info" | "warn" | "error";
@@ -162,7 +183,6 @@ function Swatch({ color }: { color: string | null }) {
 function Row({
   icon: Icon,
   tone = "info",
-  spin = false,
   swatch,
   title,
   meta,
@@ -171,7 +191,6 @@ function Row({
 }: {
   icon?: typeof Play;
   tone?: Tone;
-  spin?: boolean;
   /** A project colour (or null for "no project") drawn where the icon would be. */
   swatch?: string | null;
   title: React.ReactNode;
@@ -182,32 +201,36 @@ function Row({
   children?: React.ReactNode;
 }) {
   return (
-    <div
+    <Item
+      variant="outline"
+      size="xs"
       className={cn(
-        "rounded-container border bg-background px-3 py-2 text-xs",
+        "flex-nowrap items-start gap-2 rounded-container bg-background px-3 py-2 text-xs",
         tone === "error" && "border-destructive/40"
       )}
     >
-      <div className="flex items-center gap-2">
-        <span className="flex size-3.5 shrink-0 items-center justify-center">
-          {spin ? (
-            <Spinner size="sm" className="text-muted-foreground" />
-          ) : swatch !== undefined ? (
-            <Swatch color={swatch} />
-          ) : (
-            Icon && <Icon className={cn("size-3.5", TONE_ICON[tone])} />
-          )}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{title}</span>
-        {figure && (
-          <span className="shrink-0 font-mono text-sm tabular-nums text-foreground">{figure}</span>
+      <ItemMedia className="h-5 w-3.5 shrink-0">
+        {swatch !== undefined ? (
+          <Swatch color={swatch} />
+        ) : (
+          Icon && <Icon className={cn("size-3.5", TONE_ICON[tone])} />
         )}
-      </div>
-      {/* Wraps rather than truncates: the time range at the end is the part
-          worth checking, and it was the part an ellipsis cut off. */}
-      {meta && <div className="mt-0.5 pl-5.5 text-pretty text-muted-foreground">{meta}</div>}
-      {children && <div className="mt-1.5 pl-5.5 text-muted-foreground">{children}</div>}
-    </div>
+      </ItemMedia>
+      <ItemContent className="min-w-0 gap-0.5">
+        {/* Not ItemTitle / ItemDescription: those line-clamp, and the meta line
+            must wrap (below), the title truncate on one line. */}
+        {/* Two lines before an ellipsis, like a task row: a description cut
+            at one line lost its second clause ("…stakehol…"). */}
+        <div className="line-clamp-2 text-sm leading-5 wrap-anywhere text-foreground">{title}</div>
+        {/* Wraps rather than truncates: the time range at the end is the part
+            worth checking, and it was the part an ellipsis cut off. */}
+        {meta && <div className="text-pretty text-muted-foreground">{meta}</div>}
+        {children && <div className="mt-1 text-muted-foreground">{children}</div>}
+      </ItemContent>
+      {figure && (
+        <span className="shrink-0 font-mono text-sm leading-5 tabular-nums text-foreground">{figure}</span>
+      )}
+    </Item>
   );
 }
 
@@ -507,42 +530,101 @@ function renderResult(name: string, input: Rec, out: Rec, ctx: ToolContext): Rea
     }
 
     default: {
-      const meta = TOOLS[name] ?? { label: "Done", icon: Wrench };
+      const meta = TOOLS[name] ?? UNKNOWN_TOOL;
       return <Row icon={meta.icon} tone={isOk(out) ? "info" : "warn"} title={isOk(out) ? meta.label : failure(out, "Couldn't complete that")} />;
     }
   }
 }
 
+/**
+ * One tool call. Running, failed, declined and done are a step on the trace;
+ * waiting for approval is a confirmation Item, rendered by the caller outside
+ * the trace (see `isAwaitingApproval`).
+ */
 export function ToolCard({
   part,
+  live = false,
   onApprove,
 }: {
   part: ToolPart;
+  /** The turn this call belongs to is still streaming. */
+  live?: boolean;
   onApprove: (id: string, approved: boolean) => void;
 }) {
   const name = toolNameOf(part);
-  const meta = TOOLS[name] ?? { label: "Working", icon: Wrench };
+  const meta = TOOLS[name] ?? UNKNOWN_TOOL;
   const state = getToolPartState(part);
   const ctx = useToolContext(TASK_TOOLS.has(name));
   const input = (getToolInput(part) as Rec | undefined) ?? {};
   const output = (getToolOutput(part) as Rec | undefined) ?? {};
+  const Icon = meta.icon;
 
-  // "approved" is the gap between Approve and the result arriving: still working,
-  // not done — rendering the (empty) result here flashed "Logged 0m".
-  if (state === "loading" || state === "streaming" || state === "approved") {
-    return <Row spin title={<span className="text-muted-foreground">{meta.label}…</span>} />;
-  }
-  if (state === "error") {
-    return <Row icon={AlertTriangle} tone="error" title={`${meta.label} didn't go through`} />;
-  }
   if (state === "waiting-approval") {
     return <Approval part={part} name={name} input={input} ctx={ctx} onApprove={onApprove} />;
   }
+  // "approved" is the gap between Approve and the result arriving: still working,
+  // not done — rendering the (empty) result here flashed "Logged 0m".
+  if (state === "loading" || state === "streaming" || state === "approved") {
+    // A step can only be running while its turn is. One left unfinished by a
+    // turn that ended (a dropped socket, a stopped reply) shimmered forever,
+    // saying "Planning your day…" about work nothing was doing. "approved"
+    // is exempt: it is the instant between Approve and the turn resuming,
+    // before the chat reports busy, and would flash "didn't finish" there.
+    if (!live && state !== "approved") {
+      return (
+        <TraceLine>
+          <TraceIcon>
+            <AlertTriangle />
+          </TraceIcon>
+          <TraceTitle>{meta.label} didn't finish</TraceTitle>
+        </TraceLine>
+      );
+    }
+    return (
+      <TraceLine status="running">
+        <TraceIcon>
+          <Icon />
+        </TraceIcon>
+        <TraceTitle>{meta.doing}…</TraceTitle>
+      </TraceLine>
+    );
+  }
+  if (state === "error") {
+    return (
+      <TraceLine status="error">
+        <TraceIcon>
+          <AlertTriangle />
+        </TraceIcon>
+        <TraceTitle>{meta.label} didn't go through</TraceTitle>
+      </TraceLine>
+    );
+  }
   if (state === "denied") {
-    return <Row icon={X} title={<span className="text-muted-foreground">Declined · {meta.label}</span>} />;
+    return (
+      <TraceLine>
+        <TraceIcon>
+          <X />
+        </TraceIcon>
+        <TraceTitle>Declined · {meta.label}</TraceTitle>
+      </TraceLine>
+    );
   }
 
-  return <>{renderResult(name, input, output, ctx)}</>;
+  return (
+    <TraceCollapsible defaultOpen={!meta.folded}>
+      <TraceCollapsibleTrigger>
+        <TraceLine status={isOk(output) ? undefined : "error"}>
+          <TraceIcon>
+            <Icon />
+          </TraceIcon>
+          <TraceTitle>{meta.done}</TraceTitle>
+        </TraceLine>
+      </TraceCollapsibleTrigger>
+      <TraceCollapsibleContent className="flex flex-col gap-1.5">
+        {renderResult(name, input, output, ctx)}
+      </TraceCollapsibleContent>
+    </TraceCollapsible>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -727,20 +809,27 @@ function Approval({
   const proposal =
     name === "deleteEntry" ? null : propose(name, input, ctx, running ? { description: running.description } : null);
 
+  // AI Elements' Confirmation: a question for the person, not a step the
+  // Assistant took, so it is an Item outside the trace. The stronger hairline
+  // is what sets it apart from the result rows around it — not a colour.
   return (
-    <div
+    <Item
       role="group"
       aria-label="Waiting for your approval"
-      className="space-y-2.5 rounded-container border border-border-strong bg-background px-3 py-2.5"
+      variant="outline"
+      size="sm"
+      className="flex-col items-stretch gap-2.5 rounded-container border-border-strong bg-background px-3 py-2.5"
     >
-      {name === "deleteEntry" ? (
-        <DeleteProposal id={str(input, "id")} ctx={ctx} />
-      ) : (
-        proposal && <ProposalBody proposal={proposal} />
-      )}
+      <ItemContent className="gap-1">
+        {name === "deleteEntry" ? (
+          <DeleteProposal id={str(input, "id")} ctx={ctx} />
+        ) : (
+          proposal && <ProposalBody proposal={proposal} />
+        )}
+      </ItemContent>
       {/* Wraps: at large text sizes the pair is wider than the card, and an
           unwrapped row pushed Decline out past its edge and scrolled the thread. */}
-      <div className="flex flex-wrap gap-2">
+      <ItemActions className="flex-wrap gap-2">
         <Button
           size="sm"
           variant={name === "deleteEntry" ? "destructive" : "default"}
@@ -751,8 +840,8 @@ function Approval({
         <Button size="sm" variant="outline" onClick={() => onApprove(approval.id, false)}>
           Decline
         </Button>
-      </div>
-    </div>
+      </ItemActions>
+    </Item>
   );
 }
 
