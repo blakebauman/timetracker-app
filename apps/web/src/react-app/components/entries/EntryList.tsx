@@ -1,8 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, Suspense } from "react";
 import { toast } from "sonner";
 import { Trash2, X, DollarSign, Upload, Clock, AlertTriangle } from "lucide-react";
 import { EntryGroup } from "./EntryGroup";
-import { EntryForm } from "./EntryForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -20,6 +19,13 @@ import { useTimerStore } from "@/stores/timerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { toCreatePayload } from "@/lib/entryUtils";
 import { ENTRY_LIST_LIMIT } from "@timetracker/core/limits";
+import { lazyWithReload } from "@/lib/lazyWithReload";
+
+// The edit sheet loads on first edit: the list renders without it, and its
+// form controls were first-load weight on every visit.
+const EntryForm = lazyWithReload(() =>
+  import("./EntryForm").then((m) => ({ default: m.EntryForm }))
+);
 
 interface EntryListProps {
   since: Date;
@@ -269,12 +275,14 @@ export function EntryList({ since, until, onAddEntry }: EntryListProps) {
       {/* Keyed by entry id so switching targets rebuilds the draft rather than
           leaving the previous entry's values in the fields. */}
       {editingEntry && (
-        <EntryForm
-          key={editingEntry.id}
-          entry={editingEntry}
-          open
-          onClose={closeEntryEditor}
-        />
+        <Suspense fallback={null}>
+          <EntryForm
+            key={editingEntry.id}
+            entry={editingEntry}
+            open
+            onClose={closeEntryEditor}
+          />
+        </Suspense>
       )}
     </div>
   );

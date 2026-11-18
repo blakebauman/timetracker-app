@@ -16,7 +16,6 @@ import {
 import { EntryList } from "@/components/entries/EntryList";
 import { TimerWorkspaceHeader } from "@/components/timer/TimerWorkspaceHeader";
 import { TIMER_PANEL_ID, timerTabId } from "@/components/timer/timerTabs";
-import { AddEntryDialog } from "@/components/entries/AddEntryDialog";
 import { useEntriesRange } from "@/hooks/useEntries";
 import { useDraftRange, useGenerateDrafts } from "@/hooks/useDrafts";
 import { resolveListRange } from "@/lib/dateUtils";
@@ -34,6 +33,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Pane, PaneScroll } from "@/components/layout/Pane";
+import { useMountOnOpen } from "@/hooks/useMountOnOpen";
+import { lazyWithReload } from "@/lib/lazyWithReload";
+
+// The add-entry form (and the selects, switches and sheet it brings) loads on
+// first open: the Timer opens without it, and it was ~10 kB gz of first load.
+const AddEntryDialog = lazyWithReload(() =>
+  import("@/components/entries/AddEntryDialog").then((m) => ({ default: m.AddEntryDialog }))
+);
 
 // Review pulls in the project picker and the entry controls; it's only ever
 // opened deliberately, so it shouldn't sit in the Timer landing chunk.
@@ -176,6 +183,7 @@ export function TimerWorkspace() {
   ]);
 
   const [addEntryOpen, setAddEntryOpen] = useState(false);
+  const addEntryMounted = useMountOnOpen(addEntryOpen);
 
   /**
    * Which day drafting and review act on.
@@ -432,12 +440,16 @@ export function TimerWorkspace() {
         </div>
       </PaneScroll>
 
-      <AddEntryDialog
-        open={addEntryOpen}
-        onClose={() => setAddEntryOpen(false)}
-        visibleRange={{ since, until }}
-        onRevealDate={revealDate}
-      />
+      {addEntryMounted && (
+        <Suspense fallback={null}>
+          <AddEntryDialog
+            open={addEntryOpen}
+            onClose={() => setAddEntryOpen(false)}
+            visibleRange={{ since, until }}
+            onRevealDate={revealDate}
+          />
+        </Suspense>
+      )}
 
       {reviewOpen && (
         <Suspense fallback={null}>
