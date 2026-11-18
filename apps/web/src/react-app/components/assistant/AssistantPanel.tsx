@@ -186,13 +186,13 @@ function NudgeCard({ nudge }: { nudge: AssistantNudge }) {
   // An Item, like the Assistant's own result rows and approvals: one row
   // grammar for everything in the panel that isn't the conversation's prose.
   return (
-    <Item variant="outline" size="sm" className="flex-nowrap items-start gap-2.5 rounded-container bg-card p-3">
+    <Item size="sm" className="flex-nowrap items-start gap-2.5 bg-card p-3">
       <ItemMedia className="pt-0.5">
         <Icon className="size-4 text-muted-foreground" />
       </ItemMedia>
       <ItemContent className="min-w-0 gap-0.5">
-        <ItemTitle className="line-clamp-none w-full">{nudge.title}</ItemTitle>
-        <ItemDescription className="line-clamp-none text-xs">{nudge.body}</ItemDescription>
+        <ItemTitle className="w-full">{nudge.title}</ItemTitle>
+        <ItemDescription className="text-xs">{nudge.body}</ItemDescription>
         {action && <div className="mt-1.5">{action}</div>}
       </ItemContent>
       <ItemActions className="-mt-0.5 -mr-1 self-start">
@@ -247,8 +247,8 @@ const MessageItem = memo(function MessageItem({
     return (
       <Message align="end">
         <MessageContent>
-          <Bubble align="end" variant="muted" className="max-w-[85%]">
-            <BubbleContent className="rounded-container border-border px-3 py-2 whitespace-pre-wrap wrap-anywhere">
+          <Bubble align="end" className="max-w-[85%]">
+            <BubbleContent className="px-3 py-2 whitespace-pre-wrap wrap-anywhere">
               {textOf(m)}
             </BubbleContent>
           </Bubble>
@@ -635,7 +635,7 @@ export function AssistantPanel() {
                     ) : nudgesError ? (
                       // "All caught up" on a failed fetch would be the one thing
                       // the Assistant must never say; name the problem instead.
-                      <Item variant="outline" size="sm" className="flex-nowrap gap-2.5 rounded-container bg-card p-3">
+                      <Item size="sm" className="flex-nowrap gap-2.5 bg-card p-3">
                         <ItemMedia>
                           <AlertCircle className="size-4 text-muted-foreground" />
                         </ItemMedia>
@@ -731,7 +731,7 @@ export function AssistantPanel() {
                       // A failed turn used to end in silence — the spinner just
                       // went away. Say so, and offer the same retry the message
                       // menu has.
-                      <Item variant="outline" size="sm" className="flex-nowrap gap-2.5 rounded-container border-destructive/40 bg-card px-3 py-2">
+                      <Item size="sm" className="flex-nowrap gap-2.5 border-destructive/40 bg-card px-3 py-2">
                         <ItemMedia>
                           <AlertCircle className="size-4 text-destructive" />
                         </ItemMedia>
@@ -745,7 +745,7 @@ export function AssistantPanel() {
                         </ItemActions>
                       </Item>
                     ) : stuck ? (
-                      <Item role="status" variant="outline" size="sm" className="flex-nowrap gap-2.5 rounded-container bg-card px-3 py-2">
+                      <Item role="status" size="sm" className="flex-nowrap gap-2.5 bg-card px-3 py-2">
                         <ItemMedia>
                           <AlertCircle className="size-4 text-warning" />
                         </ItemMedia>

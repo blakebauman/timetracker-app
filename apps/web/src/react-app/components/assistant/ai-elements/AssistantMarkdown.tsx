@@ -24,7 +24,7 @@ import { useHighlightedCode } from "@/hooks/use-highlighted-code";
 function CodeFence({ code, language }: { code: string; language: string }) {
   const lines = useHighlightedCode(code, language || "text");
   return (
-    <CodeBlock size="sm" className="border-border bg-background dark:bg-background">
+    <CodeBlock>
       <CodeBlockActions>
         <CodeBlockCopyButton value={code} title="Copy code" />
       </CodeBlockActions>

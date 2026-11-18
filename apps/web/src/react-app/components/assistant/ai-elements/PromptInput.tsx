@@ -89,7 +89,7 @@ export function PromptInput({
           The disc rides at the inline end, bottom-aligned as the field grows:
           a block-end toolbar row is for attachments and a model picker, and
           for one button it only made the composer a row taller. */}
-      <InputGroup className="h-auto items-end rounded-container bg-background dark:bg-background">
+      <InputGroup>
         <InputGroupTextarea
           ref={textareaRef}
           value={value}
@@ -102,13 +102,10 @@ export function PromptInput({
           rows={1}
           className="max-h-40 min-h-12 px-3.5 py-3.5"
         />
-        {/* Inset evenly from the field's edge: the addon's default -mr-1 pulled
-            the disc 5px from the right edge against 9px from the bottom, so it
-            crowded the corner once the field grew. */}
-        <InputGroupAddon align="inline-end" className="py-2 pr-2 has-[>button]:mr-0">
+        {/* Inset an even 8px from the field's edge (ui/input-group.tsx). */}
+        <InputGroupAddon>
           {busy ? (
             <InputGroupButton
-              size="icon-sm"
               variant="outline"
               onClick={onStop}
               aria-label="Stop"
@@ -120,7 +117,6 @@ export function PromptInput({
           ) : (
             <InputGroupButton
               type="submit"
-              size="icon-sm"
               variant="default"
               // Lit only when there's something to send: an empty composer
               // used to show a faded red disc, the brand light spent on

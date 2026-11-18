@@ -13,7 +13,9 @@ function Trace({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="trace"
       className={cn(
-        "flex w-full min-w-0 flex-col gap-3 *:has-[>[data-slot=trace-line]]:flex *:has-[>[data-slot=trace-line]]:w-fit *:has-[>[data-slot=trace-line]]:max-w-full *:has-[>[data-slot=trace-line]]:min-w-0 *:has-[>[data-slot=trace-line]]:rounded-lg *:has-[>[data-slot=trace-line]]:text-left *:has-[>[data-slot=trace-line]]:outline-none *:has-[>[data-slot=trace-line]]:focus-visible:ring-[3px] *:has-[>[data-slot=trace-line]]:focus-visible:ring-ring/50",
+        // The trigger (TraceCollapsibleTrigger) carries its own focus ring;
+        // the registry's child selectors that restyled it again are trimmed.
+        "flex w-full min-w-0 flex-col gap-3",
         className
       )}
       {...props}
@@ -60,22 +62,6 @@ function TraceTitle({ className, ...props }: React.ComponentProps<"span">) {
     <span
       data-slot="trace-title"
       className={cn("min-w-0 truncate motion-reduce:shimmer-none", className)}
-      {...props}
-    />
-  )
-}
-
-function TraceDescription({
-  className,
-  ...props
-}: React.ComponentProps<"span">) {
-  return (
-    <span
-      data-slot="trace-description"
-      className={cn(
-        "shrink-0 text-muted-foreground/70 tabular-nums",
-        className
-      )}
       {...props}
     />
   )
@@ -158,7 +144,6 @@ export {
   TraceLine,
   TraceIcon,
   TraceTitle,
-  TraceDescription,
   TraceCollapsible,
   TraceCollapsibleTrigger,
   TraceCollapsibleContent,

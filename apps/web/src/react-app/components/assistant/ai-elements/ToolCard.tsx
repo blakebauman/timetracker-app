@@ -202,10 +202,10 @@ function Row({
 }) {
   return (
     <Item
-      variant="outline"
+     
       size="xs"
       className={cn(
-        "flex-nowrap items-start gap-2 rounded-container bg-background px-3 py-2 text-xs",
+        "flex-nowrap items-start gap-2 bg-background px-3 py-2 text-xs",
         tone === "error" && "border-destructive/40"
       )}
     >
@@ -816,9 +816,9 @@ function Approval({
     <Item
       role="group"
       aria-label="Waiting for your approval"
-      variant="outline"
+     
       size="sm"
-      className="flex-col items-stretch gap-2.5 rounded-container border-border-strong bg-background px-3 py-2.5"
+      className="flex-col items-stretch gap-2.5 border-border-strong bg-background px-3 py-2.5"
     >
       <ItemContent className="gap-1">
         {name === "deleteEntry" ? (
