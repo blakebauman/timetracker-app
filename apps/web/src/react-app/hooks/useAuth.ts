@@ -1,4 +1,6 @@
-import { authClient } from "@/lib/auth-client";
+import { sessionClient } from "@/lib/auth-session";
+// Type-only, so erased from the build: the plugins stay out of the first load.
+import type { authClient } from "@/lib/auth-client";
 import { clearOfflineState } from "@/lib/idb";
 import { useAssistantStore } from "@/stores/assistantStore";
 
@@ -11,7 +13,7 @@ import { useAssistantStore } from "@/stores/assistantStore";
  * a credential; the session itself is a cookie Better Auth clears.
  */
 async function signOutAndForget(): Promise<void> {
-  await authClient.signOut();
+  await sessionClient.signOut();
   await clearOfflineState();
   try {
     useAssistantStore.persist.clearStorage();
@@ -22,7 +24,11 @@ async function signOutAndForget(): Promise<void> {
 }
 
 export function useAuth() {
-  const { data: session, isPending } = authClient.useSession();
+  // The server sends the same session to both clients, plugin fields (the
+  // admin plugin's `role`, …) included; only the plugin-free client's *type*
+  // doesn't know them. Typed from the full client.
+  const { data, isPending } = sessionClient.useSession();
+  const session = data as typeof authClient.$Infer.Session | null;
   return {
     user: session?.user ?? null,
     session: session?.session ?? null,

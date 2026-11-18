@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ProjectForm } from "@/components/projects/ProjectForm";
+import { useMountOnOpen } from "@/hooks/useMountOnOpen";
+import { lazyWithReload } from "@/lib/lazyWithReload";
+
+// The project form (selects, a switch, the colour grid) loads when it opens.
+const ProjectForm = lazyWithReload(() =>
+  import("@/components/projects/ProjectForm").then((m) => ({ default: m.ProjectForm }))
+);
 
 /**
  * What a brand-new workspace sees where the entry list would be.
@@ -22,6 +28,7 @@ import { ProjectForm } from "@/components/projects/ProjectForm";
  */
 export function FirstProjectPrompt({ onAddEntry }: { onAddEntry?: () => void }) {
   const [formOpen, setFormOpen] = useState(false);
+  const formMounted = useMountOnOpen(formOpen);
 
   return (
     <>
@@ -45,7 +52,11 @@ export function FirstProjectPrompt({ onAddEntry }: { onAddEntry?: () => void }) 
       />
       {/* Created in place: sending someone to /projects mid-thought is the
           context switch this prompt exists to remove. */}
-      <ProjectForm open={formOpen} onClose={() => setFormOpen(false)} />
+      {formMounted && (
+        <Suspense fallback={null}>
+          <ProjectForm open={formOpen} onClose={() => setFormOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -20,7 +20,12 @@ function isChunkLoadError(error: unknown): boolean {
   );
 }
 
-export function lazyWithReload<T extends ComponentType<unknown>>(
+// The same constraint as React's own `lazy`, so it takes a component with
+// props as well as a page without them and `lazy` infers the props from T.
+// (`unknown` refused any component with props; `never` refused class
+// components inside `lazy` itself.)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors React.lazy's signature
+export function lazyWithReload<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>
 ) {
   return lazy(async () => {

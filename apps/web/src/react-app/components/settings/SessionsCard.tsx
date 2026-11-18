@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@/hooks/useAuth";
 import { mutationErrorMessage } from "@/lib/api";
 import { formatShortDate, formatEntryTime } from "@/lib/dateUtils";
 
@@ -47,8 +48,9 @@ function describeUserAgent(ua?: string | null): { label: string; mobile: boolean
 
 export function SessionsCard() {
   const queryClient = useQueryClient();
-  const { data: current } = authClient.useSession();
-  const currentToken = current?.session?.token;
+  // The app's one session store (lib/auth-session.ts), not authClient's own.
+  const { session: current } = useAuth();
+  const currentToken = current?.token;
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["auth", "sessions"],
