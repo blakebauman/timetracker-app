@@ -282,7 +282,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = f
                   setEditingDesc(false);
                 }
               }}
-              className="w-full border-b border-primary/40 bg-transparent text-sm outline-none ring-0"
+              className="w-full border-b border-ring bg-transparent text-sm outline-none ring-0"
             />
           ) : (
             <button
@@ -466,7 +466,7 @@ export function EntryRow({ entry, isSelected = false, onToggleSelect, nested = f
             title={durationInvalid ? "Enter a duration like 1h 30m, 1:30, or 90m" : undefined}
             className={cn(
               "w-20 bg-transparent text-right font-mono text-sm tabular-nums outline-none ring-0 border-b",
-              durationInvalid ? "border-destructive text-destructive" : "border-primary"
+              durationInvalid ? "border-destructive text-destructive" : "border-ring"
             )}
           />
         ) : (

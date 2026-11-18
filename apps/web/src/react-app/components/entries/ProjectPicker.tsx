@@ -152,7 +152,7 @@ export function ProjectPicker({
           {selected ? (
             <>
               <ColorDot color={selected.color} />
-              <span className={cn("min-w-0 max-w-30 truncate", nameClassName)}>{selected.name}</span>
+              <span className={cn("min-w-0 truncate", !field && "max-w-30", nameClassName)}>{selected.name}</span>
             </>
           ) : (
             <>
