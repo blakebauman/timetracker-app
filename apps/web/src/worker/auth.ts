@@ -6,6 +6,7 @@ import { VerificationOtpEmail } from "./emails/verification-otp";
 import { MagicLinkEmail } from "./emails/magic-link";
 import { DeleteAccountEmail } from "./emails/delete-account";
 import { sendEmail } from "./lib/mailer";
+import { PRODUCTION_ORIGINS, isDevLocalOrigin } from "./middleware/cors";
 
 function randomSlug(): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
@@ -56,20 +57,18 @@ function buildAuth(env: Env, baseURL: string) {
     database: env.DB as unknown as Parameters<typeof betterAuth>[0]["database"],
     secret: env.BETTER_AUTH_SECRET,
     baseURL,
-    trustedOrigins: [
-      "https://timetracker.run",
-      // Browser extension. The ID below is pinned via the manifest "key" for
-      // local dev/testing (see extension/.keys/README.md). NOTE: the Chrome Web
-      // Store assigns its OWN id on publish — after the first upload, add the
-      // published chrome-extension://<id> here too. See extension/PUBLISHING.md.
-      // The extension signs in with the standard better-auth client + bearer().
-      "chrome-extension://nogikmhdpnnedmfldanickgpikmifcje",
-      // trustedOrigins gates CSRF origin checks AND callbackURL validation, so
-      // localhost must never be trusted by the production build — any local
-      // process on a user's machine could serve those origins. Compiled in for
-      // dev/e2e builds only.
-      ...(import.meta.env.DEV ? ["http://localhost:5173", "http://localhost:8787"] : []),
-    ],
+    // trustedOrigins gates CSRF origin checks AND callbackURL validation, so
+    // localhost must never be trusted by the production build — any local
+    // process on a user's machine could serve those origins. The production
+    // build gets the static list (middleware/cors.ts, where the extension
+    // origin's publishing note lives); dev/e2e builds also trust the
+    // requesting origin when it is a local dev server on any port.
+    trustedOrigins: import.meta.env.DEV
+      ? (request) => {
+          const origin = request?.headers.get("origin");
+          return [...PRODUCTION_ORIGINS, "http://localhost:8787", isDevLocalOrigin(origin) ? origin : null];
+        }
+      : [...PRODUCTION_ORIGINS],
     emailAndPassword: {
       // Passwords are retired in production — sign-in is email OTP, magic link,
       // Google, or passkey. The flag (set in .dev.vars and CI only, never as a

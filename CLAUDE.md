@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm dev              # turbo: start every app's dev task — today that is apps/web's Vite + Cloudflare Worker dev server (http://localhost:5173) via @cloudflare/vite-plugin
 pnpm dev:web          # The same dev server without turbo in front of it (pnpm --filter @timetracker/web dev)
+                      # Any free port works (`vite --port N --strictPort`): dev builds trust any http://localhost:<port> origin. Calendar OAuth still needs 5173 (only that callback is registered).
 pnpm build            # turbo run build — Vite bundles for apps/web (dist/client + worker) and apps/extension. Does NOT typecheck; `pnpm check` does
 pnpm typecheck        # turbo run typecheck — apps/web `tsc -b` (app/worker/node projects), apps/extension + packages/core `tsc --noEmit`
 pnpm lint             # turbo run lint — per-workspace `eslint .` with the shared @timetracker/eslint-config
@@ -20,7 +21,7 @@ pnpm seed:demo        # Seed the LOCAL dev workspace with data that exercises dr
 pnpm check:bundle     # First-load budget: gzipped entry + modulepreloads + CSS from apps/web/dist/client/index.html vs BUDGET_KB (run after `pnpm build`; CI enforces it)
 pnpm generate-icons   # Regenerate apps/web/public icons + apps/extension/icons from packages/core's brand mark
 pnpm cf-typegen       # Regenerate apps/web/worker-configuration.d.ts from wrangler.jsonc bindings (run after binding changes)
-pnpm test:e2e         # Run Playwright e2e tests in apps/web (spins up `pnpm dev` against localhost:5173)
+pnpm test:e2e         # Run Playwright e2e tests in apps/web (spins up the dev server on localhost:5173; `E2E_PORT=5199 pnpm test:e2e` when 5173 is taken)
 pnpm backup:d1        # Export the PRODUCTION D1 to backups/*.sql.gz (plaintext, gitignored) — run before any remote migration; see docs/RUNBOOK.md
 cd apps/web && npx wrangler tail   # Stream live worker logs (wrangler commands run where wrangler.jsonc lives)
 ```
@@ -149,7 +150,7 @@ Tailwind v4 (OKLCH tokens in `index.css`) + shadcn/ui on the **v4 CLI** (`compon
 
 ### Browser Extension (`apps/extension/`)
 
-A separate workspace (`@timetracker/extension`) with its own `package.json` and `vite.config.ts`; it imports nothing from `apps/web` (its one internal import is `@timetracker/core/quick-add`, for the popup's task capture). Auth uses the **standard better-auth client** (`apps/extension/lib/auth-client.ts`, `makeAuthClient(baseURL)`) with the server's `bearer()` plugin: the popup calls `authClient.signIn.email` / `getSession` / `signOut`, the session token arrives in the `set-auth-token` response header, and the client persists it to `chrome.storage.local` so the background service worker can reuse it for badge polling. There is no refresh flow — on a 401 the service worker clears the token and the popup drops back to the login form. The extension is trusted server-side by its pinned origin: `chrome-extension://<id>` (ID pinned via the manifest `key`, see `apps/extension/.keys/README.md`) is listed in `trustedOrigins` in `apps/web/src/worker/auth.ts`; CSRF/origin checks stay on for the cookie-based web app. The API base URL is user-configurable but validated against an allow-list (`apps/extension/lib/apiUrl.ts`: `timetracker.run`, `*.workers.dev`, `localhost`) so the token is never sent to an arbitrary origin.
+A separate workspace (`@timetracker/extension`) with its own `package.json` and `vite.config.ts`; it imports nothing from `apps/web` (its one internal import is `@timetracker/core/quick-add`, for the popup's task capture). Auth uses the **standard better-auth client** (`apps/extension/lib/auth-client.ts`, `makeAuthClient(baseURL)`) with the server's `bearer()` plugin: the popup calls `authClient.signIn.email` / `getSession` / `signOut`, the session token arrives in the `set-auth-token` response header, and the client persists it to `chrome.storage.local` so the background service worker can reuse it for badge polling. There is no refresh flow — on a 401 the service worker clears the token and the popup drops back to the login form. The extension is trusted server-side by its pinned origin: `chrome-extension://<id>` (ID pinned via the manifest `key`, see `apps/extension/.keys/README.md`) is listed in `PRODUCTION_ORIGINS` (`apps/web/src/worker/middleware/cors.ts`, which feeds both `trustedOrigins` and CORS); CSRF/origin checks stay on for the cookie-based web app. The API base URL is user-configurable but validated against an allow-list (`apps/extension/lib/apiUrl.ts`: `timetracker.run`, `*.workers.dev`, `localhost`) so the token is never sent to an arbitrary origin.
 
 Docs: `apps/extension/README.md` (overview + local dev), `apps/extension/PUBLISHING.md` (Chrome Web Store flow — note the extension ID/`trustedOrigins` reconciliation after first upload), `apps/extension/PRIVACY.md` (privacy-policy draft), `apps/extension/SECURITY_AUDIT.md` (security model). The signing key lives in `apps/extension/.keys/` (private key gitignored). Package for the store with `pnpm zip:ext`.
 

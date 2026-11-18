@@ -5,7 +5,7 @@ gitignored — never commit `extension.pem`.** Only the corresponding *public* k
 is committed, as the `"key"` field in `../manifest.json`.
 
 Pinning the ID lets the worker trust the extension by origin
-(`chrome-extension://<id>` in `trustedOrigins`, see `apps/web/src/worker/auth.ts`) in both
+(`chrome-extension://<id>` in `PRODUCTION_ORIGINS`, see `apps/web/src/worker/middleware/cors.ts`) in both
 local dev (unpacked) and production.
 
 ## Current values
@@ -27,4 +27,4 @@ openssl rsa -in apps/extension/.keys/extension.pem -pubout -outform DER \
 ```
 
 If you regenerate, update `manifest.json` `"key"` and the `chrome-extension://<id>`
-entry in `apps/web/src/worker/auth.ts` `trustedOrigins`.
+entry in `PRODUCTION_ORIGINS` (`apps/web/src/worker/middleware/cors.ts`).

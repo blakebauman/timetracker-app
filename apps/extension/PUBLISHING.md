@@ -41,8 +41,9 @@ The extension ID is a hash of a public key. There are **two** keys in play:
 - **The Chrome Web Store's key** → the **published** ID, which CWS assigns on the
   first upload. **This is different from the dev ID** and is what real users get.
 
-The server (`apps/web/src/worker/auth.ts` → `trustedOrigins`) only trusts the origins
-listed there. So after the first upload you must reconcile the IDs:
+The server only trusts the origins listed in `PRODUCTION_ORIGINS`
+(`apps/web/src/worker/middleware/cors.ts`, which feeds both Better Auth's
+`trustedOrigins` and CORS). So after the first upload you must reconcile the IDs:
 
 1. Upload the zip once (step 3) to create the item — you don't have to publish it
    yet.
@@ -56,7 +57,7 @@ listed there. So after the first upload you must reconcile the IDs:
    echo 'PASTE_THE_CWS_KEY' | base64 -d | openssl dgst -sha256 -binary \
      | xxd -p -c 32 | head -c 32 | tr '0-9a-f' 'a-p'; echo
    ```
-   Put `chrome-extension://<that-id>` in `apps/web/src/worker/auth.ts` `trustedOrigins`,
+   Put `chrome-extension://<that-id>` in `PRODUCTION_ORIGINS` (`apps/web/src/worker/middleware/cors.ts`),
    deploy the worker (`pnpm run deploy`), then rebuild + re-zip + re-upload the
    extension. Now local dev and production share one ID.
 4. **Alternative (keep separate dev/prod IDs):** leave the dev key as-is and just
