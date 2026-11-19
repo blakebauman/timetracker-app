@@ -90,6 +90,7 @@ export function ProjectList() {
   // how a consultant thinks about their project list.
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<ProjectSort>("name");
+  const [showArchived, setShowArchived] = useState(false);
 
   const toggleTasks = (id: string) =>
     setExpandedTasks((prev) => {
@@ -135,6 +136,15 @@ export function ProjectList() {
           return a.name.localeCompare(b.name);
       }
     });
+  // Archived projects sink below the active ones, behind one quiet "n archived"
+  // line (the vocabulary of a task group's "n done"). Interleaved by name they
+  // were half the list, each one saying "archived" twice. A search reaches them
+  // anyway: looking for a name shouldn't depend on whether it was archived.
+  const archived = visible.filter((p) => !p.active);
+  const archivedShown = showArchived || !!q;
+  const rows = archivedShown
+    ? [...visible.filter((p) => p.active), ...archived]
+    : visible.filter((p) => p.active);
 
   return (
     <Pane>
@@ -227,7 +237,7 @@ export function ProjectList() {
 
         {!isLoading && !isError && (
           <div className="space-y-2">
-            {visible.map((project) => {
+            {rows.map((project) => {
               // budgetSeconds, not trackedSeconds: the bar is cumulative against
               // the estimate and must not follow the period control, or `11h / 40h`
               // becomes a sentence whose two halves cover different spans.
@@ -268,7 +278,7 @@ export function ProjectList() {
                           <span
                             className={cn(
                               "min-w-0 max-w-full basis-full truncate text-sm font-medium sm:basis-auto",
-                              !project.active && "text-muted-foreground line-through"
+                              !project.active && "text-muted-foreground"
                             )}
                           >
                             {project.name}
@@ -410,6 +420,17 @@ export function ProjectList() {
                 </Collapsible>
               );
             })}
+
+            {archived.length > 0 && !q && (
+              <button
+                type="button"
+                aria-expanded={showArchived}
+                onClick={() => setShowArchived((v) => !v)}
+                className="mt-1 rounded-full px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              >
+                {showArchived ? `Hide ${archived.length} archived` : `${archived.length} archived`}
+              </button>
+            )}
 
             {projects.length === 0 && (
               <EmptyState
