@@ -123,6 +123,13 @@ export function ClientList() {
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  // Archived clients sit below the active ones behind an "n archived" line,
+  // as on Projects, rather than interleaved by name.
+  const archived = clients.filter((c) => c.archived);
+  const rows = showArchived
+    ? [...clients.filter((c) => !c.archived), ...archived]
+    : clients.filter((c) => !c.archived);
 
   return (
     <Pane>
@@ -188,7 +195,7 @@ export function ClientList() {
 
         {!isLoading && !isError && (
           <div className="space-y-2">
-            {clients.map((client) => (
+            {rows.map((client) => (
               <div
                 key={client.id}
                 className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-container border bg-card px-4 py-3 transition-colors duration-fast ease-out-quart hover:border-border-strong md:flex-nowrap"
@@ -207,7 +214,7 @@ export function ClientList() {
                     <span
                       className={cn(
                         "truncate text-sm font-medium",
-                        client.archived && "text-muted-foreground line-through"
+                        client.archived && "text-muted-foreground"
                       )}
                     >
                       {client.name}
@@ -273,6 +280,17 @@ export function ClientList() {
                 </DropdownMenu>
               </div>
             ))}
+
+            {archived.length > 0 && (
+              <button
+                type="button"
+                aria-expanded={showArchived}
+                onClick={() => setShowArchived((v) => !v)}
+                className="mt-1 rounded-full px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-fast ease-out-quart hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              >
+                {showArchived ? `Hide ${archived.length} archived` : `${archived.length} archived`}
+              </button>
+            )}
 
             {clients.length === 0 && (
               <EmptyState
